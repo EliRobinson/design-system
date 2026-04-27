@@ -20,7 +20,7 @@ mkdirSync(targetDirectory, { recursive: true });
 
 const currentFileDirectory = dirname(fileURLToPath(import.meta.url));
 const templateDirectory = resolve(currentFileDirectory, '../../../templates/default-app');
-cpSync(templateDirectory, targetDirectory, { recursive: true });
+cpSync(templateDirectory, targetDirectory, { recursive: true, verbatimSymlinks: true });
 
 const packageJsonPath = resolve(targetDirectory, 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
