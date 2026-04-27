@@ -1,0 +1,10 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 90" role="img" aria-label="Miltinson. — Builder. Consultant. Founder.">
+  <defs>
+    
+  </defs>
+  <text x="0" y="40" class="l-text">Miltinson</text>
+  <circle class="l-dot" cx="212" cy="38" r="5"></circle>
+  <line x1="0" y1="56" x2="220" y2="56" class="l-rule"></line>
+  <text x="0" y="78" class="l-tag">BUILDER · CONSULTANT · FOUNDER</text>
+</svg>

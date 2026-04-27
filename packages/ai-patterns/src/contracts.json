@@ -1,0 +1,12 @@
+{
+  "systemPromptStyle": {
+    "voice": "practical, honest, warm",
+    "forbidden": ["hype", "overclaiming", "jargon-first language"],
+    "required": ["clear next step", "plain-language explanation", "accessibility consideration"]
+  },
+  "uiContracts": {
+    "minimumTouchTarget": "44x44",
+    "focusVisibleRequired": true,
+    "contrastLevel": "WCAG AA"
+  }
+}

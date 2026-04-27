@@ -1,0 +1,33 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Miltinson · Closer slide</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { width: 1280px; height: 720px; overflow: hidden; }
+  .slide { width: 1280px; height: 720px; background: var(--ink-1000); color: var(--ink-0); padding: 80px; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+  .eyebrow { font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase; color: oklch(100% 0 0 / 0.6); }
+  h2 { font-family: var(--font-sans); font-weight: 600; font-size: 88px; letter-spacing: -0.03em; line-height: 1; margin: 16px 0 32px; }
+  h2 .accent { color: var(--signal-500); }
+  p { font-family: var(--font-sans); font-size: 20px; color: oklch(100% 0 0 / 0.7); line-height: 1.55; margin: 0; }
+  .panel { background: oklch(100% 0 0 / 0.04); border: 1px solid oklch(100% 0 0 / 0.12); border-radius: 8px; padding: 40px; }
+  .panel-eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--signal-500); margin-bottom: 16px; }
+  .row { display: flex; align-items: baseline; gap: 14px; padding: 14px 0; border-bottom: 1px solid oklch(100% 0 0 / 0.12); font-family: var(--font-sans); font-size: 16px; }
+  .row:last-child { border-bottom: 0; }
+  .row .label { color: oklch(100% 0 0 / 0.55); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; width: 110px; flex-shrink: 0; }
+  .row .val { color: var(--ink-0); flex: 1; }
+  .row .val a { color: var(--ink-0); text-decoration: none; border-bottom: 1px solid oklch(100% 0 0 / 0.4); }
+</style></head><body>
+<div class="slide">
+  <div>
+    <div class="eyebrow">Get in touch</div>
+    <h2>Let's <span class="accent">build.</span></h2>
+    <p>Tell me what you need and I'll get back to you within 24 hours. No contracts required to get started.</p>
+  </div>
+  <div class="panel">
+    <div class="panel-eyebrow">Miltinson Technologies</div>
+    <div class="row"><span class="label">Site</span><span class="val"><a>miltinsons.com</a></span></div>
+    <div class="row"><span class="label">Services</span><span class="val">AI Consulting · Tech Support</span></div>
+    <div class="row"><span class="label">Rates</span><span class="val">From $75/hr · From $150/hr</span></div>
+    <div class="row"><span class="label">Reply in</span><span class="val">≤ 24 hours</span></div>
+  </div>
+</div>
+</body></html>

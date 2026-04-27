@@ -1,0 +1,39 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Form fields</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  .card { padding: 22px 24px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .label { font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: var(--fg); }
+  .hint { font-family: var(--font-sans); font-size: 12px; color: var(--fg-3); }
+  .input { font-family: var(--font-sans); font-size: 14px; padding: 11px 12px; border-radius: 4px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); width: 100%; }
+  .input:focus { outline: 2px solid var(--ink-1000); outline-offset: 1px; border-color: var(--ink-1000); }
+  .input.err { border-color: var(--status-danger); }
+  .select { appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%23666' stroke-width='1.5'><path d='M4 6l4 4 4-4'/></svg>"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  .textarea { min-height: 64px; resize: vertical; }
+</style>
+</head><body>
+<div class="card">
+  <div class="eyebrow">Form inputs · text, select, textarea, error</div>
+  <div class="grid" style="margin-top:8px">
+    <div class="field">
+      <div class="label">Name</div>
+      <input class="input" value="Eli Robinson" />
+    </div>
+    <div class="field">
+      <div class="label">Email</div>
+      <input class="input err" value="not-an-email" />
+      <div class="hint" style="color:var(--status-danger)">Please enter a valid email address.</div>
+    </div>
+    <div class="field">
+      <div class="label">Service</div>
+      <select class="input select"><option>Select a service</option><option>AI Consulting</option><option>Tech Support</option><option>Other / Not sure yet</option></select>
+    </div>
+    <div class="field">
+      <div class="label">Message</div>
+      <textarea class="input textarea" placeholder="Tell me what you need…"></textarea>
+    </div>
+  </div>
+</div>
+</body></html>

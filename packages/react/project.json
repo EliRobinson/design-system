@@ -1,0 +1,27 @@
+{
+  "name": "react",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/react/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "command": "npm run build",
+      "options": {
+        "cwd": "packages/react"
+      }
+    },
+    "lint": {
+      "command": "npm run lint",
+      "options": {
+        "cwd": "packages/react"
+      }
+    },
+    "test": {
+      "command": "npm run test",
+      "options": {
+        "cwd": "packages/react"
+      }
+    }
+  },
+  "implicitDependencies": ["tokens"]
+}

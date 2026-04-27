@@ -1,0 +1,34 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Header & Footer</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  body { background: var(--bg-subtle); }
+  .card { padding: 16px; gap: 12px; }
+  .hdr { background: var(--ink-0); border: 1px solid var(--border); border-radius: 6px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .wm { font-family: var(--font-sans); font-weight: 600; font-size: 20px; letter-spacing: -0.025em; }
+  .wm .dot { color: var(--signal-500); }
+  .nav { display: flex; gap: 22px; align-items: center; }
+  .nav a { font-family: var(--font-sans); font-size: 13px; color: var(--fg); text-decoration: none; }
+  .nav a:hover { color: var(--signal-700); }
+  .nav .cta { background: var(--ink-1000); color: var(--ink-0); padding: 8px 14px; border-radius: 4px; font-weight: 500; }
+  .ftr { background: var(--ink-1000); color: var(--ink-0); border-radius: 6px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; }
+  .ftr .meta { color: oklch(100% 0 0 / 0.5); }
+  .ftr .links { display: flex; gap: 14px; }
+  .ftr .links a { color: var(--ink-0); text-decoration: none; }
+</style>
+</head><body>
+<div class="card">
+  <div class="hdr">
+    <div class="wm">Miltinson<span class="dot">.</span></div>
+    <div class="nav">
+      <a>Home</a><a>Portfolio</a><a>Store</a><a>Services</a><a>About</a>
+      <a class="cta">Hire Me</a>
+    </div>
+  </div>
+  <div class="ftr">
+    <div class="wm" style="font-size:16px;color:var(--ink-0)">Miltinson<span class="dot">.</span></div>
+    <div class="links"><a>PORTFOLIO</a><a>STORE</a><a>SERVICES</a><a>ABOUT</a></div>
+    <div class="meta">© 2026</div>
+  </div>
+</div>
+</body></html>

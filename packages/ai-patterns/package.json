@@ -1,0 +1,18 @@
+{
+  "name": "@miltinson/ai-patterns",
+  "version": "0.1.0",
+  "type": "module",
+  "files": [
+    "src"
+  ],
+  "exports": {
+    ".": "./src/index.js",
+    "./patterns": "./src/patterns.md",
+    "./contracts": "./src/contracts.json"
+  },
+  "scripts": {
+    "build": "echo 'No build step required for ai-patterns'",
+    "lint": "echo 'No lint configured for ai-patterns'",
+    "test": "echo 'No tests configured for ai-patterns'"
+  }
+}

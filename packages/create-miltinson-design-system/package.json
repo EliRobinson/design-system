@@ -1,0 +1,16 @@
+{
+  "name": "create-miltinson-design-system",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "create-miltinson-design-system": "./src/cli.mjs"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "build": "echo 'No build step required for create package'",
+    "lint": "echo 'No lint configured for create package'",
+    "test": "echo 'No tests configured for create package'"
+  }
+}

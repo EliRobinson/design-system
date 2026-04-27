@@ -1,0 +1,47 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Miltinson · Content slide</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { width: 1280px; height: 720px; overflow: hidden; }
+  .slide { width: 1280px; height: 720px; background: var(--bg); padding: 80px 96px; display: flex; flex-direction: column; }
+  .top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 24px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
+  .num { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); }
+  .wm { font-family: var(--font-sans); font-weight: 600; font-size: 20px; letter-spacing: -0.025em; }
+  .wm .dot { color: var(--signal-500); }
+  .eyebrow { font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-2); }
+  h2 { font-family: var(--font-sans); font-weight: 600; font-size: 64px; letter-spacing: -0.025em; line-height: 1.05; margin: 16px 0 48px; max-width: 900px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+  .item { padding: 32px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); display: flex; flex-direction: column; gap: 16px; }
+  .num-big { font-family: var(--font-mono); font-weight: 500; font-size: 44px; letter-spacing: -0.02em; color: var(--ink-1000); line-height: 1; }
+  .item h3 { font-family: var(--font-sans); font-weight: 600; font-size: 22px; letter-spacing: -0.015em; margin: 0; }
+  .item p { font-family: var(--font-sans); font-size: 16px; line-height: 1.55; color: var(--fg-2); margin: 0; }
+  .accent { background: var(--ink-1000); color: var(--ink-0); border-color: var(--ink-1000); }
+  .accent .num-big { color: var(--signal-500); }
+  .accent p { color: oklch(100% 0 0 / 0.7); }
+</style></head><body>
+<div class="slide">
+  <div class="top">
+    <span class="wm">Miltinson<span class="dot">.</span></span>
+    <span class="num">02 / 12</span>
+  </div>
+  <div class="eyebrow">What actually works</div>
+  <h2>Three places AI saves real time today.</h2>
+  <div class="grid">
+    <div class="item">
+      <div class="num-big">01</div>
+      <h3>Inbox triage</h3>
+      <p>Summarize, draft, and route email — without it sounding like a robot wrote it.</p>
+    </div>
+    <div class="item accent">
+      <div class="num-big">02</div>
+      <h3>Meeting prep</h3>
+      <p>Turn 90 minutes of notes into a one-page brief in under a minute.</p>
+    </div>
+    <div class="item">
+      <div class="num-big">03</div>
+      <h3>Customer replies</h3>
+      <p>Draft, never send. Keep the human in the loop, ship faster.</p>
+    </div>
+  </div>
+</div>
+</body></html>

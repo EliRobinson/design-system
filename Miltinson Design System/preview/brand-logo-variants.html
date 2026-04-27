@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Logo variants</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; min-height: 200px; }
+  .cell { padding: 28px 32px; display: flex; flex-direction: column; gap: 16px; justify-content: center; align-items: flex-start; }
+  .cell.dark { background: var(--ink-1000); color: var(--ink-0); }
+  .cell.light { background: var(--ink-0); border-right: 1px solid var(--border); }
+  .wm { font-family: var(--font-sans); font-weight: 600; font-size: 38px; letter-spacing: -0.025em; line-height: 1; }
+  .wm .dot { color: var(--signal-500); }
+  .mark { width: 56px; height: 56px; background: var(--ink-1000); border-radius: 12px; color: var(--ink-0); font-family: var(--font-sans); font-weight: 700; font-size: 32px; letter-spacing: -0.04em; display: flex; align-items: center; justify-content: center; position: relative; }
+  .mark::after { content: ""; position: absolute; right: 12px; bottom: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--signal-500); }
+  .cell.dark .mark { background: var(--ink-0); color: var(--ink-1000); }
+  .cap { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.55; }
+</style>
+</head><body>
+<div class="grid">
+  <div class="cell light">
+    <div class="cap">Wordmark · Light</div>
+    <div class="wm">Miltinson<span class="dot">.</span></div>
+    <div class="mark">M</div>
+  </div>
+  <div class="cell dark">
+    <div class="cap">Wordmark · Dark</div>
+    <div class="wm">Miltinson<span class="dot">.</span></div>
+    <div class="mark">M</div>
+  </div>
+</div>
+</body></html>

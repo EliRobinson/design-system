@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Color · Neutrals</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  .card { padding: 20px 24px; }
+  .scale { display: grid; grid-template-columns: repeat(13, 1fr); gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .chip { aspect-ratio: 1/1.4; display: flex; flex-direction: column; justify-content: flex-end; padding: 6px; font-family: var(--font-mono); font-size: 9px; }
+  .chip .n { color: inherit; opacity: 0.7; }
+  .chip.light { color: var(--ink-1000); }
+  .chip.dark { color: var(--ink-0); }
+</style>
+</head><body>
+<div class="card">
+  <div class="eyebrow">Ink scale · neutrals</div>
+  <div class="scale">
+    <div class="chip light" style="background:#fff"><span class="n">0</span></div>
+    <div class="chip light" style="background:var(--ink-50)"><span class="n">50</span></div>
+    <div class="chip light" style="background:var(--ink-100)"><span class="n">100</span></div>
+    <div class="chip light" style="background:var(--ink-200)"><span class="n">200</span></div>
+    <div class="chip light" style="background:var(--ink-300)"><span class="n">300</span></div>
+    <div class="chip light" style="background:var(--ink-400)"><span class="n">400</span></div>
+    <div class="chip dark" style="background:var(--ink-500)"><span class="n">500</span></div>
+    <div class="chip dark" style="background:var(--ink-600)"><span class="n">600</span></div>
+    <div class="chip dark" style="background:var(--ink-700)"><span class="n">700</span></div>
+    <div class="chip dark" style="background:var(--ink-800)"><span class="n">800</span></div>
+    <div class="chip dark" style="background:var(--ink-900)"><span class="n">900</span></div>
+    <div class="chip dark" style="background:var(--ink-950)"><span class="n">950</span></div>
+    <div class="chip dark" style="background:#000"><span class="n">1k</span></div>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,225 @@
+# Miltinson Design System
+
+Design system for **Miltinson Technologies** — the studio of Eli Robinson, an indie builder, consultant, and founder. Eli builds software (apps, websites, learning tools), creates practical guides for sports coaches, and offers AI consulting + tech support. The brand is one human running multiple small products under one trusted name.
+
+> **Tagline (primary):** Builder. Consultant. Founder.
+> **Tagline (secondary):** Practical tech, honestly built.
+
+---
+
+## Sources
+
+- **Live site:** https://www.miltinsons.com/ — fetched homepage + services page
+- **Sub-products mentioned on the site:**
+  - https://kids-recipies.miltinsons.com/ (Kids Recipes)
+  - https://maths.miltinsons.com/ (Interactive Maths)
+  - Coaching Guides store (PDFs/digital products)
+- **Codebase / Figma:** _none provided._ This system is designed by reading the public website. If you have a codebase or Figma to import, send it through the Import menu and I'll align tokens to your real source of truth.
+
+---
+
+## What this system is for
+
+Eli runs many small projects. The point of this system is to keep them **visually consistent and fast to ship** — drop in the tokens, grab a UI kit, focus on the work. Every artifact in this folder should answer: _"how do I make this Miltinson-branded in 5 minutes?"_
+
+---
+
+## INDEX
+
+| Path | What's there |
+|---|---|
+| `colors_and_type.css` | All design tokens — colors, type, spacing, radii, shadow, motion. Import this anywhere. |
+| `assets/` | Wordmark, monogram, lockup, dot-grid pattern. SVG-first. |
+| `preview/` | Design System tab cards — type/color/spacing/component swatches. |
+| `ui_kits/marketing/` | Marketing site recreation (homepage, services, store, portfolio) |
+| `ui_kits/webapp/` | Generic web app / dashboard kit (auth, sidebar, settings) |
+| `ui_kits/mobile/` | Mobile screen kit — modeled on the Kids Recipes / Maths sub-apps |
+| `ui_kits/docs/` | Docs / coaching guide reading kit |
+| `slides/` | Slide deck template (title, content, comparison, quote, closer) |
+| `templates/` | Email + social-carousel starter templates |
+| `SKILL.md` | Agent Skills frontmatter — drop this folder into Claude Code as a skill |
+
+---
+
+## CONTENT FUNDAMENTALS
+
+How Miltinson copy is written. Read this before writing for the brand.
+
+### Voice
+- **Eli speaks as himself.** First person singular: _"I'm Eli Robinson — I build software, teach AI…"_, _"I'll show you what's actually useful, what's hype…"_. Never the royal "we." This is not a company-of-many; it's a human.
+- **Reader is "you."** Direct address, no buffer.
+- **Confident but unguarded.** _"No jargon, no judgment — just practical solutions."_ The brand admits the field is full of nonsense and explicitly opts out.
+
+### Tone (in order of weight)
+1. **Practical** — "no-fluff", "what's actually useful", "saves you real time"
+2. **Honest** — calls out hype, "no contracts required", transparent pricing ("From $150/hr")
+3. **Warm** — patient, "trusted hand", reassuring about non-technical readers
+4. **Quietly confident** — never flexes credentials, lets the work speak
+
+### Casing & punctuation
+- **Sentence case** for headings ("Featured Apps", "Coaching Guides", "Need help with AI or tech?"). Never ALL CAPS for body content.
+- **Title Case** is reserved for product/proper names ("Kids Recipes", "AI Consulting", "Tech Support") and the tagline ("Builder. Consultant. Founder.").
+- **Periods inside the wordmark.** "Miltinson." with a period — it's part of the mark.
+- **Em-dashes** as the favored break: _"I'm Eli Robinson — I build software…"_, _"No jargon, no judgment — just practical solutions."_ Use them.
+- **Oxford commas:** yes, when present.
+- **Pricing always prefixed with "From"** — "From $150/hr". Never list a single firm number; this signals starting point, not ceiling.
+
+### Words to use
+build, ship, practical, honest, no-fluff, hands-on, real, useful, trusted, patient, clear, simple, fun, interactive, no contracts, get started, get in touch, follow-up, what's actually useful
+
+### Words to avoid
+synergy, leverage, unlock, empower, robust, cutting-edge, revolutionary, world-class, seamless, frictionless, reimagine, AI-powered (used flatly), 10x, ninja, rockstar, "we" (when Eli means "I")
+
+### Emoji
+- **Sparingly.** The site uses ✓ as a checklist bullet inside service tier lists. That's it. No 🚀 🎉 ⚡, no decorative emoji in body copy or headings.
+- When a small mark is needed (checkmark, arrow), prefer a Lucide SVG icon. ✓ is acceptable as a fallback in plain-text contexts.
+
+### Sample copy snippets (real, from the site — use as anchors)
+- _"Builder. Consultant. Founder."_
+- _"I'm Eli Robinson — I build software, teach AI, and create resources for coaches."_
+- _"Practical, no-fluff guides written for sports coaches."_
+- _"Clear, patient tech help for individuals and small businesses who need a trusted hand."_
+- _"Tell me what you need and I'll get back to you within 24 hours."_
+
+### Generated taglines (write more in this style)
+- "Practical tech, honestly built."
+- "Built by hand. Shipped on purpose."
+- "Tools that earn their keep."
+- "AI help without the hype."
+
+---
+
+## VISUAL FOUNDATIONS
+
+### Color
+- **Ink-led palette.** Pure black (`--ink-1000`) for headings, near-black (`--ink-800`) for primary text. White surfaces, hairline borders. The brand reads as a printed page first, a digital interface second.
+- **Miltinson Amber** (`--signal-500`, oklch 72.5% 0.175 65) is the **only loud color**. Used for: primary CTAs, the dot in the wordmark, eyebrow underlines, key stat figures, and link hover states. Never as a flat background block — it's a signal, not a fill.
+- **Miltinson Forest** (`--anchor-500`) is the secondary anchor — used sparingly for trust marks, success states, and the Coaching Guides surface (the most "earnest" sub-brand).
+- **No gradients.** Flat color only. Solid blocks of `--ink-1000` or `--ink-50` are the move.
+- **Imagery vibe:** warm, slightly desaturated, real (not stock-y). Think well-lit kitchens, classrooms, hands holding a phone — not abstract gradient meshes.
+
+### Type
+- **Geist** (sans) for everything in the UI. Weights used: 400 body, 500 UI labels, 600 headings, 700 display peaks.
+- **JetBrains Mono** for: code, eyebrows (uppercase tracked labels), pricing figures, kbd tags, technical metadata.
+- **Tracking:** display sizes get `-0.025em` (tight), body is `0`, mono eyebrows get `+0.08em` (open).
+- **Line-height:** body 1.65 (relaxed and forgiving — accessibility-first), display 1.05 (tight).
+- **Numerics:** mono in tables and pricing. Tabular figures everywhere numbers compare.
+
+### Spacing
+- 4px base, 8px-friendly. Use the `--space-*` scale only — no magic numbers.
+- **Generous vertical rhythm.** Sections breathe (`--space-13` / 128px gaps between major sections on landing pages).
+- **Tight horizontal density** inside cards (`--space-4` / 16px is the default inner padding for compact components).
+
+### Backgrounds
+- **Default surface:** white / `--ink-0`. Hero sections invert to `--ink-1000` with white type.
+- **Texture:** `assets/pattern-dotgrid.svg` — 8% opacity dots. Use as a hairline overlay on dark heroes only. No repeating gradients, no noise PNGs, no "tech grid" cliché.
+- **Full-bleed images** for portfolio cards and product spotlights. Aspect ratios: 16:10 (web), 4:5 (mobile), 1:1 (avatar/store thumb).
+- **No glassmorphism.** No frosted blur backgrounds. The brand is honest, not theatrical.
+
+### Borders
+- **1px hairlines** as the primary divider. Use `--border` (`--ink-200`) for default, `--border-strong` (`--ink-300`) for emphasized.
+- **Borders do the work shadows usually do.** A card is a 1px border on white, not a floating shadow.
+
+### Shadows
+- **Restrained scale** (`--shadow-xs` → `--shadow-xl`).
+- Default cards: `--shadow-sm` (1px border + 1px tint). That's enough.
+- `--shadow-lg`+ for modals only.
+- **Inset shadow** (`--shadow-inset`) on input wells.
+
+### Radii
+- **Sharp by default** — `--radius-sm` (4px) for buttons, inputs, cards. Tech-forward, not pillowy.
+- `--radius-md` (6px) for cards.
+- `--radius-lg` (10px) for modals.
+- `--radius-pill` reserved for **tags only** (category labels like "Food", "Family", "Education"). Never for CTAs.
+
+### Motion
+- **Calm, purposeful.** `--dur-fast` (140ms) for hovers, `--dur-normal` (220ms) for state changes.
+- **Easing:** `--ease-out` is the default. `--ease-spring` only for icon micro-interactions (a check mark settling into place).
+- **No bouncy page transitions, no parallax.**
+- Honors `prefers-reduced-motion` (already wired into `colors_and_type.css`).
+
+### Hover states
+- **Buttons:** background steps one shade lighter (`--accent-hover`) — never opacity changes.
+- **Links:** color shifts from ink to `--signal-700` (warm dark amber).
+- **Cards:** border darkens to `--border-strong`, plus a 1px translateY lift. No scale.
+
+### Press / active states
+- **Buttons:** background steps one shade darker (`--accent-press`) and translateY(1px). No scale.
+- **Cards/list items:** background tints to `--bg-subtle`.
+
+### Focus
+- **High-contrast ink ring** (`outline: 2px solid var(--ink-1000)` with 2px offset). Same on light and dark — accessibility-first. Never amber on amber.
+
+### Transparency / blur
+- **Almost never.** The header may use `backdrop-filter: blur(8px)` with 92% white when scrolled — that's the only sanctioned blur.
+- No translucent panels, no frosted modals.
+
+### Cards
+- **White surface, 1px border, 6px radius, 16–24px padding.**
+- Optional accent: a 1px amber underline on hover, OR a small uppercase mono eyebrow above the title.
+- No left-border accent stripe (this is a clichéd AI-slop pattern — avoid).
+
+### Layout rules
+- **Max content width:** 1280px (`--container-xl`). Editorial body copy clamps tighter at 720px (`--container-md`) for readability.
+- **Sticky header** (h: 64px). Stays visible.
+- **Footer** is pure ink (`--ink-1000`), white type, mono micro-copy.
+- **Asymmetric grids** are encouraged. 7–5, 8–4 splits beat 6–6.
+
+### Accessibility (default-on)
+- Min body size: **16px**.
+- Min touch target: **44×44px**.
+- All color combinations pass WCAG AA at minimum (verified amber-on-ink-1000 = 8.7:1; ink-1000-on-amber = same).
+- Every interactive element has a visible `:focus-visible` ring.
+- Icons paired with text labels in primary nav. Icon-only buttons require `aria-label`.
+
+### Internationalization
+- Geist + JetBrains Mono cover Latin, Latin-Ext, Cyrillic, Greek.
+- Type sizes use `clamp()` so translations of varying length don't break layouts.
+- No hardcoded text in components — copy lives in props/strings.
+- LTR-first; RTL is supported via `:dir(rtl)` selectors where needed (icons mirror, never text).
+
+---
+
+## ICONOGRAPHY
+
+### System
+**Lucide** (https://lucide.dev) is the chosen library — clean 1.5px stroke, geometric, friendly without being twee. Loaded via CDN:
+
+```html
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+```
+
+> **Substitution flag:** the live miltinsons.com site uses `✓` checkmark glyphs in its services list. I haven't seen the codebase, so I don't know if a different icon set is in use there. Lucide is a safe default. If you have a preferred set (Heroicons, Phosphor, hand-drawn), drop it in `assets/icons/` and I'll switch.
+
+### Usage rules
+- **Stroke weight:** 1.5px (Lucide default). Don't mix weights in one view.
+- **Size:** 16, 20, or 24px. Inline icons match the cap-height of adjacent text.
+- **Color:** inherits `currentColor` — never hardcode. Default `--fg-2`, hover `--fg-1`.
+- **Pair with labels** in nav and primary actions.
+- **One icon per affordance.** Don't stack.
+
+### When emoji is OK
+- Sparingly in tags/category chips for the **Kids Recipes** sub-brand (it's playful by design — e.g. 🍳 next to "Breakfast"). Never in headers, body copy, or system UI.
+- The check mark (✓) is acceptable in plain-text contexts (email signatures, README bullets).
+
+### Brand assets in `assets/`
+- `logo-wordmark.svg` — primary "Miltinson." wordmark (light bg)
+- `logo-wordmark-dark.svg` — same, white text (dark bg)
+- `logo-mark.svg` — square monogram for app icons / favicons
+- `logo-lockup.svg` — wordmark + tagline rule, for footers / signatures
+- `pattern-dotgrid.svg` — repeating texture, 8% opacity dots
+
+---
+
+## SKILL.md
+
+`SKILL.md` at the project root makes this folder usable as a **Claude Code Agent Skill**. Drop the whole project into `.claude/skills/miltinson-design/` in any repo and Claude Code will pick it up.
+
+---
+
+## Caveats / open questions
+
+- **No codebase or Figma was shared** — this system is reverse-engineered from the public miltinsons.com homepage and services page. The portfolio/store/about pages were not accessible during the fetch.
+- **Logo is a generated wordmark.** The real site logo wasn't extracted; I designed "Miltinson." in Geist Semibold with an amber dot. Swap in your real artwork when ready.
+- **Geist** is loaded from Google Fonts; if you have licensed `.woff2` files, drop them into `fonts/` and replace the `@import` in `colors_and_type.css`.

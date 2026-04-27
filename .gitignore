@@ -1,0 +1,10 @@
+
+.nx/installation
+.nx/cache
+.nx/workspace-data
+.nx/self-healing
+node_modules/
+dist/
+.DS_Store
+*.log
+*.zip

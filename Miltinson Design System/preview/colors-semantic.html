@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Color · Semantic</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  .card { padding: 20px 24px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .item { display: flex; flex-direction: column; gap: 6px; }
+  .sw { height: 56px; border-radius: 6px; border: 1px solid var(--border); }
+  .name { font-family: var(--font-mono); font-size: 11px; color: var(--fg); font-weight: 500; }
+  .role { font-family: var(--font-mono); font-size: 10px; color: var(--fg-3); }
+</style>
+</head><body>
+<div class="card">
+  <div class="eyebrow">Semantic · what components reference</div>
+  <div class="grid">
+    <div class="item"><div class="sw" style="background:var(--bg)"></div><div class="name">--bg</div><div class="role">Page</div></div>
+    <div class="item"><div class="sw" style="background:var(--bg-subtle)"></div><div class="name">--bg-subtle</div><div class="role">Panel</div></div>
+    <div class="item"><div class="sw" style="background:var(--bg-muted)"></div><div class="name">--bg-muted</div><div class="role">Inset / code</div></div>
+    <div class="item"><div class="sw" style="background:var(--bg-inverse)"></div><div class="name">--bg-inverse</div><div class="role">Hero / footer</div></div>
+    <div class="item"><div class="sw" style="background:var(--fg)"></div><div class="name">--fg</div><div class="role">Primary text</div></div>
+    <div class="item"><div class="sw" style="background:var(--fg-2)"></div><div class="name">--fg-2</div><div class="role">Secondary</div></div>
+    <div class="item"><div class="sw" style="background:var(--fg-3)"></div><div class="name">--fg-3</div><div class="role">Tertiary</div></div>
+    <div class="item"><div class="sw" style="background:var(--fg-4)"></div><div class="name">--fg-4</div><div class="role">Disabled</div></div>
+    <div class="item"><div class="sw" style="background:var(--accent)"></div><div class="name">--accent</div><div class="role">CTA / signal</div></div>
+    <div class="item"><div class="sw" style="background:var(--anchor)"></div><div class="name">--anchor</div><div class="role">Trust / success</div></div>
+    <div class="item"><div class="sw" style="background:var(--status-danger)"></div><div class="name">--status-danger</div><div class="role">Error</div></div>
+    <div class="item"><div class="sw" style="background:var(--status-info)"></div><div class="name">--status-info</div><div class="role">Info</div></div>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,26 @@
+{
+  "name": "ai-patterns",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/ai-patterns/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "command": "npm run build",
+      "options": {
+        "cwd": "packages/ai-patterns"
+      }
+    },
+    "lint": {
+      "command": "npm run lint",
+      "options": {
+        "cwd": "packages/ai-patterns"
+      }
+    },
+    "test": {
+      "command": "npm run test",
+      "options": {
+        "cwd": "packages/ai-patterns"
+      }
+    }
+  }
+}

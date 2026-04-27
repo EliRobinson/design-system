@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Miltinson · Title slide</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { width: 1280px; height: 720px; overflow: hidden; }
+  .slide { width: 1280px; height: 720px; background: var(--ink-1000); color: var(--ink-0); padding: 80px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+  .grid-bg { position: absolute; inset: 0; background-image: radial-gradient(circle, oklch(100% 0 0 / 0.06) 1px, transparent 1px); background-size: 24px 24px; pointer-events: none; }
+  .eyebrow { font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase; color: oklch(100% 0 0 / 0.6); }
+  .title { font-family: var(--font-sans); font-weight: 600; font-size: 120px; letter-spacing: -0.03em; line-height: 1; margin: 0; }
+  .title .accent { color: var(--signal-500); }
+  .meta { display: flex; justify-content: space-between; align-items: end; font-family: var(--font-mono); font-size: 13px; color: oklch(100% 0 0 / 0.55); letter-spacing: 0.06em; text-transform: uppercase; }
+  .wm { font-family: var(--font-sans); font-weight: 600; font-size: 22px; letter-spacing: -0.025em; color: var(--ink-0); text-transform: none; letter-spacing: -0.025em; }
+  .wm .dot { color: var(--signal-500); }
+  .rule { height: 1px; background: oklch(100% 0 0 / 0.18); margin: 32px 0; }
+</style></head><body>
+<div class="slide">
+  <div class="grid-bg"></div>
+  <div style="position:relative;z-index:1">
+    <div class="eyebrow">Workshop · 26 Apr 2026</div>
+    <h1 class="title" style="margin-top:32px">Practical AI<br>for small <span class="accent">businesses.</span></h1>
+  </div>
+  <div style="position:relative;z-index:1">
+    <div class="rule"></div>
+    <div class="meta">
+      <span class="wm" style="font-family:Geist,sans-serif;text-transform:none;letter-spacing:-0.025em;font-size:22px">Miltinson<span class="dot">.</span></span>
+      <span>Eli Robinson · miltinsons.com</span>
+    </div>
+  </div>
+</div>
+</body></html>

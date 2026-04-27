@@ -1,0 +1,19 @@
+{
+  "name": "miltinson-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx ./src/main.tsx",
+    "build": "echo 'Add bundler build step (Vite/Next.js) here'"
+  },
+  "dependencies": {
+    "@miltinson/react": "latest",
+    "@miltinson/tokens": "latest",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}

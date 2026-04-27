@@ -1,0 +1,26 @@
+{
+  "name": "tokens",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/tokens/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "command": "npm run build",
+      "options": {
+        "cwd": "packages/tokens"
+      }
+    },
+    "lint": {
+      "command": "npm run lint",
+      "options": {
+        "cwd": "packages/tokens"
+      }
+    },
+    "test": {
+      "command": "npm run test",
+      "options": {
+        "cwd": "packages/tokens"
+      }
+    }
+  }
+}

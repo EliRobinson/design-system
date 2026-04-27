@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Cards</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  .card { padding: 22px 24px; background: var(--bg-subtle); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .ui-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 18px; transition: all var(--dur-fast) var(--ease-out); cursor: pointer; }
+  .ui-card:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+  .thumb { aspect-ratio: 16/10; background: var(--ink-100); border-radius: 4px; margin-bottom: 14px; position: relative; overflow: hidden; }
+  .thumb.k { background: linear-gradient(0deg, var(--signal-100), var(--signal-50)); }
+  .thumb.m { background: var(--ink-1000); }
+  .thumb.m::after { content: "f(x) = mx + b"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-0); font-family: var(--font-mono); font-size: 18px; letter-spacing: 0.04em; }
+  .thumb.k::after { content: "🍳"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 36px; }
+  .tags { display: flex; gap: 6px; margin-bottom: 8px; }
+  .tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--ink-100); color: var(--fg-2); }
+  .title { font-family: var(--font-sans); font-weight: 600; font-size: 17px; color: var(--fg); margin-bottom: 4px; letter-spacing: -0.015em; }
+  .body { font-family: var(--font-sans); font-size: 13px; color: var(--fg-2); line-height: 1.5; }
+</style>
+</head><body>
+<div class="card">
+  <div class="eyebrow">Cards · portfolio / featured-app pattern</div>
+  <div class="grid" style="margin-top:10px">
+    <div class="ui-card">
+      <div class="thumb k"></div>
+      <div class="tags"><span class="tag">Food</span><span class="tag">Family</span></div>
+      <div class="title">Kids Recipes</div>
+      <div class="body">Simple, fun recipes designed for kids.</div>
+    </div>
+    <div class="ui-card">
+      <div class="thumb m"></div>
+      <div class="tags"><span class="tag">Education</span><span class="tag">Math</span></div>
+      <div class="title">Maths</div>
+      <div class="body">Interactive maths resources for learners of all ages.</div>
+    </div>
+  </div>
+</div>
+</body></html>

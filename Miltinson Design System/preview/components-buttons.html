@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Buttons</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  .card { padding: 22px 24px; }
+  .group { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .group + .group { margin-top: 12px; }
+  .btn { font-family: var(--font-sans); font-weight: 500; font-size: 14px; line-height: 1; padding: 12px 18px; border-radius: 4px; border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background var(--dur-fast) var(--ease-out); }
+  .btn-primary { background: var(--ink-1000); color: var(--ink-0); }
+  .btn-primary:hover { background: var(--ink-800); }
+  .btn-accent { background: var(--signal-500); color: var(--ink-1000); }
+  .btn-accent:hover { background: var(--signal-400); }
+  .btn-secondary { background: transparent; color: var(--fg); border-color: var(--border-strong); }
+  .btn-ghost { background: transparent; color: var(--fg); }
+  .btn-ghost:hover { background: var(--bg-subtle); }
+  .btn-disabled { background: var(--ink-100); color: var(--fg-4); cursor: not-allowed; }
+  .btn-sm { font-size: 13px; padding: 8px 12px; }
+  .btn-lg { font-size: 16px; padding: 14px 22px; }
+  .arr { width: 14px; height: 14px; }
+</style>
+</head><body>
+<div class="card">
+  <div class="eyebrow">Buttons · variants & sizes</div>
+  <div class="group">
+    <button class="btn btn-primary">View My Work <svg class="arr" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+    <button class="btn btn-accent">Hire Me</button>
+    <button class="btn btn-secondary">Browse Guides</button>
+    <button class="btn btn-ghost">Learn more</button>
+    <button class="btn btn-disabled">Sold out</button>
+  </div>
+  <div class="group">
+    <button class="btn btn-primary btn-sm">Send message</button>
+    <button class="btn btn-primary">Send message</button>
+    <button class="btn btn-primary btn-lg">Send message</button>
+  </div>
+</div>
+</body></html>

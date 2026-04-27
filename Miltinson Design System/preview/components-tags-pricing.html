@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Tags & Pricing</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  .card { padding: 22px 24px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .row + .row { margin-top: 16px; }
+  .tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: var(--ink-100); color: var(--fg-2); }
+  .tag.solid { background: var(--ink-1000); color: var(--ink-0); }
+  .tag.signal { background: var(--signal-100); color: var(--signal-800); }
+  .tag.anchor { background: var(--anchor-100); color: var(--anchor-700); }
+  .tag.outline { background: transparent; color: var(--fg-2); border: 1px solid var(--border-strong); }
+  .price { display: inline-flex; align-items: baseline; gap: 6px; }
+  .price .from { font-family: var(--font-mono); font-size: 12px; color: var(--fg-3); letter-spacing: 0.06em; text-transform: uppercase; }
+  .price .num { font-family: var(--font-mono); font-weight: 500; font-size: 28px; color: var(--fg); letter-spacing: -0.02em; }
+  .price .unit { font-family: var(--font-mono); font-size: 13px; color: var(--fg-2); }
+</style>
+</head><body>
+<div class="card">
+  <div class="eyebrow">Tags · category chips</div>
+  <div class="row" style="margin-top:8px">
+    <span class="tag">Food</span>
+    <span class="tag">Family</span>
+    <span class="tag">Education</span>
+    <span class="tag">Math</span>
+    <span class="tag signal">Featured</span>
+    <span class="tag anchor">Coaching</span>
+    <span class="tag solid">New</span>
+    <span class="tag outline">Beta</span>
+  </div>
+  <div class="eyebrow" style="margin-top:18px">Pricing display</div>
+  <div class="row" style="margin-top:8px;gap:32px">
+    <div class="price"><span class="from">From</span><span class="num">$150</span><span class="unit">/hr</span></div>
+    <div class="price"><span class="from">From</span><span class="num">$75</span><span class="unit">/hr</span></div>
+    <div class="price"><span class="num">$24</span><span class="unit">USD</span></div>
+  </div>
+</div>
+</body></html>
