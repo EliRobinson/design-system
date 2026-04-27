@@ -5,19 +5,19 @@
   "projectType": "library",
   "targets": {
     "build": {
-      "command": "npm run build",
+      "command": "pnpm run build",
       "options": {
         "cwd": "packages/create-elirobinson-design-system"
       }
     },
     "lint": {
-      "command": "npm run lint",
+      "command": "pnpm run lint",
       "options": {
         "cwd": "packages/create-elirobinson-design-system"
       }
     },
     "test": {
-      "command": "npm run test",
+      "command": "pnpm run test",
       "options": {
         "cwd": "packages/create-elirobinson-design-system"
       }

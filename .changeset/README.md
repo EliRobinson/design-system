@@ -3,11 +3,11 @@
 Add a changeset when package-facing changes are made:
 
 ```bash
-npm run changeset
+pnpm changeset
 ```
 
 Then version locally:
 
 ```bash
-npm run changeset:version
+pnpm changeset:version
 ```

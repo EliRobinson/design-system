@@ -1,0 +1,4 @@
+./node_modules
+./dist
+./apps/storybook/storybook-static
+./pnpm-lock.yaml

@@ -1,19 +1,24 @@
 {
-  "name": "miltinson-app",
+  "name": "elirobinson-next-app",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx ./src/main.tsx",
-    "build": "echo 'Add bundler build step (Vite/Next.js) here'"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
     "@elirobinson/react": "latest",
     "@elirobinson/tokens": "latest",
+    "next": "^15.3.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },
   "devDependencies": {
-    "tsx": "^4.21.0",
-    "typescript": "^6.0.3"
+    "@types/node": "^24.7.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.9.3"
   }
 }

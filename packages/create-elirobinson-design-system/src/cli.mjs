@@ -27,5 +27,5 @@ const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 packageJson.name = projectName;
 writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf-8');
 
-console.log(`Created ${projectName} with Miltinson design-system defaults.`);
-console.log(`Next steps:\n  cd ${projectName}\n  npm install\n  npm run dev`);
+console.log(`Created ${projectName} with EliRobinson Next.js design-system defaults.`);
+console.log(`Next steps:\n  cd ${projectName}\n  pnpm install\n  pnpm dev`);

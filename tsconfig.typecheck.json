@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": ["./apps/**/*", "./packages/**/*", "./types/**/*"],
+  "exclude": [
+    "./node_modules",
+    "./dist",
+    "./templates/**/*",
+    "./Miltinson Design System/**/*",
+    "./apps/storybook/storybook-static/**/*"
+  ]
+}

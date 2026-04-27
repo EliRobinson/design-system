@@ -12,8 +12,18 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "ignoreDeprecations": "6.0",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@design-system/tokens": ["./packages/tokens/src/index.ts"],
+      "@design-system/tokens/*": ["./packages/tokens/src/*"],
+      "@design-system/react": ["./packages/react/src/index.ts"],
+      "@design-system/react/*": ["./packages/react/src/*"],
+      "@design-system/ai-patterns": ["./packages/ai-patterns/src/index.js"],
+      "@design-system/create": ["./packages/create-elirobinson-design-system/src/cli.mjs"]
+    }
   },
   "exclude": ["node_modules", "dist"]
 }
