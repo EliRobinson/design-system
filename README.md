@@ -29,23 +29,25 @@ pnpm changeset
 pnpm changeset:version
 ```
 
-Semantic-release runs in CI on `main` after Changesets publish and will:
+Semantic-release runs in CI on `main` and will:
 
 - create/update `CHANGELOG.md`,
 - create git tags in the form `vX.Y.Z`,
 - and publish GitHub release notes from conventional commits.
 
-## Publish packages to GitHub Packages
+Changesets still prepares version updates in release PRs, but package publishing is skipped.
 
-1. Create a GitHub Personal Access Token with `write:packages` and `read:packages`.
-2. Add `NPM_TOKEN` to GitHub repo secrets.
-3. Push to `main` to let the Changesets workflow open/update release PRs.
-4. Merge the release PR to publish packages to GitHub Packages.
+## Distribution
+
+The starter is distributed directly from GitHub instead of a package registry.
+
+1. Push to `main` to let the Changesets workflow open/update release PRs.
+2. Merge the release PR to update versions/changelog and generate GitHub releases.
 
 ## Generate a new project
 
 ```bash
-npx create-elirobinson-design-system my-app
+npx github:elirobinson/create-elirobinson-design-system my-app
 ```
 
 The generator now scaffolds a Next.js App Router project wired to:
