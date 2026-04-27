@@ -1,25 +1,25 @@
 {
-  "name": "create-miltinson-design-system",
+  "name": "create-elirobinson-design-system",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "packages/create-miltinson-design-system/src",
+  "sourceRoot": "packages/create-elirobinson-design-system/src",
   "projectType": "library",
   "targets": {
     "build": {
       "command": "npm run build",
       "options": {
-        "cwd": "packages/create-miltinson-design-system"
+        "cwd": "packages/create-elirobinson-design-system"
       }
     },
     "lint": {
       "command": "npm run lint",
       "options": {
-        "cwd": "packages/create-miltinson-design-system"
+        "cwd": "packages/create-elirobinson-design-system"
       }
     },
     "test": {
       "command": "npm run test",
       "options": {
-        "cwd": "packages/create-miltinson-design-system"
+        "cwd": "packages/create-elirobinson-design-system"
       }
     }
   }

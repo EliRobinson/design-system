@@ -1,5 +1,5 @@
-import { Button, Card, Input } from '@miltinson/react';
-import '@miltinson/react/styles.css';
+import { Button, Card, Input } from '@elirobinson/react';
+import '@elirobinson/react/styles.css';
 
 function App() {
   return (

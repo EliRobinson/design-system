@@ -1,0 +1,24 @@
+{
+  "name": "storybook",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/storybook/src",
+  "projectType": "application",
+  "targets": {
+    "storybook": {
+      "command": "storybook dev -p 6006 -c apps/storybook/.storybook"
+    },
+    "build-storybook": {
+      "command": "storybook build -c apps/storybook/.storybook -o apps/storybook/storybook-static"
+    },
+    "build": {
+      "command": "storybook build -c apps/storybook/.storybook -o apps/storybook/storybook-static"
+    },
+    "lint": {
+      "command": "echo 'No lint configured for storybook app'"
+    },
+    "test": {
+      "command": "echo 'No tests configured for storybook app'"
+    }
+  },
+  "implicitDependencies": ["react", "tokens"]
+}

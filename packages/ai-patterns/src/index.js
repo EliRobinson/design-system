@@ -1,1 +1,1 @@
-export const name = '@miltinson/ai-patterns';
+export const name = '@elirobinson/ai-patterns';

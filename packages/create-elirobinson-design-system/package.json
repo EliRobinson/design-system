@@ -1,9 +1,9 @@
 {
-  "name": "create-miltinson-design-system",
+  "name": "create-elirobinson-design-system",
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "create-miltinson-design-system": "./src/cli.mjs"
+    "create-elirobinson-design-system": "./src/cli.mjs"
   },
   "files": [
     "src"

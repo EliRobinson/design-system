@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const [, , projectName] = process.argv;
 
 if (!projectName) {
-  console.error('Usage: create-miltinson-design-system <project-name>');
+  console.error('Usage: create-elirobinson-design-system <project-name>');
   process.exit(1);
 }
 
