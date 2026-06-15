@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/EliRobinson/design-system/compare/v1.1.1...v1.2.0) (2026-06-15)
+
+### Features
+
+- **react:** expand component library with token-styled shadcn patterns ([c019e9e](https://github.com/EliRobinson/design-system/commit/c019e9e04f31cbd1f4cc0609bca09217870ebff8))
+
 ## [1.1.1](https://github.com/EliRobinson/design-system/compare/v1.1.0...v1.1.1) (2026-06-15)
 
 ### Bug Fixes
