@@ -4,9 +4,26 @@ on:
   push:
     branches:
       - main
+  # Version Packages PRs are merged by github-actions[bot]. Those pushes do not
+  # re-trigger `on: push` workflows (GITHUB_TOKEN limitation), so publish never
+  # runs unless we also listen for the merged PR event.
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   release:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.title == 'Version Packages'
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -15,6 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: main
           fetch-depth: 0
       - uses: pnpm/action-setup@v6
         with:
