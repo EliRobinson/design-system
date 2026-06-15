@@ -46,5 +46,6 @@ function DialogDemo() {
 }
 
 export const Default: Story = {
+  args: { children: null },
   render: () => <DialogDemo />,
 };

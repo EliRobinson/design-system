@@ -81,3 +81,64 @@ export type {
 } from './components/Tabs';
 export { Textarea } from './components/Textarea';
 export type { TextareaProps } from './components/Textarea';
+export {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './components/DropdownMenu';
+export type {
+  DropdownMenuContentProps,
+  DropdownMenuItemProps,
+  DropdownMenuLabelProps,
+  DropdownMenuProps,
+  DropdownMenuSeparatorProps,
+  DropdownMenuTriggerProps,
+} from './components/DropdownMenu';
+export { Popover, PopoverContent, PopoverTrigger } from './components/Popover';
+export type { PopoverContentProps, PopoverProps, PopoverTriggerProps } from './components/Popover';
+export { Tooltip, TooltipContent, TooltipTrigger } from './components/Tooltip';
+export type { TooltipContentProps, TooltipProps, TooltipTriggerProps } from './components/Tooltip';
+export {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from './components/Sheet';
+export type {
+  SheetCloseProps,
+  SheetContentProps,
+  SheetDescriptionProps,
+  SheetFooterProps,
+  SheetHeaderProps,
+  SheetProps,
+  SheetTitleProps,
+  SheetTriggerProps,
+} from './components/Sheet';
+export {
+  Toast,
+  ToastAction,
+  ToastDescription,
+  Toaster,
+  ToastTitle,
+  useToast,
+} from './components/Toast';
+export type {
+  ToastActionProps,
+  ToastData,
+  ToastDescriptionProps,
+  ToastProps,
+  ToasterProps,
+  ToastTitleProps,
+  ToastVariant,
+} from './components/Toast';
+export { Eyebrow } from './components/Eyebrow';
+export type { EyebrowProps } from './components/Eyebrow';
+export { RuleLink } from './components/RuleLink';
+export type { RuleLinkProps } from './components/RuleLink';

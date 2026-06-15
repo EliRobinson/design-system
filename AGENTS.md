@@ -39,7 +39,13 @@ When pulling a new component from [shadcn/ui](https://ui.shadcn.com/), **do not 
 | Separator                                                | `Separator` — `--border` hairline                                        |
 | Tabs                                                     | `Tabs` — ink underline active state                                      |
 | Dialog                                                   | `Dialog` — native `<dialog>` with token surfaces                         |
+| DropdownMenu, Popover, Tooltip, Sheet, Toast             | Overlay primitives — portal positioning, keyboard nav, aria-live toasts  |
 | Avatar, Breadcrumb, Checkbox, Switch, Skeleton, Progress | Styled per tokens; check UI kits for context                             |
+| Eyebrow, RuleLink                                        | Marketing typography primitives from ui_kits                             |
+
+### Layout patterns (not packaged)
+
+Header, Footer, Hero, Sidebar, TopBar, and StatCard are **app-specific layout compositions**. Prototype them in `Miltinson Design System/ui_kits/` and compose in apps from `@elirobinson/react` primitives. See Storybook **Patterns/Marketing** for examples.
 
 ### AI pattern alignment
 

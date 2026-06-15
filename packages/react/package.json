@@ -33,6 +33,14 @@
     "prepublishOnly": "pnpm run build",
     "build": "tsc -p ./tsconfig.json",
     "lint": "echo 'No lint configured for react package'",
-    "test": "echo 'No tests configured for react package'"
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "jsdom": "^26.1.0",
+    "vitest": "^3.2.4"
   }
 }
