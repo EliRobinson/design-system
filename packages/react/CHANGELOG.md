@@ -1,5 +1,16 @@
 # @elirobinson/react
 
+## 0.4.0
+
+### Minor Changes
+
+- 52b1b6d: Remove the root barrel export. Import components from `@elirobinson/react/components/<Name>` so App Router apps only load the modules they use.
+
+### Patch Changes
+
+- Updated dependencies [52b1b6d]
+  - @elirobinson/tokens@0.2.0
+
 ## 0.3.0
 
 ### Minor Changes
