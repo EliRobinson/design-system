@@ -1,6 +1,7 @@
 {
   "name": "create-elirobinson-design-system",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "bin": {
     "create-elirobinson-design-system": "./src/cli.mjs"
