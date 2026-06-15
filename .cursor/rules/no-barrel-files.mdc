@@ -1,0 +1,32 @@
+---
+description: Avoid barrel files (index re-exports) unless strictly necessary
+alwaysApply: true
+---
+
+# No barrel files
+
+Do not add `index.ts` / `index.js` files that only re-export from sibling modules.
+
+## Why
+
+Barrel files force bundlers to load every re-exported module. In Next.js App Router that can pull client-only code into Server Components.
+
+## Instead
+
+- Import from the concrete module or package subpath
+- Publish subpath `exports` in `package.json` (e.g. `@elirobinson/react/components/*`) — no root `"."` barrel
+- Name implementation files by purpose (`tokens-data.ts`), not `index.ts`
+
+## Allowed exceptions
+
+- Storybook / Vite aliases that map `@design-system/*` to `src/*`
+- A single-module folder where `index.ts` contains the implementation (not re-exports)
+
+```typescript
+// Bad
+export { Button } from './components/Button';
+
+// Good
+import { Button } from '@elirobinson/react/components/Button';
+import { tokens } from '@elirobinson/tokens/tokens-data';
+```

@@ -29,7 +29,9 @@ Import components and styles in your app shell:
 ```tsx
 import '@elirobinson/tokens/tokens.css';
 import '@elirobinson/react/styles.css';
-import { Button, Card, CardHeader, CardTitle, Input } from '@elirobinson/react';
+import { Button } from '@elirobinson/react/components/Button';
+import { Card, CardHeader, CardTitle } from '@elirobinson/react/components/Card';
+import { Input } from '@elirobinson/react/components/Input';
 ```
 
 ### Actions & feedback

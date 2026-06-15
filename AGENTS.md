@@ -8,6 +8,8 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 
 **Common commands:** `pnpm build` · `pnpm test` · `pnpm lint` · `pnpm typecheck` · `pnpm sync:deps`
 
+**Imports:** No barrel files — use package subpaths (`@elirobinson/react/components/Button`, `@elirobinson/tokens/tokens-data`). See `.cursor/rules/no-barrel-files.mdc`.
+
 ## Topic guides
 
 - [Tokens](docs/agents/tokens.md)

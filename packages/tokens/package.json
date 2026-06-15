@@ -16,16 +16,16 @@
     "src"
   ],
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
     "./tokens.css": "./src/tokens.css",
-    "./tokens.json": "./src/tokens.json"
+    "./tokens.json": "./src/tokens.json",
+    "./tokens-data": {
+      "types": "./dist/tokens-data.d.ts",
+      "import": "./dist/tokens-data.js"
+    }
   },
   "scripts": {
     "prepublishOnly": "pnpm run build",
-    "build": "tsc -p ./tsconfig.json",
+    "build": "rm -rf dist && tsc -p ./tsconfig.json",
     "lint": "echo 'No lint configured for tokens'",
     "test": "echo 'No tests configured for tokens'"
   }

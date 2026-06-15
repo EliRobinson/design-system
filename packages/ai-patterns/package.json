@@ -15,7 +15,6 @@
     "src"
   ],
   "exports": {
-    ".": "./src/index.js",
     "./patterns": "./src/patterns.md",
     "./contracts": "./src/contracts.json"
   },

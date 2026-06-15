@@ -23,15 +23,19 @@
     "@elirobinson/tokens": "0.1.2"
   },
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+    "./styles.css": "./src/styles.css",
+    "./components/*": {
+      "types": "./dist/components/*.d.ts",
+      "import": "./dist/components/*.js"
     },
-    "./styles.css": "./src/styles.css"
+    "./hooks/*": {
+      "types": "./dist/hooks/*.d.ts",
+      "import": "./dist/hooks/*.js"
+    }
   },
   "scripts": {
     "prepublishOnly": "pnpm run build",
-    "build": "tsc -p ./tsconfig.json",
+    "build": "rm -rf dist && tsc -p ./tsconfig.json",
     "lint": "echo 'No lint configured for react package'",
     "test": "vitest run",
     "test:watch": "vitest"
