@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/EliRobinson/design-system/compare/v1.0.0...v1.1.0) (2026-06-15)
+
+### Features
+
+- **release:** publish [@elirobinson](https://github.com/elirobinson) packages to GitHub Packages ([60e0c53](https://github.com/EliRobinson/design-system/commit/60e0c5374fecf1e83fb93487f1b7883d7819f666))
+
 ## 1.0.0 (2026-04-27)
 
 ### Features
