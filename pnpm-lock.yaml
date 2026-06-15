@@ -115,7 +115,7 @@ importers:
   packages/react:
     dependencies:
       '@elirobinson/tokens':
-        specifier: 0.1.1
+        specifier: 0.1.2
         version: link:../tokens
       react:
         specifier: ^19.0.0
