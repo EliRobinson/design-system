@@ -1,5 +1,16 @@
 # @elirobinson/react
 
+## 0.3.0
+
+### Minor Changes
+
+- 5fcffbf: Add overlay primitives (DropdownMenu, Popover, Tooltip, Sheet, Toast), marketing typography (Eyebrow, RuleLink), expanded tokens.json, Storybook coverage, and unit tests for interactive components.
+
+### Patch Changes
+
+- Updated dependencies [5fcffbf]
+  - @elirobinson/tokens@0.1.2
+
 ## 0.2.0
 
 ### Minor Changes
