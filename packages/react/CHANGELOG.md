@@ -1,5 +1,11 @@
 # @elirobinson/react
 
+## 0.2.0
+
+### Minor Changes
+
+- c019e9e: Add shadcn-inspired components styled with Miltinson tokens: Badge, Label, Textarea, Select, Alert, Separator, Tabs, Dialog, Avatar, Breadcrumb, Checkbox, Switch, Skeleton, and Progress. Enhance Button with accent/ghost variants and sizes, Card with compound subcomponents, and Input with hint/error states.
+
 ## 0.1.1
 
 ### Patch Changes
