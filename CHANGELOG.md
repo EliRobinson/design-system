@@ -1,3 +1,9 @@
+## [1.3.0](https://github.com/EliRobinson/design-system/compare/v1.2.1...v1.3.0) (2026-06-15)
+
+### Features
+
+- **react:** overlay primitives, marketing typography, and tests ([#3](https://github.com/EliRobinson/design-system/issues/3)) ([5fcffbf](https://github.com/EliRobinson/design-system/commit/5fcffbfcc41f5b449476c32157b7a4bc98445f08))
+
 ## [1.2.1](https://github.com/EliRobinson/design-system/compare/v1.2.0...v1.2.1) (2026-06-15)
 
 ### Bug Fixes
