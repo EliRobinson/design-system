@@ -1,4 +1,4 @@
-# Miltinson Design System Monorepo
+# Design System Monorepo
 
 Nx-based monorepo for reusable design system libraries and project scaffolding.
 
@@ -81,7 +81,7 @@ import { Button, Card, CardHeader, CardTitle, Input } from '@elirobinson/react';
 | `Eyebrow`  | `Eyebrow`  | mono uppercase label       |
 | `RuleLink` | `RuleLink` | ink underline + arrow link |
 
-**Layout patterns** (Header, Footer, Hero, Sidebar, TopBar) are documented in Storybook under **Patterns/Marketing** and prototyped in `Miltinson Design System/ui_kits/` — compose them from primitives above rather than importing fixed layout components.
+**Layout patterns** (Header, Footer, Hero, Sidebar, TopBar) are documented in Storybook under **Patterns/Marketing** and prototyped in `design-system-docs/ui_kits/` — compose them from primitives above rather than importing fixed layout components.
 
 ## Releases
 

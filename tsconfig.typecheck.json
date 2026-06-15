@@ -5,7 +5,7 @@
     "./node_modules",
     "./dist",
     "./templates/**/*",
-    "./Miltinson Design System/**/*",
+    "./design-system-docs/**/*",
     "./apps/storybook/storybook-static/**/*"
   ]
 }

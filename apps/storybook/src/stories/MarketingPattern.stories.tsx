@@ -19,7 +19,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Header, Footer, Hero, Sidebar, and TopBar are app-specific layout compositions — not packaged primitives. Compose them from @elirobinson/react primitives (Button, Badge, Eyebrow, RuleLink, Card) and your own routing. See ui_kits/marketing/ for full-page prototypes.',
+          'Header, Footer, Hero, Sidebar, and TopBar are app-specific layout compositions — not packaged primitives. Compose them from @elirobinson/react primitives (Button, Badge, Eyebrow, RuleLink, Card) and your own routing. See design-system-docs/ui_kits/marketing/ for full-page prototypes.',
       },
     },
   },

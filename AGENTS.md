@@ -8,7 +8,7 @@ Always use conventional commit messages.
 
 ## Design System
 
-This repo publishes `@elirobinson/tokens`, `@elirobinson/react`, and `@elirobinson/ai-patterns`. The `Miltinson Design System/` folder is the brand source of truth — tokens, preview swatches, UI kits, and agent skill.
+This repo publishes `@elirobinson/tokens`, `@elirobinson/react`, and `@elirobinson/ai-patterns`. The `design-system-docs/` folder is the brand source of truth — tokens, preview swatches, UI kits, and agent skill.
 
 ### Token-first rule
 
@@ -22,7 +22,7 @@ When pulling a new component from [shadcn/ui](https://ui.shadcn.com/), **do not 
 
 1. **Use shadcn for API shape and accessibility patterns** — prop names, compound subcomponents (e.g. `CardHeader`, `DialogContent`), ARIA roles, keyboard behavior, and focus management.
 2. **Style against Miltinson tokens** — every visual value must come from `@elirobinson/tokens/tokens.css` via `ds-*` classes in `packages/react/src/styles.css`.
-3. **Match brand preview swatches** — check `Miltinson Design System/preview/` for the canonical look of buttons, fields, cards, tags, and layout patterns before styling.
+3. **Match brand preview swatches** — check `design-system-docs/preview/` for the canonical look of buttons, fields, cards, tags, and layout patterns before styling.
 4. **Follow existing conventions** — `ds-` prefix for classes, `forwardRef` for interactive elements, 44px minimum touch targets, visible `:focus-visible` rings using `--focus-ring`.
 5. **Export from `@elirobinson/react`** — add the component to `packages/react/src/index.ts` and a Storybook story in `apps/storybook/`.
 6. **Skip Radix/Tailwind dependencies** unless explicitly requested — implement with native HTML elements and React state, styled with token CSS.
@@ -45,7 +45,7 @@ When pulling a new component from [shadcn/ui](https://ui.shadcn.com/), **do not 
 
 ### Layout patterns (not packaged)
 
-Header, Footer, Hero, Sidebar, TopBar, and StatCard are **app-specific layout compositions**. Prototype them in `Miltinson Design System/ui_kits/` and compose in apps from `@elirobinson/react` primitives. See Storybook **Patterns/Marketing** for examples.
+Header, Footer, Hero, Sidebar, TopBar, and StatCard are **app-specific layout compositions**. Prototype them in `design-system-docs/ui_kits/` and compose in apps from `@elirobinson/react` primitives. See Storybook **Patterns/Marketing** for examples.
 
 ### AI pattern alignment
 

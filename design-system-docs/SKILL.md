@@ -9,6 +9,7 @@ Read the README.md file within this skill, and explore the other available files
 If creating visual artifacts (slides, mocks, throwaway prototypes, marketing pages, etc), copy assets out and create static HTML files for the user to view — always link `colors_and_type.css` and use the wordmark from `assets/`. If working on production code, copy assets and read the rules in README.md to become an expert in designing with the Miltinson brand.
 
 Key brand reminders:
+
 - Eli speaks as "I" — never "we"
 - Tone: practical, honest, warm, no-fluff
 - Color: ink-led with **Miltinson Amber** as the only loud accent; Forest as the secondary anchor

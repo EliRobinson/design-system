@@ -1,6 +1,7 @@
 # Docs / Coaching Guide UI Kit
 
 Long-form reading layout used for:
+
 - Coaching guides (the digital products)
 - Documentation for any Miltinson sub-app
 - Blog / essay posts
