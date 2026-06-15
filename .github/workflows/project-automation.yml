@@ -15,7 +15,7 @@ jobs:
       pull-requests: read
     steps:
       - name: Add item to GitHub Project
-        uses: actions/add-to-project@v1.0.2
+        uses: actions/add-to-project@v2
         with:
           project-url: ${{ vars.GITHUB_PROJECT_URL }}
           github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
