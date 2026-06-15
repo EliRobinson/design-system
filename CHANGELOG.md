@@ -1,3 +1,17 @@
+## [2.0.0](https://github.com/EliRobinson/design-system/compare/v1.3.0...v2.0.0) (2026-06-15)
+
+### ⚠ BREAKING CHANGES
+
+- replace package barrel exports with subpath imports
+
+### Bug Fixes
+
+- **ci:** prevent duplicate changeset publish on release ([aba1f8b](https://github.com/EliRobinson/design-system/commit/aba1f8b49b201cf5d8b0a89206b034485b68c2ba))
+
+### Code Refactoring
+
+- replace package barrel exports with subpath imports ([52b1b6d](https://github.com/EliRobinson/design-system/commit/52b1b6dca530fb79ccb3adb722b3c258e84ef065))
+
 ## [1.3.0](https://github.com/EliRobinson/design-system/compare/v1.2.1...v1.3.0) (2026-06-15)
 
 ### Features
