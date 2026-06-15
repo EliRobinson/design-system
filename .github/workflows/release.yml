@@ -11,6 +11,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      packages: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,14 +25,17 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
           cache-dependency-path: 'pnpm-lock.yaml'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@elirobinson'
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - uses: changesets/action@v1
         with:
           version: pnpm changeset:version
-          publish: echo "Skipping package publish (GitHub source distribution)"
+          publish: pnpm release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Semantic release (tags + GitHub release notes)
         run: pnpm semantic-release
         env:

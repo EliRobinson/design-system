@@ -1,6 +1,15 @@
 {
   "name": "@elirobinson/react",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EliRobinson/design-system.git",
+    "directory": "packages/react"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "type": "module",
   "files": [
     "dist",
@@ -21,6 +30,7 @@
     "./styles.css": "./src/styles.css"
   },
   "scripts": {
+    "prepublishOnly": "pnpm run build",
     "build": "tsc -p ./tsconfig.json",
     "lint": "echo 'No lint configured for react package'",
     "test": "echo 'No tests configured for react package'"

@@ -18,5 +18,6 @@
 
 ## Publishing strategy
 
-- Distribute the starter directly from GitHub (no package registry publish).
-- Run the generator via `npx github:elirobinson/create-elirobinson-design-system`.
+- Publish `@elirobinson/tokens`, `@elirobinson/react`, and `@elirobinson/ai-patterns` to GitHub Packages via Changesets on merge of the release PR.
+- Run the generator via `npx github:EliRobinson/design-system/packages/create-elirobinson-design-system`.
+- Consumer apps need a `.npmrc` scoped to `@elirobinson` and a `NODE_AUTH_TOKEN` with `read:packages`.

@@ -22,10 +22,26 @@ const currentFileDirectory = dirname(fileURLToPath(import.meta.url));
 const templateDirectory = resolve(currentFileDirectory, '../../../templates/default-app');
 cpSync(templateDirectory, targetDirectory, { recursive: true, verbatimSymlinks: true });
 
+function readPackageVersion(relativePath) {
+  const packageJsonPath = resolve(currentFileDirectory, relativePath);
+  return JSON.parse(readFileSync(packageJsonPath, 'utf-8')).version;
+}
+
+const tokensVersion = readPackageVersion('../../../packages/tokens/package.json');
+const reactVersion = readPackageVersion('../../../packages/react/package.json');
+
 const packageJsonPath = resolve(targetDirectory, 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 packageJson.name = projectName;
+packageJson.dependencies['@elirobinson/tokens'] = `^${tokensVersion}`;
+packageJson.dependencies['@elirobinson/react'] = `^${reactVersion}`;
 writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf-8');
 
 console.log(`Created ${projectName} with EliRobinson Next.js design-system defaults.`);
-console.log(`Next steps:\n  cd ${projectName}\n  pnpm install\n  pnpm dev`);
+console.log(
+  'Next steps:\n' +
+    `  cd ${projectName}\n` +
+    '  export NODE_AUTH_TOKEN=<github-pat-with-read:packages>\n' +
+    '  pnpm install\n' +
+    '  pnpm dev',
+);
