@@ -1,4 +1,8 @@
-@import "@elirobinson/tokens/tokens.css";
+@import '@elirobinson/tokens/tokens.css';
+
+/* ==========================================================================
+   Button
+   ========================================================================== */
 
 .ds-button {
   align-items: center;
@@ -11,9 +15,13 @@
   font-weight: var(--fw-medium);
   gap: var(--space-2);
   justify-content: center;
+  line-height: 1;
   min-height: 44px;
   padding: var(--space-3) var(--space-4);
-  transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
 .ds-button:focus-visible {
@@ -21,13 +29,42 @@
   outline-offset: 2px;
 }
 
+.ds-button--sm {
+  font-size: var(--fs-xs);
+  min-height: 36px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.ds-button--lg {
+  font-size: var(--fs-md);
+  padding: var(--space-4) var(--space-5);
+}
+
 .ds-button--primary {
+  background-color: var(--ink-1000);
+  color: var(--ink-0);
+}
+
+.ds-button--primary:hover {
+  background-color: var(--ink-800);
+}
+.ds-button--primary:active {
+  background-color: var(--ink-900);
+  transform: translateY(1px);
+}
+
+.ds-button--accent {
   background-color: var(--accent);
   color: var(--accent-fg);
 }
 
-.ds-button--primary:hover { background-color: var(--accent-hover); }
-.ds-button--primary:active { background-color: var(--accent-press); transform: translateY(1px); }
+.ds-button--accent:hover {
+  background-color: var(--accent-hover);
+}
+.ds-button--accent:active {
+  background-color: var(--accent-press);
+  transform: translateY(1px);
+}
 
 .ds-button--secondary {
   background-color: transparent;
@@ -35,12 +72,103 @@
   color: var(--fg);
 }
 
+.ds-button--secondary:hover {
+  background-color: var(--bg-subtle);
+}
+
+.ds-button--ghost {
+  background-color: transparent;
+  color: var(--fg);
+}
+
+.ds-button--ghost:hover {
+  background-color: var(--bg-subtle);
+}
+
+.ds-button--disabled,
+.ds-button:disabled {
+  background-color: var(--ink-100);
+  border-color: transparent;
+  color: var(--fg-4);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ds-button--disabled:hover,
+.ds-button:disabled:hover {
+  background-color: var(--ink-100);
+}
+
+/* ==========================================================================
+   Card
+   ========================================================================== */
+
 .ds-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
+}
+
+.ds-card__header {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-6) var(--space-6) 0;
+}
+
+.ds-card__title {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-tight);
+  line-height: var(--lh-tight);
+  margin: 0;
+}
+
+.ds-card__description {
+  color: var(--fg-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+.ds-card__content {
   padding: var(--space-6);
+}
+
+.ds-card__footer {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  padding: 0 var(--space-6) var(--space-6);
+}
+
+/* ==========================================================================
+   Form fields
+   ========================================================================== */
+
+.ds-field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ds-label {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+.ds-hint {
+  color: var(--fg-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+}
+
+.ds-hint--error {
+  color: var(--status-danger);
 }
 
 .ds-input {
@@ -49,27 +177,459 @@
   border-radius: var(--radius-sm);
   color: var(--fg);
   font-family: var(--font-sans);
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   min-height: 44px;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-3);
   width: 100%;
 }
 
 .ds-input:focus-visible {
+  border-color: var(--ink-1000);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.ds-input--error {
+  border-color: var(--status-danger);
+}
+
+.ds-textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.ds-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%23666' stroke-width='1.5'><path d='M4 6l4 4 4-4'/></svg>");
+  background-position: right var(--space-3) center;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  padding-right: var(--space-8);
+}
+
+/* ==========================================================================
+   Badge
+   ========================================================================== */
+
+.ds-badge {
+  border-radius: var(--radius-pill);
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.06em;
+  line-height: 1;
+  padding: var(--space-1) var(--space-3);
+  text-transform: uppercase;
+}
+
+.ds-badge--default {
+  background: var(--ink-100);
+  color: var(--fg-2);
+}
+
+.ds-badge--signal {
+  background: var(--signal-100);
+  color: var(--signal-800);
+}
+
+.ds-badge--anchor {
+  background: var(--anchor-100);
+  color: var(--anchor-700);
+}
+
+.ds-badge--solid {
+  background: var(--ink-1000);
+  color: var(--ink-0);
+}
+
+.ds-badge--outline {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--fg-2);
+}
+
+/* ==========================================================================
+   Alert
+   ========================================================================== */
+
+.ds-alert {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
+}
+
+.ds-alert__title {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.ds-alert__description {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.ds-alert--default {
+  background: var(--bg-subtle);
+  color: var(--fg);
+}
+
+.ds-alert--success {
+  background: var(--anchor-50);
+  border-color: var(--anchor-200);
+  color: var(--anchor-800);
+}
+
+.ds-alert--warning {
+  background: var(--signal-50);
+  border-color: var(--signal-200);
+  color: var(--signal-800);
+}
+
+.ds-alert--danger {
+  background: oklch(97% 0.02 25);
+  border-color: oklch(88% 0.08 25);
+  color: var(--status-danger);
+}
+
+.ds-alert--info {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
+  color: var(--fg-2);
+}
+
+/* ==========================================================================
+   Separator
+   ========================================================================== */
+
+.ds-separator {
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.ds-separator--horizontal {
+  height: 1px;
+  width: 100%;
+}
+
+.ds-separator--vertical {
+  height: 100%;
+  width: 1px;
+}
+
+/* ==========================================================================
+   Tabs
+   ========================================================================== */
+
+.ds-tabs {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ds-tabs__list {
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: var(--space-1);
+}
+
+.ds-tabs__trigger {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--fg-2);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  margin-bottom: -1px;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.ds-tabs__trigger:hover {
+  color: var(--fg);
+}
+
+.ds-tabs__trigger:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
-.ds-field {
-  display: grid;
-  gap: var(--space-2);
+.ds-tabs__trigger--active {
+  border-bottom-color: var(--ink-1000);
+  color: var(--fg);
 }
 
-.ds-label {
+.ds-tabs__content {
+  padding-top: var(--space-2);
+}
+
+/* ==========================================================================
+   Dialog
+   ========================================================================== */
+
+.ds-dialog {
+  background: transparent;
+  border: none;
+  max-height: 90vh;
+  max-width: 480px;
+  padding: 0;
+  width: calc(100% - var(--space-8));
+}
+
+.ds-dialog::backdrop {
+  background: oklch(0% 0 0 / 0.5);
+}
+
+.ds-dialog__inner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+.ds-dialog__header {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ds-dialog__title {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-tight);
+  margin: 0;
+}
+
+.ds-dialog__description {
+  color: var(--fg-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+.ds-dialog__footer {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+/* ==========================================================================
+   Avatar
+   ========================================================================== */
+
+.ds-avatar {
+  align-items: center;
+  background: var(--ink-100);
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ds-avatar--sm {
+  height: 32px;
+  width: 32px;
+}
+.ds-avatar--md {
+  height: 40px;
+  width: 40px;
+}
+.ds-avatar--lg {
+  height: 56px;
+  width: 56px;
+}
+
+.ds-avatar__image {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.ds-avatar__fallback {
   color: var(--fg-2);
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
-  letter-spacing: var(--tr-caps);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.ds-avatar--lg .ds-avatar__fallback {
+  font-size: var(--fs-sm);
+}
+
+/* ==========================================================================
+   Breadcrumb
+   ========================================================================== */
+
+.ds-breadcrumb__list {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ds-breadcrumb__item {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.ds-breadcrumb__link {
+  color: var(--fg-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+
+.ds-breadcrumb__link:hover {
+  color: var(--link-hover);
+}
+
+.ds-breadcrumb__link--current {
+  color: var(--fg);
+  font-weight: var(--fw-medium);
+}
+
+.ds-breadcrumb__separator {
+  color: var(--fg-4);
+  font-size: var(--fs-sm);
+}
+
+/* ==========================================================================
+   Checkbox
+   ========================================================================== */
+
+.ds-checkbox {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+
+.ds-checkbox__input {
+  accent-color: var(--ink-1000);
+  cursor: pointer;
+  height: 18px;
+  width: 18px;
+}
+
+.ds-checkbox__input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-checkbox__label {
+  color: var(--fg);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+}
+
+/* ==========================================================================
+   Switch
+   ========================================================================== */
+
+.ds-switch {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+
+.ds-switch__input {
+  appearance: none;
+  background: var(--ink-200);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  height: 24px;
+  position: relative;
+  transition: background-color var(--dur-fast) var(--ease-out);
+  width: 44px;
+}
+
+.ds-switch__input::before {
+  background: var(--ink-0);
+  border-radius: var(--radius-pill);
+  content: '';
+  height: 18px;
+  left: 3px;
+  position: absolute;
+  top: 3px;
+  transition: transform var(--dur-fast) var(--ease-out);
+  width: 18px;
+}
+
+.ds-switch__input:checked {
+  background: var(--ink-1000);
+}
+
+.ds-switch__input:checked::before {
+  transform: translateX(20px);
+}
+
+.ds-switch__input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-switch__label {
+  color: var(--fg);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+}
+
+/* ==========================================================================
+   Skeleton
+   ========================================================================== */
+
+.ds-skeleton {
+  animation: ds-skeleton-pulse 1.5s ease-in-out infinite;
+  background: var(--ink-100);
+  border-radius: var(--radius-sm);
+  min-height: 16px;
+}
+
+@keyframes ds-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ==========================================================================
+   Progress
+   ========================================================================== */
+
+.ds-progress {
+  background: var(--ink-100);
+  border-radius: var(--radius-pill);
+  height: 8px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.ds-progress__bar {
+  background: var(--ink-1000);
+  border-radius: var(--radius-pill);
+  height: 100%;
+  transition: width var(--dur-normal) var(--ease-out);
 }

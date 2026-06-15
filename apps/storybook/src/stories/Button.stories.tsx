@@ -6,8 +6,9 @@ const meta = {
   component: Button,
   tags: ['autodocs'],
   args: {
-    children: 'Continue',
+    children: 'Send message',
     variant: 'primary',
+    size: 'md',
   },
 } satisfies Meta<typeof Button>;
 
@@ -16,8 +17,26 @@ type Story = StoryObj<typeof meta>;
 
 export const Primary: Story = {};
 
+export const Accent: Story = {
+  args: { variant: 'accent', children: 'Hire Me' },
+};
+
 export const Secondary: Story = {
-  args: {
-    variant: 'secondary',
-  },
+  args: { variant: 'secondary', children: 'Browse Guides' },
+};
+
+export const Ghost: Story = {
+  args: { variant: 'ghost', children: 'Learn more' },
+};
+
+export const Disabled: Story = {
+  args: { disabled: true, children: 'Sold out' },
+};
+
+export const Small: Story = {
+  args: { size: 'sm' },
+};
+
+export const Large: Story = {
+  args: { size: 'lg' },
 };

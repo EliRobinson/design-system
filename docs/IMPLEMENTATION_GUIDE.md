@@ -1,5 +1,7 @@
 # Implementation Guide
 
+See root `AGENTS.md` for full agent guidelines including shadcn component adoption rules.
+
 ## Token-first rule
 
 - Use `@elirobinson/tokens/tokens.css` in every app shell.

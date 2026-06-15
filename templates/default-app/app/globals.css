@@ -1,4 +1,5 @@
 @import '@elirobinson/tokens/tokens.css';
+@import '@elirobinson/react/styles.css';
 
 * {
   box-sizing: border-box;

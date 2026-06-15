@@ -1,17 +1,33 @@
 import type { ButtonHTMLAttributes } from 'react';
 import { forwardRef } from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary';
+import { cn } from '../lib/cn';
+
+export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
+  size?: ButtonSize;
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { className = '', variant = 'primary', type = 'button', ...props },
+  { className, variant = 'primary', size = 'md', type = 'button', disabled, ...props },
   ref,
 ) {
-  const mergedClassName = `ds-button ds-button--${variant} ${className}`.trim();
-
-  return <button ref={ref} className={mergedClassName} type={type} {...props} />;
+  return (
+    <button
+      ref={ref}
+      className={cn(
+        'ds-button',
+        `ds-button--${variant}`,
+        `ds-button--${size}`,
+        disabled && 'ds-button--disabled',
+        className,
+      )}
+      type={type}
+      disabled={disabled}
+      {...props}
+    />
+  );
 });

@@ -6,7 +6,7 @@ const meta = {
   component: Input,
   tags: ['autodocs'],
   args: {
-    label: 'Email address',
+    label: 'Email',
     placeholder: 'you@example.com',
   },
 } satisfies Meta<typeof Input>;
@@ -15,3 +15,14 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const WithHint: Story = {
+  args: { hint: 'We will never share your email.' },
+};
+
+export const WithError: Story = {
+  args: {
+    defaultValue: 'not-an-email',
+    error: 'Please enter a valid email address.',
+  },
+};
