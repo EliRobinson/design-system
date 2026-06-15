@@ -1,3 +1,9 @@
+## [1.2.1](https://github.com/EliRobinson/design-system/compare/v1.2.0...v1.2.1) (2026-06-15)
+
+### Bug Fixes
+
+- **ci:** publish npm packages after Version Packages PR merge ([7b96659](https://github.com/EliRobinson/design-system/commit/7b96659a2227443a14ce9889fbc91450009c80b4))
+
 ## [1.2.0](https://github.com/EliRobinson/design-system/compare/v1.1.1...v1.2.0) (2026-06-15)
 
 ### Features
