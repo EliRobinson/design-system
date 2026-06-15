@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Miltinson — Social carousel</title>
+    <link rel="stylesheet" href="../../colors_and_type.css" />
+    <style>
+      body {
+        background: var(--bg-subtle);
+        display: grid;
+        gap: var(--space-6);
+        margin: 0;
+        padding: var(--space-8);
+      }
+
+      .slide {
+        align-items: flex-start;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+        height: 1080px;
+        justify-content: space-between;
+        padding: 96px;
+        width: 1080px;
+      }
+
+      .slide--dark {
+        background: var(--ink-1000);
+        color: var(--ink-0);
+      }
+
+      .eyebrow {
+        color: var(--fg-2);
+        font-family: var(--font-mono);
+        font-size: var(--fs-sm);
+        font-weight: var(--fw-medium);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .slide--dark .eyebrow {
+        color: oklch(100% 0 0 / 0.55);
+      }
+
+      h1 {
+        font-family: var(--font-sans);
+        font-size: 72px;
+        font-weight: var(--fw-semibold);
+        letter-spacing: var(--tr-tight);
+        line-height: var(--lh-tight);
+        margin: var(--space-6) 0 0;
+        max-width: 840px;
+      }
+
+      .accent {
+        background: linear-gradient(transparent 65%, var(--signal-300) 65%);
+      }
+
+      p {
+        color: var(--fg-2);
+        font-size: 28px;
+        line-height: var(--lh-normal);
+        margin: var(--space-6) 0 0;
+        max-width: 760px;
+      }
+
+      .slide--dark p {
+        color: oklch(100% 0 0 / 0.7);
+      }
+
+      .footer {
+        font-family: var(--font-mono);
+        font-size: var(--fs-sm);
+        letter-spacing: var(--tr-wide);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="slide">
+      <div>
+        <div class="eyebrow">Miltinson Technologies</div>
+        <h1>Builder. Consultant. <span class="accent">Founder.</span></h1>
+      </div>
+      <div class="footer">miltinsons.com</div>
+    </section>
+
+    <section class="slide slide--dark">
+      <div>
+        <div class="eyebrow">Practical AI</div>
+        <h1>Skip the hype. Ship what works.</h1>
+        <p>Clear, patient tech help for individuals and small businesses.</p>
+      </div>
+      <div class="footer">Slide 2 of 3</div>
+    </section>
+
+    <section class="slide">
+      <div>
+        <div class="eyebrow">Get in touch</div>
+        <h1>Tell me what you need.</h1>
+        <p>I'll get back to you within 24 hours. No contracts required.</p>
+      </div>
+      <div class="footer">miltinsons.com/contact</div>
+    </section>
+  </body>
+</html>

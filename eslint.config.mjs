@@ -11,7 +11,7 @@ export default tseslint.config(
       './node_modules/**',
       './dist/**',
       './apps/storybook/storybook-static/**',
-      './Miltinson Design System/**',
+      './design-system-docs/**',
       './.nx/**',
     ],
   },

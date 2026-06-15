@@ -633,3 +633,358 @@
   height: 100%;
   transition: width var(--dur-normal) var(--ease-out);
 }
+
+/* ==========================================================================
+   Dropdown Menu
+   ========================================================================== */
+
+.ds-dropdown__trigger {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  gap: var(--space-2);
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+}
+
+.ds-dropdown__trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-dropdown__content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  display: grid;
+  gap: var(--space-1);
+  min-width: 180px;
+  padding: var(--space-2);
+}
+
+.ds-dropdown__item {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  cursor: pointer;
+  display: flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  width: 100%;
+}
+
+.ds-dropdown__item:hover,
+.ds-dropdown__item:focus-visible {
+  background: var(--bg-subtle);
+  outline: none;
+}
+
+.ds-dropdown__item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.ds-dropdown__item--inset {
+  padding-left: var(--space-6);
+}
+
+.ds-dropdown__label {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tr-caps);
+  padding: var(--space-2) var(--space-3);
+  text-transform: uppercase;
+}
+
+.ds-dropdown__label--inset {
+  padding-left: var(--space-6);
+}
+
+.ds-dropdown__separator {
+  background: var(--border);
+  height: 1px;
+  margin: var(--space-1) 0;
+}
+
+/* ==========================================================================
+   Popover
+   ========================================================================== */
+
+.ds-popover__trigger {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+}
+
+.ds-popover__trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-popover__content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  max-width: 320px;
+  padding: var(--space-4);
+}
+
+/* ==========================================================================
+   Tooltip
+   ========================================================================== */
+
+.ds-tooltip__trigger {
+  display: inline-flex;
+}
+
+.ds-tooltip__content {
+  background: var(--ink-1000);
+  border-radius: var(--radius-sm);
+  color: var(--ink-0);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  max-width: 240px;
+  padding: var(--space-2) var(--space-3);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Sheet
+   ========================================================================== */
+
+.ds-sheet {
+  background: transparent;
+  border: none;
+  height: 100%;
+  margin: 0;
+  max-height: 100%;
+  max-width: 100%;
+  overflow: visible;
+  padding: 0;
+  position: fixed;
+  width: 100%;
+}
+
+.ds-sheet::backdrop {
+  background: oklch(0% 0 0 / 0.45);
+}
+
+.ds-sheet__inner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  display: grid;
+  gap: var(--space-4);
+  height: 100%;
+  padding: var(--space-6);
+}
+
+.ds-sheet--right .ds-sheet__inner {
+  margin-left: auto;
+  max-width: 400px;
+  width: 100%;
+}
+
+.ds-sheet--left .ds-sheet__inner {
+  margin-right: auto;
+  max-width: 400px;
+  width: 100%;
+}
+
+.ds-sheet--top .ds-sheet__inner {
+  margin-bottom: auto;
+  max-height: 320px;
+  width: 100%;
+}
+
+.ds-sheet--bottom .ds-sheet__inner {
+  margin-top: auto;
+  max-height: 320px;
+  width: 100%;
+}
+
+.ds-sheet__header {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ds-sheet__title {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-tight);
+  margin: 0;
+}
+
+.ds-sheet__description {
+  color: var(--fg-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+.ds-sheet__footer {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+/* ==========================================================================
+   Toast
+   ========================================================================== */
+
+.ds-toast-viewport {
+  bottom: var(--space-6);
+  display: grid;
+  gap: var(--space-3);
+  position: fixed;
+  right: var(--space-6);
+  width: min(360px, calc(100vw - var(--space-8)));
+  z-index: var(--z-toast);
+}
+
+.ds-toast {
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.ds-toast--success {
+  border-color: var(--status-success);
+}
+
+.ds-toast--warning {
+  border-color: var(--status-warning);
+}
+
+.ds-toast--danger {
+  border-color: var(--status-danger);
+}
+
+.ds-toast--info {
+  border-color: var(--status-info);
+}
+
+.ds-toast__content {
+  display: grid;
+  flex: 1;
+  gap: var(--space-1);
+}
+
+.ds-toast__title {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.ds-toast__description {
+  color: var(--fg-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.ds-toast__close {
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: var(--fg-3);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--fs-lg);
+  justify-content: center;
+  line-height: 1;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+}
+
+.ds-toast__close:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-toast__action {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+}
+
+/* ==========================================================================
+   Eyebrow
+   ========================================================================== */
+
+.ds-eyebrow {
+  color: var(--fg-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Rule Link
+   ========================================================================== */
+
+.ds-rule-link {
+  align-items: center;
+  border-bottom: 1px solid var(--ink-1000);
+  color: var(--fg);
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  gap: var(--space-2);
+  padding-bottom: 2px;
+  text-decoration: none;
+}
+
+.ds-rule-link:hover {
+  color: var(--link-hover);
+}
+
+.ds-rule-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
