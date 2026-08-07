@@ -8,11 +8,14 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   {
     ignores: [
-      './node_modules/**',
-      './dist/**',
-      './apps/storybook/storybook-static/**',
-      './design-system-docs/**',
-      './.nx/**',
+      '**/node_modules/**',
+      // `**/` so built output in packages/*/dist is covered, not just a root dist.
+      '**/dist/**',
+      // Agent worktrees contain a full second copy of the repo.
+      '.claude/**',
+      'apps/storybook/storybook-static/**',
+      'design-system-docs/**',
+      '.nx/**',
     ],
   },
   js.configs.recommended,

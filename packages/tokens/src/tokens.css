@@ -12,7 +12,7 @@
    Loaded from Google Fonts. NOTE: Geist mirrors the Vercel font family;
    if you have a licensed copy, drop .woff2 files into fonts/ and
    replace the @import below with @font-face rules. */
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   /* ======================================================================
@@ -23,93 +23,93 @@
      ====================================================================== */
 
   /* Neutrals — true black/white pinned, mids in oklch */
-  --ink-0:   #ffffff;                  /* pure white */
-  --ink-50:  oklch(98.4% 0.002 247);   /* off-white surface */
-  --ink-100: oklch(96.2% 0.003 247);   /* hairline backgrounds */
-  --ink-200: oklch(92.8% 0.004 247);   /* dividers */
-  --ink-300: oklch(86.0% 0.005 247);   /* borders */
-  --ink-400: oklch(70.0% 0.006 247);   /* disabled / placeholder */
-  --ink-500: oklch(55.0% 0.008 247);   /* tertiary text */
-  --ink-600: oklch(42.0% 0.010 247);   /* secondary text */
-  --ink-700: oklch(30.0% 0.010 247);   /* high-contrast secondary */
-  --ink-800: oklch(20.0% 0.010 247);   /* near-black surfaces */
-  --ink-900: oklch(12.0% 0.008 247);   /* deep surface */
-  --ink-950: oklch(6.0%  0.006 247);   /* card on dark */
-  --ink-1000:#000000;                  /* pure black */
+  --ink-0: #ffffff; /* pure white */
+  --ink-50: oklch(98.4% 0.002 247); /* off-white surface */
+  --ink-100: oklch(96.2% 0.003 247); /* hairline backgrounds */
+  --ink-200: oklch(92.8% 0.004 247); /* dividers */
+  --ink-300: oklch(86% 0.005 247); /* borders */
+  --ink-400: oklch(70% 0.006 247); /* disabled / placeholder */
+  --ink-500: oklch(55% 0.008 247); /* tertiary text */
+  --ink-600: oklch(42% 0.01 247); /* secondary text */
+  --ink-700: oklch(30% 0.01 247); /* high-contrast secondary */
+  --ink-800: oklch(20% 0.01 247); /* near-black surfaces */
+  --ink-900: oklch(12% 0.008 247); /* deep surface */
+  --ink-950: oklch(6% 0.006 247); /* card on dark */
+  --ink-1000: #000000; /* pure black */
 
   /* Signal — Miltinson Amber. Warm, craftsman, honest. The primary accent.
      Used for CTAs, links on dark, eyebrow underlines, key stats. */
-  --signal-50:  oklch(97.5% 0.025 75);
-  --signal-100: oklch(94.0% 0.055 75);
-  --signal-200: oklch(89.0% 0.10  75);
-  --signal-300: oklch(83.0% 0.14  72);
-  --signal-400: oklch(78.0% 0.16  68);
-  --signal-500: oklch(72.5% 0.175 65);  /* primary — Miltinson Amber */
-  --signal-600: oklch(63.0% 0.165 55);
-  --signal-700: oklch(52.0% 0.145 45);
-  --signal-800: oklch(40.0% 0.115 40);
-  --signal-900: oklch(28.0% 0.080 38);
+  --signal-50: oklch(97.5% 0.025 75);
+  --signal-100: oklch(94% 0.055 75);
+  --signal-200: oklch(89% 0.1 75);
+  --signal-300: oklch(83% 0.14 72);
+  --signal-400: oklch(78% 0.16 68);
+  --signal-500: oklch(72.5% 0.175 65); /* primary — Miltinson Amber */
+  --signal-600: oklch(63% 0.165 55);
+  --signal-700: oklch(52% 0.145 45);
+  --signal-800: oklch(40% 0.115 40);
+  --signal-900: oklch(28% 0.08 38);
 
   /* Anchor — Forest. Secondary brand anchor used sparingly:
      coaching/guides surfaces, success states, trust marks. */
-  --anchor-50:  oklch(96.0% 0.018 165);
-  --anchor-100: oklch(91.0% 0.035 165);
-  --anchor-200: oklch(82.0% 0.055 162);
-  --anchor-300: oklch(70.0% 0.075 160);
-  --anchor-400: oklch(55.0% 0.085 158);
-  --anchor-500: oklch(42.0% 0.080 156);  /* primary — Miltinson Forest */
-  --anchor-600: oklch(34.0% 0.065 156);
-  --anchor-700: oklch(26.0% 0.050 156);
-  --anchor-800: oklch(19.0% 0.035 156);
-  --anchor-900: oklch(13.0% 0.025 156);
+  --anchor-50: oklch(96% 0.018 165);
+  --anchor-100: oklch(91% 0.035 165);
+  --anchor-200: oklch(82% 0.055 162);
+  --anchor-300: oklch(70% 0.075 160);
+  --anchor-400: oklch(55% 0.085 158);
+  --anchor-500: oklch(42% 0.08 156); /* primary — Miltinson Forest */
+  --anchor-600: oklch(34% 0.065 156);
+  --anchor-700: oklch(26% 0.05 156);
+  --anchor-800: oklch(19% 0.035 156);
+  --anchor-900: oklch(13% 0.025 156);
 
   /* Semantic status colors (kept neutral-leaning) */
-  --status-success: oklch(62.0% 0.16 155);
-  --status-warning: oklch(78.0% 0.16  85);
-  --status-danger:  oklch(58.0% 0.22  25);
-  --status-info:    oklch(60.0% 0.13 240);
+  --status-success: oklch(62% 0.16 155);
+  --status-warning: oklch(78% 0.16 85);
+  --status-danger: oklch(58% 0.22 25);
+  --status-info: oklch(60% 0.13 240);
 
   /* ======================================================================
      COLOR — semantic (what components reference)
      ====================================================================== */
-  --bg:            var(--ink-0);          /* page background */
-  --bg-subtle:     var(--ink-50);         /* zebra / panel */
-  --bg-muted:      var(--ink-100);        /* code blocks, inset wells */
-  --bg-inverse:    var(--ink-1000);       /* dark hero, footer */
+  --bg: var(--ink-0); /* page background */
+  --bg-subtle: var(--ink-50); /* zebra / panel */
+  --bg-muted: var(--ink-100); /* code blocks, inset wells */
+  --bg-inverse: var(--ink-1000); /* dark hero, footer */
 
-  --surface:       var(--ink-0);          /* cards */
-  --surface-2:     var(--ink-50);         /* nested cards */
-  --surface-3:     var(--ink-100);        /* deeper inset */
+  --surface: var(--ink-0); /* cards */
+  --surface-2: var(--ink-50); /* nested cards */
+  --surface-3: var(--ink-100); /* deeper inset */
 
-  --border:        var(--ink-200);        /* default hairline */
-  --border-strong: var(--ink-300);        /* emphasized */
-  --border-inverse:oklch(100% 0 0 / 0.12);/* on dark */
+  --border: var(--ink-200); /* default hairline */
+  --border-strong: var(--ink-300); /* emphasized */
+  --border-inverse: oklch(100% 0 0 / 0.12); /* on dark */
 
-  --fg:            var(--ink-1000);       /* primary text */
-  --fg-1:          var(--ink-1000);       /* alias */
-  --fg-2:          var(--ink-600);        /* secondary text */
-  --fg-3:          var(--ink-500);        /* tertiary / meta */
-  --fg-4:          var(--ink-400);        /* disabled */
-  --fg-inverse:    var(--ink-0);          /* on dark */
-  --fg-on-signal:  var(--ink-1000);       /* text on lime */
+  --fg: var(--ink-1000); /* primary text */
+  --fg-1: var(--ink-1000); /* alias */
+  --fg-2: var(--ink-600); /* secondary text */
+  --fg-3: var(--ink-500); /* tertiary / meta */
+  --fg-4: var(--ink-400); /* disabled */
+  --fg-inverse: var(--ink-0); /* on dark */
+  --fg-on-signal: var(--ink-1000); /* text on lime */
 
-  --accent:        var(--signal-500);   /* Miltinson Amber */
-  --accent-hover:  var(--signal-400);
-  --accent-press:  var(--signal-600);
-  --accent-fg:     var(--ink-1000);
-  --accent-tint:   var(--signal-50);    /* very-light amber backgrounds */
+  --accent: var(--signal-500); /* Miltinson Amber */
+  --accent-hover: var(--signal-400);
+  --accent-press: var(--signal-600);
+  --accent-fg: var(--ink-1000);
+  --accent-tint: var(--signal-50); /* very-light amber backgrounds */
 
-  --anchor:        var(--anchor-500);   /* Miltinson Forest */
-  --anchor-hover:  var(--anchor-400);
-  --anchor-press:  var(--anchor-600);
-  --anchor-fg:     var(--ink-0);
-  --anchor-tint:   var(--anchor-50);
+  --anchor: var(--anchor-500); /* Miltinson Forest */
+  --anchor-hover: var(--anchor-400);
+  --anchor-press: var(--anchor-600);
+  --anchor-fg: var(--ink-0);
+  --anchor-tint: var(--anchor-50);
 
-  --focus-ring:    var(--ink-1000);     /* high-contrast focus, ink-on-bg */
+  --focus-ring: var(--ink-1000); /* high-contrast focus, ink-on-bg */
 
-  --link:          var(--ink-1000);
-  --link-hover:    var(--signal-700);
-  --link-visited:  var(--ink-700);
+  --link: var(--ink-1000);
+  --link-hover: var(--signal-700);
+  --link-visited: var(--ink-700);
 
   /* Status uses signal/anchor where appropriate */
   --status-success: var(--anchor-500);
@@ -118,18 +118,18 @@
   /* ======================================================================
      TYPE — families
      ====================================================================== */
-  --font-sans:    "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-display: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /* Type scale — a perfect-fourth-ish ramp (1.25), tuned for tech UI */
   --fs-3xs: 10px;
   --fs-2xs: 11px;
-  --fs-xs:  12px;
-  --fs-sm:  14px;
-  --fs-md:  16px;   /* base */
-  --fs-lg:  18px;
-  --fs-xl:  20px;
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-md: 16px; /* base */
+  --fs-lg: 18px;
+  --fs-xl: 20px;
   --fs-2xl: 24px;
   --fs-3xl: 30px;
   --fs-4xl: 38px;
@@ -139,56 +139,56 @@
   --fs-8xl: 112px;
 
   /* Line-heights */
-  --lh-tight:   1.05;
-  --lh-snug:    1.2;
-  --lh-normal:  1.5;
+  --lh-tight: 1.05;
+  --lh-snug: 1.2;
+  --lh-normal: 1.5;
   --lh-relaxed: 1.65;
 
   /* Tracking */
-  --tr-tight:   -0.025em;
-  --tr-snug:    -0.015em;
-  --tr-normal:  0em;
-  --tr-wide:    0.04em;
-  --tr-caps:    0.08em;
+  --tr-tight: -0.025em;
+  --tr-snug: -0.015em;
+  --tr-normal: 0em;
+  --tr-wide: 0.04em;
+  --tr-caps: 0.08em;
 
   /* Weights */
-  --fw-light:    300;
-  --fw-regular:  400;
-  --fw-medium:   500;
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
   --fw-semibold: 600;
-  --fw-bold:     700;
-  --fw-black:    800;
+  --fw-bold: 700;
+  --fw-black: 800;
 
   /* ======================================================================
      SPACING — 4px base, 8pt-friendly
      ====================================================================== */
-  --space-0:   0;
-  --space-px:  1px;
-  --space-1:   4px;
-  --space-2:   8px;
-  --space-3:   12px;
-  --space-4:   16px;
-  --space-5:   20px;
-  --space-6:   24px;
-  --space-7:   32px;
-  --space-8:   40px;
-  --space-9:   48px;
-  --space-10:  64px;
-  --space-11:  80px;
-  --space-12:  96px;
-  --space-13:  128px;
-  --space-14:  160px;
-  --space-15:  192px;
+  --space-0: 0;
+  --space-px: 1px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+  --space-11: 80px;
+  --space-12: 96px;
+  --space-13: 128px;
+  --space-14: 160px;
+  --space-15: 192px;
 
   /* ======================================================================
      RADII — sharp by default. We're tech-forward, not pillowy.
      ====================================================================== */
   --radius-none: 0;
-  --radius-xs:   2px;
-  --radius-sm:   4px;   /* default for inputs, buttons */
-  --radius-md:   6px;   /* cards */
-  --radius-lg:   10px;  /* modals */
-  --radius-xl:   16px;  /* heroes */
+  --radius-xs: 2px;
+  --radius-sm: 4px; /* default for inputs, buttons */
+  --radius-md: 6px; /* cards */
+  --radius-lg: 10px; /* modals */
+  --radius-xl: 16px; /* heroes */
   --radius-pill: 999px; /* tags only */
 
   /* ======================================================================
@@ -198,7 +198,7 @@
   --shadow-sm: 0 1px 2px 0 oklch(0% 0 0 / 0.06), 0 0 0 1px oklch(0% 0 0 / 0.04);
   --shadow-md: 0 4px 12px -2px oklch(0% 0 0 / 0.08), 0 0 0 1px oklch(0% 0 0 / 0.04);
   --shadow-lg: 0 12px 32px -8px oklch(0% 0 0 / 0.14), 0 0 0 1px oklch(0% 0 0 / 0.05);
-  --shadow-xl: 0 24px 56px -12px oklch(0% 0 0 / 0.20), 0 0 0 1px oklch(0% 0 0 / 0.05);
+  --shadow-xl: 0 24px 56px -12px oklch(0% 0 0 / 0.2), 0 0 0 1px oklch(0% 0 0 / 0.05);
 
   /* Inner shadow for inset wells */
   --shadow-inset: inset 0 1px 0 0 oklch(0% 0 0 / 0.04);
@@ -209,14 +209,14 @@
   /* ======================================================================
      MOTION
      ====================================================================== */
-  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   --dur-instant: 80ms;
-  --dur-fast:    140ms;
-  --dur-normal:  220ms;
-  --dur-slow:    420ms;
+  --dur-fast: 140ms;
+  --dur-normal: 220ms;
+  --dur-slow: 420ms;
 
   /* ======================================================================
      LAYOUT
@@ -225,46 +225,46 @@
   --container-md: 768px;
   --container-lg: 1024px;
   --container-xl: 1280px;
-  --container-2xl:1440px;
-  --gutter:       max(20px, 4vw);
+  --container-2xl: 1440px;
+  --gutter: max(20px, 4vw);
 
   /* Z-index ladder */
-  --z-base:    0;
-  --z-raised:  10;
-  --z-sticky:  100;
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 100;
   --z-overlay: 1000;
-  --z-modal:   1100;
-  --z-toast:   1200;
+  --z-modal: 1100;
+  --z-toast: 1200;
   --z-tooltip: 1300;
 }
 
 /* ==========================================================================
    Dark mode — opt-in via [data-theme="dark"] OR prefers-color-scheme
    ========================================================================== */
-[data-theme="dark"] {
-  --bg:            var(--ink-1000);
-  --bg-subtle:     var(--ink-950);
-  --bg-muted:      var(--ink-900);
-  --bg-inverse:    var(--ink-0);
+[data-theme='dark'] {
+  --bg: var(--ink-1000);
+  --bg-subtle: var(--ink-950);
+  --bg-muted: var(--ink-900);
+  --bg-inverse: var(--ink-0);
 
-  --surface:       var(--ink-950);
-  --surface-2:     var(--ink-900);
-  --surface-3:     var(--ink-800);
+  --surface: var(--ink-950);
+  --surface-2: var(--ink-900);
+  --surface-3: var(--ink-800);
 
-  --border:        oklch(100% 0 0 / 0.10);
+  --border: oklch(100% 0 0 / 0.1);
   --border-strong: oklch(100% 0 0 / 0.18);
-  --border-inverse:var(--ink-200);
+  --border-inverse: var(--ink-200);
 
-  --fg:            var(--ink-0);
-  --fg-1:          var(--ink-0);
-  --fg-2:          var(--ink-300);
-  --fg-3:          var(--ink-400);
-  --fg-4:          var(--ink-500);
-  --fg-inverse:    var(--ink-1000);
+  --fg: var(--ink-0);
+  --fg-1: var(--ink-0);
+  --fg-2: var(--ink-300);
+  --fg-3: var(--ink-400);
+  --fg-4: var(--ink-500);
+  --fg-inverse: var(--ink-1000);
 
-  --link:          var(--ink-0);
-  --link-hover:    var(--signal-400);
-  --link-visited:  var(--ink-200);
+  --link: var(--ink-0);
+  --link-hover: var(--signal-400);
+  --link-visited: var(--ink-200);
 }
 
 /* ==========================================================================
@@ -383,8 +383,16 @@
 /* ==========================================================================
    Sensible defaults
    ========================================================================== */
-*, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
 body {
   font-family: var(--font-sans);
   font-size: var(--fs-md);
@@ -394,15 +402,31 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-::selection { background: var(--signal-500); color: var(--ink-1000); }
+::selection {
+  background: var(--signal-500);
+  color: var(--ink-1000);
+}
 
-a { color: var(--link); text-decoration: underline; text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
-a:hover { color: var(--link-hover); }
+a {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+a:hover {
+  color: var(--link-hover);
+}
 
-:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-xs); }
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
