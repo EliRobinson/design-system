@@ -3,8 +3,8 @@ export const metadata = { title: 'Data display pattern' };
 # Data display
 
 <p className="lead">
-  Numbers first, then the records behind them: a stat-card row above a data table.
-  Numerals are mono with tabular figures — everything that compares must line up.
+  Numbers first, then the records behind them: a stat-card row above a data table. Numerals are mono
+  with tabular figures — everything that compares must line up.
 </p>
 
 ## Stat cards
@@ -15,7 +15,15 @@ eyebrow label:
 ```tsx
 import { Card, CardContent } from '@elirobinson/react/components/molecules/Card';
 
-export function StatCard({ label, value, delta }: { label: string; value: string; delta?: string }) {
+export function StatCard({
+  label,
+  value,
+  delta,
+}: {
+  label: string;
+  value: string;
+  delta?: string;
+}) {
   return (
     <Card>
       <CardContent className="stat-card">
@@ -79,7 +87,14 @@ const columns: ColumnDef<Order>[] = [
 ];
 
 export function OrdersTable({ orders }: { orders: Order[] }) {
-  return <Table data={orders} columns={columns} pageSize={10} emptyMessage="No orders yet — share your store link." />;
+  return (
+    <Table
+      data={orders}
+      columns={columns}
+      pageSize={10}
+      emptyMessage="No orders yet — share your store link."
+    />
+  );
 }
 ```
 

@@ -3,9 +3,9 @@ export const metadata = { title: 'The tier boundary' };
 # The tier boundary
 
 <p className="lead">
-  Components live under `packages/react/src/components/&lt;tier&gt;/` — atoms, molecules,
-  or organisms. The boundary is a rule you can apply mechanically, not a judgment call,
-  and it decides where a component lives and what it's allowed to do.
+  Components live under `packages/react/src/components/&lt;tier&gt;/` — atoms, molecules, or
+  organisms. The boundary is a rule you can apply mechanically, not a judgment call, and it decides
+  where a component lives and what it's allowed to do.
 </p>
 
 ## The rule
@@ -22,7 +22,7 @@ Ask these questions in order:
 
 ## Why the line sits there
 
-The boundary tracks *behavioral complexity*, not visual size. Overlay orchestration —
+The boundary tracks _behavioral complexity_, not visual size. Overlay orchestration —
 portals, focus management, keyboard navigation across children — is where accessibility
 bugs live, so the components that do it are quarantined in one tier where the shared
 [interaction hooks](/components/hooks) and heavier test suites apply. A molecule stays

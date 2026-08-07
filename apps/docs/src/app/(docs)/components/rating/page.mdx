@@ -52,12 +52,12 @@ don't choose the mode explicitly — the prop you pass decides it.
 <DoDont
   do={[
     'Omit onValueChange for a rating you\'re only displaying — it gets you the cheaper role="img" markup.',
-    'Show the numeric value alongside the stars for anyone who can\'t easily count filled icons.',
+    "Show the numeric value alongside the stars for anyone who can't easily count filled icons.",
     'Keep max consistent across a list of ratings so stars are visually comparable.',
     'Confirm a submitted rating with text, not just the filled stars — "You rated this 4 out of 5."',
   ]}
   dont={[
-    'Pass onValueChange to a rating the user shouldn\'t be able to change, like an aggregate average.',
+    "Pass onValueChange to a rating the user shouldn't be able to change, like an aggregate average.",
     'Expect arrow-key adjustment — Rating is a button row, not an ARIA slider.',
     'Use Rating for a binary like/dislike — a single toggle or Chip fits that better.',
     'Rely on star color alone to convey the value; the aria-label already carries the number.',

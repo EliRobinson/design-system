@@ -59,7 +59,7 @@ export default function HomePage() {
   const stats = [
     { value: components.length, label: 'components' },
     { value: hooks.length, label: 'interaction hooks' },
-    { value: cssTokens().length, label: 'design tokens' },
+    { value: new Set(cssTokens().map((t) => t.name)).size, label: 'design tokens' },
     { value: 3, label: 'published packages' },
   ];
 

@@ -154,12 +154,16 @@ function findExportedTypes(source: string): string[] {
 const JSDOC_BLOCK = String.raw`\/\*\*((?:(?!\*\/)[\s\S])*)\*\/`;
 
 function findFileHooks(source: string): { name: string; description: string }[] {
-  return [...source.matchAll(new RegExp(`(?:${JSDOC_BLOCK}\\s*)?export function (use\\w+)`, 'g'))].map(
-    (m) => ({ name: m[2], description: m[1] ? cleanJsDoc(m[1]) : '' }),
-  );
+  return [
+    ...source.matchAll(new RegExp(`(?:${JSDOC_BLOCK}\\s*)?export function (use\\w+)`, 'g')),
+  ].map((m) => ({ name: m[2], description: m[1] ? cleanJsDoc(m[1]) : '' }));
 }
 
-function stylesheetsFor(tier: Tier, name: string, source: string): { paths: string[]; gaps: string[] } {
+function stylesheetsFor(
+  tier: Tier,
+  name: string,
+  source: string,
+): { paths: string[]; gaps: string[] } {
   const paths = new Set<string>();
   const gaps: string[] = [];
   const sibling = join(componentsDir, tier, `${name}.css`);
@@ -220,8 +224,7 @@ function extractComponent(tier: Tier, file: string): ComponentRecord {
   const { paths: stylesheetPaths, gaps: styleGaps } = stylesheetsFor(tier, name, source);
   gaps.push(...styleGaps);
 
-  const description =
-    (primary?.description || '').trim() || descriptions[name] || '';
+  const description = (primary?.description || '').trim() || descriptions[name] || '';
   if (!description) {
     gaps.push('no description available from source JSDoc or curated list');
   }
@@ -288,11 +291,7 @@ process.stdout.write(
   `component-manifest.json: ${components.length} components, ${manifest.hooks.length} hooks\n`,
 );
 
-const withGaps = components.filter(
-  (c) => c.extractionGaps.length > 0,
-);
+const withGaps = components.filter((c) => c.extractionGaps.length > 0);
 if (withGaps.length > 0) {
-  process.stdout.write(
-    `extraction gaps recorded for: ${withGaps.map((c) => c.name).join(', ')}\n`,
-  );
+  process.stdout.write(`extraction gaps recorded for: ${withGaps.map((c) => c.name).join(', ')}\n`);
 }

@@ -5,18 +5,18 @@ export const metadata = { title: 'Build with AI' };
 # Build with AI
 
 <p className="lead">
-  Coding agents are first-class users of this system. Everything on this page — the
-  endpoints and the prompts — derives from the same generated manifest as the
-  human-readable docs, so an agent and a person always read the same truth.
+  Coding agents are first-class users of this system. Everything on this page — the endpoints and
+  the prompts — derives from the same generated manifest as the human-readable docs, so an agent and
+  a person always read the same truth.
 </p>
 
 ## Machine-readable endpoints
 
-| Endpoint | What an agent gets |
-| --- | --- |
-| [/llms.txt](/llms.txt) | The index: what the system is, how to install it, and every component and hook with its import subpath and one-line purpose. |
-| [/llms-full.txt](/llms-full.txt) | The full corpus: all ~120 tokens with values, the machine-checkable constraints, every component with its complete prop table and page prose, the hooks, and the patterns. One file an agent can be handed wholesale. |
-| `/r/<slug>.json` (e.g. [/r/button.json](/r/button.json)) | One component's structured record — import path, stylesheets, props, sub-components, constraints, extraction notes — for agents that fetch precisely instead of wholesale. |
+| Endpoint                                                 | What an agent gets                                                                                                                                                                                                    |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [/llms.txt](/llms.txt)                                   | The index: what the system is, how to install it, and every component and hook with its import subpath and one-line purpose.                                                                                          |
+| [/llms-full.txt](/llms-full.txt)                         | The full corpus: all ~120 tokens with values, the machine-checkable constraints, every component with its complete prop table and page prose, the hooks, and the patterns. One file an agent can be handed wholesale. |
+| `/r/<slug>.json` (e.g. [/r/button.json](/r/button.json)) | One component's structured record — import path, stylesheets, props, sub-components, constraints, extraction notes — for agents that fetch precisely instead of wholesale.                                            |
 
 These aren't hand-written: a build-time extraction walks the component source and emits
 one manifest that feeds the props tables on this site, the search index, and these

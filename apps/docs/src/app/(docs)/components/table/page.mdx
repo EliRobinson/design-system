@@ -74,12 +74,12 @@ genuinely empty `data` and for a filter that matches nothing.
     'Give every column a stable accessorKey so sorting and cell rendering read from the exact same field.',
     'Set filterPlaceholder to something specific ("Filter orders") — it doubles as the input\'s accessible name.',
     'Write an emptyMessage for the actual context ("No orders yet") instead of leaving the generic default.',
-    'Size pageSize to the data\'s natural chunk — a week of activity, a page of search results.',
+    "Size pageSize to the data's natural chunk — a week of activity, a page of search results.",
   ]}
   dont={[
     'Reach for Table once a dataset runs past a few hundred rows with no natural stopping point — use VirtualTable instead.',
     'Assume data.length tells you whether the table is empty — after filtering, the visible row model can be empty while data still has rows.',
-    'Pair filterable with a dataset large enough that typing feels laggy — that is VirtualTable or a server-side filter\'s job.',
+    "Pair filterable with a dataset large enough that typing feels laggy — that is VirtualTable or a server-side filter's job.",
     'Fight the default column sorting with CSS — turn it off per column with enableSorting: false in the ColumnDef instead.',
   ]}
 />

@@ -50,15 +50,15 @@ For a continuous percentage rather than discrete named steps, use `Progress` ins
 <DoDont
   do={[
     'Keep step labels to one or two words — "Payment," not "Enter your payment details."',
-    'Drive activeStep from the same state that controls which step\'s content is rendered.',
+    "Drive activeStep from the same state that controls which step's content is rendered.",
     'Use it for a flow with a small, fixed number of steps known up front.',
     'Reset or preserve step state deliberately when a user navigates away and back.',
   ]}
   dont={[
-    'Expect Stepper to make steps clickable — it\'s a progress display, not navigation.',
+    "Expect Stepper to make steps clickable — it's a progress display, not navigation.",
     'Use 0-indexed step numbers — activeStep counts from 1.',
     'Use Stepper for an open-ended or branching flow; it assumes a fixed linear sequence.',
-    'Reach for Stepper when a simple percentage is all you need — that\'s Progress.',
+    "Reach for Stepper when a simple percentage is all you need — that's Progress.",
   ]}
 />
 
