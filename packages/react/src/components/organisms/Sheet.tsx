@@ -38,10 +38,15 @@ export type SheetProps = {
   children: ReactNode;
 };
 
-export function Sheet({ open: controlledOpen, onOpenChange, children }: SheetProps) {
+export function Sheet({
+  open: controlledOpen,
+  defaultOpen = false,
+  onOpenChange,
+  children,
+}: SheetProps) {
   const titleId = 'ds-sheet-title';
   const descriptionId = 'ds-sheet-description';
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
   const open = controlledOpen ?? uncontrolledOpen;
 
   const handleOpenChange = useCallback(
