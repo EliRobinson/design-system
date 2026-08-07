@@ -51,6 +51,14 @@ rediscover. Not a deliverable.
   CSS but only the 18px input + label text are actually clickable; `Input`/`Textarea`
   leave a dangling hint id in `aria-describedby` when `error` replaces `hint`;
   `Pagination` has no arrow-key navigation (plain button row).
+- **Rebase onto origin/main (pre-PR) invalidated two of those findings** — main had
+  meanwhile landed `fix(react): make portal components server-renderable` (Toaster now
+  gates its portal on a new `useHasMounted` hook — 6th exported hook) and
+  `fix(react): honour defaultOpen on overlay components`. Updated accordingly: toast page
+  lost its ClientOnly wrapper (component deleted), sheet page's defaultOpen "don't"
+  rewritten, hook counts bumped to 6 (manifest test, hooks page, installation page).
+  The manifest picked up `useHasMounted` automatically — the pipeline working as
+  designed.
 - **Sub-agent fan-out worked with one template violation**: 4 agents (sonnet), 43 pages;
   toast and virtual-table pages omitted `<ComponentHeader />` (caught by a grep audit);
   one cross-agent typecheck error (tabs demo) was fixed by its owner before finishing.

@@ -61,7 +61,7 @@ shown above.
     'Pair SheetClose with an explicit confirm action in SheetFooter so Cancel and the primary action are both one click away.',
   ]}
   dont={[
-    'Pass defaultOpen expecting a pre-opened sheet — set initial visibility through open/onOpenChange instead.',
+    'Mix defaultOpen with the controlled open prop — pick uncontrolled (defaultOpen) or controlled (open/onOpenChange), not both.',
     "Nest a second Sheet inside the first one's content — close the first before opening another.",
     'Skip SheetDescription and expect the title alone to explain what the sheet is for.',
     'Put a primary action only inside the sheet with no way to reach it by keyboard — it inherits full native dialog tabbing, so this is rarely an issue unless you fight it with tabIndex.',

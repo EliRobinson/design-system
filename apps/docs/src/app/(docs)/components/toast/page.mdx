@@ -3,7 +3,6 @@ import { DemoBlock } from '@/components/docs/DemoBlock';
 import { DoDont } from '@/components/docs/DoDont';
 import { PropsTables } from '@/components/docs/PropsTables';
 import { RelatedComponents } from '@/components/docs/RelatedComponents';
-import { ClientOnly } from '@/components/docs/ClientOnly';
 import Basic from '@/components/demos/toast/Basic';
 import Variants from '@/components/demos/toast/Variants';
 import WithAction from '@/components/demos/toast/WithAction';
@@ -17,9 +16,7 @@ it to dispatch. `Toaster` renders nothing visible on its own — it owns the toa
 portals the viewport to the end of `<body>`.
 
 <DemoBlock file="toast/Basic.tsx">
-  <ClientOnly>
-    <Basic />
-  </ClientOnly>
+  <Basic />
 </DemoBlock>
 
 ## When to use it
@@ -35,9 +32,7 @@ next step. Put that in the page instead, where it stays until it's fixed.
 through `toast({ ..., variant })`.
 
 <DemoBlock file="toast/Variants.tsx">
-  <ClientOnly>
-    <Variants />
-  </ClientOnly>
+  <Variants />
 </DemoBlock>
 
 ## Composing a toast with an action
@@ -49,9 +44,7 @@ going through `useToast()`. Composed this way it renders in place, not through t
 so it shows up wherever you put it — here, inline in the demo stage.
 
 <DemoBlock file="toast/WithAction.tsx">
-  <ClientOnly>
-    <WithAction />
-  </ClientOnly>
+  <WithAction />
 </DemoBlock>
 
 ## Props
@@ -71,9 +64,9 @@ so it shows up wherever you put it — here, inline in the demo stage.
 - The viewport is portaled to `document.body` and fixed to the bottom-right corner — it
   renders outside wherever in the DOM you called `toast()` from, including outside the demo
   stage above.
-- Because `Toaster` touches `document.body` during render, it cannot server-render. In an
-  SSR framework like Next.js, mount it inside a client-only boundary (this page's demos do
-  exactly that).
+- `Toaster` skips its portal on the server and first client render (via the package's
+  `useHasMounted` hook), so it server-renders cleanly in Next.js and Remix — no client-only
+  boundary needed. Toasts only exist after an interaction, so nothing is lost.
 - Nothing moves focus when a toast appears. A reader mid-task is never interrupted; a
   `ToastAction`, when present, is just a normal button already in the page's tab order.
 

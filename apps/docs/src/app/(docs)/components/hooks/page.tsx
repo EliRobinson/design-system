@@ -13,6 +13,8 @@ const USED_BY: Record<string, string> = {
   useClickOutside: 'Used by the anchored overlays — Popover, DropdownMenu, Combobox, DatePicker.',
   useEscapeKey: 'Used by the anchored overlays alongside useClickOutside.',
   useAnchoredPosition: 'Used by Popover, DropdownMenu, Tooltip, Combobox, and DatePicker.',
+  useHasMounted:
+    'Used by Toaster, PopoverContent, and DropdownMenuContent to skip their portals during server rendering.',
 };
 
 export default function HooksPage() {
@@ -20,9 +22,9 @@ export default function HooksPage() {
     <>
       <h1>Interaction hooks</h1>
       <p className="lead">
-        Five hooks carry the keyboard and dismissal behavior the organisms share. They're exported
-        so a composite widget you build yourself can inherit the same contracts instead of
-        re-implementing them — prefer these over hand-rolled key handlers.
+        Six hooks carry the keyboard, dismissal, and mount-gating behavior the organisms share.
+        They're exported so a composite widget you build yourself can inherit the same contracts
+        instead of re-implementing them — prefer these over hand-rolled key handlers.
       </p>
       {hooks.map((hook) => (
         <section key={hook.name}>
