@@ -1152,12 +1152,12 @@
 }
 
 .ds-chip__remove {
-  align-self: center;
+  align-self: stretch;
+  margin-block: -1px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 24px;
-  height: 44px;
   border-radius: 9999px;
   border: none;
   background: transparent;
