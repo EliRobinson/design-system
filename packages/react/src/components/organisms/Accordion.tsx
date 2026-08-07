@@ -196,9 +196,9 @@ export const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerPr
     const HeadingTag = HEADING_TAGS[headingLevel];
 
     // Compose rather than replace: a consumer-supplied onClick still runs,
-    // but it can never prevent the trigger from toggling (see task-16 fix
-    // round 1, finding 1 -- a naive `{...props}` spread after a hardcoded
-    // `onClick` let a consumer's handler silently clobber the toggle).
+    // but it can never prevent the trigger from toggling. A naive `{...props}`
+    // spread after a hardcoded `onClick` would instead let a consumer's handler
+    // silently replace the toggle.
     const handleClick: MouseEventHandler<HTMLButtonElement> = (event) => {
       onClick?.(event);
       toggle(value);

@@ -68,8 +68,8 @@ function buildWeeks(year: number, month: number): (number | null)[][] {
 // no HTML-attribute passthrough and therefore no trailing `{...props}`
 // spread anywhere below -- every attribute placed on the input and on the
 // grid/row/gridcell/day elements is computed internally, so there is no
-// open surface for a consumer (typed or not) to silently clobber via A12's
-// "computed prop clobbered by a later spread" failure mode.
+// open surface for a consumer to silently clobber a computed prop with a
+// later spread.
 export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(function DatePicker(
   { label, value, onValueChange, className },
   ref,
