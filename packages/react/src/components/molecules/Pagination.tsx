@@ -14,6 +14,10 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(function Pagi
   ref,
 ) {
   const pages = Array.from({ length: pageCount }, (_, index) => index + 1);
+  const goTo = (target: number) => {
+    if (pageCount <= 0) return;
+    onPageChange(Math.min(Math.max(target, 1), pageCount));
+  };
 
   return (
     <nav ref={ref} aria-label="Pagination" className={cn('ds-pagination', className)} {...props}>
@@ -22,7 +26,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(function Pagi
         className="ds-pagination__nav"
         aria-label="Previous page"
         disabled={page <= 1}
-        onClick={() => onPageChange(page - 1)}
+        onClick={() => goTo(page - 1)}
       >
         ‹
       </button>
@@ -49,7 +53,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(function Pagi
         className="ds-pagination__nav"
         aria-label="Next page"
         disabled={page >= pageCount}
-        onClick={() => onPageChange(page + 1)}
+        onClick={() => goTo(page + 1)}
       >
         ›
       </button>
