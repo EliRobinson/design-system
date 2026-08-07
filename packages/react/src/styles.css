@@ -1840,3 +1840,55 @@ table.ds-table td {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
+
+/* ==========================================================================
+   CommandPalette
+   ========================================================================== */
+
+/* No custom width/backdrop/stacking rules here -- CommandPalette renders its
+   body inside <DialogContent>, so `.ds-dialog` (max-width, backdrop) and
+   `.ds-dialog__inner` (surface, border, shadow, grid layout, gap, padding)
+   already own those concerns. This block only styles what's unique to the
+   palette's own content: the search field spacing, the command list, and
+   its items. */
+
+.ds-command-palette .ds-search-field {
+  width: 100%;
+}
+
+.ds-command-palette__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.ds-command-palette__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.ds-command-palette__item:hover,
+.ds-command-palette__item--active {
+  background: var(--bg-subtle);
+}
+
+.ds-command-palette__shortcut {
+  display: flex;
+  gap: 4px;
+}
+
+.ds-command-palette__empty {
+  padding: var(--space-3);
+  color: var(--fg-3);
+  font-size: var(--fs-sm);
+}
