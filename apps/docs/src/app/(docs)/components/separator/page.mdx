@@ -1,0 +1,59 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/separator/Basic';
+import Vertical from '@/components/demos/separator/Vertical';
+
+export const metadata = { title: 'Separator' };
+
+<ComponentHeader slug="separator" />
+
+<DemoBlock file="separator/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Separator` for a hairline divider that marks a real break between content
+groups — sections, toolbar clusters, nav items. If you just need whitespace, a CSS gap
+is simpler and skips the ARIA semantics this component adds.
+
+## Vertical
+
+A vertical separator has no height of its own — give its flex container a defined
+height.
+
+<DemoBlock file="separator/Vertical.tsx">
+  <Vertical />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="separator" />
+
+## Accessibility
+
+- Defaults to `role="separator"` with `aria-orientation` matching `orientation` — a
+  static divider, not a focusable, resizable splitter.
+- `role` is overridable: if the separator is purely decorative spacing with no
+  thematic-break meaning, pass `role="none"` yourself to drop it out of the
+  accessibility tree. The default assumes it *is* meaningful.
+
+<DoDont
+  do={[
+    'Use orientation="vertical" inside a flex row with a defined height — a vertical hairline has no height of its own.',
+    'Let the default role="separator" stand when the divider marks a real content break.',
+    'Override role="none" yourself when the separator is purely decorative.',
+  ]}
+  dont={[
+    'Use Separator as a layout spacer where a CSS gap would do — that’s simpler and skips the ARIA semantics.',
+    'Nest interactive content inside it — it’s a single hairline, not a container.',
+    'Forget the fixed height for a vertical separator outside a flex context that already constrains height — it collapses to nothing.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['dropdown-menu', 'card', 'breadcrumb']} />

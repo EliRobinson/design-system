@@ -1,0 +1,109 @@
+export const metadata = { title: 'Header pattern' };
+
+# Header
+
+<p className="lead">
+  The site header is a recipe, not an import — compose it from primitives. It's the one
+  place the brand sanctions a blur: 92% white with `backdrop-filter` once content scrolls
+  beneath it.
+</p>
+
+Prototyped in `design-system-docs/ui_kits/marketing/` and shown live in Storybook under
+**Patterns/Marketing**.
+
+## Ingredients
+
+[Button](/components/button) for the CTA, the wordmark, plain links, and tokens for
+everything else.
+
+## Recipe
+
+```tsx
+import { Button } from '@elirobinson/react/components/atoms/Button';
+
+export function SiteHeader({ active }: { active: string }) {
+  const items = ['Home', 'Portfolio', 'Store', 'Services', 'About'];
+  return (
+    <header className="header">
+      <a href="/" className="header__wordmark" aria-label="Miltinson home">
+        Miltinson<span className="header__dot">.</span>
+      </a>
+      <nav className="header__nav" aria-label="Primary">
+        {items.map((item) => (
+          <a
+            key={item}
+            href="#"
+            className="header__link"
+            aria-current={active === item ? 'page' : undefined}
+          >
+            {item}
+          </a>
+        ))}
+        <Button variant="primary" size="sm">
+          Hire me
+        </Button>
+      </nav>
+    </header>
+  );
+}
+```
+
+```css
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 var(--gutter);
+  background: oklch(100% 0 0 / 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+
+.header__wordmark {
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-xl);
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.header__dot {
+  color: var(--accent);
+}
+
+.header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.header__link {
+  font-size: var(--fs-sm);
+  color: var(--fg-2);
+  text-decoration: none;
+  /* nav items are primary controls — keep the 44px target */
+  padding: var(--space-3) 0;
+}
+
+.header__link:hover,
+.header__link[aria-current='page'] {
+  color: var(--fg);
+}
+
+.header__link[aria-current='page'] {
+  font-weight: var(--fw-medium);
+}
+```
+
+## Rules
+
+- **Height 64px, sticky, always visible.** No hide-on-scroll tricks.
+- **One CTA at most**, `size="sm"` so it sits inside the 64px band.
+- **Active link:** ink + medium weight — not amber; amber in the header belongs to the
+  wordmark dot alone.
+- Nav links keep a 44px vertical hit area via padding.
+- On small screens, collapse nav items behind a [Sheet](/components/sheet)-based menu
+  rather than shrinking tap targets.

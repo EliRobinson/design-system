@@ -1,0 +1,63 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/slider/Basic';
+import Controlled from '@/components/demos/slider/Controlled';
+
+export const metadata = { title: 'Slider' };
+
+<ComponentHeader slug="slider" />
+
+<DemoBlock file="slider/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Slider` for a value picked from a continuous or stepped numeric range, where the
+gesture matters more than the exact typed number — volume, brightness, a price range.
+Use `Input type="number"` instead when typed precision is the point (dollar amounts,
+exact ages).
+
+## Controlled
+
+`Slider` doesn't render the current value anywhere — show it yourself off the same
+state.
+
+<DemoBlock file="slider/Controlled.tsx">
+  <Controlled />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="slider" />
+
+## Accessibility
+
+- Renders a native `<input type="range">`, which carries the implicit `slider` role and
+  full keyboard support from the browser — arrow keys adjust by `step`, `Home`/`End`
+  jump to the min/max. Nothing here reimplements it.
+- The label is a real `<label htmlFor>` pointed at the input's id, auto-generated with
+  `useId` when you don't pass one.
+- No value bubble or tooltip appears while dragging — if readers need to see the number,
+  render it next to the slider yourself.
+- The ref forwards to the underlying `<input>`.
+
+<DoDont
+  do={[
+    'Always pass min, max, and a sensible step — the native range default (0–100, step 1) is rarely what you actually want.',
+    'Show the live value near the slider yourself when the exact number matters — the component doesn’t render one.',
+    'Use defaultValue for uncontrolled, or value + onChange for controlled — same native contract as any range input.',
+  ]}
+  dont={[
+    'Expect a tooltip or value bubble to appear automatically while dragging — build it yourself off the same state.',
+    'Use Slider for a value that needs typed precision — Input type="number" is more honest there.',
+    'Forget the label — it’s required, and it’s the only accessible name the range input gets.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['progress', 'input', 'switch']} />

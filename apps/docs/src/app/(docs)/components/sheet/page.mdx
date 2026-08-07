@@ -1,0 +1,73 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/sheet/Basic';
+import Sides from '@/components/demos/sheet/Sides';
+
+export const metadata = { title: 'Sheet' };
+
+<ComponentHeader slug="sheet" />
+
+<DemoBlock file="sheet/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Sheet` for a task that needs more room than a `Popover` but shouldn't take over the
+whole screen — filters, a detail panel, a settings drawer. It's built on the native
+`<dialog>` element, so the focus trap, the backdrop, and Escape-to-close all come from the
+browser instead of a hand-rolled implementation.
+
+Reach for `Dialog` instead when the content itself is the task and centering it is the
+point — a confirmation, a form that should block the rest of the page. A `Sheet` stays
+anchored to an edge, which reads as "secondary to what's behind it" even while it's open.
+
+## Sides
+
+`SheetContent` takes a `side` — `left`, `right`, `top`, or `bottom`. `right` is the default,
+shown above.
+
+<DemoBlock file="sheet/Sides.tsx">
+  <Sides />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="sheet" />
+
+## Accessibility
+
+- `SheetContent` calls the native `showModal()` when it opens, so it inherits the browser's
+  own focus trap, `::backdrop`, and background inerting — none of that is reimplemented.
+- **Keyboard:** `Escape` closes the sheet. That's native `<dialog>` behavior (it fires a
+  `cancel` then `close` event), which `Sheet` listens for and turns into `onOpenChange(false)`
+  — no keydown handler needed.
+- Clicking the backdrop — the `<dialog>` element itself, outside the inner content — also
+  closes the sheet.
+- `SheetTitle` and `SheetDescription` supply the ids `SheetContent` points `aria-labelledby`
+  and `aria-describedby` at. Always render a `SheetTitle`, even visually hidden — the
+  reference is unconditional, so a sheet without one is a dialog with no accessible name.
+- `SheetClose` renders a real `<button type="button">` with a "Close" fallback label when
+  you don't pass children.
+
+<DoDont
+  do={[
+    'Render a SheetTitle inside SheetHeader every time, even if you hide it visually.',
+    'Drive visibility with the open/onOpenChange controlled pair.',
+    'Pick side to match the content — top or bottom for something short and wide, left or right for anything list-like.',
+    'Pair SheetClose with an explicit confirm action in SheetFooter so Cancel and the primary action are both one click away.',
+  ]}
+  dont={[
+    'Pass defaultOpen expecting a pre-opened sheet — set initial visibility through open/onOpenChange instead.',
+    'Nest a second Sheet inside the first one\'s content — close the first before opening another.',
+    'Skip SheetDescription and expect the title alone to explain what the sheet is for.',
+    'Put a primary action only inside the sheet with no way to reach it by keyboard — it inherits full native dialog tabbing, so this is rarely an issue unless you fight it with tabIndex.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['dialog', 'popover', 'dropdown-menu', 'button']} />

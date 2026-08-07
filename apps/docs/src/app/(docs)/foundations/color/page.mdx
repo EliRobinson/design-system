@@ -1,0 +1,61 @@
+import { ColorScale } from '@/components/foundations/ColorScale';
+import { ContrastMatrix } from '@/components/foundations/ContrastMatrix';
+import { SemanticColorTable } from '@/components/foundations/SemanticColorTable';
+
+export const metadata = { title: 'Color' };
+
+# Color
+
+<p className="lead">
+  The palette is ink-led: black type on white surfaces, hairline borders, and one loud
+  color — Miltinson Amber — used as a signal, never a fill. Every value on this page is
+  read live from `@elirobinson/tokens/tokens.css`; the swatches and contrast ratios below
+  cannot drift from what the package ships.
+</p>
+
+## How to think about it
+
+- **Ink does the work.** Headings are pure black, body text near-black, and hierarchy
+  comes from the ink scale — not from adding color.
+- **Amber is the only loud color.** Primary CTAs, the dot in the wordmark, eyebrow
+  underlines, key stats, link hovers. If two things on a screen are amber, one of them
+  is wrong.
+- **Forest is the quiet second.** Trust marks, success states, and the earnest surfaces
+  (coaching guides). It anchors; it doesn't shout.
+- **No gradients, no purple.** Flat color only.
+
+Reference semantic tokens (`--fg`, `--surface`, `--accent`) in components, never raw
+scale values (`--ink-500`) — the semantic layer is what makes a future dark theme
+possible without touching component code.
+
+## Ink — the neutral scale
+
+<ColorScale prefix="ink" />
+
+## Signal — Miltinson Amber
+
+Warm, craftsman, honest. `--signal-500` is the brand amber; the darker steps exist
+because raw amber fails AA on white — text uses `--signal-700` and darker.
+
+<ColorScale prefix="signal" />
+
+## Anchor — Miltinson Forest
+
+<ColorScale prefix="anchor" />
+
+## Semantic tokens
+
+These are the names components actually use. Each references a base-scale value, so
+retuning the palette is a one-line change per token.
+
+<SemanticColorTable />
+
+## Contrast
+
+Computed from the live token values with WCAG 2.x math. Two pairings deserve a note:
+raw amber (`--accent`) fails AA as text on white — which is exactly why button labels
+use `--accent-fg` (ink on amber, 8.7:1) and text links only shift to amber's dark step
+(`--signal-700`) on hover. `--status-warning` passes at large sizes only; pair it with
+an icon or keep warning text at `--fg` with a warning-colored border.
+
+<ContrastMatrix />

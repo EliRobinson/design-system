@@ -1,0 +1,77 @@
+import { PromptTemplate } from '@/components/docs/PromptTemplate';
+
+export const metadata = { title: 'Build with AI' };
+
+# Build with AI
+
+<p className="lead">
+  Coding agents are first-class users of this system. Everything on this page — the
+  endpoints and the prompts — derives from the same generated manifest as the
+  human-readable docs, so an agent and a person always read the same truth.
+</p>
+
+## Machine-readable endpoints
+
+| Endpoint | What an agent gets |
+| --- | --- |
+| [/llms.txt](/llms.txt) | The index: what the system is, how to install it, and every component and hook with its import subpath and one-line purpose. |
+| [/llms-full.txt](/llms-full.txt) | The full corpus: all ~120 tokens with values, the machine-checkable constraints, every component with its complete prop table and page prose, the hooks, and the patterns. One file an agent can be handed wholesale. |
+| `/r/<slug>.json` (e.g. [/r/button.json](/r/button.json)) | One component's structured record — import path, stylesheets, props, sub-components, constraints, extraction notes — for agents that fetch precisely instead of wholesale. |
+
+These aren't hand-written: a build-time extraction walks the component source and emits
+one manifest that feeds the props tables on this site, the search index, and these
+endpoints. A prop renamed in `packages/react` propagates to all three on the next build —
+the AI surface cannot silently drift from the code.
+
+## The contracts
+
+`@elirobinson/ai-patterns/contracts` carries the system's rules in machine-checkable form:
+the scoped touch-target policy, the `forwardRef` requirement, the tier boundary, the
+no-barrel-files import convention, and the WCAG AA floor. Agents should cite these
+constraint ids when auditing or generating code:
+
+```tsx
+import contracts from '@elirobinson/ai-patterns/contracts';
+
+// contracts.componentConstraints['touch-target-primary'].summary
+// contracts.componentConstraints['no-barrel-imports'].check
+```
+
+## Prompt templates
+
+Three templates ship in the published `@elirobinson/ai-patterns` package under
+`prompts/` — versioned with the system, not pasted from a wiki. Each states intent,
+constraints, and a verification checklist, per the house prompt style. Copy one, fill in
+the brackets, hand it to your agent.
+
+### Add a component to the system
+
+For expanding `@elirobinson/react` — carries the tier rule, the touch-target policy, and
+the definition of done.
+
+<PromptTemplate file="add-component.md" />
+
+### Adopt the system in an existing app
+
+The three-step migration (primitives → tokens → keyboard pass) as an agent task with
+verifiable exit criteria.
+
+<PromptTemplate file="adopt-system.md" />
+
+### Audit a page for compliance
+
+Point it at a route; get findings with constraint ids, computed contrast ratios, and a
+ranked fix list.
+
+<PromptTemplate file="audit-page.md" />
+
+## Rules of engagement for agents
+
+- Import via subpaths only — `@elirobinson/react/components/atoms/Button`. A bare
+  `@elirobinson/react` import doesn't resolve; if you generate one, the code is wrong.
+- Prefer semantic tokens over raw scale values, and the `--space-*` scale over pixel
+  values.
+- Don't invent props. The prop tables here are extracted from source; if a prop isn't in
+  the table or the inherited HTML attributes, it doesn't exist.
+- The keyboard contracts on component pages are backed by tests — match them, don't
+  approximate them.

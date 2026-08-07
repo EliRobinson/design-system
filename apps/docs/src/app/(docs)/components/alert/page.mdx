@@ -1,0 +1,71 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/alert/Basic';
+import Variants from '@/components/demos/alert/Variants';
+
+export const metadata = { title: 'Alert' };
+
+<ComponentHeader slug="alert" />
+
+<DemoBlock file="alert/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Alert` for a status message tied to the content around it — a save confirmation above
+a form, a warning inline in a settings panel. It stays on the page until you remove it or
+the underlying condition changes; it doesn't dismiss itself.
+
+For a message that should interrupt briefly and then go away, use `Toast` instead. For a
+single-word status label inline with other content (a row, a card header), `Badge` is the
+lighter option — `Alert` is for a sentence, not a tag.
+
+## Variants
+
+`default` is a neutral callout with no color association — use it for information that
+isn't good or bad news. The other four map to status meaning: `success`, `warning`,
+`danger`, `info`.
+
+<DemoBlock file="alert/Variants.tsx">
+  <Variants />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="alert" />
+
+## Accessibility
+
+- Renders with `role="alert"` by default, which most screen readers announce
+  immediately as an assertive live region — reserve `Alert` for messages that genuinely
+  need that interruption. Pass `role="status"` explicitly for a politer, non-interrupting
+  announcement.
+- `title` and `children` are both optional and render as separate elements
+  (`ds-alert__title`, `ds-alert__description`) — pass at least one; an `Alert` with
+  neither renders an empty shell.
+- There's no built-in dismiss button. If you need one, compose it yourself and manage
+  the `Alert`'s presence in state — the component doesn't invent a close affordance.
+- The ref forwards to the outer `<div>`.
+
+<DoDont
+  do={[
+    'Pair the variant with matching language — "warning" copy that actually warns, not a neutral status buried in an amber box.',
+    'Keep the message short enough to read at a glance; link out for anything longer.',
+    'Use variant="danger" for something the reader must act on, not routine information.',
+    'Remove the Alert from the DOM once its condition resolves, rather than leaving a stale "Saved" banner on screen.',
+  ]}
+  dont={[
+    'Use Alert for a transient confirmation that should auto-dismiss — that\'s Toast.',
+    'Stack more than one or two Alerts in the same view; it stops reading as a signal.',
+    'Rely on color alone — the title text should say "warning" or "error," not just look amber or red.',
+    'Nest interactive controls that need their own focus management inside an Alert without testing the announcement order.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['toast', 'badge', 'empty-state']} />

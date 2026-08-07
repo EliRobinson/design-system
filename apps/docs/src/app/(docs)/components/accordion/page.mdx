@@ -1,0 +1,97 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/accordion/Basic';
+import Multiple from '@/components/demos/accordion/Multiple';
+import Controlled from '@/components/demos/accordion/Controlled';
+import HeadingLevel from '@/components/demos/accordion/HeadingLevel';
+
+export const metadata = { title: 'Accordion' };
+
+<ComponentHeader slug="accordion" />
+
+<DemoBlock file="accordion/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Accordion` for content that's fine collapsed by default — FAQs, settings groups,
+secondary detail the reader can opt into rather than has to read. `type="single"` is right
+when opening one section implies you're done with the others (an FAQ, a set of mutually
+exclusive options); `type="multiple"` is right when a reader might want two sections open at
+once to compare them.
+
+Don't use it as a substitute for real page structure. If every "section" is content someone
+always needs, put it directly on the page — collapsing it just adds a click.
+
+## Multiple sections open at once
+
+<DemoBlock file="accordion/Multiple.tsx">
+  <Multiple />
+</DemoBlock>
+
+## Controlled
+
+Pass `value` and `onValueChange` to drive the open section from outside — useful when
+something else on the page (a link, a search result) needs to jump to a specific section.
+
+<DemoBlock file="accordion/Controlled.tsx">
+  <Controlled />
+</DemoBlock>
+
+## Heading level
+
+There's no single correct heading level for an arbitrary document outline, so `headingLevel`
+is exposed rather than hardcoded. Nest an accordion under an `<h2>` page section and leave the
+default (`headingLevel={3}`, an `<h3>` per trigger); nest it directly under the page's own
+`<h1>` and pass `headingLevel={2}`. An out-of-range value falls back to 3 rather than crashing
+the tree.
+
+<DemoBlock file="accordion/HeadingLevel.tsx">
+  <HeadingLevel />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="accordion" />
+
+## Accessibility
+
+- Follows the WAI-ARIA accordion pattern: each `AccordionTrigger` renders a real `<button>`
+  wrapped in a heading tag (`headingLevel`, default `h3`).
+- The trigger carries `aria-expanded` and `aria-controls`; the matching `AccordionContent`
+  carries `id` and `aria-labelledby` pointing back at the trigger. All of it is computed
+  internally — `id`/`aria-expanded`/`aria-controls`/`role`/`aria-labelledby` are omitted from
+  the public prop types so a consumer can't silently clobber the wiring via a spread.
+- A collapsed section's content isn't hidden with CSS — it isn't rendered at all. Tab order and
+  screen reader traversal skip it entirely rather than landing on invisible text.
+- **Keyboard:** `Tab`/`Shift+Tab` move between triggers, since every trigger is already a
+  naturally focusable `<button>` in document order. `Enter`/`Space` toggle the focused trigger
+  — native button behavior, nothing re-implemented. Arrow-key navigation between headers is
+  intentionally not implemented: per the WAI-ARIA pattern it's optional for accordions (unlike
+  tabs, which uses a single roving tab stop and requires it), so there's nothing broken here to
+  fix.
+- No `Escape` handling — accordions don't have an escape-to-collapse convention, and none is
+  added here.
+
+<DoDont
+  do={[
+    'Set headingLevel to match where the accordion sits in your page outline.',
+    'Use type="single" for mutually exclusive content and type="multiple" when sections can be compared side by side.',
+    'Give every AccordionItem a stable, unique value.',
+    'Let content unmount when collapsed rather than hiding it with CSS — the built-in behavior already does this.',
+  ]}
+  dont={[
+    "Rely on hover to reveal content — it's click/keyboard only, by design.",
+    'Use Accordion for primary navigation — a real nav list is more discoverable.',
+    'Try to override aria-expanded or aria-controls via props — both are omitted from the type specifically to stop that.',
+    'Nest another single roving-tabindex widget inside a trigger — Tab already handles trigger-to-trigger movement correctly.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['tabs', 'card', 'popover']} />

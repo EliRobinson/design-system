@@ -1,0 +1,76 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/dropdown-menu/Basic';
+import Alignment from '@/components/demos/dropdown-menu/Alignment';
+
+export const metadata = { title: 'DropdownMenu' };
+
+<ComponentHeader slug="dropdown-menu" />
+
+<DemoBlock file="dropdown-menu/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `DropdownMenu` for a set of actions anchored to a trigger — row actions in a table, a "…"
+overflow menu, a view switcher. It's action-oriented: items are `role="menuitem"` and run a
+handler, they don't navigate. If every item should actually change the URL, use `NavigationMenu`
+or plain links instead — a `role="menuitem"` on a link tells assistive tech the wrong thing
+about what activating it does.
+
+## Aligning items with inset
+
+`inset` on `DropdownMenuLabel`/`DropdownMenuItem` adds left padding so plain text lines up with
+sibling items that have a leading marker — a checkmark on the current selection, in this case.
+
+<DemoBlock file="dropdown-menu/Alignment.tsx">
+  <Alignment />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="dropdown-menu" />
+
+## Accessibility
+
+- `DropdownMenuContent` renders `role="menu"`, portaled to `document.body`; each
+  `DropdownMenuItem` is `role="menuitem"`. The trigger carries `aria-haspopup="menu"`,
+  `aria-expanded`, and `aria-controls`.
+- `Escape` closes the menu from anywhere on the page — a document-level listener, active only
+  while the menu is open. Clicking anywhere outside the trigger or the menu content also closes
+  it.
+- Opening the menu does **not** move focus into it — clicking or activating the trigger leaves
+  DOM focus on the trigger button itself. Arrow-key/Home/End navigation only takes over once a
+  menu item already has focus (for example, after tabbing to one).
+- **Keyboard, once a menu item has focus:** `ArrowDown`/`ArrowUp` move focus between items and
+  wrap around at both ends (`ArrowDown` past the last item goes to the first, and vice versa —
+  unlike Combobox/CommandPalette's clamped, non-wrapping model, since this menu moves real DOM
+  focus rather than tracking an `aria-activedescendant`). `Home`/`End` jump to the first/last
+  item. `Tab` closes the menu and lets focus continue to whatever's next in the page, rather
+  than trapping it.
+- `DropdownMenuSeparator` renders `role="separator"` with `aria-orientation="horizontal"`.
+- Content is positioned with fixed coordinates computed from the trigger's bounding rect,
+  recalculated when the menu opens (not on every scroll or resize).
+
+<DoDont
+  do={[
+    'Group related items under a DropdownMenuLabel and separate groups with DropdownMenuSeparator.',
+    'Keep item labels as short verb phrases — the menu is for actions, not longform text.',
+    'Give the trigger real content (icon and/or label) — aria-haspopup and aria-expanded are already wired.',
+    'Test with Tab specifically — since initial focus stays on the trigger, keyboard flows depend on Tab order reaching an item.',
+  ]}
+  dont={[
+    'Put a link where an action belongs — items are buttons that run a handler, not anchors that navigate.',
+    'Rely on hover to open it — activation is click/keyboard only, with no hover-intent timer.',
+    'Put a destructive action next to routine ones without a separator.',
+    'Assume the first item gets focus automatically on open — it doesn’t.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['popover', 'command-palette', 'button']} />

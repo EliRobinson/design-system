@@ -1,0 +1,71 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/breadcrumb/Basic';
+import CustomSeparator from '@/components/demos/breadcrumb/CustomSeparator';
+
+export const metadata = { title: 'Breadcrumb' };
+
+<ComponentHeader slug="breadcrumb" />
+
+<DemoBlock file="breadcrumb/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Breadcrumb` to show where a page sits in a fixed hierarchy — store category, then
+product, then variant. It's a trail, not a navigation menu: it only goes up, and it only
+makes sense when the hierarchy is real and shallow. If the structure is a flat set of
+sibling pages instead, `NavigationMenu` or plain links fit better.
+
+## Custom separator
+
+`BreadcrumbSeparator` defaults to `/` but accepts any children — pass an icon or a
+different character to match a tighter visual rhythm.
+
+<DemoBlock file="breadcrumb/CustomSeparator.tsx">
+  <CustomSeparator />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="breadcrumb" />
+
+## Accessibility
+
+- `Breadcrumb` renders a `<nav aria-label="Breadcrumb">` — pass your own `aria-label` to
+  override the default if you have more than one breadcrumb trail on a page.
+- `BreadcrumbList` is a native `<ol>`; `BreadcrumbItem` is a native `<li>` — the ordered
+  list is what gives the trail its "you are here, by way of these" semantics.
+- `BreadcrumbLink` renders two different elements depending on `current`: a real
+  `<a href>` for every ancestor crumb, and a non-interactive `<span aria-current="page">`
+  for the current page. The current crumb is intentionally not a link — you're already
+  there.
+- `BreadcrumbSeparator` is `aria-hidden="true"`, so screen readers skip the `/` (or
+  whatever you pass) entirely and rely on the list structure instead.
+- **Keyboard:** ordinary link behavior — `Tab` moves between the ancestor links, `Enter`
+  follows them. The current crumb isn't in the tab order since it isn't a link.
+- `Breadcrumb`, `BreadcrumbList`, and `BreadcrumbItem` forward refs to their native
+  elements; `BreadcrumbLink` and `BreadcrumbSeparator` don't.
+
+<DoDont
+  do={[
+    'Mark the last crumb current — it renders as plain text instead of a dead link to the current page.',
+    'Keep labels short: category and product names, not full sentences.',
+    'Use real hrefs on every ancestor link so middle-click and cmd-click work.',
+    'Limit the trail to the hierarchy that actually matters — three to five crumbs is typical.',
+  ]}
+  dont={[
+    'Make the current page a clickable link to itself.',
+    "Use Breadcrumb as a substitute for a site's main navigation.",
+    'Put breadcrumbs on a top-level page with nothing above it — an empty trail adds noise.',
+    'Rely on the separator text for meaning — it\'s decorative and hidden from screen readers.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['navigation-menu', 'rule-link', 'tabs']} />

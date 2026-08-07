@@ -1,0 +1,79 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/dialog/Basic';
+import Controlled from '@/components/demos/dialog/Controlled';
+
+export const metadata = { title: 'Dialog' };
+
+<ComponentHeader slug="dialog" />
+
+<DemoBlock file="dialog/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Dialog` when something needs to fully interrupt the page — confirming a destructive
+action, collecting the minimum info needed to continue, a message that has to be dismissed
+before anything else happens. It's built on the real `<dialog>` element, so the modality (focus
+trap, Escape-to-close, blocking the rest of the page) comes from the browser, not from custom
+JavaScript.
+
+For content that's useful but skippable — a hint, a filter panel, extra detail on click — use
+`Popover` instead. Nothing about it blocks the page.
+
+## Controlled
+
+Open a dialog from outside without rendering a `DialogTrigger` at all — pass `open` and
+`onOpenChange` and drive it from wherever the action originates, such as a row action or a
+destructive-confirmation flow.
+
+<DemoBlock file="dialog/Controlled.tsx">
+  <Controlled />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="dialog" />
+
+## Accessibility
+
+- Built on the native `<dialog>` element via `showModal()`/`close()` — not a custom-built
+  modal. The browser supplies the modal semantics, the focus trap, and the top-layer stacking.
+- `aria-labelledby` and `aria-describedby` point at fixed ids generated once per `Dialog`,
+  wired to `DialogTitle` and `DialogDescription` respectively. Always render a `DialogTitle` —
+  it's the dialog's accessible name. `DialogDescription` is optional, but the `aria-describedby`
+  reference exists whether or not you render one.
+- **Keyboard:** `Escape` closes the dialog through the native `<dialog>` cancel/close event —
+  genuine browser behavior, not a custom keydown handler. `Tab`/`Shift+Tab` are trapped inside
+  the dialog automatically by the browser's own modal focus management while it's open.
+- Initial focus is also native `showModal()` behavior — the browser focuses the first
+  focusable element inside the dialog (or the dialog itself if there isn't one) the moment it
+  opens. Nothing in this component manages focus manually.
+- Clicking the backdrop closes the dialog: a click handler compares `event.target` against the
+  `<dialog>` element itself (not `.ds-dialog__inner`), since a native `<dialog>`'s backdrop
+  region is the element's own box outside its content.
+- `DialogTrigger` and `DialogClose` are both plain `<button type="button">`s with no extra
+  keyboard behavior beyond the native button contract (`Enter`/`Space` activate).
+
+<DoDont
+  do={[
+    'Always render a DialogTitle — its id is hardcoded into aria-labelledby.',
+    "Use DialogContent's native modality instead of layering your own overlay div on top of it.",
+    'Compose DialogFooter with DialogClose plus your primary action for a clear cancel/confirm pair.',
+    'Let the browser manage the focus trap and Escape — no extra keydown handler is needed for either.',
+  ]}
+  dont={[
+    'Render DialogContent outside a Dialog provider — it throws.',
+    'Skip DialogDescription when the dialog needs supporting context — aria-describedby points at a fixed id whether you render one or not.',
+    'Nest a second <dialog> inside — CommandPalette is the example of doing this right: one native modal at a time.',
+    'Use Dialog for lightweight, non-blocking content — reach for Popover when nothing needs to interrupt the page.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['popover', 'command-palette', 'button']} />

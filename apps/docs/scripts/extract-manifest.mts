@@ -76,9 +76,11 @@ const SHARED_STYLESHEETS: Record<string, { path: string; gap?: string }> = {
 const PRIMARY_CONTROLS = new Set(['Button', 'Pagination', 'SegmentedControl', 'NavigationMenu']);
 const DENSE_AFFORDANCES = new Set(['Chip', 'SearchField', 'Rating', 'DatePicker']);
 
-const descriptions: Record<string, string> = JSON.parse(
+const curated: Record<string, unknown> = JSON.parse(
   readFileSync(join(docsRoot, 'scripts/component-descriptions.json'), 'utf8'),
 );
+const descriptions = curated as unknown as Record<string, string>;
+const hookDescriptions = (curated.hooks ?? {}) as Record<string, string>;
 
 const parser = withCustomConfig(join(repoRoot, 'packages/react/tsconfig.json'), {
   shouldExtractLiteralValuesFromEnum: true,
@@ -130,15 +132,17 @@ function toPropRecords(doc: ComponentDoc): PropRecord[] {
 }
 
 /* "type XProps = ButtonHTMLAttributes<HTMLButtonElement> & {…}" → the base the
-   props table doesn't repeat. */
+   props table doesn't repeat. Handles Omit<…> bases (possibly multi-line);
+   bails if the captured "base" is actually an object literal. */
 function findInherits(source: string, componentName: string): string | null {
-  const pattern = new RegExp(
-    `type ${componentName}Props =\\s*([A-Za-z]+<[^>]+>)\\s*&`,
-    'm',
-  );
-  const direct = new RegExp(`type ${componentName}Props =\\s*([A-Za-z]+<[^>]+>)\\s*;`, 'm');
-  const match = source.match(pattern) ?? source.match(direct);
-  return match ? match[1] : null;
+  const intersection = new RegExp(`type ${componentName}Props =\\s*([\\s\\S]{1,200}?)\\s*&\\s*\\{`);
+  const direct = new RegExp(`type ${componentName}Props =\\s*([A-Za-z]+<[^;]+>);`);
+  const match = source.match(intersection) ?? source.match(direct);
+  if (!match) {
+    return null;
+  }
+  const base = match[1].replace(/\s+/g, ' ').replace(/< /g, '<').replace(/ >/g, '>').trim();
+  return base.includes('{') ? null : base;
 }
 
 function findExportedTypes(source: string): string[] {
@@ -254,7 +258,7 @@ function extractHooks(): HookRecord[] {
       return {
         name,
         importPath: `@elirobinson/react/hooks/${name}`,
-        description: match ? cleanJsDoc(match[1]) : '',
+        description: match ? cleanJsDoc(match[1]) : (hookDescriptions[name] ?? ''),
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));

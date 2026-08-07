@@ -1,0 +1,69 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/chip/Basic';
+import Removable from '@/components/demos/chip/Removable';
+
+export const metadata = { title: 'Chip' };
+
+<ComponentHeader slug="chip" />
+
+<DemoBlock file="chip/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Chip` for a compact, removable tag — an active filter, a selected item in a
+multi-select field, a keyword attached to a piece of content. Without `onRemove` it's
+just a static tag; with it, a small `×` button appears. For a status label that's never
+removable, `Badge` is the simpler component.
+
+## Removable
+
+Pass `onRemove` to get the dense remove button. It's sized to the shadcn/MUI scale, not
+the 44px primary-control minimum — a chip is an inline, dense affordance, not a button.
+
+<DemoBlock file="chip/Removable.tsx">
+  <Removable />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="chip" />
+
+## Accessibility
+
+- Renders a `<span>` wrapper around a label span and, when `onRemove` is passed, a
+  native `<button type="button">` for removal — everything else about the chip is
+  non-interactive.
+- The remove button's accessible name defaults to `` `Remove ${children}` ``. That only
+  produces a correct label when `children` is a plain string — pass `removeLabel`
+  explicitly when the content is an element (`<b>Design</b>` would otherwise stringify
+  wrong).
+- The remove button follows dense inline sizing (MUI/shadcn scale), not the 44px
+  primary-control minimum, since a chip's own footprint is already small.
+- **Keyboard:** the remove button is a native `<button>` — `Tab` reaches it, `Enter` and
+  `Space` activate it. The chip body itself isn't focusable.
+- The ref forwards to the outer `<span>`.
+
+<DoDont
+  do={[
+    'Keep chip labels to a word or short phrase — a filter name, a tag, a selected value.',
+    'Pass removeLabel when the chip content is anything other than plain text.',
+    'Update surrounding state (a filter list, a form value) synchronously in onRemove.',
+    'Use Chip for values the user actively chose and can un-choose.',
+  ]}
+  dont={[
+    "Use Chip for a status that isn't removable — that's Badge.",
+    "Rely on the expanded hit area overlapping the label — the remove button's target is bounded to its own footprint.",
+    'Put more than a handful of chips in a row without wrapping — it turns into a wall of tags.',
+    'Make the whole chip clickable for one action and removable for another; keep each chip to a single control.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['badge', 'combobox', 'search-field']} />

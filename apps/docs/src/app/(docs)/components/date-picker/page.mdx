@@ -1,0 +1,80 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/date-picker/Basic';
+import Empty from '@/components/demos/date-picker/Empty';
+
+export const metadata = { title: 'DatePicker' };
+
+<ComponentHeader slug="date-picker" />
+
+<DemoBlock file="date-picker/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `DatePicker` when someone is choosing a single specific day — a season start date, a
+session, a deadline — and seeing the calendar grid actually helps (today, the weekday, how far
+out it is). For a date range, or heavy typed-date entry like a birthdate years in the past, a
+plain text input with format validation is often faster: this picker has no keyboard grid
+navigation and no month/year jump, so getting to a far-off date means clicking "Next month"
+repeatedly.
+
+## Starting empty
+
+`value` is optional — leave it `undefined` for a field with nothing selected yet. There's no
+`defaultValue`: the displayed value always comes straight from the `value` prop, so
+`onValueChange` has to actually update your state for a click to visibly select a day.
+
+<DemoBlock file="date-picker/Empty.tsx">
+  <Empty />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="date-picker" />
+
+## Accessibility
+
+- The calendar uses the WAI-ARIA grid pattern: `role="grid"` (labeled with the visible month
+  and year), one `role="row"` per week, and `role="gridcell"` per day. Every row always has
+  exactly 7 gridcells — leading/trailing blanks before the 1st and after the last day are real
+  cells with `aria-disabled="true"` (not `aria-hidden`), specifically so the row stays
+  structurally valid rather than short a cell.
+- The selected day's gridcell carries `aria-selected="true"` (and only that one); today's date
+  gets `aria-current="date"` on its button. These are independent — "selected" and "today" can
+  be different days, or the same one.
+- **Keyboard support is partial**, and it's worth being precise about the gap: every day is a
+  real, individually focusable `<button>`, so `Tab`/`Shift+Tab` walk through the visible
+  month's days in order and `Enter`/`Space` activate the focused one — but there's no roving
+  tabindex and no `ArrowLeft`/`ArrowRight`/`ArrowUp`/`ArrowDown` grid navigation, and no
+  `Escape` to close the calendar. Plan keyboard testing around Tab and Enter/Space, not the
+  full ARIA grid keyboard convention.
+- Clicking the (read-only) text input toggles the calendar open or closed. Clicking a day calls
+  `onValueChange` and closes the calendar. Clicking anywhere outside the control closes it too.
+- "Previous month"/"Next month" have explicit `aria-label`s and correctly roll over year
+  boundaries in both directions.
+- The popover is positioned with plain CSS directly below the input — there's no
+  viewport-collision handling, so give it room to render below the field.
+
+<DoDont
+  do={[
+    'Store the value from onValueChange in state you control — the field is fully controlled, with no internal fallback.',
+    'Give it room below the input — the popover always opens downward with no flip-to-fit logic.',
+    'Use it for a single, nearby date where seeing the calendar actually helps.',
+    'Pair it with a real label — it becomes the trigger input’s accessible name.',
+  ]}
+  dont={[
+    "Expect Escape to close the calendar, or arrow keys to move between days — neither is implemented.",
+    'Use it for a date far from today (a birth year, say) — there’s no month/year jump, only Prev/Next.',
+    'Type directly into the field — it’s read-only by design; selection happens through the grid.',
+    'Reach for it when you need a date range — this picker is single-date only.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['form-field', 'input', 'combobox']} />

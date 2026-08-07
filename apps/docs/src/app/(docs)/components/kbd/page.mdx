@@ -1,0 +1,57 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/kbd/Basic';
+import Combo from '@/components/demos/kbd/Combo';
+
+export const metadata = { title: 'Kbd' };
+
+<ComponentHeader slug="kbd" />
+
+<DemoBlock file="kbd/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Kbd` to label an actual physical key or shortcut inline — in help text, empty
+states, or next to a `CommandPalette` trigger. It's typographic, not interactive: it
+doesn't respond to clicks and doesn't listen for the key it names.
+
+## Shortcut combos
+
+`Kbd` renders one key at a time — space or join multiple `Kbd` elements yourself for a
+combo.
+
+<DemoBlock file="kbd/Combo.tsx">
+  <Combo />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="kbd" />
+
+## Accessibility
+
+- Renders a native `<kbd>` element — the correct semantic tag for "user input, such as a
+  keyboard key," with no extra ARIA required.
+- Purely presentational otherwise: not focusable, no keyboard handling of its own.
+
+<DoDont
+  do={[
+    'Use Kbd to label an actual physical key or shortcut ("⌘K", "Esc", "Enter").',
+    'Pair it with CommandPalette hints or empty-state copy ("Press ⌘K to search").',
+    'Separate multi-key combos with your own spacer or "+" — Kbd renders one key at a time.',
+  ]}
+  dont={[
+    'Make Kbd clickable — it’s typographic, not a control; use Button if it needs to do something.',
+    'Use it for arbitrary code snippets — that’s an inline code block, not a keyboard hint.',
+    'Write full words that aren’t keys inside Kbd — it reads oddly for anything but a key name.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['command-palette', 'tooltip', 'button']} />

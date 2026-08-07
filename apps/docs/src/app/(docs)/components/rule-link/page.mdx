@@ -1,0 +1,64 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/rule-link/Basic';
+import List from '@/components/demos/rule-link/List';
+
+export const metadata = { title: 'RuleLink' };
+
+<ComponentHeader slug="rule-link" />
+
+<DemoBlock file="rule-link/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `RuleLink` for the ink-underline arrow link that closes out a marketing section —
+"View all guides," "See what I build." It's a real `<a>` with an arrow glyph appended, not
+a button dressed up as a link — reach for it anywhere a `Button` would be the wrong
+semantic because the action is navigation, not a command.
+
+## In a list
+
+RuleLink reads well stacked as a set of section links — a services page footer, a set of
+"jump to" pointers.
+
+<DemoBlock file="rule-link/List.tsx">
+  <List />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="rule-link" />
+
+## Accessibility
+
+- Renders a native `<a>` with a trailing arrow `<svg aria-hidden="true">` — the arrow is
+  purely decorative, so a screen reader reads only the link text.
+- Accepts all standard anchor attributes (`href`, `target`, `rel`, and so on) since it
+  inherits `AnchorHTMLAttributes<HTMLAnchorElement>` — always pass a real `href`.
+- **Keyboard:** native anchor behavior — `Tab` focuses it, `Enter` follows the link.
+  There's no `Space`-to-activate, matching how every other link on the page behaves.
+- The ref forwards to the underlying `<a>` element.
+
+<DoDont
+  do={[
+    'Write the label as a destination, not a verb — "View all guides," not "Click here."',
+    'Always give it a real href so middle-click and cmd-click work.',
+    'Use it to close out a section on a marketing or content page.',
+    'Keep the label short enough that the arrow reads as a natural continuation.',
+  ]}
+  dont={[
+    'Use RuleLink for an action that doesn\'t navigate — submitting, opening a dialog — that\'s Button.',
+    'Pair it with an onClick that prevents default navigation; that breaks the "it\'s just a link" contract.',
+    'Use it inside a hierarchy trail — that\'s what Breadcrumb is for.',
+    'Stack more than a handful in one place; past that it stops reading as a curated set of links.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['button', 'breadcrumb', 'eyebrow']} />

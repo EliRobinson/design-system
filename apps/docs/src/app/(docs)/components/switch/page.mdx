@@ -1,0 +1,70 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/switch/Basic';
+import States from '@/components/demos/switch/States';
+import Controlled from '@/components/demos/switch/Controlled';
+
+export const metadata = { title: 'Switch' };
+
+<ComponentHeader slug="switch" />
+
+<DemoBlock file="switch/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Switch` for a setting that takes effect immediately, with no submit step — a
+notification preference, a feature flag. Use `Checkbox` instead when the choice is part
+of a form that gets submitted together.
+
+## States
+
+<DemoBlock file="switch/States.tsx">
+  <States />
+</DemoBlock>
+
+## Controlled
+
+Under the hood it's still a checkbox — `checked` and `onChange` work exactly as they
+would on a plain `<input type="checkbox">`.
+
+<DemoBlock file="switch/Controlled.tsx">
+  <Controlled />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="switch" />
+
+## Accessibility
+
+- Renders `<input type="checkbox" role="switch">` paired with a `<label>` — `label` is
+  required and is the input's only accessible name.
+- `role="switch"` changes how assistive tech announces state ("on"/"off" instead of
+  "checked"/"unchecked"), but the element underneath is a real checkbox, so `checked`,
+  `defaultChecked`, and `onChange` all behave exactly as they do on `Checkbox`.
+- **Keyboard:** `Tab` focuses, `Space` toggles — native `input` behavior.
+- `role` is fixed: the type omits it from the props you can pass, so `switch` can't be
+  overridden.
+- The ref forwards to the underlying `<input>`.
+
+<DoDont
+  do={[
+    'Use Switch for settings that take effect immediately — no save step, no form submit.',
+    'Always pass a real label; it’s required and the input’s only accessible name.',
+    'Use defaultChecked for uncontrolled or checked + onChange for controlled — same contract as a native checkbox.',
+  ]}
+  dont={[
+    'Use Switch when the choice only takes effect after a form submit — that’s Checkbox.',
+    'Try to override role — the type omits it; switch is the fixed contract.',
+    'Phrase the label as a question ("Enable X?") — a switch is a state, name the setting itself ("Email notifications").',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['checkbox', 'radio-group']} />

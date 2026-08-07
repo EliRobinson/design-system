@@ -1,0 +1,76 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/avatar/Basic';
+import Sizes from '@/components/demos/avatar/Sizes';
+import WithImage from '@/components/demos/avatar/WithImage';
+
+export const metadata = { title: 'Avatar' };
+
+<ComponentHeader slug="avatar" />
+
+<DemoBlock file="avatar/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Avatar` to identify a person or account — a client roster, a comment thread, a
+user menu. It's a circle crop, so it suits photos and initials, not logos: a rectangular
+mark gets distorted by the crop. Pair it with a visible name wherever it appears; don't
+make the avatar carry identification on its own.
+
+## Sizes
+
+<DemoBlock file="avatar/Sizes.tsx">
+  <Sizes />
+</DemoBlock>
+
+## With a photo
+
+`src` and the initials fallback aren't linked at runtime — `Avatar` doesn't detect a
+failed image load and swap to `fallback` for you. If `src` is set, the `<img>` renders
+unconditionally.
+
+<DemoBlock file="avatar/WithImage.tsx">
+  <WithImage />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="avatar" />
+
+## Accessibility
+
+- When `src` is set, `alt` becomes the `<img>`'s accessible name — always pass a real
+  name, not a filename or generic string.
+- When there's no `src`, the initials render inside a `<span aria-hidden="true">` and
+  the wrapping `<div>` carries no accessible name of its own. A fallback-only avatar is
+  effectively invisible to screen readers unless you add `aria-label` yourself or the
+  name is already visible next to it.
+- `AvatarImage` and `AvatarFallback` are exported alongside `Avatar` for custom layouts,
+  but they're standalone primitives — `Avatar` doesn't render them internally, and they
+  don't coordinate with each other. Building a custom composition means supplying your
+  own wrapper and sizing.
+- The ref forwards to the outer `<div>`.
+
+<DoDont
+  do={[
+    'Pass a real name in alt even when showing initials — it drives the fallback text and doubles as the accessible name when there’s a photo.',
+    'Keep sizes consistent within one list so avatars align.',
+    'Pair every avatar with visible name text nearby — don’t rely on the image alone to identify someone.',
+    'Pass fallback explicitly when you want specific initials instead of the auto-derived ones.',
+  ]}
+  dont={[
+    'Assume Avatar swaps to the fallback automatically on a failed image load — it doesn’t; src wins whenever it’s set.',
+    'Use Avatar for a company or app logo — a circle crop distorts most rectangular marks.',
+    'Leave a fallback-only avatar with no adjacent text and no aria-label — screen reader users get nothing.',
+    'Pack more than two characters into fallback — that’s the design, and more just clips.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['badge', 'skeleton', 'card']} />

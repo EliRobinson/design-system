@@ -1,0 +1,69 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/rating/Basic';
+import Interactive from '@/components/demos/rating/Interactive';
+
+export const metadata = { title: 'Rating' };
+
+<ComponentHeader slug="rating" />
+
+<DemoBlock file="rating/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+`Rating` switches its own mode based on whether you pass `onValueChange`: omit it and
+you get a read-only star display for showing an existing score (a recipe card, a
+testimonial); pass it and the stars become interactive buttons for collecting one. You
+don't choose the mode explicitly — the prop you pass decides it.
+
+## Interactive
+
+<DemoBlock file="rating/Interactive.tsx">
+  <Interactive />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="rating" />
+
+## Accessibility
+
+- **Read-only mode** (no `onValueChange`): renders `role="img"` on the outer element with
+  `aria-label="{value} out of {max} stars"` — a screen reader hears the whole rating as
+  one static image-like value, not a list of individual stars.
+- **Interactive mode** (`onValueChange` passed): each star is a native
+  `<button type="button">` with `aria-label="Rate {n} out of {max} stars"` and
+  `aria-pressed` reflecting whether that star is filled.
+- `value` is clamped to the `0`–`max` range before it's used in the accessible label, so
+  an out-of-range value (negative, or above `max`) never produces a nonsensical
+  announcement.
+- **Keyboard:** in interactive mode, each star button is independently focusable — `Tab`
+  moves star to star, `Enter` and `Space` activate whichever one has focus. There's no
+  arrow-key traversal between stars; this is a row of buttons, not a slider.
+- Star buttons follow dense inline sizing (MUI/shadcn scale), not the 44px
+  primary-control minimum.
+- The ref forwards to the outer element in both modes.
+
+<DoDont
+  do={[
+    'Omit onValueChange for a rating you\'re only displaying — it gets you the cheaper role="img" markup.',
+    'Show the numeric value alongside the stars for anyone who can\'t easily count filled icons.',
+    'Keep max consistent across a list of ratings so stars are visually comparable.',
+    'Confirm a submitted rating with text, not just the filled stars — "You rated this 4 out of 5."',
+  ]}
+  dont={[
+    'Pass onValueChange to a rating the user shouldn\'t be able to change, like an aggregate average.',
+    'Expect arrow-key adjustment — Rating is a button row, not an ARIA slider.',
+    'Use Rating for a binary like/dislike — a single toggle or Chip fits that better.',
+    'Rely on star color alone to convey the value; the aria-label already carries the number.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['card', 'badge']} />

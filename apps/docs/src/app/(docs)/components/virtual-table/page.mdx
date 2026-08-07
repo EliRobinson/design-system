@@ -1,0 +1,88 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/virtual-table/Basic';
+import Filterable from '@/components/demos/virtual-table/Filterable';
+import Empty from '@/components/demos/virtual-table/Empty';
+
+export const metadata = { title: 'VirtualTable' };
+
+<ComponentHeader slug="virtual-table" />
+
+200 rows, sortable headers, no pagination — scroll and only the rows near the viewport are
+in the DOM.
+
+<DemoBlock file="virtual-table/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `VirtualTable` for a dataset large enough that pagination feels like busywork —
+thousands of rows someone wants to scroll and sort through directly, not click through in
+chunks of ten. It shares `Table`'s column model, sorting, and filtering; the only thing
+that changes is how the rows reach the screen — only the ones near the viewport are ever
+rendered.
+
+Reach for `Table` instead once pagination is the more natural fit — search results, an
+order history someone might want to link straight to "page 3" of. Windowing and pagination
+solve the same DOM-size problem two different ways, so `VirtualTable` doesn't also
+paginate.
+
+## Filtering
+
+Same `filterable` and `filterPlaceholder` props as `Table`, running against the same
+TanStack `getFilteredRowModel()`.
+
+<DemoBlock file="virtual-table/Filterable.tsx">
+  <Filterable />
+</DemoBlock>
+
+## Empty state
+
+<DemoBlock file="virtual-table/Empty.tsx">
+  <Empty />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="virtual-table" />
+
+## Accessibility
+
+- Builds its own ARIA grid instead of a literal `<table>`: `role="table"` on the root (with
+  `aria-colcount`), `role="row"` on each row, `role="columnheader"` for headers, `role="cell"`
+  for body cells. This is deliberate — the windowed rows render as absolutely positioned
+  `<div>`s, and a `<tbody>` full of non-`<tr>` children is invalid HTML that browsers hoist
+  out during parsing, so a real `<table>` would silently break.
+- Sortable headers are the same clickable `<button>` as `Table`, and the header cell carries
+  `aria-sort` reflecting the live sort state.
+- The filter input is the same `type="search"` with `aria-label` set from
+  `filterPlaceholder`.
+- **Keyboard:** header sort buttons and the filter input are real, focusable elements
+  reached by `Tab` in document order, same as `Table`. Scrolling the windowed body is native
+  scroll behavior — there's no roving grid navigation moving focus cell to cell; `Tab` plus
+  scrolling is how you move through it.
+- The header row and the scrolling body share the same computed `grid-template-columns`, so
+  columns can't drift out of alignment between them.
+
+<DoDont
+  do={[
+    'Set an explicit height and a rowHeight close to the real rendered row height — a mismatch shows up as jumpy scrolling while rows settle into their measured size.',
+    'Use filterable for a first-pass narrow, same as Table.',
+    'Reach for it once row count runs into the thousands and pagination would mean dozens of pages.',
+    'Keep cell content to a single line — cells clip with an ellipsis rather than wrap, since a fixed row height is what makes virtualization possible.',
+  ]}
+  dont={[
+    'Expect arrow-key cell navigation — there is none; this is a scrollable grid, not a spreadsheet widget.',
+    'Switch between VirtualTable and Table for the same dataset depending on size — pick one per use case so the interaction pattern stays predictable.',
+    'Add more columns than fit your narrowest supported width without checking — columns share the width equally with no built-in horizontal scroll.',
+    'Query a literal table/tr/td element in tests or styles — there is not one; query by role instead.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['table', 'virtual-list', 'search-field', 'empty-state']} />

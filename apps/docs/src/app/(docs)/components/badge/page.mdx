@@ -1,0 +1,65 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/badge/Basic';
+import Variants from '@/components/demos/badge/Variants';
+
+export const metadata = { title: 'Badge' };
+
+<ComponentHeader slug="badge" />
+
+<DemoBlock file="badge/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Badge` for a static status or category label — it's a `<span>`, not a control.
+Reach for `Chip` instead the moment the label needs to be removable or clickable.
+
+- **default** is the neutral workhorse for category tags.
+- **signal** is Miltinson Amber — reserve it for the one badge you most want noticed.
+- **anchor** ties to the Forest color family — use it for trust- and coaching-flavored
+  content.
+- **solid** is high-contrast ink; use it sparingly, like a "New" marker.
+- **outline** is the quietest option, for a label that shouldn't compete for attention.
+
+## Variants
+
+<DemoBlock file="badge/Variants.tsx">
+  <Variants />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="badge" />
+
+## Accessibility
+
+- Renders a plain `<span>` with no implicit ARIA role — it's a visual label, not a live
+  region.
+- If a badge shows a count or status that changes and the change matters to screen
+  reader users, add `role="status"` (or similar) yourself — `Badge` doesn't announce
+  updates on its own.
+- Non-interactive by design: no keyboard handling, no focus state.
+
+<DoDont
+  do={[
+    'Use default for neutral category tags and outline for a quieter, low-emphasis label.',
+    'Reserve signal (amber) for the one badge you most want noticed on a screen.',
+    'Use anchor for trust- and coaching-flavored content — it’s tied to the Forest color family.',
+    'Keep badge text to one or two words; it’s a label, not a sentence.',
+  ]}
+  dont={[
+    'Make a Badge clickable — reach for Chip or Button if it needs to respond to interaction.',
+    'Stack more than one solid badge in the same row; it reads as visual noise.',
+    'Use Badge to show a live, changing count without adding your own aria-label or role="status".',
+    'Put a badge color to work purely decoratively — each variant should mean something.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['chip', 'avatar', 'eyebrow']} />

@@ -1,0 +1,76 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/input/Basic';
+import WithHint from '@/components/demos/input/WithHint';
+import WithError from '@/components/demos/input/WithError';
+
+export const metadata = { title: 'Input' };
+
+<ComponentHeader slug="input" />
+
+<DemoBlock file="input/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+`Input` is batteries-included: label, hint, and error are wired up for you, with the
+right `aria-describedby` and `aria-invalid` set automatically. `label` is required —
+there's no placeholder-as-label escape hatch. Reach for a standalone `Label` plus a bare
+`<input>` only when this fixed layout (label above, hint or error below) doesn't fit
+your design. Reach for `Textarea` once the content needs more than one line.
+
+## With a hint
+
+Hint text is persistent guidance, shown until an error takes over.
+
+<DemoBlock file="input/WithHint.tsx">
+  <WithHint />
+</DemoBlock>
+
+## With an error
+
+`error` replaces `hint` — both aren't shown at once, and the error text gets
+`role="alert"` so assistive tech picks up the change.
+
+<DemoBlock file="input/WithError.tsx">
+  <WithError />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="input" />
+
+## Accessibility
+
+- The label is a real `<label htmlFor>` pointed at the input's id — auto-generated with
+  `useId` when you don't pass one.
+- `hint` and `error` each render in their own `<span>`, wired into `aria-describedby`
+  alongside anything you pass in `aria-describedby` yourself.
+- Setting `error` also sets `aria-invalid="true"` on the input and gives the error text
+  `role="alert"`, so a validation message that appears after submit gets announced.
+- When both `hint` and `error` are set, only the error text renders — the hint is
+  suppressed until the error clears.
+- The ref forwards to the underlying `<input>`.
+
+<DoDont
+  do={[
+    'Pass label always — it’s required, and it drives the native label/htmlFor association.',
+    'Use hint for persistent guidance and error for validation feedback.',
+    'Let error replace hint when both apply — one message at a time keeps the field readable.',
+    'Pass a real HTML type (email, password, number) — Input forwards every native input attribute.',
+  ]}
+  dont={[
+    'Render Input without a visible label to save vertical space — there’s no placeholder fallback.',
+    'Write hint text so long it competes with the input itself — keep it to one short line.',
+    'Set aria-invalid yourself — passing error already sets it.',
+    'Reach for Input when the content needs multiple lines — that’s Textarea.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['textarea', 'label', 'form-field']} />

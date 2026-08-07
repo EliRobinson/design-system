@@ -1,0 +1,79 @@
+export const metadata = { title: 'Top bar pattern' };
+
+# Top bar
+
+<p className="lead">
+  The app top bar pairs orientation (breadcrumb) with tools (search, actions, account).
+  It's the working-surface sibling of the marketing [header](/patterns/header) — same
+  64px band, busier contents.
+</p>
+
+## Recipe
+
+```tsx
+import { Avatar } from '@elirobinson/react/components/atoms/Avatar';
+import { Button } from '@elirobinson/react/components/atoms/Button';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from '@elirobinson/react/components/molecules/Breadcrumb';
+import { SearchField } from '@elirobinson/react/components/molecules/SearchField';
+
+export function TopBar() {
+  return (
+    <div className="top-bar">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/guides">Guides</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink current>Practice planning</BreadcrumbLink>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+      <div className="top-bar__tools">
+        <SearchField aria-label="Search guides" placeholder="Search…" />
+        <Button size="sm">New guide</Button>
+        <Avatar alt="Eli Robinson" fallback="ER" size="sm" />
+      </div>
+    </div>
+  );
+}
+```
+
+```css
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  height: 64px;
+  padding: 0 var(--space-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.top-bar__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+```
+
+## Rules
+
+- **Breadcrumb on the left, tools on the right.** The page `h1` lives in the content,
+  not the bar.
+- One primary action (`size="sm"`), everything else quiet.
+- The search field stays compact; a full-screen command experience belongs to
+  [CommandPalette](/components/command-palette) on `⌘K`.
+- `SearchField` has no visible-label prop — in a bar like this, give it an
+  `aria-label`; anywhere a visible label fits, prefer one.
+- The current page is a `BreadcrumbLink` with `current` — it renders as static text
+  with `aria-current="page"`, not a link. Separators are explicit
+  `BreadcrumbSeparator` elements.

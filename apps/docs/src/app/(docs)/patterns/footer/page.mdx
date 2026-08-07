@@ -1,0 +1,103 @@
+export const metadata = { title: 'Footer pattern' };
+
+# Footer
+
+<p className="lead">
+  The footer is pure ink — `--bg-inverse`, white type, mono microcopy. It's the most
+  recognizable Miltinson surface after the wordmark, and it's deliberately quiet.
+</p>
+
+Prototyped in `design-system-docs/ui_kits/marketing/HeaderFooter.jsx`.
+
+## Recipe
+
+```tsx
+export function SiteFooter() {
+  return (
+    <footer className="footer">
+      <div className="footer__top">
+        <div>
+          <p className="footer__wordmark">
+            Miltinson<span className="footer__dot">.</span>
+          </p>
+          <p className="footer__tagline">Builder · Consultant · Founder</p>
+        </div>
+        <nav className="footer__nav" aria-label="Footer">
+          <a href="/portfolio">Portfolio</a>
+          <a href="/store">Store</a>
+          <a href="/services">Services</a>
+          <a href="/about">About</a>
+        </nav>
+      </div>
+      <p className="footer__meta">© 2026 Miltinson Technologies — practical tech, honestly built.</p>
+    </footer>
+  );
+}
+```
+
+```css
+.footer {
+  background: var(--bg-inverse);
+  color: var(--fg-inverse);
+  padding: var(--space-8) var(--gutter) var(--space-7);
+  margin-top: var(--space-12);
+}
+
+.footer__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-7);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border-inverse);
+}
+
+.footer__wordmark {
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-2xl);
+  margin: 0;
+}
+
+.footer__dot {
+  color: var(--accent);
+}
+
+.footer__tagline {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-caps);
+  text-transform: uppercase;
+  color: oklch(100% 0 0 / 0.55);
+  margin-top: var(--space-3);
+}
+
+.footer__nav {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.footer__nav a {
+  color: var(--fg-inverse);
+  font-size: var(--fs-sm);
+}
+
+.footer__nav a:hover {
+  color: var(--signal-400);
+}
+
+.footer__meta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--ink-400);
+  margin: var(--space-6) 0 0;
+}
+```
+
+## Rules
+
+- Hairlines on dark use `--border-inverse` (12% white) — never `--border`, which
+  disappears on ink.
+- Link hover shifts to `--signal-400` — the lighter amber step keeps AA on black.
+- Mono microcopy for the tagline and legal line; body sans for nothing-else-down-here.
+- The dot-grid texture is allowed here at 8% opacity, but the plain ink block is the
+  default.

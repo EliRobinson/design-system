@@ -1,0 +1,73 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/tooltip/Basic';
+import IconButton from '@/components/demos/tooltip/IconButton';
+
+export const metadata = { title: 'Tooltip' };
+
+<ComponentHeader slug="tooltip" />
+
+<DemoBlock file="tooltip/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Tooltip` for a short, supplementary label — what an icon button does, an abbreviation
+spelled out, a truncated value's full text. It's not for anything the reader needs to read
+reliably: it only shows on hover or keyboard focus, so it never reaches a touch-only visitor
+and it's gone the moment focus moves on.
+
+If the content matters enough that someone should be able to read it without hovering, put
+it in the page instead. If it needs to stay open while the reader interacts with it — a
+form, a list of actions — use `Popover`.
+
+## Labeling an icon button
+
+A tooltip is a bonus for sighted mouse and keyboard users — it doesn't replace the
+accessible name an icon-only `Button` still needs on its own `aria-label`.
+
+<DemoBlock file="tooltip/IconButton.tsx">
+  <IconButton />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="tooltip" />
+
+## Accessibility
+
+- `TooltipTrigger` wraps its child in a `<span>` carrying `aria-describedby` pointed at the
+  tooltip content's id — wrap a real interactive element (a button, a link) inside it so
+  there's something to hover or focus in the first place.
+- **Keyboard:** opens on native focus, closes on blur. There's no separate keyboard path to
+  keep in sync with hover — focusing the wrapped element opens the tooltip the same way
+  hovering it does.
+- No `Escape` handling — pressing it does not close the tooltip. Moving focus or the
+  pointer away is the only way to dismiss it.
+- `TooltipContent` renders through a portal to `document.body` and only mounts while open —
+  it isn't hidden with CSS, so there's nothing sitting in the DOM to tab into while closed.
+- Position is fixed: centered under the trigger, a few pixels below it. There's no
+  side/alignment prop to place it anywhere else.
+
+<DoDont
+  do={[
+    'Wrap a genuinely focusable element in TooltipTrigger — a button, a link, an input — so keyboard users can reach it at all.',
+    'Give icon-only buttons their own aria-label even inside a Tooltip — the tooltip supplements it, it does not replace it.',
+    'Keep TooltipContent to a short phrase — it is a label, not a place for instructions someone needs to act on.',
+    'Use it only for information that is genuinely optional — the layout should still make sense if the tooltip never appears.',
+  ]}
+  dont={[
+    'Put interactive content — a link, a button — inside TooltipContent; it disappears the moment focus or the pointer leaves the trigger, before a reader could reach it.',
+    'Rely on a tooltip to convey something required for the task — touch-only visitors will never see it.',
+    'Expect Escape to close it — nothing listens for that key here; move focus or the pointer instead.',
+    'Wrap plain, non-focusable text in TooltipTrigger and expect Tab to reach it.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['popover', 'badge', 'button', 'kbd']} />

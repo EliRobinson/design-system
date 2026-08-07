@@ -1,0 +1,97 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import { ClientOnly } from '@/components/docs/ClientOnly';
+import Basic from '@/components/demos/toast/Basic';
+import Variants from '@/components/demos/toast/Variants';
+import WithAction from '@/components/demos/toast/WithAction';
+
+export const metadata = { title: 'Toast' };
+
+<ComponentHeader slug="toast" />
+
+Mount one `Toaster` near the root of your app, then call `useToast()` from anywhere inside
+it to dispatch. `Toaster` renders nothing visible on its own — it owns the toast queue and
+portals the viewport to the end of `<body>`.
+
+<DemoBlock file="toast/Basic.tsx">
+  <ClientOnly>
+    <Basic />
+  </ClientOnly>
+</DemoBlock>
+
+## When to use it
+
+Use `Toast` to confirm that something the reader just did worked, or didn't — a save, a
+send, a payment. It's not for anything the reader needs to act on right now: a toast clears
+itself after five seconds by default, so it's the wrong place for an error that blocks the
+next step. Put that in the page instead, where it stays until it's fixed.
+
+## Variants
+
+`variant` covers `default`, `success`, `warning`, `danger`, and `info` — pass it straight
+through `toast({ ..., variant })`.
+
+<DemoBlock file="toast/Variants.tsx">
+  <ClientOnly>
+    <Variants />
+  </ClientOnly>
+</DemoBlock>
+
+## Composing a toast with an action
+
+`toast()` only takes `title`, `description`, `variant`, and `duration` — there's no slot
+for a custom action button. When you need one (an "Undo", a link to the affected record),
+compose `Toast`, `ToastTitle`, `ToastDescription`, and `ToastAction` directly instead of
+going through `useToast()`. Composed this way it renders in place, not through the portal,
+so it shows up wherever you put it — here, inline in the demo stage.
+
+<DemoBlock file="toast/WithAction.tsx">
+  <ClientOnly>
+    <WithAction />
+  </ClientOnly>
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="toast" />
+
+## Accessibility
+
+- `Toaster`'s viewport carries `aria-live="polite"` and `aria-relevant="additions"`, so a
+  screen reader announces each new toast without interrupting whatever the reader is doing.
+- Each `Toast` also has `role="status"` — a live region in its own right, harmless
+  alongside the viewport's `aria-live`.
+- The dismiss button gets a built-in `aria-label="Dismiss notification"` automatically; you
+  don't supply one.
+- Toasts auto-dismiss after `duration` (5000ms by default). Pass `duration: 0` to keep one
+  on screen until the reader, or your code, dismisses it.
+- The viewport is portaled to `document.body` and fixed to the bottom-right corner — it
+  renders outside wherever in the DOM you called `toast()` from, including outside the demo
+  stage above.
+- Because `Toaster` touches `document.body` during render, it cannot server-render. In an
+  SSR framework like Next.js, mount it inside a client-only boundary (this page's demos do
+  exactly that).
+- Nothing moves focus when a toast appears. A reader mid-task is never interrupted; a
+  `ToastAction`, when present, is just a normal button already in the page's tab order.
+
+<DoDont
+  do={[
+    'Mount exactly one Toaster near the root of the app, and call useToast() from any descendant.',
+    'Keep title short and put detail in description — they render as a heading and a supporting line, not one paragraph.',
+    'Set variant to match what actually happened instead of leaving every toast at the default.',
+    'Pass duration: 0 for a toast that reports something the reader must notice, like a failed payment.',
+  ]}
+  dont={[
+    'Call useToast() outside a Toaster — it throws on purpose rather than silently doing nothing.',
+    'Use a toast for something the reader has to act on immediately — it disappears on its own by default.',
+    "Expect an action button to work through toast({...}) — the dispatcher's data shape has no slot for one; compose Toast directly instead.",
+    'Mount more than one Toaster in the same app — one queue and one viewport is the whole model.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['alert', 'dialog', 'badge', 'tooltip']} />

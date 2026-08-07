@@ -1,0 +1,51 @@
+export const metadata = { title: 'The tier boundary' };
+
+# The tier boundary
+
+<p className="lead">
+  Components live under `packages/react/src/components/&lt;tier&gt;/` — atoms, molecules,
+  or organisms. The boundary is a rule you can apply mechanically, not a judgment call,
+  and it decides where a component lives and what it's allowed to do.
+</p>
+
+## The rule
+
+Ask these questions in order:
+
+1. **Does it render into a portal, trap focus, or manage open/closed state across
+   multiple sub-elements?** It's an **organism** — Dialog, Select, Combobox,
+   DropdownMenu.
+2. **Is it assembled from two or more atoms with no such orchestration?** It's a
+   **molecule** — Card, Alert, FormField, Pagination.
+3. **Otherwise it's an atom** — single-purpose, not further divisible: Button, Input,
+   Badge, Separator.
+
+## Why the line sits there
+
+The boundary tracks *behavioral complexity*, not visual size. Overlay orchestration —
+portals, focus management, keyboard navigation across children — is where accessibility
+bugs live, so the components that do it are quarantined in one tier where the shared
+[interaction hooks](/components/hooks) and heavier test suites apply. A molecule stays
+simple enough to review at a glance; the moment it grows open/closed state across
+sub-elements, it's an organism and moves.
+
+## Edge cases, decided
+
+- **`SegmentedControl`** manages a selected value and arrow-key navigation, but across
+  sibling radio options with no portal or open/closed state — molecule.
+- **`Accordion`** manages expanded state across multiple items — organism, even though
+  it renders no portal.
+- **`NavigationMenu`** renders an always-visible nested list — every item is a real
+  link, no disclosure state. It's an organism for its compound structure, but note it
+  deliberately has no open/close behavior.
+- **`FormField`** wires ids and ARIA attributes to an arbitrary child — wiring, not
+  orchestration — molecule.
+
+## What the tier changes in practice
+
+- The import path: `@elirobinson/react/components/<tier>/<Name>` — moving a component
+  between tiers is a breaking change.
+- Review depth: organisms require keyboard-contract tests; their component pages must
+  document focus behavior precisely.
+- Composition direction: organisms may compose molecules and atoms; molecules compose
+  atoms; atoms compose nothing from the system.

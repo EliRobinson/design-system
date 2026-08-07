@@ -1,0 +1,89 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/table/Basic';
+import Filterable from '@/components/demos/table/Filterable';
+import Empty from '@/components/demos/table/Empty';
+
+export const metadata = { title: 'Table' };
+
+<ComponentHeader slug="table" />
+
+Columns sort by clicking their header — that's on by default for every column with an
+`accessorKey`, no extra prop required. Pagination appears automatically once the row count
+passes `pageSize`.
+
+<DemoBlock file="table/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Table` when the data fits in pages — a results list, an order history, anything a
+reader might reasonably want to jump to "page 3 of 6" on. It's built on
+`@tanstack/react-table`'s real row models, so sorting, filtering, and pagination all read
+from the same computed row set instead of three separate, driftable pieces of state.
+
+For a few hundred rows or more where paging feels like busywork, reach for `VirtualTable`
+instead. Windowing and pagination solve the same problem — too many rows to put in the DOM
+at once — so `Table` deliberately doesn't try to do both.
+
+## Filtering
+
+`filterable` adds a global text filter above the table, wired to TanStack's
+`getFilteredRowModel()`. `filterPlaceholder` becomes both the placeholder text and the
+input's accessible name.
+
+<DemoBlock file="table/Filterable.tsx">
+  <Filterable />
+</DemoBlock>
+
+## Empty state
+
+`emptyMessage` renders through `EmptyState` in place of the row set — this fires both for
+genuinely empty `data` and for a filter that matches nothing.
+
+<DemoBlock file="table/Empty.tsx">
+  <Empty />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="table" />
+
+## Accessibility
+
+- Sortable column headers render as a native `<button>` inside the `<th>`, and the `<th>`
+  itself carries `aria-sort` (`ascending` / `descending` / `none`) reflecting the live sort
+  state.
+- The filter input is `type="search"` with `aria-label` set from `filterPlaceholder`.
+- The pagination footer — only present once there's more than one page — is a `nav`
+  landmark labeled "Pagination", with `Previous page` / `Next page` buttons that disable
+  themselves at the edges and `aria-current="page"` on the active page number.
+- **Keyboard:** everything is a real `<button>` or `<input>`, so `Tab` reaches sort
+  headers, the filter field, and pagination controls in document order, and `Enter`/`Space`
+  activates a focused one. None of it is reimplemented.
+- The empty state renders as a single cell with `colSpan` across every visible column,
+  rather than a row of empty cells — a screen reader hits one coherent message, not a row
+  it has to parse as data.
+
+<DoDont
+  do={[
+    'Give every column a stable accessorKey so sorting and cell rendering read from the exact same field.',
+    'Set filterPlaceholder to something specific ("Filter orders") — it doubles as the input\'s accessible name.',
+    'Write an emptyMessage for the actual context ("No orders yet") instead of leaving the generic default.',
+    'Size pageSize to the data\'s natural chunk — a week of activity, a page of search results.',
+  ]}
+  dont={[
+    'Reach for Table once a dataset runs past a few hundred rows with no natural stopping point — use VirtualTable instead.',
+    'Assume data.length tells you whether the table is empty — after filtering, the visible row model can be empty while data still has rows.',
+    'Pair filterable with a dataset large enough that typing feels laggy — that is VirtualTable or a server-side filter\'s job.',
+    'Fight the default column sorting with CSS — turn it off per column with enableSorting: false in the ColumnDef instead.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['virtual-table', 'pagination', 'search-field', 'empty-state']} />

@@ -1,0 +1,62 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/progress/Basic';
+import States from '@/components/demos/progress/States';
+
+export const metadata = { title: 'Progress' };
+
+<ComponentHeader slug="progress" />
+
+<DemoBlock file="progress/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Progress` when you know how far along a task is — an upload, an import, a
+multi-step count. Use `Spinner` instead for indeterminate work where you don't know how
+long it'll take, and `Skeleton` for a structural loading placeholder before content
+exists at all.
+
+## Values and custom max
+
+`value` clamps to the `0`–`max` range for you. Use `max` to represent the real unit
+instead of normalizing everything to a percentage yourself.
+
+<DemoBlock file="progress/States.tsx">
+  <States />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="progress" />
+
+## Accessibility
+
+- Renders `role="progressbar"` with `aria-valuenow`, `aria-valuemin={0}`, and
+  `aria-valuemax` kept in sync with `value`/`max`.
+- `label` becomes the progress bar's `aria-label` — it's optional in the type, but it's
+  the only accessible name the control gets. Skip it and screen readers announce an
+  unlabeled progress bar.
+- No internal timer or animation — the visual bar only moves when `value` changes, so
+  the state you show is always the state you pass in.
+
+<DoDont
+  do={[
+    'Always pass label — it’s optional in the type but it’s the only accessible name the progress bar gets.',
+    'Use max to represent the real unit ("modules complete", "MB uploaded") instead of pre-converting to a percentage.',
+    'Update value from state you already have — Progress has no internal timer of its own.',
+  ]}
+  dont={[
+    'Use Progress for a task with no known duration or endpoint — use Spinner instead.',
+    'Omit label and rely on nearby text to carry meaning — screen readers read the progress bar in isolation.',
+    'Animate value with a fake setInterval — if the real progress is unknown, don’t simulate one.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['spinner', 'skeleton']} />

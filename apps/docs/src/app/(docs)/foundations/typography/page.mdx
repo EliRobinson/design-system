@@ -1,0 +1,57 @@
+import { TokenTable } from '@/components/foundations/TokenTable';
+import { TypeScale } from '@/components/foundations/TypeScale';
+
+export const metadata = { title: 'Typography' };
+
+# Typography
+
+<p className="lead">
+  Two families do everything: Geist for the interface, JetBrains Mono for code, eyebrows,
+  pricing, and anywhere numbers need to line up. Sizes, weights, and spacing below are
+  read live from `@elirobinson/tokens/tokens.css`.
+</p>
+
+## Families
+
+<TokenTable prefix="font" />
+
+Geist covers Latin, Latin-Extended, Cyrillic, and Greek. The package currently loads both
+families from Google Fonts via `@import` — the stylesheet's own comment flags this as a
+placeholder: if you have licensed `.woff2` files, self-host them and replace the import.
+
+## The scale
+
+A perfect-fourth-ish ramp on a 16px base. Body text never goes below `--fs-md` — the
+smaller steps are for captions, eyebrows, and metadata, not paragraphs.
+
+<TypeScale />
+
+## Weights
+
+400 for body, 500 for UI labels, 600 for headings, 700+ for display peaks. Light (300)
+exists but earns its place rarely.
+
+<TokenTable prefix="fw" />
+
+## Line height
+
+Body text sits at 1.65 — relaxed and forgiving on purpose; accessibility-first beats
+dense. Display type tightens to 1.05.
+
+<TokenTable prefix="lh" />
+
+## Tracking
+
+Display sizes tighten (−0.025em), body stays neutral, and mono eyebrows open up
+(+0.08em, uppercase).
+
+<TokenTable prefix="tr" />
+
+## Rules that keep it coherent
+
+- **Sentence case for headings.** Title Case is reserved for product names and the
+  tagline.
+- **Mono for numbers that compare** — tables, pricing, stats — with tabular figures.
+- **`clamp()` for display sizes** so long translations don't break layouts (the `t-display-*`
+  classes in tokens.css already do this).
+- **Never justify text.** Left-aligned, ragged right.

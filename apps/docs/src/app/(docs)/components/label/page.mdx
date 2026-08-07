@@ -1,0 +1,57 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/label/Basic';
+
+export const metadata = { title: 'Label' };
+
+<ComponentHeader slug="label" />
+
+<DemoBlock file="label/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+`Label` is for controls that don't already ship their own — `RadioGroup`, a native
+`<select>`, a third-party control. Every other field atom here (`Input`, `Textarea`,
+`Checkbox`, `Switch`, `Slider`, `RadioGroupItem`) takes a required `label` prop and
+renders its own `<label>`; adding a standalone `Label` on top of those just duplicates
+markup.
+
+## Props
+
+`Label` has no props of its own beyond the native `<label>` attributes — see the table
+below.
+
+<PropsTables slug="label" />
+
+## Accessibility
+
+- Renders a native `<label>`. It doesn't infer or wire up an association with a
+  control — that's on you.
+- For elements the `for`/`id` mechanism supports (`input`, `select`, `textarea`,
+  `button`, and a few others), pass `htmlFor` matching the control's `id`.
+- For a non-labelable container like `RadioGroup`'s `role="radiogroup"` `<div>`,
+  `htmlFor` doesn't reliably associate — use `aria-labelledby` pointing at the `Label`'s
+  own `id` instead, as in the demo above.
+- The ref forwards to the underlying `<label>`.
+
+<DoDont
+  do={[
+    'Give Label a stable id (or htmlFor) and connect it explicitly — that’s the one thing this component does.',
+    'Reach for it to introduce a RadioGroup, since RadioGroup takes no label prop of its own.',
+    'Keep it to one short phrase — it renders as a normal label, not a heading.',
+  ]}
+  dont={[
+    'Add a standalone Label next to Input, Textarea, Checkbox, Switch, or Slider — they already render their own via the required label prop.',
+    'Use htmlFor pointing at a role="radiogroup" div and expect it to behave like a form-control association — use aria-labelledby there instead.',
+    'Leave it unconnected — an orphaned label with no for or aria-labelledby target just reads as plain text.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['input', 'radio-group', 'checkbox']} />

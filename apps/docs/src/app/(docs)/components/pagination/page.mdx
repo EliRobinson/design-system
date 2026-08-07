@@ -1,0 +1,73 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/pagination/Basic';
+import Boundaries from '@/components/demos/pagination/Boundaries';
+
+export const metadata = { title: 'Pagination' };
+
+<ComponentHeader slug="pagination" />
+
+<DemoBlock file="pagination/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Pagination` for a page-by-page list or table where jumping straight to page 7
+matters — a store catalog, a search results page. It renders one button per page with no
+windowing, which is fine through the range most lists actually use; past a hundred or so
+pages the button row gets long, so pull in `Table`'s own built-in pagination or a
+windowed `VirtualTable`/`VirtualList` instead of raw `Pagination` at that scale.
+
+## Boundary states
+
+Previous disables on page one, Next disables on the last page. `onPageChange` is never
+called with an out-of-range value — clicking Previous on page one, for instance, simply
+does nothing.
+
+<DemoBlock file="pagination/Boundaries.tsx">
+  <Boundaries />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="pagination" />
+
+## Accessibility
+
+- Renders a `<nav aria-label="Pagination">` wrapping a `<ul>` of page buttons plus
+  Previous/Next buttons — pass your own `aria-label` to override the default if a page
+  has more than one paginated region.
+- The active page button gets `aria-current="page"`; every page button has an
+  `aria-label` of `Page {n}` so its number reads correctly even without visible page
+  context.
+- Previous and Next carry `aria-label="Previous page"` / `"Next page"` and use the native
+  `disabled` attribute at the boundaries — a screen reader announces them as
+  unavailable, not just visually dimmed.
+- **Keyboard:** every button (Previous, each page, Next) is a native `<button>` in
+  normal tab order. There's no roving tabindex and no arrow-key navigation between
+  pages — `Tab` walks through them one at a time, same as any other button row.
+- This is a primary control, so every button keeps the 44×44px touch target minimum.
+- The ref forwards to the outer `<nav>`.
+
+<DoDont
+  do={[
+    'Keep page and pageCount in sync with your actual data — Pagination does not fetch or slice anything itself.',
+    'Pair it with a loading state on the list below so a page change reads as a swap, not a jump.',
+    'Let onPageChange scroll the list back into view if the page content is long.',
+    'Reach for windowed pagination once the page count climbs into the hundreds.',
+  ]}
+  dont={[
+    'Render Pagination for a list short enough to fit on one page.',
+    'Expect arrow-key navigation between page buttons — that behavior isn\'t wired.',
+    'Pass a pageCount of 0 and expect page buttons — Pagination renders none and disables both nav buttons.',
+    'Reimplement Table\'s own pagination with a second Pagination instance — Table already wires this internally.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['table', 'virtual-table']} />

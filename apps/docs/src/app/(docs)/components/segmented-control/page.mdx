@@ -1,0 +1,71 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/segmented-control/Basic';
+import DrivingContent from '@/components/demos/segmented-control/DrivingContent';
+
+export const metadata = { title: 'SegmentedControl' };
+
+<ComponentHeader slug="segmented-control" />
+
+<DemoBlock file="segmented-control/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `SegmentedControl` for a small, mutually exclusive set of view or mode options —
+Day/Week/Month, List/Grid — where exactly one is always selected and switching is
+instant. It's semantically a radio group in a horizontal row, not a set of tabs: `Tabs`
+pairs each option with its own content panel, while `SegmentedControl` just reports which
+option is picked and leaves what happens next to you.
+
+## Driving other content
+
+The selected value is ordinary state — use it to switch what renders below the control,
+the way a view toggle usually works.
+
+<DemoBlock file="segmented-control/DrivingContent.tsx">
+  <DrivingContent />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="segmented-control" />
+
+## Accessibility
+
+- Renders `role="radiogroup"` on the outer element and `role="radio"` with
+  `aria-checked` on each option — the same pattern a native radio group uses, just laid
+  out horizontally.
+- Uses roving tabindex: only the selected option (or the first one, if none is selected)
+  is a tab stop; the rest are `tabIndex={-1}`. `Tab` moves into and out of the whole
+  group in one stop, not option by option.
+- **Keyboard:** `ArrowRight`/`ArrowDown` moves to the next option, `ArrowLeft`/`ArrowUp`
+  to the previous, both wrapping at the ends; `Home` and `End` jump to the first and
+  last option. Unlike `Tabs`, moving with arrow keys also selects — that's the
+  radio-group convention this component follows.
+- Clicking an option selects it directly, independent of keyboard focus.
+- This is a primary control, so every option keeps the 44×44px touch target minimum.
+- The ref forwards to the outer `role="radiogroup"` element.
+
+<DoDont
+  do={[
+    'Keep it to two to five options — past that it stops reading as a single control.',
+    'Use it when exactly one option is always selected; there\'s no "none selected" state.',
+    'Pair short, parallel labels — Day/Week/Month, not one short label next to one long sentence.',
+    'Let arrow-key movement select immediately, matching native radio-group behavior.',
+  ]}
+  dont={[
+    'Use SegmentedControl when each option should show its own content panel with tab semantics — that\'s Tabs.',
+    'Use it for a single on/off choice — that\'s Switch.',
+    'Shrink the touch target below 44px for a denser look; density comes from the visible control, not the hit area.',
+    'Mix it up with RadioGroup for a long vertical list of options — SegmentedControl is for a short horizontal set.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['tabs', 'radio-group', 'switch']} />

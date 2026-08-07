@@ -149,7 +149,7 @@
         "@elirobinson/react/styles/atoms/Checkbox.css"
       ],
       "description": "Labelled checkbox with a full-height 44px click row.",
-      "inherits": null,
+      "inherits": "Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>",
       "props": [
         {
           "name": "label",
@@ -333,7 +333,7 @@
         "@elirobinson/react/styles/molecules/RuleLink.css"
       ],
       "description": "Context-based radio group; the group owns name, checked state, and change handling.",
-      "inherits": null,
+      "inherits": "Omit<HTMLAttributes<HTMLDivElement>, 'role'>",
       "props": [
         {
           "name": "name",
@@ -368,7 +368,7 @@
         {
           "name": "RadioGroupItem",
           "description": "",
-          "inherits": null,
+          "inherits": "Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'name' | 'checked' | 'onChange'>",
           "props": [
             {
               "name": "label",
@@ -468,7 +468,7 @@
         "@elirobinson/react/styles/atoms/Slider.css"
       ],
       "description": "Labelled native range input.",
-      "inherits": null,
+      "inherits": "Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>",
       "props": [
         {
           "name": "label",
@@ -498,7 +498,7 @@
         "@elirobinson/react/styles/atoms/Spinner.css"
       ],
       "description": "Status-role loading indicator in three sizes.",
-      "inherits": null,
+      "inherits": "Omit<HTMLAttributes<HTMLSpanElement>, 'role'>",
       "props": [
         {
           "name": "label",
@@ -536,7 +536,7 @@
         "@elirobinson/react/styles/atoms/Switch.css"
       ],
       "description": "Switch-role toggle with a labelled click target.",
-      "inherits": null,
+      "inherits": "Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'role'>",
       "props": [
         {
           "name": "label",
@@ -862,7 +862,7 @@
         "@elirobinson/react/styles/molecules/FormField.css"
       ],
       "description": "Label, hint, and error wrapper for controls that don't wire their own accessibility.",
-      "inherits": null,
+      "inherits": "Omit<HTMLAttributes<HTMLDivElement>, 'children'>",
       "props": [
         {
           "name": "htmlFor",
@@ -921,7 +921,7 @@
         "@elirobinson/react/styles/molecules/Pagination.css"
       ],
       "description": "Page-button list with aria-current marking and 44px targets.",
-      "inherits": null,
+      "inherits": "Omit<HTMLAttributes<HTMLElement>, 'onChange'>",
       "props": [
         {
           "name": "onPageChange",
@@ -967,7 +967,7 @@
         "@elirobinson/react/styles/molecules/Rating.css"
       ],
       "description": "Star rating — read-only by default, interactive when given a change handler.",
-      "inherits": null,
+      "inherits": "Omit<HTMLAttributes<HTMLDivElement>, 'role'>",
       "props": [
         {
           "name": "value",
@@ -1035,7 +1035,7 @@
         "@elirobinson/react/styles/molecules/SearchField.css"
       ],
       "description": "Search input with a built-in dense clear button.",
-      "inherits": null,
+      "inherits": "Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'onChange' | 'value' | 'defaultValue'>",
       "props": [
         {
           "name": "defaultValue",
@@ -1081,7 +1081,7 @@
         "@elirobinson/react/styles/molecules/SegmentedControl.css"
       ],
       "description": "Radio-style option group with arrow-key navigation and 44px targets.",
-      "inherits": null,
+      "inherits": "Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'role'>",
       "props": [
         {
           "name": "onValueChange",
@@ -1166,7 +1166,7 @@
         "@elirobinson/react/styles/organisms/Accordion.css"
       ],
       "description": "Expandable sections with configurable heading levels.",
-      "inherits": "HTMLAttributes<HTMLDivElement>",
+      "inherits": null,
       "props": [
         {
           "name": "defaultValue",
@@ -1229,7 +1229,7 @@
         {
           "name": "AccordionTrigger",
           "description": "",
-          "inherits": null,
+          "inherits": "Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'id' | 'onClick' | 'aria-expanded' | 'aria-controls'>",
           "props": [
             {
               "name": "defaultValue",
@@ -1250,7 +1250,7 @@
         {
           "name": "AccordionContent",
           "description": "",
-          "inherits": null,
+          "inherits": "Omit<HTMLAttributes<HTMLDivElement>, 'id' | 'role' | 'aria-labelledby'>",
           "props": [
             {
               "name": "defaultValue",
@@ -1980,7 +1980,7 @@
         {
           "name": "TabsList",
           "description": "",
-          "inherits": null,
+          "inherits": "Omit<HTMLAttributes<HTMLDivElement>, 'role'>",
           "props": [
             {
               "name": "defaultValue",
@@ -1994,7 +1994,7 @@
         {
           "name": "TabsTrigger",
           "description": "",
-          "inherits": null,
+          "inherits": "Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'value' | 'id' | 'role' | 'onClick' | 'aria-selected' | 'aria-controls' | 'tabIndex'>",
           "props": [
             {
               "name": "value",
@@ -2022,7 +2022,7 @@
         {
           "name": "TabsContent",
           "description": "",
-          "inherits": null,
+          "inherits": "Omit<HTMLAttributes<HTMLDivElement>, 'id' | 'role' | 'aria-labelledby'>",
           "props": [
             {
               "name": "value",
@@ -2321,17 +2321,17 @@
     {
       "name": "useAnchoredPosition",
       "importPath": "@elirobinson/react/hooks/useAnchoredPosition",
-      "description": ""
+      "description": "Fixed-position layout for a floating panel relative to its trigger, above or below, kept inside the viewport."
     },
     {
       "name": "useClickOutside",
       "importPath": "@elirobinson/react/hooks/useClickOutside",
-      "description": ""
+      "description": "Calls back when a pointer-down lands outside the given refs — the dismissal half of every overlay."
     },
     {
       "name": "useEscapeKey",
       "importPath": "@elirobinson/react/hooks/useEscapeKey",
-      "description": ""
+      "description": "Calls back on Escape keydown while enabled — shared dismissal behavior for overlays."
     },
     {
       "name": "useRovingFocus",

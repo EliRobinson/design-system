@@ -1,0 +1,92 @@
+export const metadata = { title: 'Hero pattern' };
+
+# Hero
+
+<p className="lead">
+  Heroes invert: an ink block with white type, an amber-accented display line, and at
+  most two actions. The dot-grid texture at 8% opacity is the only decoration allowed on
+  top.
+</p>
+
+## Recipe
+
+```tsx
+import { Button } from '@elirobinson/react/components/atoms/Button';
+import { Eyebrow } from '@elirobinson/react/components/atoms/Eyebrow';
+
+export function Hero() {
+  return (
+    <section className="hero">
+      <Eyebrow className="hero__eyebrow">Builder. Consultant. Founder.</Eyebrow>
+      <h1 className="hero__title">
+        Practical tech, honestly built<span className="hero__dot">.</span>
+      </h1>
+      <p className="hero__lead">
+        I'm Eli Robinson — I build software, teach AI, and create resources for coaches.
+      </p>
+      <div className="hero__actions">
+        <Button variant="accent" size="lg">
+          See the work
+        </Button>
+        <Button variant="ghost" size="lg" className="hero__ghost">
+          Get in touch
+        </Button>
+      </div>
+    </section>
+  );
+}
+```
+
+```css
+.hero {
+  background: var(--bg-inverse);
+  color: var(--fg-inverse);
+  padding: var(--space-13) var(--gutter);
+  /* 8% white dots — the one sanctioned texture */
+  background-image: radial-gradient(oklch(100% 0 0 / 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.hero__eyebrow {
+  color: var(--signal-400);
+}
+
+.hero__title {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: clamp(48px, 7vw, var(--fs-8xl));
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tr-tight);
+  margin: var(--space-4) 0 var(--space-5);
+  max-width: 14em;
+}
+
+.hero__dot {
+  color: var(--accent);
+}
+
+.hero__lead {
+  font-size: var(--fs-xl);
+  line-height: var(--lh-relaxed);
+  color: var(--ink-300);
+  max-width: var(--container-md);
+  margin: 0 0 var(--space-7);
+}
+
+.hero__actions {
+  display: flex;
+  gap: var(--space-4);
+}
+```
+
+## Rules
+
+- **Display type uses `clamp()`** so the headline survives translation and narrow
+  screens.
+- **The period is part of the sentence** — end the display line with an amber dot, the
+  wordmark's signature move.
+- **Two actions maximum:** one accent, one quiet. Never two ambers.
+- **No gradients, no imagery meshes.** If the hero needs an image, it's a real
+  photograph — warm, slightly desaturated — in a 16:10 block beside the copy on a 7–5
+  split, not behind it.
+- Light-hero variant: same structure on `--bg` with `--fg` type; keep the amber dot.

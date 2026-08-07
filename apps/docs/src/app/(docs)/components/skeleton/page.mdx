@@ -1,0 +1,66 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/skeleton/Basic';
+import Card from '@/components/demos/skeleton/Card';
+
+export const metadata = { title: 'Skeleton' };
+
+<ComponentHeader slug="skeleton" />
+
+<DemoBlock file="skeleton/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Skeleton` for a structural loading placeholder that mimics the shape of the content
+about to appear — it cuts layout shift and signals progress visually. Use `Spinner`
+instead for a small, content-agnostic "working" indicator, and `Progress` when you
+actually know the percent complete.
+
+## Composing a loading card
+
+Stack skeletons to match the real content's layout — an image block, a title line, a
+subtitle line.
+
+<DemoBlock file="skeleton/Card.tsx">
+  <Card />
+</DemoBlock>
+
+## Props
+
+Skeleton has no props of its own — size and shape come from `className`/`style` on the
+inherited `HTMLAttributes<HTMLDivElement>`.
+
+<PropsTables slug="skeleton" />
+
+## Accessibility
+
+- Always renders with `aria-hidden="true"` — it's invisible to screen readers by design,
+  meaning it does not announce a loading state to assistive tech on its own.
+- If the wait is long enough to matter, pair it with a `role="status"` wrapper or
+  visually-hidden text (see the card demo above), or use `Spinner`, which already
+  carries `role="status"`.
+- The pulse animation respects `prefers-reduced-motion` — not through a per-component
+  check, but because the design tokens stylesheet flattens all animation and transition
+  durations globally when that preference is set.
+
+<DoDont
+  do={[
+    'Shape skeletons to match the real content’s dimensions so the swap-in doesn’t jump.',
+    'Stack multiple Skeletons to represent a whole loading card, mirroring the real layout.',
+    'Pair it with a role="status" wrapper or screen-reader-only text when the wait genuinely needs to be announced.',
+  ]}
+  dont={[
+    'Rely on Skeleton alone to tell screen reader users something is loading — it’s aria-hidden, silent by design.',
+    'Leave skeletons on screen indefinitely if a request fails — swap to an error state, don’t strand the pulse.',
+    'Use Skeleton for a single small icon-sized loading state — Spinner reads better at that scale.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['spinner', 'progress', 'card']} />

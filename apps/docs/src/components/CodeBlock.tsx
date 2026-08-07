@@ -23,7 +23,6 @@ export async function CodeBlock({ children }: { children?: ReactNode }) {
   return (
     <div className="code-block">
       <CopyButton text={source} />
-      { }
       <div className="code-block__body" dangerouslySetInnerHTML={{ __html: html }} />
     </div>
   );

@@ -1,0 +1,67 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/spinner/Basic';
+import Sizes from '@/components/demos/spinner/Sizes';
+import InButton from '@/components/demos/spinner/InButton';
+
+export const metadata = { title: 'Spinner' };
+
+<ComponentHeader slug="spinner" />
+
+<DemoBlock file="spinner/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Spinner` for a small, indeterminate "working" indicator — you don't know how long
+it'll take. Use `Progress` instead the moment you actually know the percent complete.
+
+## Sizes
+
+<DemoBlock file="spinner/Sizes.tsx">
+  <Sizes />
+</DemoBlock>
+
+## Inside a button
+
+A common pattern: a disabled button showing its own loading state.
+
+<DemoBlock file="spinner/InButton.tsx">
+  <InButton />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="spinner" />
+
+## Accessibility
+
+- Renders `role="status"` with `aria-label={label}` (default `"Loading"`) — a live
+  region announced once when it mounts. `role` is fixed: the type omits it from the
+  props you can pass, so you can't accidentally break the live region.
+- When adjacent visible text already says the same thing — a "Saving changes" button,
+  for example — pass `aria-hidden="true"` on the `Spinner` so the two don't both get
+  announced, as in the button demo above.
+- Give it a specific `label` when the default "Loading" isn't precise enough ("Loading
+  invoices") and no visible text nearby already says so.
+
+<DoDont
+  do={[
+    'Give Spinner a specific label when the default "Loading" isn’t precise enough.',
+    'Use size="sm" inline next to text and reserve lg for a full-section loading state.',
+    'Pass aria-hidden="true" when adjacent visible text already announces the same loading state.',
+  ]}
+  dont={[
+    'Pair a Spinner with visible "Loading…" text without hiding one of the two from assistive tech — that’s a double announcement.',
+    'Use Spinner for a task where you actually know the percent complete — that’s what Progress is for.',
+    'Try to override role — the type doesn’t allow it; status is the fixed contract.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['progress', 'skeleton', 'button']} />

@@ -1,5 +1,10 @@
 {
-  "$comment": "Curated one-line purposes merged into component-manifest.json by extract-manifest.mts. Used only when the component source has no JSDoc description. Source of phrasing: README.md inventory tables and docs/agents/components.md.",
+  "$comment": "Curated one-line purposes merged into component-manifest.json by extract-manifest.mts. Used only when the source has no JSDoc description. Source of phrasing: README.md inventory tables, docs/agents/components.md, and the hook implementations.",
+  "hooks": {
+    "useAnchoredPosition": "Fixed-position layout for a floating panel relative to its trigger, above or below, kept inside the viewport.",
+    "useClickOutside": "Calls back when a pointer-down lands outside the given refs — the dismissal half of every overlay.",
+    "useEscapeKey": "Calls back on Escape keydown while enabled — shared dismissal behavior for overlays."
+  },
   "Avatar": "Image avatar with initials fallback, in sm/md/lg sizes.",
   "Badge": "Small status label — default, signal, anchor, solid, and outline variants.",
   "Button": "The primary action control — primary, accent, secondary, and ghost variants in three sizes.",

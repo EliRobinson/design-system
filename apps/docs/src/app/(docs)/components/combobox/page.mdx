@@ -1,0 +1,81 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/combobox/Basic';
+import LongList from '@/components/demos/combobox/LongList';
+
+export const metadata = { title: 'Combobox' };
+
+<ComponentHeader slug="combobox" />
+
+<DemoBlock file="combobox/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Combobox` when the option set is long enough that typing to filter beats scanning or
+scrolling. It's a single-select, filterable field — type a few characters and the list narrows
+to matches; arrow through them and pick one.
+
+For a short, fixed list (ten or so options), a plain `Select` is less to build and there's
+nothing worth filtering. And this isn't a general autocomplete-anything field: it only accepts
+one of the `options` you pass in, not arbitrary free text.
+
+## Filtering a long list
+
+The listbox is virtualized — it renders only the rows currently in view, not every option in
+the array, so a list of hundreds stays as responsive as a list of ten. Try typing "drill 3" or
+arrowing all the way to the bottom.
+
+<DemoBlock file="combobox/LongList.tsx">
+  <LongList />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="combobox" />
+
+## Accessibility
+
+- Implements the WAI-ARIA combobox-with-listbox pattern using `aria-activedescendant`, not the
+  focus-moves-into-the-list model. The input carries `role="combobox"`,
+  `aria-haspopup="listbox"`, `aria-expanded`, `aria-controls` (the listbox id),
+  `aria-autocomplete="list"`, and `aria-activedescendant` pointing at whichever option is
+  currently highlighted.
+- DOM focus never leaves the input — the highlighted option is communicated purely by id
+  reference. Options themselves are `tabIndex={-1}` and use `onMouseDown` preventDefault so
+  clicking one never steals focus away from the input.
+- **Keyboard:** `ArrowDown`/`ArrowUp` open the list if it's closed, or move the highlight by
+  one option, clamped at both ends — the highlight stops at the first/last option rather than
+  wrapping around. `Enter` selects the currently highlighted option (not always the first) and
+  closes the list. `Escape` closes the list without changing the selected value.
+  Typing any character re-opens the list if it was closed.
+- Clicking outside the control closes the list (the outside-click listener is only attached
+  while it's open).
+- A query with no matches renders a labeled, empty listbox with "No matches" text rather than
+  nothing at all — `aria-controls` always resolves to a real element, open or empty.
+- The highlighted option is scrolled into view automatically as it moves past the edge of the
+  virtualized window, so keyboard navigation never highlights something that's scrolled out of
+  sight.
+
+<DoDont
+  do={[
+    'Give every option a stable value distinct from its label.',
+    'Pair it with a real accessible name via the required label prop.',
+    'Trust the built-in virtualization for long option lists instead of pre-slicing options yourself.',
+    'Keyboard-test Arrow/Enter/Escape, not just click-through — the highlight model depends on it.',
+  ]}
+  dont={[
+    "Move DOM focus into the listbox yourself — the whole pattern depends on focus staying on the input.",
+    'Pass duplicate values across options — the active-option lookup assumes one match.',
+    "Use Combobox for a short, fixed choice — reach for Select when there's nothing to filter.",
+    'Rely on hover alone to show the current highlight — always verify with the keyboard.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['select', 'search-field', 'virtual-list']} />

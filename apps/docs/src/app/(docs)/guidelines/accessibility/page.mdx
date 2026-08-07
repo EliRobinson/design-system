@@ -1,0 +1,45 @@
+export const metadata = { title: 'Accessibility standard' };
+
+# The accessibility standard
+
+<p className="lead">
+  This is the bar every component and every app built on the system must clear. The
+  [accessibility foundation](/foundations/accessibility) explains what the system gives
+  you; this page is the checklist a change must pass.
+</p>
+
+## Non-negotiables
+
+1. **WCAG 2.1 AA** for every color pairing in its intended use. Verify against the
+   [computed contrast table](/foundations/color) — don't eyeball it.
+2. **16px minimum** for body text. Smaller steps are metadata only.
+3. **Visible focus** on every interactive element via `:focus-visible` — the ink ring
+   ships globally; a component may reposition it, never remove it.
+4. **Touch targets by role:** 44×44px minimum for primary controls (buttons,
+   pagination items, segmented-control options, nav items); the shadcn/MUI dense scale
+   for inline affordances (chip remove, search clear, rating stars, calendar days). An
+   expanded hit area must never overlap sibling content.
+5. **Keyboard completeness.** Everything a pointer can do, a keyboard can do. Composite
+   widgets implement their WAI-ARIA pattern — roving tabindex or
+   `aria-activedescendant` — via the shared [interaction hooks](/components/hooks).
+6. **`prefers-reduced-motion` honored.** The tokens stylesheet enforces it globally;
+   don't opt out.
+7. **Names for everything.** Icon-only controls take `aria-label`; form controls get
+   real labels (the form atoms require them by prop); images get `alt`.
+
+## What review checks
+
+- Walk the change with the keyboard only — reach, operate, and leave every control.
+- Run the contrast numbers for any new color use.
+- Check the accessibility section of the relevant component page — if your usage
+  breaks the documented contract, the usage is wrong (or the docs are, which is also a
+  bug).
+- Components that manage focus (overlays) must return focus to their trigger on close.
+
+## Enforcement in code
+
+The machine-checkable versions of these rules live in
+`@elirobinson/ai-patterns/contracts` — touch-target scoping, focus-visible, contrast
+level, and the `forwardRef` requirement — so agents and CI can check them without
+reading this page. The [audit prompt](/build-with-ai) applies them to a page of your
+app.
