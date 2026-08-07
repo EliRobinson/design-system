@@ -1142,8 +1142,8 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 0 var(--space-2);
-  min-height: 44px;
+  padding: 0 var(--space-3);
+  min-height: 32px;
   border-radius: var(--radius-pill);
   background: var(--bg-subtle);
   border: 1px solid var(--border);
@@ -1152,12 +1152,12 @@
 }
 
 .ds-chip__remove {
-  align-self: stretch;
-  margin-block: -1px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
+  width: 22px;
+  height: 22px;
+  margin-right: -4px;
   border-radius: 9999px;
   border: none;
   background: transparent;
