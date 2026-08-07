@@ -1207,3 +1207,62 @@
 .ds-form-field__message--error {
   color: var(--status-danger);
 }
+
+/* ==========================================================================
+   SearchField
+   ========================================================================== */
+
+.ds-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ds-search-field__icon {
+  position: absolute;
+  left: var(--space-3);
+  color: var(--fg-3);
+  pointer-events: none;
+}
+
+.ds-search-field__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-8) 0 var(--space-8);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  font-size: var(--fs-sm);
+}
+
+.ds-search-field__input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.ds-search-field__clear {
+  position: absolute;
+  right: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: var(--fg-3);
+  cursor: pointer;
+  font-size: var(--fs-md);
+}
+
+.ds-search-field__clear:hover {
+  background: var(--bg-subtle);
+  color: var(--fg);
+}
+
+.ds-search-field__clear:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
