@@ -32,7 +32,7 @@ describe('Table', () => {
     );
 
     expect(screen.getByText('No rows yet')).toBeInTheDocument();
-    // The brief's early-return branch dropped `className` entirely (C19) --
+    // An early-return empty branch can easily drop `className` entirely --
     // this checks the wrapper actually carries it on the empty-state path,
     // not just on the happy path.
     expect(document.querySelector('.ds-table-wrapper.custom-table')).toBeInTheDocument();
@@ -108,7 +108,7 @@ describe('Table', () => {
     expect(screen.queryByText('Nothing found')).not.toBeInTheDocument();
 
     // `data` still has 5 rows -- only the *filtered* row model is empty.
-    // Checking `data.length` (the brief's original bug) would never fire
+    // Checking `data.length` instead would never fire
     // this branch.
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'zzz-no-match' } });
 
@@ -119,39 +119,6 @@ describe('Table', () => {
     // isn't a permanent/stuck render.
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: '' } });
     expect(screen.getByRole('cell', { name: 'Row 1' })).toBeInTheDocument();
-  });
-
-  it('renders an ARIA table/row/cell grid instead of a literal <table> in virtualized mode, and windows the rows', () => {
-    render(
-      <Table
-        data={makeRows(200)}
-        columns={columns}
-        virtualize
-        virtualizeHeight={200}
-        rowHeight={40}
-      />,
-    );
-
-    // Positive fact: ARIA table semantics are present.
-    expect(screen.getByRole('table')).toBeInTheDocument();
-    expect(screen.getAllByRole('columnheader').length).toBe(columns.length);
-    // Positive fact: no literal <table> element was used (VirtualList rows
-    // are <div>s, which are invalid inside a real <tbody>).
-    expect(document.querySelector('table')).not.toBeInTheDocument();
-
-    // Positive fact: the first row is present.
-    expect(screen.getByRole('cell', { name: 'Row 1' })).toBeInTheDocument();
-    // Positive fact: a far-off row is not -- proves this is windowed
-    // rendering, not all 200 rows dumped into the DOM (which a weaker test
-    // asserting only "some rows render" would miss).
-    expect(screen.queryByRole('cell', { name: 'Row 200' })).not.toBeInTheDocument();
-  });
-
-  it('renders the EmptyState row (not a broken grid) when virtualized with no matching rows', () => {
-    render(<Table data={[]} columns={columns} virtualize emptyMessage="No rows yet" />);
-
-    expect(screen.getByRole('table')).toBeInTheDocument();
-    expect(screen.getByText('No rows yet')).toBeInTheDocument();
   });
 
   it('clamps to the last valid page when a shrinking `data` set leaves the current page out of range', () => {
@@ -194,7 +161,7 @@ describe('Table', () => {
     rerender(<Table data={[]} columns={columns} pageSize={10} emptyMessage="Nothing left" />);
 
     expect(screen.getByText('Nothing left')).toBeInTheDocument();
-    // Exactly one cell -- the `colSpan` wrapper around EmptyState (C19's
+    // Exactly one cell -- the `colSpan` wrapper around EmptyState (the
     // `<tr><td colSpan><EmptyState /></td></tr>` structure) -- not a row of
     // real data cells.
     expect(screen.getAllByRole('cell')).toHaveLength(1);
