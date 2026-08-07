@@ -13,13 +13,13 @@ const commands = [
 
 describe('CommandPalette', () => {
   it('does not render when closed', () => {
-    render(<CommandPalette isOpen={false} onOpenChange={vi.fn()} commands={commands} />);
+    render(<CommandPalette open={false} onOpenChange={vi.fn()} commands={commands} />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('renders as a genuine modal dialog when open, and filters commands by search text', async () => {
     const user = userEvent.setup();
-    render(<CommandPalette isOpen onOpenChange={vi.fn()} commands={commands} />);
+    render(<CommandPalette open onOpenChange={vi.fn()} commands={commands} />);
 
     // Positive fact: this is a real modal, not a bare <div> -- the exact gap
     // the task brief's version silently had (it rendered <Dialog>'s inline
@@ -39,7 +39,7 @@ describe('CommandPalette', () => {
     const onSelect = vi.fn();
     const customCommands = [{ id: 'new', label: 'New file', onSelect }];
 
-    render(<CommandPalette isOpen onOpenChange={onOpenChange} commands={customCommands} />);
+    render(<CommandPalette open onOpenChange={onOpenChange} commands={customCommands} />);
     await user.click(screen.getByText('New file'));
 
     expect(onSelect).toHaveBeenCalledTimes(1);
@@ -47,7 +47,7 @@ describe('CommandPalette', () => {
   });
 
   it('has an accessible name wired through aria-labelledby to a real, rendered title', () => {
-    render(<CommandPalette isOpen onOpenChange={vi.fn()} commands={commands} />);
+    render(<CommandPalette open onOpenChange={vi.fn()} commands={commands} />);
 
     const dialog = screen.getByRole('dialog');
     const labelledbyId = dialog.getAttribute('aria-labelledby');
@@ -62,7 +62,7 @@ describe('CommandPalette', () => {
 
   it('moves the active command with ArrowDown/ArrowUp and keeps aria-activedescendant pointed at a real, rendered element', async () => {
     const user = userEvent.setup();
-    render(<CommandPalette isOpen onOpenChange={vi.fn()} commands={commands} />);
+    render(<CommandPalette open onOpenChange={vi.fn()} commands={commands} />);
 
     const input = screen.getByRole('searchbox');
 
@@ -103,7 +103,7 @@ describe('CommandPalette', () => {
       { id: 'open', label: 'Open file', onSelect: onSelectOpen },
     ];
 
-    render(<CommandPalette isOpen onOpenChange={onOpenChange} commands={customCommands} />);
+    render(<CommandPalette open onOpenChange={onOpenChange} commands={customCommands} />);
 
     await user.keyboard('{ArrowDown}'); // move from "New file" to "Open file"
     await user.keyboard('{Enter}');
@@ -117,7 +117,7 @@ describe('CommandPalette', () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
 
-    render(<CommandPalette isOpen onOpenChange={onOpenChange} commands={commands} />);
+    render(<CommandPalette open onOpenChange={onOpenChange} commands={commands} />);
     await user.keyboard('{Escape}');
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
@@ -128,7 +128,7 @@ describe('CommandPalette', () => {
   it('renders shortcut hints as Kbd elements', () => {
     render(
       <CommandPalette
-        isOpen
+        open
         onOpenChange={vi.fn()}
         commands={[{ id: 'save', label: 'Save', shortcut: ['⌘', 'S'], onSelect: vi.fn() }]}
       />,
@@ -140,23 +140,57 @@ describe('CommandPalette', () => {
 
   it("forwards the ref to the underlying input element (SearchField's forwarded-ref contract)", () => {
     const ref = createRef<HTMLInputElement>();
-    render(<CommandPalette ref={ref} isOpen onOpenChange={vi.fn()} commands={commands} />);
+    render(<CommandPalette ref={ref} open onOpenChange={vi.fn()} commands={commands} />);
 
     expect(ref.current).toBeInstanceOf(HTMLInputElement);
     expect(ref.current).toHaveFocus();
   });
 
+  it('clamps the raw active index BEFORE applying the delta, so ArrowUp moves the highlight in a single press after the list shrinks', async () => {
+    const user = userEvent.setup();
+    const sixCommands = Array.from({ length: 6 }, (_, index) => ({
+      id: `cmd-${index}`,
+      label: `Command ${index}`,
+      onSelect: vi.fn(),
+    }));
+
+    const { rerender } = render(
+      <CommandPalette open onOpenChange={vi.fn()} commands={sixCommands} />,
+    );
+
+    const input = screen.getByRole('searchbox');
+
+    // Press ArrowDown 5 times: raw state goes 0 -> 5 (last of 6 commands).
+    for (let i = 0; i < 5; i += 1) {
+      await user.keyboard('{ArrowDown}');
+    }
+    let activeId = input.getAttribute('aria-activedescendant');
+    expect(document.getElementById(activeId as string)).toHaveTextContent('Command 5');
+
+    // Shrink `commands` to 2 without the palette closing/reopening (no
+    // remount, so activeIndexState is NOT reset by the open-effect).
+    rerender(<CommandPalette open onOpenChange={vi.fn()} commands={sixCommands.slice(0, 2)} />);
+
+    activeId = input.getAttribute('aria-activedescendant');
+    expect(document.getElementById(activeId as string)).toHaveTextContent('Command 1');
+
+    // A single ArrowUp must move the highlight immediately -- if the raw
+    // state were clamped only on read (not before applying the delta), this
+    // press would still display "Command 1" and require three more presses.
+    await user.keyboard('{ArrowUp}');
+    activeId = input.getAttribute('aria-activedescendant');
+    expect(document.getElementById(activeId as string)).toHaveTextContent('Command 0');
+  });
+
   it('resets the query and active index each time it re-opens', async () => {
     const user = userEvent.setup();
-    const { rerender } = render(
-      <CommandPalette isOpen onOpenChange={vi.fn()} commands={commands} />,
-    );
+    const { rerender } = render(<CommandPalette open onOpenChange={vi.fn()} commands={commands} />);
 
     await user.type(screen.getByRole('searchbox'), 'new');
     expect(screen.queryByText('Open file')).not.toBeInTheDocument();
 
-    rerender(<CommandPalette isOpen={false} onOpenChange={vi.fn()} commands={commands} />);
-    rerender(<CommandPalette isOpen onOpenChange={vi.fn()} commands={commands} />);
+    rerender(<CommandPalette open={false} onOpenChange={vi.fn()} commands={commands} />);
+    rerender(<CommandPalette open onOpenChange={vi.fn()} commands={commands} />);
 
     expect(screen.getByRole('searchbox')).toHaveValue('');
     expect(screen.getByText('Open file')).toBeInTheDocument();

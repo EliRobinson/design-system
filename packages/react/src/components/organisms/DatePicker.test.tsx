@@ -151,4 +151,54 @@ describe('DatePicker', () => {
     expect(ref.current).toBeInstanceOf(HTMLInputElement);
     expect(ref.current?.getAttribute('aria-label')).toBe('Start date');
   });
+
+  it('re-syncs the displayed month when a controlled `value` changes', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <DatePicker label="Start date" value={new Date(2026, 0, 15)} onValueChange={vi.fn()} />,
+    );
+
+    rerender(
+      <DatePicker label="Start date" value={new Date(2027, 5, 10)} onValueChange={vi.fn()} />,
+    );
+
+    await user.click(screen.getByLabelText('Start date'));
+
+    expect(screen.getByRole('grid')).toHaveAccessibleName('June 2027');
+  });
+
+  it('does not yank the displayed month back if the user navigated and `value` has not changed', async () => {
+    const user = userEvent.setup();
+    const value = new Date(2026, 0, 15);
+    const { rerender } = render(
+      <DatePicker label="Start date" value={value} onValueChange={vi.fn()} />,
+    );
+
+    await user.click(screen.getByLabelText('Start date'));
+    await user.click(screen.getByRole('button', { name: 'Next month' }));
+    expect(screen.getByText('February 2026')).toBeInTheDocument();
+
+    // Re-render with the SAME value (new Date instance, same time) -- this
+    // must not reset the calendar back to January.
+    rerender(<DatePicker label="Start date" value={value} onValueChange={vi.fn()} />);
+
+    expect(screen.getByText('February 2026')).toBeInTheDocument();
+  });
+
+  it('marks the selected day with aria-selected and a selection class, and no other day', async () => {
+    const user = userEvent.setup();
+    render(<DatePicker label="Start date" value={new Date(2026, 0, 15)} onValueChange={vi.fn()} />);
+
+    await user.click(screen.getByLabelText('Start date'));
+
+    const selectedButton = screen.getByRole('button', { name: '15' });
+    const selectedCell = selectedButton.closest('[role="gridcell"]');
+    expect(selectedCell).toHaveAttribute('aria-selected', 'true');
+    expect(selectedButton.className).toMatch(/--selected/);
+
+    const otherButton = screen.getByRole('button', { name: '20' });
+    const otherCell = otherButton.closest('[role="gridcell"]');
+    expect(otherCell).toHaveAttribute('aria-selected', 'false');
+    expect(otherButton.className).not.toMatch(/--selected/);
+  });
 });

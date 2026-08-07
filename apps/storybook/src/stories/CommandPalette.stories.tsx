@@ -26,7 +26,7 @@ function CommandPaletteDemo() {
         Open command palette
       </button>
       <CommandPalette
-        isOpen={isOpen}
+        open={isOpen}
         onOpenChange={setIsOpen}
         commands={[
           { id: 'new', label: 'New file', shortcut: ['⌘', 'N'], onSelect: () => {} },
@@ -43,6 +43,6 @@ export const Default: Story = {
   // supplying only `render` fails `pnpm typecheck` with "Property 'args' is
   // missing". These placeholders are never read; CommandPaletteDemo owns
   // the real state.
-  args: { isOpen: true, onOpenChange: () => {}, commands: [] },
+  args: { open: true, onOpenChange: () => {}, commands: [] },
   render: () => <CommandPaletteDemo />,
 };

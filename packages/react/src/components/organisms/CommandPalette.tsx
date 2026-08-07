@@ -14,7 +14,7 @@ export type CommandPaletteCommand = {
 };
 
 export type CommandPaletteProps = {
-  isOpen: boolean;
+  open: boolean;
   onOpenChange: (open: boolean) => void;
   commands: CommandPaletteCommand[];
   className?: string;
@@ -36,7 +36,7 @@ export type CommandPaletteProps = {
 // not -- to clobber the internally computed `id`s, `role`s, or the
 // `aria-activedescendant` wiring this component owns.
 export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
-  function CommandPalette({ isOpen, onOpenChange, commands, className }, ref) {
+  function CommandPalette({ open, onOpenChange, commands, className }, ref) {
     const baseId = useId();
     const listId = `${baseId}-list`;
 
@@ -77,12 +77,32 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
     // forwarded-ref contract (ref resolves to the real <input>) -- see
     // SearchField.test.tsx for the permanent test covering that contract.
     useEffect(() => {
-      if (isOpen) {
+      if (open) {
         setQuery('');
         setActiveIndexState(0);
         inputRef.current?.focus();
       }
-    }, [isOpen]);
+    }, [open]);
+
+    // Clamp the CURRENT index against the live `filtered.length` before
+    // applying the arrow-key delta, not after. Clamping only the derived
+    // display value (see `activeIndex` above) leaves the raw state free to
+    // sit far above the valid range after `commands` shrinks -- e.g. state
+    // 5 with a filtered list of length 2 displays clamped to 1, but a naive
+    // `Math.max(0, current - 1)` on ArrowUp takes state from 5 to 4, which
+    // *still* clamps to 1, so the highlight appears stuck. Clamping first
+    // (matching Combobox's `moveActive`, Combobox.tsx) means the delta is
+    // always applied to a value already inside range, so a single key press
+    // always moves the highlight by exactly one step.
+    function moveActive(delta: number) {
+      setActiveIndexState((current) => {
+        if (filtered.length === 0) {
+          return 0;
+        }
+        const clampedCurrent = Math.min(current, filtered.length - 1);
+        return Math.max(0, Math.min(filtered.length - 1, clampedCurrent + delta));
+      });
+    }
 
     function runCommand(index: number) {
       const command = filtered[index];
@@ -103,13 +123,11 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
       switch (event.key) {
         case 'ArrowDown':
           event.preventDefault();
-          setActiveIndexState((current) =>
-            filtered.length === 0 ? 0 : Math.min(filtered.length - 1, Math.max(0, current) + 1),
-          );
+          moveActive(1);
           break;
         case 'ArrowUp':
           event.preventDefault();
-          setActiveIndexState((current) => Math.max(0, current - 1));
+          moveActive(-1);
           break;
         case 'Enter':
           event.preventDefault();
@@ -136,12 +154,12 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
       }
     }
 
-    if (!isOpen) {
+    if (!open) {
       return null;
     }
 
     return (
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className={cn('ds-command-palette', className)}>
           <DialogTitle>Command palette</DialogTitle>
           <SearchField

@@ -11,7 +11,7 @@ Move every published component under an atomic-tier subpath (`atoms/`, `molecule
 + import { Button } from '@elirobinson/react/components/atoms/Button';
 ```
 
-Every existing component moved to its tier — e.g. `Card`/`Alert`/`Badge` → `components/molecules/`, `Dialog`/`Select`/`Tabs` → `components/organisms/`, `Button`/`Input`/`Avatar` → `components/atoms/`. See `docs/agents/components.md` for the full tier boundary rule and the shadcn mapping table.
+Every existing component moved to its tier — e.g. `Card`/`Alert` → `components/molecules/`, `Badge`/`Button`/`Input`/`Avatar` → `components/atoms/`, `Dialog`/`Select`/`Tabs` → `components/organisms/`. See `docs/agents/components.md` for the full tier boundary rule and the shadcn mapping table.
 
 New components, by tier:
 

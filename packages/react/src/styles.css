@@ -1637,6 +1637,24 @@
   outline-offset: 1px;
 }
 
+.ds-date-picker__day--today {
+  font-weight: var(--fw-medium);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.ds-date-picker__day--selected {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.ds-date-picker__day--selected:hover {
+  background: var(--accent-hover);
+}
+
+.ds-date-picker__day--today.ds-date-picker__day--selected {
+  box-shadow: none;
+}
+
 /* ==========================================================================
    Combobox
    ========================================================================== */
