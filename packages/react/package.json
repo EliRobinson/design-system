@@ -21,12 +21,12 @@
   },
   "dependencies": {
     "@elirobinson/tokens": "0.2.0",
-    "@tanstack/react-form": "^1.33.3",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.14.9"
   },
   "exports": {
     "./styles.css": "./src/styles.css",
+    "./styles/*": "./src/components/*",
     "./components/*": {
       "types": "./dist/components/*.d.ts",
       "import": "./dist/components/*.js"
