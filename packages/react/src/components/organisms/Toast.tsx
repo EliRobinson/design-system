@@ -2,6 +2,7 @@ import type { HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useCallback, useContext, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useHasMounted } from '../../hooks/useHasMounted';
 import { cn } from '../../lib/cn';
 
 export type ToastVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
@@ -37,6 +38,14 @@ export type ToasterProps = {
 export function Toaster({ children }: ToasterProps) {
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
+  // Unlike Popover/DropdownMenu, the viewport has no `open` guard in front of
+  // it — it portals into `document.body` on every render, so wrapping an app in
+  // `Toaster` throws `document is not defined` on any Next.js/Remix build, and
+  // the `useToast` context makes mounting it client-only impossible for
+  // consumers. Toasts can only exist after an interaction, so the server pass
+  // loses nothing by skipping the viewport.
+  const hasMounted = useHasMounted();
+
   const dismiss = useCallback((id: string) => {
     setToasts((current) => current.filter((item) => item.id !== id));
   }, []);
@@ -62,17 +71,21 @@ export function Toaster({ children }: ToasterProps) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {createPortal(
-        <div className="ds-toast-viewport" aria-live="polite" aria-relevant="additions">
-          {toasts.map((item) => (
-            <Toast key={item.id} variant={item.variant} onDismiss={() => dismiss(item.id)}>
-              {item.title ? <ToastTitle>{item.title}</ToastTitle> : null}
-              {item.description ? <ToastDescription>{item.description}</ToastDescription> : null}
-            </Toast>
-          ))}
-        </div>,
-        document.body,
-      )}
+      {hasMounted
+        ? createPortal(
+            <div className="ds-toast-viewport" aria-live="polite" aria-relevant="additions">
+              {toasts.map((item) => (
+                <Toast key={item.id} variant={item.variant} onDismiss={() => dismiss(item.id)}>
+                  {item.title ? <ToastTitle>{item.title}</ToastTitle> : null}
+                  {item.description ? (
+                    <ToastDescription>{item.description}</ToastDescription>
+                  ) : null}
+                </Toast>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
     </ToastContext.Provider>
   );
 }

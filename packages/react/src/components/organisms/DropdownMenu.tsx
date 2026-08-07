@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useAnchoredPosition } from '../../hooks/useAnchoredPosition';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { useHasMounted } from '../../hooks/useHasMounted';
 import { cn } from '../../lib/cn';
 
 type DropdownMenuContextValue = {
@@ -119,8 +120,12 @@ export type DropdownMenuContentProps = HTMLAttributes<HTMLDivElement>;
 export function DropdownMenuContent({ className, children, ...props }: DropdownMenuContentProps) {
   const { open, onOpenChange, contentRef, menuId, activeIndex, setActiveIndex } =
     useDropdownMenuContext();
+  const hasMounted = useHasMounted();
 
-  if (!open) {
+  // A closed menu never reaches the portal, so an uncontrolled DropdownMenu
+  // survives a server render on its own. One opened via the `open` prop does
+  // not — hence the mount gate.
+  if (!open || !hasMounted) {
     return null;
   }
 
