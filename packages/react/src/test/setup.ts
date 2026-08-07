@@ -12,14 +12,19 @@ afterEach(() => {
 // silently corrupt any test that measures anything. Suites that need a
 // measurable viewport opt in explicitly via `stubViewportLayout()`
 // (test/viewport.ts).
+//
+// Server-rendering suites (`// @vitest-environment node`) share this setup file
+// but have no DOM to patch, so the whole block is skipped there rather than
+// throwing on the first missing global.
+const hasDom = typeof document !== 'undefined';
 
-if (!HTMLDialogElement.prototype.showModal) {
+if (hasDom && !HTMLDialogElement.prototype.showModal) {
   HTMLDialogElement.prototype.showModal = function showModal() {
     this.open = true;
   };
 }
 
-if (!HTMLDialogElement.prototype.close) {
+if (hasDom && !HTMLDialogElement.prototype.close) {
   HTMLDialogElement.prototype.close = function close() {
     this.open = false;
     this.dispatchEvent(new Event('close'));
@@ -51,7 +56,7 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 // React's commit phase, where TanStack Virtual's `flushSync` warns that React
 // is already rendering. That warning is an artifact of the polyfill, not of
 // the component under test.
-if (!Element.prototype.scrollTo) {
+if (hasDom && !Element.prototype.scrollTo) {
   Element.prototype.scrollTo = function scrollTo(
     optionsOrX?: ScrollToOptions | number,
     y?: number,

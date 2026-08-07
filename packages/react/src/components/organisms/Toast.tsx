@@ -1,5 +1,13 @@
 import type { HTMLAttributes, ReactNode } from 'react';
-import { createContext, forwardRef, useCallback, useContext, useMemo, useState } from 'react';
+import {
+  createContext,
+  forwardRef,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 
 import { cn } from '../../lib/cn';
@@ -37,6 +45,19 @@ export type ToasterProps = {
 export function Toaster({ children }: ToasterProps) {
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
+  // The viewport portals into `document.body`, which does not exist while the
+  // app is server-rendered. Gating on a mount flag keeps `Toaster` renderable
+  // from a server component tree — without it, wrapping an app in `Toaster`
+  // throws `document is not defined` on any Next.js/Remix build, and the
+  // `useToast` context makes mounting it client-only impossible for consumers.
+  // The server and first client render agree (no viewport), so hydration is
+  // clean; toasts can only exist after an interaction anyway.
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const dismiss = useCallback((id: string) => {
     setToasts((current) => current.filter((item) => item.id !== id));
   }, []);
@@ -62,17 +83,21 @@ export function Toaster({ children }: ToasterProps) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {createPortal(
-        <div className="ds-toast-viewport" aria-live="polite" aria-relevant="additions">
-          {toasts.map((item) => (
-            <Toast key={item.id} variant={item.variant} onDismiss={() => dismiss(item.id)}>
-              {item.title ? <ToastTitle>{item.title}</ToastTitle> : null}
-              {item.description ? <ToastDescription>{item.description}</ToastDescription> : null}
-            </Toast>
-          ))}
-        </div>,
-        document.body,
-      )}
+      {mounted
+        ? createPortal(
+            <div className="ds-toast-viewport" aria-live="polite" aria-relevant="additions">
+              {toasts.map((item) => (
+                <Toast key={item.id} variant={item.variant} onDismiss={() => dismiss(item.id)}>
+                  {item.title ? <ToastTitle>{item.title}</ToastTitle> : null}
+                  {item.description ? (
+                    <ToastDescription>{item.description}</ToastDescription>
+                  ) : null}
+                </Toast>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
     </ToastContext.Provider>
   );
 }
