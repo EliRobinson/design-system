@@ -6,6 +6,13 @@ afterEach(() => {
   cleanup();
 });
 
+// Everything below polyfills a standard DOM API that jsdom does not implement
+// at all. That is the only thing this file does globally — it never fakes
+// layout *values*, because a package-wide lie about element geometry would
+// silently corrupt any test that measures anything. Suites that need a
+// measurable viewport opt in explicitly via `stubViewportLayout()`
+// (test/viewport.ts).
+
 if (!HTMLDialogElement.prototype.showModal) {
   HTMLDialogElement.prototype.showModal = function showModal() {
     this.open = true;
@@ -19,14 +26,8 @@ if (!HTMLDialogElement.prototype.close) {
   };
 }
 
-// jsdom has no layout engine and no ResizeObserver. @tanstack/react-virtual
-// (used by VirtualList, and by Table/Combobox once they virtualize) constructs
-// a ResizeObserver to measure its scroll container, and reads
-// offsetHeight/clientHeight/getBoundingClientRect to size the viewport — all
-// of which are undefined/zero in jsdom. Without these stubs the virtualizer
-// throws "ResizeObserver is not defined" before it ever gets to compute a
-// row range, and even with a stubbed observer it would measure a 0px
-// viewport and render nothing.
+// jsdom has no ResizeObserver. @tanstack/react-virtual constructs one to watch
+// its scroll container; without this it throws before computing a row range.
 if (typeof globalThis.ResizeObserver === 'undefined') {
   class ResizeObserverStub implements ResizeObserver {
     observe() {}
@@ -36,25 +37,32 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   globalThis.ResizeObserver = ResizeObserverStub;
 }
 
-const STUBBED_VIEWPORT_SIZE = 500;
-
-for (const property of ['offsetHeight', 'offsetWidth', 'clientHeight', 'clientWidth'] as const) {
-  Object.defineProperty(HTMLElement.prototype, property, {
-    configurable: true,
-    value: STUBBED_VIEWPORT_SIZE,
-  });
+// jsdom implements neither `Element.prototype.scrollTo` nor scroll events.
+// TanStack Virtual calls `scrollElement?.scrollTo?.()` (optional, so it
+// silently no-ops without this) and then waits for a `scroll` event to
+// recompute the rendered window — so `virtualizer.scrollToIndex()` would do
+// nothing at all in tests. Assigning scrollTop/scrollLeft and emitting
+// `scroll` is what a real browser does; jsdom just has no scrolling
+// implementation to do it.
+//
+// The event is dispatched in a microtask because browsers fire `scroll`
+// asynchronously, after the scroll is applied — never re-entrantly inside the
+// caller. Dispatching inline instead lands the listener in the middle of
+// React's commit phase, where TanStack Virtual's `flushSync` warns that React
+// is already rendering. That warning is an artifact of the polyfill, not of
+// the component under test.
+if (!Element.prototype.scrollTo) {
+  Element.prototype.scrollTo = function scrollTo(
+    optionsOrX?: ScrollToOptions | number,
+    y?: number,
+  ) {
+    if (typeof optionsOrX === 'number') {
+      this.scrollLeft = optionsOrX;
+      this.scrollTop = y ?? this.scrollTop;
+    } else if (optionsOrX) {
+      this.scrollLeft = optionsOrX.left ?? this.scrollLeft;
+      this.scrollTop = optionsOrX.top ?? this.scrollTop;
+    }
+    queueMicrotask(() => this.dispatchEvent(new Event('scroll')));
+  };
 }
-
-HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect() {
-  return {
-    width: STUBBED_VIEWPORT_SIZE,
-    height: STUBBED_VIEWPORT_SIZE,
-    top: 0,
-    left: 0,
-    right: STUBBED_VIEWPORT_SIZE,
-    bottom: STUBBED_VIEWPORT_SIZE,
-    x: 0,
-    y: 0,
-    toJSON() {},
-  } as DOMRect;
-};
