@@ -281,4 +281,85 @@ describe('Tabs', () => {
       expect(tab('Two')).toHaveFocus();
     });
   });
+
+  describe('disabled active trigger fallback', () => {
+    const tab = (name: string) => screen.getByRole('tab', { name });
+
+    it('falls back the tab stop to the first focusable trigger when the active trigger is disabled', async () => {
+      const user = userEvent.setup();
+      render(
+        <Tabs defaultValue="one">
+          <TabsList>
+            <TabsTrigger value="one" disabled>
+              One
+            </TabsTrigger>
+            <TabsTrigger value="two">Two</TabsTrigger>
+            <TabsTrigger value="three">Three</TabsTrigger>
+          </TabsList>
+          <TabsContent value="one">Panel one</TabsContent>
+          <TabsContent value="two">Panel two</TabsContent>
+          <TabsContent value="three">Panel three</TabsContent>
+        </Tabs>,
+      );
+
+      await user.tab();
+
+      expect(document.activeElement).not.toBe(document.body);
+      expect(document.activeElement).toBe(tab('Two'));
+      expect(tab('Two')).toHaveFocus();
+      expect(tab('One')).toHaveAttribute('tabindex', '0');
+      expect(tab('Three')).toHaveAttribute('tabindex', '-1');
+    });
+
+    it('still arrow-navigates and skips disabled triggers from the fallback position', async () => {
+      const user = userEvent.setup();
+      render(
+        <Tabs defaultValue="one">
+          <TabsList>
+            <TabsTrigger value="one" disabled>
+              One
+            </TabsTrigger>
+            <TabsTrigger value="two">Two</TabsTrigger>
+            <TabsTrigger value="three">Three</TabsTrigger>
+          </TabsList>
+          <TabsContent value="one">Panel one</TabsContent>
+          <TabsContent value="two">Panel two</TabsContent>
+          <TabsContent value="three">Panel three</TabsContent>
+        </Tabs>,
+      );
+
+      await user.tab();
+      expect(tab('Two')).toHaveFocus();
+
+      await user.keyboard('{ArrowRight}');
+      expect(tab('Three')).toHaveFocus();
+
+      await user.keyboard('{ArrowRight}');
+      expect(tab('Two')).toHaveFocus();
+    });
+
+    it('does not throw when every trigger is disabled', async () => {
+      const user = userEvent.setup();
+
+      expect(() =>
+        render(
+          <Tabs defaultValue="one">
+            <TabsList>
+              <TabsTrigger value="one" disabled>
+                One
+              </TabsTrigger>
+              <TabsTrigger value="two" disabled>
+                Two
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="one">Panel one</TabsContent>
+            <TabsContent value="two">Panel two</TabsContent>
+          </Tabs>,
+        ),
+      ).not.toThrow();
+
+      await expect(user.tab()).resolves.not.toThrow();
+      expect(document.activeElement).toBe(document.body);
+    });
+  });
 });

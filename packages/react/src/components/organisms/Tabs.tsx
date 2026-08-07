@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, KeyboardEvent } from 'react';
-import { createContext, useContext, useId, useRef, useState } from 'react';
+import { createContext, useContext, useId, useLayoutEffect, useRef, useState } from 'react';
 
 import { cn } from '../../lib/cn';
 
@@ -64,6 +64,45 @@ const TRIGGER_SELECTOR = '[role="tab"]:not(:disabled)';
 
 export function TabsList({ className, onKeyDown, ...props }: TabsListProps) {
   const listRef = useRef<HTMLDivElement>(null);
+  // Tracks a trigger this effect gave a fallback tabIndex, so a later run can
+  // unwind it before recomputing (e.g. if that trigger becomes disabled, or
+  // the active trigger becomes focusable again).
+  const fallbackTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  // The roving tab stop normally follows the active trigger via the
+  // `tabIndex={isActive ? 0 : -1}` below, but browsers never focus a
+  // disabled element regardless of its tabIndex. If the active trigger is
+  // disabled, no trigger would carry a real tab stop and the whole tablist
+  // would drop out of the tab order. Re-point the tab stop at the first
+  // focusable trigger in that case. Trigger children are opaque (arbitrary
+  // wrappers, conditional rendering), so TabsList has no render-time view of
+  // their `value`/`disabled` props -- this runs after every commit and reads
+  // the same `listRef` + `TRIGGER_SELECTOR` the keydown handler already
+  // uses, rather than inventing a separate registration mechanism.
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list) {
+      return;
+    }
+
+    if (fallbackTriggerRef.current) {
+      fallbackTriggerRef.current.tabIndex = -1;
+      fallbackTriggerRef.current = null;
+    }
+
+    const activeTrigger = list.querySelector<HTMLButtonElement>(
+      '[role="tab"][aria-selected="true"]',
+    );
+    if (activeTrigger && !activeTrigger.disabled) {
+      return;
+    }
+
+    const firstFocusable = list.querySelector<HTMLButtonElement>(TRIGGER_SELECTOR);
+    if (firstFocusable) {
+      firstFocusable.tabIndex = 0;
+      fallbackTriggerRef.current = firstFocusable;
+    }
+  });
 
   // Focus moves without selecting; Enter/Space on the button activates.
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
