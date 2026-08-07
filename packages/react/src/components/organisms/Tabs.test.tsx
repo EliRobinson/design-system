@@ -307,8 +307,18 @@ describe('Tabs', () => {
       expect(document.activeElement).not.toBe(document.body);
       expect(document.activeElement).toBe(tab('Two'));
       expect(tab('Two')).toHaveFocus();
-      expect(tab('One')).toHaveAttribute('tabindex', '0');
+
+      // A tablist exposes exactly one tab stop. The active trigger normally
+      // owns it, but this one is disabled and can never take focus, so
+      // ownership moves to the first focusable trigger -- and moves *away*
+      // from the disabled one, rather than leaving a second, dead tabindex=0
+      // behind.
+      expect(tab('One')).toHaveAttribute('tabindex', '-1');
+      expect(tab('Two')).toHaveAttribute('tabindex', '0');
       expect(tab('Three')).toHaveAttribute('tabindex', '-1');
+      expect(
+        screen.getAllByRole('tab').filter((t) => t.getAttribute('tabindex') === '0'),
+      ).toHaveLength(1);
     });
 
     it('still arrow-navigates and skips disabled triggers from the fallback position', async () => {

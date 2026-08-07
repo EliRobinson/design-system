@@ -1,7 +1,8 @@
-import type { HTMLAttributes, KeyboardEvent } from 'react';
-import { forwardRef, useRef } from 'react';
+import type { HTMLAttributes } from 'react';
+import { forwardRef, useCallback, useRef } from 'react';
 
 import { cn } from '../../lib/cn';
+import { useRovingFocus } from '../../hooks/useRovingFocus';
 
 export type SegmentedControlOption = {
   label: string;
@@ -21,39 +22,24 @@ export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlProps
     const activeIndex = options.findIndex((option) => option.value === value);
     const tabbableIndex = activeIndex === -1 ? 0 : activeIndex;
 
-    const selectByIndex = (index: number) => {
-      const option = options[index];
-      if (!option) {
-        return;
-      }
-      onValueChange(option.value);
-      itemRefs.current[index]?.focus();
-    };
+    const getItems = useCallback(
+      () => itemRefs.current.filter((node): node is HTMLButtonElement => node !== null),
+      [],
+    );
 
-    const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-      switch (event.key) {
-        case 'ArrowRight':
-        case 'ArrowDown':
-          event.preventDefault();
-          selectByIndex((index + 1) % options.length);
-          break;
-        case 'ArrowLeft':
-        case 'ArrowUp':
-          event.preventDefault();
-          selectByIndex((index - 1 + options.length) % options.length);
-          break;
-        case 'Home':
-          event.preventDefault();
-          selectByIndex(0);
-          break;
-        case 'End':
-          event.preventDefault();
-          selectByIndex(options.length - 1);
-          break;
-        default:
-          break;
-      }
-    };
+    // Radio-group semantics: moving the highlight also selects, unlike tabs
+    // where focus and selection are independent.
+    const navigate = useRovingFocus({
+      getItems,
+      onNavigate: (index, item) => {
+        const option = options[index];
+        if (!option) {
+          return;
+        }
+        onValueChange(option.value);
+        item.focus();
+      },
+    });
 
     return (
       <div ref={ref} role="radiogroup" className={cn('ds-segmented-control', className)} {...props}>
@@ -74,7 +60,7 @@ export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlProps
                 isActive && 'ds-segmented-control__item--active',
               )}
               onClick={() => onValueChange(option.value)}
-              onKeyDown={(event) => handleKeyDown(event, index)}
+              onKeyDown={navigate}
             >
               {option.label}
             </button>

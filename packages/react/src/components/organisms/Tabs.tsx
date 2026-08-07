@@ -1,15 +1,37 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, KeyboardEvent } from 'react';
-import { createContext, useContext, useId, useLayoutEffect, useRef, useState } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, MouseEventHandler } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { cn } from '../../lib/cn';
+import { useRovingFocus } from '../../hooks/useRovingFocus';
 
 type TabsContextValue = {
   activeTab: string;
   setActiveTab: (value: string) => void;
   baseId: string;
+  /**
+   * Which trigger currently owns the tablist's single tab stop. Normally the
+   * active tab, but a disabled trigger can never receive focus, so TabsList
+   * redirects it (see `TabsList`). `null` until resolved, and when no trigger
+   * is focusable at all.
+   */
+  tabStopValue: string | null;
 };
 
 const TabsContext = createContext<TabsContextValue | null>(null);
+
+/**
+ * Split out from `TabsContextValue` so that TabsList publishing a resolved tab
+ * stop does not re-render through the same context value every trigger reads.
+ */
+const TabStopSetterContext = createContext<((value: string | null) => void) | null>(null);
 
 function useTabsContext() {
   const context = useContext(TabsContext);
@@ -17,6 +39,14 @@ function useTabsContext() {
     throw new Error('Tabs compound components must be used within Tabs');
   }
   return context;
+}
+
+function useTabStopSetter() {
+  const setTabStopValue = useContext(TabStopSetterContext);
+  if (!setTabStopValue) {
+    throw new Error('Tabs compound components must be used within Tabs');
+  }
+  return setTabStopValue;
 }
 
 export type TabsProps = HTMLAttributes<HTMLDivElement> & {
@@ -35,6 +65,7 @@ export function Tabs({
 }: TabsProps) {
   const baseId = useId();
   const [internalValue, setInternalValue] = useState(defaultValue);
+  const [tabStopValue, setTabStopValue] = useState<string | null>(null);
   const activeTab = value ?? internalValue;
 
   const setActiveTab = (next: string) => {
@@ -45,15 +76,17 @@ export function Tabs({
   };
 
   return (
-    <TabsContext.Provider value={{ activeTab, setActiveTab, baseId }}>
-      <div className={cn('ds-tabs', className)} {...props}>
-        {children}
-      </div>
+    <TabsContext.Provider value={{ activeTab, setActiveTab, baseId, tabStopValue }}>
+      <TabStopSetterContext.Provider value={setTabStopValue}>
+        <div className={cn('ds-tabs', className)} {...props}>
+          {children}
+        </div>
+      </TabStopSetterContext.Provider>
     </TabsContext.Provider>
   );
 }
 
-export type TabsListProps = HTMLAttributes<HTMLDivElement>;
+export type TabsListProps = Omit<HTMLAttributes<HTMLDivElement>, 'role'>;
 
 /**
  * Triggers are opaque `children`, so the tab stops are read from the DOM rather
@@ -64,114 +97,99 @@ const TRIGGER_SELECTOR = '[role="tab"]:not(:disabled)';
 
 export function TabsList({ className, onKeyDown, ...props }: TabsListProps) {
   const listRef = useRef<HTMLDivElement>(null);
-  // Tracks a trigger this effect gave a fallback tabIndex, so a later run can
-  // unwind it before recomputing (e.g. if that trigger becomes disabled, or
-  // the active trigger becomes focusable again).
-  const fallbackTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const setTabStopValue = useTabStopSetter();
 
-  // The roving tab stop normally follows the active trigger via the
-  // `tabIndex={isActive ? 0 : -1}` below, but browsers never focus a
-  // disabled element regardless of its tabIndex. If the active trigger is
-  // disabled, no trigger would carry a real tab stop and the whole tablist
-  // would drop out of the tab order. Re-point the tab stop at the first
-  // focusable trigger in that case. Trigger children are opaque (arbitrary
-  // wrappers, conditional rendering), so TabsList has no render-time view of
-  // their `value`/`disabled` props -- this runs after every commit and reads
-  // the same `listRef` + `TRIGGER_SELECTOR` the keydown handler already
-  // uses, rather than inventing a separate registration mechanism.
+  // A tablist must expose exactly one tab stop, and it normally belongs to the
+  // active trigger. But a disabled element can never receive focus, so when the
+  // active trigger is disabled that tab stop is a dead end and the entire
+  // tablist drops out of the tab order. Resolve which trigger should really own
+  // it, and publish that through context so the trigger *renders* the right
+  // tabIndex.
+  //
+  // The resolution has to read the DOM: triggers are opaque children, so their
+  // `disabled` props are invisible here at render time. But only the decision
+  // is made here — writing `tabIndex` onto the node directly would fight React
+  // for ownership of an attribute it also renders, leaving two elements
+  // carrying `tabIndex={0}` and requiring a bookkeeping ref to undo the last
+  // write before each recomputation.
   useLayoutEffect(() => {
     const list = listRef.current;
     if (!list) {
       return;
     }
 
-    if (fallbackTriggerRef.current) {
-      fallbackTriggerRef.current.tabIndex = -1;
-      fallbackTriggerRef.current = null;
-    }
-
     const activeTrigger = list.querySelector<HTMLButtonElement>(
       '[role="tab"][aria-selected="true"]',
     );
-    if (activeTrigger && !activeTrigger.disabled) {
-      return;
-    }
+    const owner =
+      activeTrigger && !activeTrigger.disabled
+        ? activeTrigger
+        : list.querySelector<HTMLButtonElement>(TRIGGER_SELECTOR);
 
-    const firstFocusable = list.querySelector<HTMLButtonElement>(TRIGGER_SELECTOR);
-    if (firstFocusable) {
-      firstFocusable.tabIndex = 0;
-      fallbackTriggerRef.current = firstFocusable;
-    }
+    setTabStopValue(owner?.dataset.value ?? null);
   });
 
+  const getItems = useCallback(
+    () => Array.from(listRef.current?.querySelectorAll<HTMLElement>(TRIGGER_SELECTOR) ?? []),
+    [],
+  );
   // Focus moves without selecting; Enter/Space on the button activates.
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    onKeyDown?.(event);
-    if (event.defaultPrevented || !listRef.current) {
-      return;
-    }
-
-    const triggers = Array.from(
-      listRef.current.querySelectorAll<HTMLButtonElement>(TRIGGER_SELECTOR),
-    );
-    const index = triggers.indexOf(document.activeElement as HTMLButtonElement);
-    if (index === -1) {
-      return;
-    }
-
-    let nextIndex: number;
-    switch (event.key) {
-      case 'ArrowRight':
-      case 'ArrowDown':
-        nextIndex = (index + 1) % triggers.length;
-        break;
-      case 'ArrowLeft':
-      case 'ArrowUp':
-        nextIndex = (index - 1 + triggers.length) % triggers.length;
-        break;
-      case 'Home':
-        nextIndex = 0;
-        break;
-      case 'End':
-        nextIndex = triggers.length - 1;
-        break;
-      default:
-        return;
-    }
-
-    event.preventDefault();
-    triggers[nextIndex]?.focus();
-  };
+  const navigate = useRovingFocus({ getItems, onNavigate: (_, item) => item.focus() });
 
   return (
     <div
       ref={listRef}
       role="tablist"
       className={cn('ds-tabs__list', className)}
-      onKeyDown={handleKeyDown}
+      onKeyDown={(event) => {
+        onKeyDown?.(event);
+        if (!event.defaultPrevented) {
+          navigate(event);
+        }
+      }}
       {...props}
     />
   );
 }
 
-export type TabsTriggerProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'value'> & {
+// `id`, `role`, `aria-selected`, `aria-controls`, and `tabIndex` are all
+// computed here: they wire this trigger to its TabsContent panel and carry the
+// tablist's single tab stop. They are omitted from the props type rather than
+// merely written before the spread, so a consumer cannot orphan the panel
+// reference or hand the tablist a second tab stop. `onClick` is likewise
+// omitted and re-declared so a consumer handler composes with tab activation
+// instead of replacing it.
+export type TabsTriggerProps = Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'value' | 'id' | 'role' | 'onClick' | 'aria-selected' | 'aria-controls' | 'tabIndex'
+> & {
   value: string;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
 };
 
-export function TabsTrigger({ className, value, children, ...props }: TabsTriggerProps) {
-  const { activeTab, setActiveTab, baseId } = useTabsContext();
+export function TabsTrigger({ className, value, children, onClick, ...props }: TabsTriggerProps) {
+  const { activeTab, setActiveTab, baseId, tabStopValue } = useTabsContext();
   const isActive = activeTab === value;
+
+  // Before TabsList has resolved an owner, fall back to the active trigger so
+  // the tablist is never briefly unreachable by keyboard on first paint.
+  const ownsTabStop = tabStopValue === null ? isActive : tabStopValue === value;
 
   return (
     <button
       type="button"
       role="tab"
+      // Read back by TabsList to identify which trigger owns the tab stop.
+      data-value={value}
       id={`${baseId}-tab-${value}`}
       aria-selected={isActive}
       aria-controls={`${baseId}-panel-${value}`}
-      tabIndex={isActive ? 0 : -1}
+      tabIndex={ownsTabStop ? 0 : -1}
       className={cn('ds-tabs__trigger', isActive && 'ds-tabs__trigger--active', className)}
-      onClick={() => setActiveTab(value)}
+      onClick={(event) => {
+        onClick?.(event);
+        setActiveTab(value);
+      }}
       {...props}
     >
       {children}
@@ -179,7 +197,13 @@ export function TabsTrigger({ className, value, children, ...props }: TabsTrigge
   );
 }
 
-export type TabsContentProps = HTMLAttributes<HTMLDivElement> & {
+// `id`, `role`, and `aria-labelledby` are computed here and wire this panel
+// back to its trigger, so they are omitted for the same reason as on
+// TabsTrigger.
+export type TabsContentProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'id' | 'role' | 'aria-labelledby'
+> & {
   value: string;
 };
 
