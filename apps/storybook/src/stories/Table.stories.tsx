@@ -16,12 +16,6 @@ const data: Row[] = Array.from({ length: 25 }, (_, index) => ({
   role: index % 2 === 0 ? 'Admin' : 'Member',
 }));
 
-const largeData: Row[] = Array.from({ length: 500 }, (_, index) => ({
-  id: index + 1,
-  name: `User ${index + 1}`,
-  role: index % 2 === 0 ? 'Admin' : 'Member',
-}));
-
 // `Table<T>` is generic (`T extends RowData`), and `satisfies Meta<typeof
 // Table>` has to collapse that generic to a single concrete props type --
 // `ColumnDef<Row>[]` is not assignable to whatever `ColumnDef<T>[]` the
@@ -41,19 +35,6 @@ function TableEmptyDemo() {
 function TableSortableFilterableDemo() {
   return (
     <Table data={data} columns={columns} pageSize={8} filterable filterPlaceholder="Filter users" />
-  );
-}
-
-function TableVirtualizedDemo() {
-  return (
-    <Table
-      data={largeData}
-      columns={columns}
-      virtualize
-      virtualizeHeight={400}
-      rowHeight={44}
-      filterable
-    />
   );
 }
 
@@ -78,9 +59,4 @@ export const Empty: Story = {
 export const SortableAndFilterable: Story = {
   args: { data, columns, pageSize: 8, filterable: true } as Story['args'],
   render: () => <TableSortableFilterableDemo />,
-};
-
-export const Virtualized: Story = {
-  args: { data: largeData, columns, virtualize: true, virtualizeHeight: 400 } as Story['args'],
-  render: () => <TableVirtualizedDemo />,
 };
