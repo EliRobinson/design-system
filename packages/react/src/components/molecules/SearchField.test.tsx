@@ -59,4 +59,17 @@ describe('SearchField', () => {
 
     consoleError.mockRestore();
   });
+
+  it('returns focus to the input after clicking clear', async () => {
+    const user = userEvent.setup();
+    render(<SearchField aria-label="Search" />);
+
+    const input = screen.getByRole('searchbox', { name: 'Search' });
+    await user.type(input, 'hello');
+
+    const clearButton = screen.getByRole('button', { name: 'Clear search' });
+    await user.click(clearButton);
+
+    expect(document.activeElement).toBe(input);
+  });
 });
