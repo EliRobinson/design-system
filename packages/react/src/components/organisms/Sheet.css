@@ -1,0 +1,83 @@
+/* ==========================================================================
+   Sheet
+   ========================================================================== */
+
+.ds-sheet {
+  background: transparent;
+  border: none;
+  height: 100%;
+  margin: 0;
+  max-height: 100%;
+  max-width: 100%;
+  overflow: visible;
+  padding: 0;
+  position: fixed;
+  width: 100%;
+}
+
+.ds-sheet::backdrop {
+  background: oklch(0% 0 0 / 0.45);
+}
+
+.ds-sheet__inner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  display: grid;
+  gap: var(--space-4);
+  height: 100%;
+  padding: var(--space-6);
+}
+
+.ds-sheet--right .ds-sheet__inner {
+  margin-left: auto;
+  max-width: 400px;
+  width: 100%;
+}
+
+.ds-sheet--left .ds-sheet__inner {
+  margin-right: auto;
+  max-width: 400px;
+  width: 100%;
+}
+
+.ds-sheet--top .ds-sheet__inner {
+  margin-bottom: auto;
+  max-height: 320px;
+  width: 100%;
+}
+
+.ds-sheet--bottom .ds-sheet__inner {
+  margin-top: auto;
+  max-height: 320px;
+  width: 100%;
+}
+
+.ds-sheet__header {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ds-sheet__title {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-tight);
+  margin: 0;
+}
+
+.ds-sheet__description {
+  color: var(--fg-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+.ds-sheet__footer {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: auto;
+}

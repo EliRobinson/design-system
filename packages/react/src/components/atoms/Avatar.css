@@ -1,0 +1,44 @@
+/* ==========================================================================
+   Avatar
+   ========================================================================== */
+
+.ds-avatar {
+  align-items: center;
+  background: var(--ink-100);
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ds-avatar--sm {
+  height: 32px;
+  width: 32px;
+}
+.ds-avatar--md {
+  height: 40px;
+  width: 40px;
+}
+.ds-avatar--lg {
+  height: 56px;
+  width: 56px;
+}
+
+.ds-avatar__image {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.ds-avatar__fallback {
+  color: var(--fg-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ds-avatar--lg .ds-avatar__fallback {
+  font-size: var(--fs-sm);
+}

@@ -1,0 +1,29 @@
+/* ==========================================================================
+   Checkbox
+   ========================================================================== */
+
+.ds-checkbox {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+
+.ds-checkbox__input {
+  accent-color: var(--ink-1000);
+  cursor: pointer;
+  height: 18px;
+  width: 18px;
+}
+
+.ds-checkbox__input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-checkbox__label {
+  color: var(--fg);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+}

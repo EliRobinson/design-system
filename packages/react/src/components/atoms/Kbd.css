@@ -1,0 +1,18 @@
+/* ==========================================================================
+   Kbd
+   ========================================================================== */
+
+.ds-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--fg-2);
+  box-shadow: var(--shadow-sm);
+}

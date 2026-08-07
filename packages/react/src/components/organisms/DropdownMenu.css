@@ -1,0 +1,87 @@
+/* ==========================================================================
+   Dropdown Menu
+   ========================================================================== */
+
+.ds-dropdown__trigger {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  gap: var(--space-2);
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+}
+
+.ds-dropdown__trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-dropdown__content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  display: grid;
+  gap: var(--space-1);
+  min-width: 180px;
+  padding: var(--space-2);
+}
+
+.ds-dropdown__item {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  cursor: pointer;
+  display: flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  width: 100%;
+}
+
+.ds-dropdown__item:hover,
+.ds-dropdown__item:focus-visible {
+  background: var(--bg-subtle);
+  outline: none;
+}
+
+.ds-dropdown__item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.ds-dropdown__item--inset {
+  padding-left: var(--space-6);
+}
+
+.ds-dropdown__label {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tr-caps);
+  padding: var(--space-2) var(--space-3);
+  text-transform: uppercase;
+}
+
+.ds-dropdown__label--inset {
+  padding-left: var(--space-6);
+}
+
+.ds-dropdown__separator {
+  background: var(--border);
+  height: 1px;
+  margin: var(--space-1) 0;
+}

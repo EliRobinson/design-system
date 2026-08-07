@@ -1,0 +1,61 @@
+/* ==========================================================================
+   Form fields
+   ========================================================================== */
+
+.ds-field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ds-label {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+.ds-hint {
+  color: var(--fg-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+}
+
+.ds-hint--error {
+  color: var(--status-danger);
+}
+
+.ds-input {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  min-height: 44px;
+  padding: var(--space-3) var(--space-3);
+  width: 100%;
+}
+
+.ds-input:focus-visible {
+  border-color: var(--ink-1000);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.ds-input--error {
+  border-color: var(--status-danger);
+}
+
+.ds-textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.ds-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%23666' stroke-width='1.5'><path d='M4 6l4 4 4-4'/></svg>");
+  background-position: right var(--space-3) center;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  padding-right: var(--space-8);
+}

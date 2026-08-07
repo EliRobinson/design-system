@@ -1,0 +1,52 @@
+/* ==========================================================================
+   Alert
+   ========================================================================== */
+
+.ds-alert {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
+}
+
+.ds-alert__title {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.ds-alert__description {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.ds-alert--default {
+  background: var(--bg-subtle);
+  color: var(--fg);
+}
+
+.ds-alert--success {
+  background: var(--anchor-50);
+  border-color: var(--anchor-200);
+  color: var(--anchor-800);
+}
+
+.ds-alert--warning {
+  background: var(--signal-50);
+  border-color: var(--signal-200);
+  color: var(--signal-800);
+}
+
+.ds-alert--danger {
+  background: oklch(97% 0.02 25);
+  border-color: oklch(88% 0.08 25);
+  color: var(--status-danger);
+}
+
+.ds-alert--info {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
+  color: var(--fg-2);
+}

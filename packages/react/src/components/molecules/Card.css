@@ -1,0 +1,45 @@
+/* ==========================================================================
+   Card
+   ========================================================================== */
+
+.ds-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.ds-card__header {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-6) var(--space-6) 0;
+}
+
+.ds-card__title {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-tight);
+  line-height: var(--lh-tight);
+  margin: 0;
+}
+
+.ds-card__description {
+  color: var(--fg-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+.ds-card__content {
+  padding: var(--space-6);
+}
+
+.ds-card__footer {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  padding: 0 var(--space-6) var(--space-6);
+}

@@ -1,0 +1,31 @@
+/* ==========================================================================
+   Popover
+   ========================================================================== */
+
+.ds-popover__trigger {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+}
+
+.ds-popover__trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-popover__content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  max-width: 320px;
+  padding: var(--space-4);
+}

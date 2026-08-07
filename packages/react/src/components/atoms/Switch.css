@@ -1,0 +1,53 @@
+/* ==========================================================================
+   Switch
+   ========================================================================== */
+
+.ds-switch {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+
+.ds-switch__input {
+  appearance: none;
+  background: var(--ink-200);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  height: 24px;
+  position: relative;
+  transition: background-color var(--dur-fast) var(--ease-out);
+  width: 44px;
+}
+
+.ds-switch__input::before {
+  background: var(--ink-0);
+  border-radius: var(--radius-pill);
+  content: '';
+  height: 18px;
+  left: 3px;
+  position: absolute;
+  top: 3px;
+  transition: transform var(--dur-fast) var(--ease-out);
+  width: 18px;
+}
+
+.ds-switch__input:checked {
+  background: var(--ink-1000);
+}
+
+.ds-switch__input:checked::before {
+  transform: translateX(20px);
+}
+
+.ds-switch__input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-switch__label {
+  color: var(--fg);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+}

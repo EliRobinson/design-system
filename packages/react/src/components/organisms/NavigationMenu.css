@@ -1,0 +1,42 @@
+/* ==========================================================================
+   NavigationMenu
+   ========================================================================== */
+
+.ds-navigation-menu__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ds-navigation-menu__list .ds-navigation-menu__list {
+  padding-left: var(--space-4);
+}
+
+.ds-navigation-menu__link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--fg-2);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+
+.ds-navigation-menu__link:hover {
+  background: var(--bg-subtle);
+  color: var(--fg);
+}
+
+.ds-navigation-menu__link--active {
+  background: var(--bg-subtle);
+  color: var(--fg);
+  font-weight: var(--fw-medium);
+}
+
+.ds-navigation-menu__link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
