@@ -1,0 +1,25 @@
+/* ==========================================================================
+   Table
+   ========================================================================== */
+
+/* -- Literal <table> mode ------------------------------------------------ */
+
+table.ds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+table.ds-table th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--fg-2);
+  font-weight: var(--fw-medium);
+}
+
+table.ds-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg);
+}

@@ -1,0 +1,47 @@
+/* ==========================================================================
+   Tabs
+   ========================================================================== */
+
+.ds-tabs {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ds-tabs__list {
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: var(--space-1);
+}
+
+.ds-tabs__trigger {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--fg-2);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  margin-bottom: -1px;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.ds-tabs__trigger:hover {
+  color: var(--fg);
+}
+
+.ds-tabs__trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-tabs__trigger--active {
+  border-bottom-color: var(--ink-1000);
+  color: var(--fg);
+}
+
+.ds-tabs__content {
+  padding-top: var(--space-2);
+}

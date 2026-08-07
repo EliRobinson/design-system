@@ -1,0 +1,54 @@
+/* ==========================================================================
+   Dialog
+   ========================================================================== */
+
+.ds-dialog {
+  background: transparent;
+  border: none;
+  max-height: 90vh;
+  max-width: 480px;
+  padding: 0;
+  width: calc(100% - var(--space-8));
+}
+
+.ds-dialog::backdrop {
+  background: oklch(0% 0 0 / 0.5);
+}
+
+.ds-dialog__inner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+.ds-dialog__header {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ds-dialog__title {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-tight);
+  margin: 0;
+}
+
+.ds-dialog__description {
+  color: var(--fg-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+.ds-dialog__footer {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}

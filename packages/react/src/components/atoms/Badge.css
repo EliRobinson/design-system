@@ -1,0 +1,41 @@
+/* ==========================================================================
+   Badge
+   ========================================================================== */
+
+.ds-badge {
+  border-radius: var(--radius-pill);
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.06em;
+  line-height: 1;
+  padding: var(--space-1) var(--space-3);
+  text-transform: uppercase;
+}
+
+.ds-badge--default {
+  background: var(--ink-100);
+  color: var(--fg-2);
+}
+
+.ds-badge--signal {
+  background: var(--signal-100);
+  color: var(--signal-800);
+}
+
+.ds-badge--anchor {
+  background: var(--anchor-100);
+  color: var(--anchor-700);
+}
+
+.ds-badge--solid {
+  background: var(--ink-1000);
+  color: var(--ink-0);
+}
+
+.ds-badge--outline {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--fg-2);
+}

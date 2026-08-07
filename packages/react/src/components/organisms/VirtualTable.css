@@ -1,0 +1,49 @@
+/* ==========================================================================
+   VirtualTable
+   ========================================================================== */
+
+/* -- Virtualized ARIA-grid mode ------------------------------------------- */
+
+.ds-table--virtual {
+  display: block;
+  font-size: var(--fs-sm);
+}
+
+.ds-table__vrow {
+  display: grid;
+  align-items: center;
+}
+
+.ds-table__vrow--head {
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.ds-table__vrow:not(.ds-table__vrow--head):not(.ds-table__vrow--empty) {
+  border-bottom: 1px solid var(--border);
+}
+
+.ds-table__vrow--empty {
+  display: block;
+}
+
+.ds-table__vcell {
+  padding: var(--space-2) var(--space-3);
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-table__vcell--head {
+  color: var(--fg-2);
+  font-weight: var(--fw-medium);
+}
+
+.ds-table__vcell--empty {
+  padding: 0;
+  white-space: normal;
+}
+
+.ds-table__vbody {
+  width: 100%;
+}
