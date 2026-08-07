@@ -1505,3 +1505,55 @@
   padding: 0 var(--space-3);
   border-bottom: 1px solid var(--border);
 }
+
+/* ==========================================================================
+   Accordion
+   ========================================================================== */
+
+.ds-accordion {
+  border-top: 1px solid var(--border);
+}
+
+.ds-accordion__item {
+  border-bottom: 1px solid var(--border);
+}
+
+.ds-accordion__heading {
+  margin: 0;
+}
+
+.ds-accordion__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3) 0;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ds-accordion__trigger::after {
+  content: '+';
+  color: var(--fg-3);
+}
+
+.ds-accordion__trigger--open::after {
+  content: '\2212';
+}
+
+.ds-accordion__trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-accordion__content {
+  padding-bottom: var(--space-3);
+  color: var(--fg-2);
+  font-size: var(--fs-sm);
+}
