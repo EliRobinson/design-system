@@ -1,5 +1,5 @@
 import type { ChangeEvent, ForwardedRef, HTMLAttributes, ReactElement } from 'react';
-import { forwardRef, useEffect, useState } from 'react';
+import { forwardRef, useEffect, useLayoutEffect, useState } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -128,6 +128,45 @@ function TableInner<T extends RowData>(
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  // Guards against the same "index unclamped against a shrinking bound" bug
+  // class already fixed twice elsewhere in this plan (Pagination emitting
+  // an out-of-range page, Rating announcing "7 out of 5 stars"). TanStack's
+  // own `getPaginationRowModel()` does no bounds-check -- it's a plain
+  // `rows.slice(pageIndex * pageSize, ...)` -- so if `data`/`columns`
+  // change identity such that the current page no longer exists (e.g. an
+  // external filter narrows the dataset while the user is on page 3 of
+  // what's now only 1 page), `table.getRowModel().rows` silently returns
+  // `[]` and the table below renders EmptyState for genuinely non-empty
+  // data. The pageSize-resync effect above doesn't catch this: it only
+  // fires when the `pageSize` PROP itself changes identity, not when
+  // `data`/`columns` (or filtering/sorting) shrink the row count.
+  //
+  // Clamps to the *last valid page* rather than resetting to page 1: it
+  // preserves as much of the user's position as possible -- the same
+  // choice most data-grid libraries make when a page's rows disappear
+  // (e.g. deleting the last row on the last page lands you on the
+  // second-to-last page, not back at the start) -- and reads
+  // `table.getPageCount()` directly (which is independent of the current
+  // `pageIndex`: it's derived only from row count and `pageSize`) rather
+  // than a hand-computed formula, so this stays index math, not
+  // hand-rolled pagination.
+  //
+  // `useLayoutEffect` (not `useEffect`, and not inline during render) so
+  // the correction lands before the browser paints -- avoiding a one-frame
+  // flash of "No results" on a real shrink -- while still running as an
+  // effect, after the table/DOM for this render have committed; matches
+  // existing precedent in this package (Tabs.tsx, useAnchoredPosition.ts).
+  // Guarded by the inequality check, so it only ever fires once per actual
+  // out-of-range transition: after `setPageIndex(maxPageIndex)` applies,
+  // `pagination.pageIndex` equals `maxPageIndex` on the next run and the
+  // condition is false, so this cannot loop.
+  useLayoutEffect(() => {
+    const maxPageIndex = Math.max(table.getPageCount() - 1, 0);
+    if (pagination.pageIndex > maxPageIndex) {
+      table.setPageIndex(maxPageIndex);
+    }
   });
 
   // Virtualized mode windows the full filtered+sorted row set instead of

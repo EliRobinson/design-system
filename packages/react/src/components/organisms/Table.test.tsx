@@ -153,4 +153,51 @@ describe('Table', () => {
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.getByText('No rows yet')).toBeInTheDocument();
   });
+
+  it('clamps to the last valid page when a shrinking `data` set leaves the current page out of range', () => {
+    const { rerender } = render(<Table data={makeRows(25)} columns={columns} pageSize={10} />);
+
+    // Navigate to page 3 (TanStack pageIndex 2) of the original 25-row set.
+    fireEvent.click(screen.getByRole('button', { name: 'Page 3' }));
+    expect(screen.getByRole('cell', { name: 'Row 21' })).toBeInTheDocument();
+
+    // Simulate an external filter/search narrowing the dataset to 5 rows --
+    // fewer than fit on a single page -- while the table is still sitting
+    // on page 3. `getPaginationRowModel()` has no bounds-check of its own
+    // (a plain `.slice(pageStart, pageEnd)`), so without the clamp effect
+    // `table.getRowModel().rows` would slice past the end of the new
+    // 5-row set and come back empty.
+    rerender(<Table data={makeRows(5)} columns={columns} pageSize={10} />);
+
+    // Real, non-empty rows are visible on the (now only) valid page ...
+    expect(screen.getByRole('cell', { name: 'Row 1' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Row 5' })).toBeInTheDocument();
+    // ... and the EmptyState did NOT fire for genuinely non-empty data.
+    expect(screen.queryByText('No results')).not.toBeInTheDocument();
+    expect(document.querySelector('.ds-empty-state')).not.toBeInTheDocument();
+    // With only 5 rows at pageSize 10 there's exactly one page, so the
+    // Pagination footer (which only renders when pageCount > 1) is gone
+    // entirely -- a further check that the table landed on a real, valid
+    // page rather than merely not crashing.
+    expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument();
+  });
+
+  it('still renders EmptyState for genuinely empty data after a shrink (the clamp does not suppress the real empty case)', () => {
+    const { rerender } = render(<Table data={makeRows(25)} columns={columns} pageSize={10} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Page 3' }));
+    expect(screen.getByRole('cell', { name: 'Row 21' })).toBeInTheDocument();
+
+    // Shrink all the way to zero rows -- unlike the previous test, there is
+    // no valid page with real rows on it, so the empty state must still
+    // fire; the clamp effect must not paper over a genuinely empty result.
+    rerender(<Table data={[]} columns={columns} pageSize={10} emptyMessage="Nothing left" />);
+
+    expect(screen.getByText('Nothing left')).toBeInTheDocument();
+    // Exactly one cell -- the `colSpan` wrapper around EmptyState (C19's
+    // `<tr><td colSpan><EmptyState /></td></tr>` structure) -- not a row of
+    // real data cells.
+    expect(screen.getAllByRole('cell')).toHaveLength(1);
+    expect(screen.queryByRole('cell', { name: 'Row 21' })).not.toBeInTheDocument();
+  });
 });
