@@ -1,4 +1,4 @@
-import { forwardRef, useRef, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 
 import { useClickOutside } from '../../hooks/useClickOutside';
 import { cn } from '../../lib/cn';
@@ -26,6 +26,10 @@ function daysInMonth(year: number, month: number) {
 function formatValue(date: Date | undefined) {
   if (!date) return '';
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function isSameDay(a: Date | undefined, year: number, month: number, day: number) {
+  return !!a && a.getFullYear() === year && a.getMonth() === month && a.getDate() === day;
 }
 
 /**
@@ -74,6 +78,22 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(function
   const [viewDate, setViewDate] = useState(() => value ?? new Date());
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Track the last `value` timestamp we synced the displayed month from, so
+  // we can tell "the value prop changed" apart from "the user navigated the
+  // calendar" -- the latter must NOT be clobbered by a re-render where
+  // `value` hasn't actually changed. Only a genuine change to `value`
+  // (different time, or defined -> undefined and back) re-syncs `viewDate`.
+  const lastSyncedValueRef = useRef<number | undefined>(value?.getTime());
+  useEffect(() => {
+    const valueTime = value?.getTime();
+    if (valueTime !== lastSyncedValueRef.current) {
+      lastSyncedValueRef.current = valueTime;
+      if (value) {
+        setViewDate(value);
+      }
+    }
+  }, [value]);
+
   // Third argument gates the document-level `mousedown` listener to only be
   // attached while the popover is open. Omitting it leaves the listener
   // registered for the component's entire lifetime, even while closed.
@@ -83,6 +103,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(function
   const month = viewDate.getMonth();
   const weeks = buildWeeks(year, month);
   const monthLabel = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const today = new Date();
 
   return (
     <div ref={containerRef} className={cn('ds-date-picker', className)}>
@@ -131,10 +152,20 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(function
                       className="ds-date-picker__cell ds-date-picker__cell--empty"
                     />
                   ) : (
-                    <div role="gridcell" key={day} className="ds-date-picker__cell">
+                    <div
+                      role="gridcell"
+                      key={day}
+                      aria-selected={isSameDay(value, year, month, day)}
+                      className="ds-date-picker__cell"
+                    >
                       <button
                         type="button"
-                        className="ds-date-picker__day"
+                        className={cn(
+                          'ds-date-picker__day',
+                          isSameDay(value, year, month, day) && 'ds-date-picker__day--selected',
+                          isSameDay(today, year, month, day) && 'ds-date-picker__day--today',
+                        )}
+                        aria-current={isSameDay(today, year, month, day) ? 'date' : undefined}
                         onClick={() => {
                           onValueChange(new Date(year, month, day));
                           setIsOpen(false);
