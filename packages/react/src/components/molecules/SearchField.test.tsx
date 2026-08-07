@@ -1,3 +1,5 @@
+import { createRef } from 'react';
+
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -71,5 +73,16 @@ describe('SearchField', () => {
     await user.click(clearButton);
 
     expect(document.activeElement).toBe(input);
+  });
+
+  it('forwards a consumer ref to the underlying input element', () => {
+    const ref = createRef<HTMLInputElement>();
+    render(<SearchField ref={ref} aria-label="Search" />);
+
+    // This is the contract Combobox and CommandPalette both rely on --
+    // ref.current must be the real <input>, not the wrapper <div> or null --
+    // so that a consumer can call .focus() on it. Previously untested.
+    expect(ref.current).toBeInstanceOf(HTMLInputElement);
+    expect(ref.current).toBe(screen.getByRole('searchbox', { name: 'Search' }));
   });
 });
