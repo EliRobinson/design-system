@@ -36,4 +36,27 @@ describe('FormField', () => {
 
     expect(screen.getByText("We'll never share this")).toBeInTheDocument();
   });
+
+  it('sets aria-required on the child input when required is true', () => {
+    render(
+      <FormField label="Email" htmlFor="email" required>
+        {(fieldProps) => <input id="email" {...fieldProps} />}
+      </FormField>,
+    );
+
+    expect(screen.getByLabelText('Email', { exact: false })).toHaveAttribute(
+      'aria-required',
+      'true',
+    );
+  });
+
+  it('omits aria-required on the child input when required is not set', () => {
+    render(
+      <FormField label="Email" htmlFor="email">
+        {(fieldProps) => <input id="email" {...fieldProps} />}
+      </FormField>,
+    );
+
+    expect(screen.getByLabelText('Email')).not.toHaveAttribute('aria-required');
+  });
 });

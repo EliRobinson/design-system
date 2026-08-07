@@ -43,9 +43,10 @@ Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
   `aria-invalid` wiring. Reach for it whenever the control is a plain `<input>`.
 - **`FormField`** (`molecules/FormField`) wraps an arbitrary or third-party control that
   does not do its own label/hint/error wiring. It owns the `<label>` and message markup
-  and hands the child a render-prop bundle (`aria-describedby`, `aria-invalid`) to spread
-  onto that control. Do not nest `Input` inside `FormField` — `Input` already renders its
-  own label and message region, so wrapping it produces duplicate labels.
+  and hands the child a render-prop bundle (`aria-describedby`, `aria-invalid`,
+  `aria-required`) to spread onto that control. Do not nest `Input` inside `FormField` —
+  `Input` already renders its own label and message region, so wrapping it produces
+  duplicate labels.
 
 ## shadcn → Miltinson mapping reference
 
