@@ -1,0 +1,40 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# Superseded pushes to the same PR/branch are cancelled; `release.yml` uses a
+# separate, non-cancelling group so publishes are never interrupted.
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          # Uses `packageManager` from ./package.json so CI stays in sync.
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      # No NODE_AUTH_TOKEN needed: every `@elirobinson/*` dependency resolves to
+      # a `link:` workspace entry in the lockfile, so this never hits the
+      # GitHub Packages registry.
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build

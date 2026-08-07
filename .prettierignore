@@ -1,4 +1,8 @@
-./node_modules
-./dist
-./apps/storybook/storybook-static
-./pnpm-lock.yaml
+# Uses gitignore syntax — a leading `./` matches nothing.
+node_modules
+dist
+.nx
+.claude
+apps/storybook/storybook-static
+design-system-docs
+pnpm-lock.yaml
