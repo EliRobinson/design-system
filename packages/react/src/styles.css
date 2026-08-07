@@ -1094,6 +1094,22 @@
   box-shadow: var(--shadow-sm);
 }
 
+.ds-slider__input::-moz-range-track {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+
+.ds-slider__input::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
 .ds-slider__input:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
