@@ -5,6 +5,9 @@ import '@elirobinson/tokens/tokens.css';
 import '@elirobinson/react/styles.css';
 import './site.css';
 
+import { SiteFooter } from '../components/SiteFooter';
+import { SiteHeader } from '../components/SiteHeader';
+
 export const metadata: Metadata = {
   title: {
     default: 'Miltinson Design System',
@@ -17,7 +20,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <SiteHeader />
+        {children}
+        <SiteFooter />
+      </body>
     </html>
   );
 }

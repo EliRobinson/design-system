@@ -7,7 +7,9 @@
       "slug": "avatar",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Avatar",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/Avatar.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/Avatar.css"
+      ],
       "description": "Image avatar with initials fallback, in sm/md/lg sizes.",
       "inherits": "HTMLAttributes<HTMLDivElement>",
       "props": [
@@ -55,8 +57,15 @@
         }
       ],
       "hooks": [],
-      "exportedTypes": ["AvatarProps", "AvatarImageProps", "AvatarFallbackProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "AvatarProps",
+        "AvatarImageProps",
+        "AvatarFallbackProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -64,7 +73,9 @@
       "slug": "badge",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Badge",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/Badge.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/Badge.css"
+      ],
       "description": "Small status label — default, signal, anchor, solid, and outline variants.",
       "inherits": "HTMLAttributes<HTMLSpanElement>",
       "props": [
@@ -78,8 +89,14 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["BadgeVariant", "BadgeProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "BadgeVariant",
+        "BadgeProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -87,7 +104,9 @@
       "slug": "button",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Button",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/Button.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/Button.css"
+      ],
       "description": "The primary action control — primary, accent, secondary, and ghost variants in three sizes.",
       "inherits": "ButtonHTMLAttributes<HTMLButtonElement>",
       "props": [
@@ -108,7 +127,11 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["ButtonVariant", "ButtonSize", "ButtonProps"],
+      "exportedTypes": [
+        "ButtonVariant",
+        "ButtonSize",
+        "ButtonProps"
+      ],
       "constraints": [
         "no-barrel-imports",
         "forward-ref",
@@ -122,7 +145,9 @@
       "slug": "checkbox",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Checkbox",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/Checkbox.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/Checkbox.css"
+      ],
       "description": "Labelled checkbox with a full-height 44px click row.",
       "inherits": null,
       "props": [
@@ -136,8 +161,13 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["CheckboxProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "CheckboxProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -145,14 +175,21 @@
       "slug": "eyebrow",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Eyebrow",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/Eyebrow.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/Eyebrow.css"
+      ],
       "description": "Uppercase mono section label — marketing typography.",
       "inherits": "HTMLAttributes<HTMLSpanElement>",
       "props": [],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["EyebrowProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "EyebrowProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -160,7 +197,9 @@
       "slug": "input",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Input",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/field.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/field.css"
+      ],
       "description": "Batteries-included labelled text input with hint and error wiring.",
       "inherits": "InputHTMLAttributes<HTMLInputElement>",
       "props": [
@@ -188,8 +227,13 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["InputProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "InputProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -197,14 +241,21 @@
       "slug": "kbd",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Kbd",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/Kbd.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/Kbd.css"
+      ],
       "description": "Styled kbd element for keyboard-shortcut hints.",
       "inherits": "HTMLAttributes<HTMLElement>",
       "props": [],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["KbdProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "KbdProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -212,14 +263,21 @@
       "slug": "label",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Label",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/field.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/field.css"
+      ],
       "description": "Standalone form label for controls that manage their own wiring.",
       "inherits": "LabelHTMLAttributes<HTMLLabelElement>",
       "props": [],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["LabelProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "LabelProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -227,7 +285,9 @@
       "slug": "progress",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Progress",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/Progress.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/Progress.css"
+      ],
       "description": "Determinate progress bar with an accessible value readout.",
       "inherits": "HTMLAttributes<HTMLDivElement>",
       "props": [
@@ -255,8 +315,13 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["ProgressProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "ProgressProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -264,7 +329,9 @@
       "slug": "radio-group",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/RadioGroup",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/RuleLink.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/RuleLink.css"
+      ],
       "description": "Context-based radio group; the group owns name, checked state, and change handling.",
       "inherits": null,
       "props": [
@@ -328,8 +395,14 @@
         }
       ],
       "hooks": [],
-      "exportedTypes": ["RadioGroupProps", "RadioGroupItemProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "RadioGroupProps",
+        "RadioGroupItemProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": [
         "ds-radio-group styles are defined in molecules/RuleLink.css, not a RadioGroup sheet"
       ]
@@ -339,7 +412,9 @@
       "slug": "separator",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Separator",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/Separator.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/Separator.css"
+      ],
       "description": "Horizontal or vertical hairline divider.",
       "inherits": "HTMLAttributes<HTMLDivElement>",
       "props": [
@@ -353,8 +428,13 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["SeparatorProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "SeparatorProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -362,14 +442,21 @@
       "slug": "skeleton",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Skeleton",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/Skeleton.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/Skeleton.css"
+      ],
       "description": "Loading placeholder block that respects reduced motion.",
       "inherits": "HTMLAttributes<HTMLDivElement>",
       "props": [],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["SkeletonProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "SkeletonProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -377,7 +464,9 @@
       "slug": "slider",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Slider",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/Slider.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/Slider.css"
+      ],
       "description": "Labelled native range input.",
       "inherits": null,
       "props": [
@@ -391,8 +480,13 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["SliderProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "SliderProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -400,7 +494,9 @@
       "slug": "spinner",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Spinner",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/Spinner.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/Spinner.css"
+      ],
       "description": "Status-role loading indicator in three sizes.",
       "inherits": null,
       "props": [
@@ -421,8 +517,14 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["SpinnerSize", "SpinnerProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "SpinnerSize",
+        "SpinnerProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -430,7 +532,9 @@
       "slug": "switch",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Switch",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/Switch.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/Switch.css"
+      ],
       "description": "Switch-role toggle with a labelled click target.",
       "inherits": null,
       "props": [
@@ -444,8 +548,13 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["SwitchProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "SwitchProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -453,7 +562,9 @@
       "slug": "textarea",
       "tier": "atoms",
       "importPath": "@elirobinson/react/components/atoms/Textarea",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/field.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/field.css"
+      ],
       "description": "Labelled multiline text field with hint and error wiring.",
       "inherits": "TextareaHTMLAttributes<HTMLTextAreaElement>",
       "props": [
@@ -481,8 +592,13 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["TextareaProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "TextareaProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -490,7 +606,9 @@
       "slug": "alert",
       "tier": "molecules",
       "importPath": "@elirobinson/react/components/molecules/Alert",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/Alert.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/Alert.css"
+      ],
       "description": "Status callout for success, warning, danger, and info messages.",
       "inherits": "HTMLAttributes<HTMLDivElement>",
       "props": [
@@ -511,8 +629,14 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["AlertVariant", "AlertProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "AlertVariant",
+        "AlertProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -520,7 +644,9 @@
       "slug": "breadcrumb",
       "tier": "molecules",
       "importPath": "@elirobinson/react/components/molecules/Breadcrumb",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/Breadcrumb.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/Breadcrumb.css"
+      ],
       "description": "Page-hierarchy trail with a current-page marker.",
       "inherits": "HTMLAttributes<HTMLElement>",
       "props": [],
@@ -573,7 +699,10 @@
         "BreadcrumbLinkProps",
         "BreadcrumbSeparatorProps"
       ],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -581,7 +710,9 @@
       "slug": "card",
       "tier": "molecules",
       "importPath": "@elirobinson/react/components/molecules/Card",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/Card.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/Card.css"
+      ],
       "description": "Bordered content surface with header, title, description, content, and footer subcomponents.",
       "inherits": "HTMLAttributes<HTMLDivElement>",
       "props": [],
@@ -626,7 +757,10 @@
         "CardContentProps",
         "CardFooterProps"
       ],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -634,7 +768,9 @@
       "slug": "chip",
       "tier": "molecules",
       "importPath": "@elirobinson/react/components/molecules/Chip",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/Chip.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/Chip.css"
+      ],
       "description": "Compact tag with an optional dense remove button.",
       "inherits": "HTMLAttributes<HTMLSpanElement>",
       "props": [
@@ -655,7 +791,9 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["ChipProps"],
+      "exportedTypes": [
+        "ChipProps"
+      ],
       "constraints": [
         "no-barrel-imports",
         "forward-ref",
@@ -669,7 +807,9 @@
       "slug": "empty-state",
       "tier": "molecules",
       "importPath": "@elirobinson/react/components/molecules/EmptyState",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/EmptyState.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/EmptyState.css"
+      ],
       "description": "Placeholder for empty data — title, description, icon, and action slot.",
       "inherits": "HTMLAttributes<HTMLDivElement>",
       "props": [
@@ -704,8 +844,13 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["EmptyStateProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "EmptyStateProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -713,7 +858,9 @@
       "slug": "form-field",
       "tier": "molecules",
       "importPath": "@elirobinson/react/components/molecules/FormField",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/FormField.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/FormField.css"
+      ],
       "description": "Label, hint, and error wrapper for controls that don't wire their own accessibility.",
       "inherits": null,
       "props": [
@@ -755,8 +902,14 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["FormFieldRenderProps", "FormFieldProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "FormFieldRenderProps",
+        "FormFieldProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -764,7 +917,9 @@
       "slug": "pagination",
       "tier": "molecules",
       "importPath": "@elirobinson/react/components/molecules/Pagination",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/Pagination.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/Pagination.css"
+      ],
       "description": "Page-button list with aria-current marking and 44px targets.",
       "inherits": null,
       "props": [
@@ -792,7 +947,9 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["PaginationProps"],
+      "exportedTypes": [
+        "PaginationProps"
+      ],
       "constraints": [
         "no-barrel-imports",
         "forward-ref",
@@ -806,7 +963,9 @@
       "slug": "rating",
       "tier": "molecules",
       "importPath": "@elirobinson/react/components/molecules/Rating",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/Rating.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/Rating.css"
+      ],
       "description": "Star rating — read-only by default, interactive when given a change handler.",
       "inherits": null,
       "props": [
@@ -834,7 +993,9 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["RatingProps"],
+      "exportedTypes": [
+        "RatingProps"
+      ],
       "constraints": [
         "no-barrel-imports",
         "forward-ref",
@@ -848,14 +1009,21 @@
       "slug": "rule-link",
       "tier": "molecules",
       "importPath": "@elirobinson/react/components/molecules/RuleLink",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/RuleLink.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/RuleLink.css"
+      ],
       "description": "Ink-underline arrow link for marketing pages.",
       "inherits": "AnchorHTMLAttributes<HTMLAnchorElement>",
       "props": [],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["RuleLinkProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "RuleLinkProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -863,7 +1031,9 @@
       "slug": "search-field",
       "tier": "molecules",
       "importPath": "@elirobinson/react/components/molecules/SearchField",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/SearchField.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/SearchField.css"
+      ],
       "description": "Search input with a built-in dense clear button.",
       "inherits": null,
       "props": [
@@ -891,7 +1061,9 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["SearchFieldProps"],
+      "exportedTypes": [
+        "SearchFieldProps"
+      ],
       "constraints": [
         "no-barrel-imports",
         "forward-ref",
@@ -905,7 +1077,9 @@
       "slug": "segmented-control",
       "tier": "molecules",
       "importPath": "@elirobinson/react/components/molecules/SegmentedControl",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/SegmentedControl.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/SegmentedControl.css"
+      ],
       "description": "Radio-style option group with arrow-key navigation and 44px targets.",
       "inherits": null,
       "props": [
@@ -933,7 +1107,10 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["SegmentedControlOption", "SegmentedControlProps"],
+      "exportedTypes": [
+        "SegmentedControlOption",
+        "SegmentedControlProps"
+      ],
       "constraints": [
         "no-barrel-imports",
         "forward-ref",
@@ -947,7 +1124,9 @@
       "slug": "stepper",
       "tier": "molecules",
       "importPath": "@elirobinson/react/components/molecules/Stepper",
-      "stylesheetPaths": ["@elirobinson/react/styles/molecules/Stepper.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/molecules/Stepper.css"
+      ],
       "description": "Ordered-list progress indicator for multi-step flows.",
       "inherits": "HTMLAttributes<HTMLOListElement>",
       "props": [
@@ -968,8 +1147,14 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["StepperStep", "StepperProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "StepperStep",
+        "StepperProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -977,7 +1162,9 @@
       "slug": "accordion",
       "tier": "organisms",
       "importPath": "@elirobinson/react/components/organisms/Accordion",
-      "stylesheetPaths": ["@elirobinson/react/styles/organisms/Accordion.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/organisms/Accordion.css"
+      ],
       "description": "Expandable sections with configurable heading levels.",
       "inherits": "HTMLAttributes<HTMLDivElement>",
       "props": [
@@ -1083,7 +1270,10 @@
         "AccordionTriggerProps",
         "AccordionContentProps"
       ],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -1136,8 +1326,14 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["ComboboxOption", "ComboboxProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "ComboboxOption",
+        "ComboboxProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -1183,8 +1379,14 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["CommandPaletteCommand", "CommandPaletteProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "CommandPaletteCommand",
+        "CommandPaletteProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -1192,7 +1394,9 @@
       "slug": "date-picker",
       "tier": "organisms",
       "importPath": "@elirobinson/react/components/organisms/DatePicker",
-      "stylesheetPaths": ["@elirobinson/react/styles/organisms/DatePicker.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/organisms/DatePicker.css"
+      ],
       "description": "Popover date grid using the ARIA grid pattern.",
       "inherits": null,
       "props": [
@@ -1227,7 +1431,9 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["DatePickerProps"],
+      "exportedTypes": [
+        "DatePickerProps"
+      ],
       "constraints": [
         "no-barrel-imports",
         "forward-ref",
@@ -1241,7 +1447,9 @@
       "slug": "dialog",
       "tier": "organisms",
       "importPath": "@elirobinson/react/components/organisms/Dialog",
-      "stylesheetPaths": ["@elirobinson/react/styles/organisms/Dialog.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/organisms/Dialog.css"
+      ],
       "description": "Modal dialog built on the native dialog element.",
       "inherits": null,
       "props": [
@@ -1322,7 +1530,10 @@
         "DialogFooterProps",
         "DialogCloseProps"
       ],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -1330,7 +1541,9 @@
       "slug": "dropdown-menu",
       "tier": "organisms",
       "importPath": "@elirobinson/react/components/organisms/DropdownMenu",
-      "stylesheetPaths": ["@elirobinson/react/styles/organisms/DropdownMenu.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/organisms/DropdownMenu.css"
+      ],
       "description": "Keyboard-navigable action menu anchored to a trigger.",
       "inherits": null,
       "props": [
@@ -1413,7 +1626,10 @@
         "DropdownMenuLabelProps",
         "DropdownMenuSeparatorProps"
       ],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -1421,7 +1637,9 @@
       "slug": "navigation-menu",
       "tier": "organisms",
       "importPath": "@elirobinson/react/components/organisms/NavigationMenu",
-      "stylesheetPaths": ["@elirobinson/react/styles/organisms/NavigationMenu.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/organisms/NavigationMenu.css"
+      ],
       "description": "Always-rendered nested link list with current-page marking.",
       "inherits": "HTMLAttributes<HTMLElement>",
       "props": [
@@ -1442,7 +1660,10 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["NavigationMenuItem", "NavigationMenuProps"],
+      "exportedTypes": [
+        "NavigationMenuItem",
+        "NavigationMenuProps"
+      ],
       "constraints": [
         "no-barrel-imports",
         "forward-ref",
@@ -1456,7 +1677,9 @@
       "slug": "popover",
       "tier": "organisms",
       "importPath": "@elirobinson/react/components/organisms/Popover",
-      "stylesheetPaths": ["@elirobinson/react/styles/organisms/Popover.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/organisms/Popover.css"
+      ],
       "description": "Anchored floating panel with outside-click and Escape dismissal.",
       "inherits": null,
       "props": [
@@ -1497,8 +1720,15 @@
         }
       ],
       "hooks": [],
-      "exportedTypes": ["PopoverProps", "PopoverTriggerProps", "PopoverContentProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "PopoverProps",
+        "PopoverTriggerProps",
+        "PopoverContentProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -1506,7 +1736,9 @@
       "slug": "select",
       "tier": "organisms",
       "importPath": "@elirobinson/react/components/organisms/Select",
-      "stylesheetPaths": ["@elirobinson/react/styles/atoms/field.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/atoms/field.css"
+      ],
       "description": "Native select with label, hint, and error wiring.",
       "inherits": "SelectHTMLAttributes<HTMLSelectElement>",
       "props": [
@@ -1534,8 +1766,13 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["SelectProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "SelectProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -1543,7 +1780,9 @@
       "slug": "sheet",
       "tier": "organisms",
       "importPath": "@elirobinson/react/components/organisms/Sheet",
-      "stylesheetPaths": ["@elirobinson/react/styles/organisms/Sheet.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/organisms/Sheet.css"
+      ],
       "description": "Edge drawer built on the native dialog element.",
       "inherits": null,
       "props": [
@@ -1632,7 +1871,10 @@
         "SheetFooterProps",
         "SheetCloseProps"
       ],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -1692,8 +1934,13 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["TableProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "TableProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -1701,7 +1948,9 @@
       "slug": "tabs",
       "tier": "organisms",
       "importPath": "@elirobinson/react/components/organisms/Tabs",
-      "stylesheetPaths": ["@elirobinson/react/styles/organisms/Tabs.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/organisms/Tabs.css"
+      ],
       "description": "Tab set with roving focus and an ink underline active state.",
       "inherits": "HTMLAttributes<HTMLDivElement>",
       "props": [
@@ -1793,8 +2042,15 @@
         }
       ],
       "hooks": [],
-      "exportedTypes": ["TabsProps", "TabsListProps", "TabsTriggerProps", "TabsContentProps"],
-      "constraints": ["no-barrel-imports"],
+      "exportedTypes": [
+        "TabsProps",
+        "TabsListProps",
+        "TabsTriggerProps",
+        "TabsContentProps"
+      ],
+      "constraints": [
+        "no-barrel-imports"
+      ],
       "extractionGaps": []
     },
     {
@@ -1802,7 +2058,9 @@
       "slug": "toast",
       "tier": "organisms",
       "importPath": "@elirobinson/react/components/organisms/Toast",
-      "stylesheetPaths": ["@elirobinson/react/styles/organisms/Toast.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/organisms/Toast.css"
+      ],
       "description": "Aria-live notification system — Toaster region plus a useToast dispatcher.",
       "inherits": "HTMLAttributes<HTMLDivElement>",
       "props": [
@@ -1862,7 +2120,10 @@
         "ToastDescriptionProps",
         "ToastActionProps"
       ],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -1870,7 +2131,9 @@
       "slug": "tooltip",
       "tier": "organisms",
       "importPath": "@elirobinson/react/components/organisms/Tooltip",
-      "stylesheetPaths": ["@elirobinson/react/styles/organisms/Tooltip.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/organisms/Tooltip.css"
+      ],
       "description": "Hover- and focus-triggered tooltip anchored to its trigger.",
       "inherits": null,
       "props": [
@@ -1897,8 +2160,15 @@
         }
       ],
       "hooks": [],
-      "exportedTypes": ["TooltipProps", "TooltipTriggerProps", "TooltipContentProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "TooltipProps",
+        "TooltipTriggerProps",
+        "TooltipContentProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -1906,7 +2176,9 @@
       "slug": "virtual-list",
       "tier": "organisms",
       "importPath": "@elirobinson/react/components/organisms/VirtualList",
-      "stylesheetPaths": ["@elirobinson/react/styles/organisms/VirtualList.css"],
+      "stylesheetPaths": [
+        "@elirobinson/react/styles/organisms/VirtualList.css"
+      ],
       "description": "Windowed list that only renders the rows currently within (or near) its\nviewport, backed by `@tanstack/react-virtual`. Intended to be composed by\n`Table` (opt-in `virtualize` prop) and `Combobox` (long option lists) —\nsee the props above for what those consumers need: `height` (container\nheight), `estimateSize` (row height estimate), `overscan`, and\n`renderItem` (render an arbitrary item by index).\n\nThe forwarded ref resolves to a {@link VirtualListHandle}, not the scroll\ncontainer element.",
       "inherits": null,
       "props": [
@@ -1948,8 +2220,14 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["VirtualListHandle", "VirtualListProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "VirtualListHandle",
+        "VirtualListProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     },
     {
@@ -2024,8 +2302,13 @@
       ],
       "subComponents": [],
       "hooks": [],
-      "exportedTypes": ["VirtualTableProps"],
-      "constraints": ["no-barrel-imports", "forward-ref"],
+      "exportedTypes": [
+        "VirtualTableProps"
+      ],
+      "constraints": [
+        "no-barrel-imports",
+        "forward-ref"
+      ],
       "extractionGaps": []
     }
   ],

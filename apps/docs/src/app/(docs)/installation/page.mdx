@@ -1,0 +1,88 @@
+export const metadata = { title: 'Installation' };
+
+# Installation
+
+<p className="lead">
+  The packages are published to the GitHub Packages npm registry under the `@elirobinson`
+  scope. Authenticate once, install two packages, import two stylesheets — that's the whole
+  setup.
+</p>
+
+## Requirements
+
+- Node 24 or later
+- React 19
+- A package manager — I use pnpm, but npm and yarn work the same way
+
+## Authenticate with GitHub Packages
+
+GitHub Packages requires a token even for public reads. Create a
+[personal access token](https://github.com/settings/tokens) with the `read:packages` scope,
+then add an `.npmrc` next to your app's `package.json`:
+
+```bash
+@elirobinson:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
+
+Export the token in your shell (or set it as a CI secret — never commit it):
+
+```bash
+export NODE_AUTH_TOKEN=<your-github-pat>
+```
+
+## Install the packages
+
+```bash
+pnpm add @elirobinson/tokens @elirobinson/react
+```
+
+`@elirobinson/tokens` carries the design tokens as CSS custom properties and JSON.
+`@elirobinson/react` carries the 44 components and 5 interaction hooks. If you're building
+AI features, `@elirobinson/ai-patterns` adds prompt patterns and machine-checkable UX
+contracts.
+
+## Wire up the styles
+
+Import both stylesheets once, in your app shell, in this order — tokens first, then
+component styles:
+
+```tsx
+import '@elirobinson/tokens/tokens.css';
+import '@elirobinson/react/styles.css';
+```
+
+`tokens.css` defines every custom property on `:root` plus sensible base styles (focus
+rings, selection color, reduced-motion handling). `styles.css` is the aggregate component
+stylesheet. If you'd rather ship only what you use, each component's sheet is importable on
+its own:
+
+```tsx
+import '@elirobinson/react/styles/atoms/Button.css';
+```
+
+## Import components
+
+There are no barrel files — every import names a subpath. A bare
+`import { Button } from '@elirobinson/react'` does not resolve, by design: subpath imports
+keep bundles honest and make every dependency visible.
+
+```tsx
+import { Button } from '@elirobinson/react/components/atoms/Button';
+import { Card, CardHeader, CardTitle } from '@elirobinson/react/components/molecules/Card';
+import { useRovingFocus } from '@elirobinson/react/hooks/useRovingFocus';
+```
+
+## Start from scratch instead
+
+If you don't have an app yet, the generator scaffolds a Next.js App Router project already
+wired to the tokens, the components, and a GitHub Packages `.npmrc`:
+
+```bash
+npx github:EliRobinson/design-system/packages/create-elirobinson-design-system my-app
+```
+
+## Next step
+
+Bringing an existing app onto the system? Read [Adopting the system](/adoption) — it covers
+the order that works: primitives first, then token values, then keyboard and focus checks.
