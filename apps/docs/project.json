@@ -1,0 +1,35 @@
+{
+  "name": "docs",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/docs/src",
+  "projectType": "application",
+  "targets": {
+    "dev": {
+      "command": "pnpm run dev",
+      "options": {
+        "cwd": "apps/docs"
+      },
+      "dependsOn": ["^build"]
+    },
+    "build": {
+      "command": "pnpm run build",
+      "options": {
+        "cwd": "apps/docs"
+      },
+      "outputs": ["{projectRoot}/.next"]
+    },
+    "lint": {
+      "command": "pnpm run lint",
+      "options": {
+        "cwd": "apps/docs"
+      }
+    },
+    "test": {
+      "command": "pnpm run test",
+      "options": {
+        "cwd": "apps/docs"
+      }
+    }
+  },
+  "implicitDependencies": ["react", "tokens"]
+}

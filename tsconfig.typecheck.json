@@ -5,6 +5,7 @@
     "./node_modules",
     "./dist",
     "./templates/**/*",
+    "./apps/docs/.next/**/*",
     "./design-system-docs/**/*",
     "./apps/storybook/storybook-static/**/*"
   ]

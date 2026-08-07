@@ -1,0 +1,11 @@
+/* Site-level styles for the docs app. Every value comes from
+   @elirobinson/tokens custom properties — no magic numbers. */
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+}
