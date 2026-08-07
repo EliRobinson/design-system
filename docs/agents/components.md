@@ -16,8 +16,25 @@ When pulling a new component from [shadcn/ui](https://ui.shadcn.com/), **do not 
 2. **Style against Miltinson tokens** — every visual value must come from `@elirobinson/tokens/tokens.css` via `ds-*` classes in `packages/react/src/styles.css`.
 3. **Match brand preview swatches** — check `design-system-docs/preview/` for the canonical look of buttons, fields, cards, tags, and layout patterns before styling.
 4. **Follow existing conventions** — `ds-` prefix for classes, `forwardRef` for interactive elements, 44px minimum touch targets, visible `:focus-visible` rings using `--focus-ring`.
-5. **Export from `@elirobinson/react`** — add the component under `packages/react/src/components/` (consumers import `@elirobinson/react/components/<Name>`) and a Storybook story in `apps/storybook/`.
+5. **Export from `@elirobinson/react`** — add the component under `packages/react/src/components/<tier>/` (consumers import `@elirobinson/react/components/<tier>/<Name>`) and a Storybook story in `apps/storybook/`.
 6. **Skip Radix/Tailwind dependencies** unless explicitly requested — implement with native HTML elements and React state, styled with token CSS.
+
+## Atomic tiers
+
+Components live under `packages/react/src/components/<tier>/`:
+
+- **atoms/** — single-purpose, not further divisible (e.g. `Button`, `Input`).
+- **molecules/** — a few atoms combined into one functional unit, no portal/overlay orchestration (e.g. `Card`, `Alert`).
+- **organisms/** — compound components with internal state and/or overlay orchestration: portals, focus trapping, keyboard nav (e.g. `Dialog`, `Select`).
+
+Boundary rule: if a component renders into a portal, traps focus, or manages open/closed state across multiple sub-elements, it's an organism. If it's assembled from 2+ atoms with no such orchestration, it's a molecule. Otherwise it's an atom.
+
+Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
+
+### Constraints (all components, all tiers)
+
+- Every component that renders a focusable/interactive native element uses `forwardRef`, forwarding to the outermost interactive/native element the component owns.
+- Every interactive control has a minimum 44x44 touch target. Where visual density matters, keep the painted glyph small and expand the hit area (padding, or a `::after` overlay with `position:absolute; inset:-Npx`) rather than inflating the visible control.
 
 ## shadcn → Miltinson mapping reference
 

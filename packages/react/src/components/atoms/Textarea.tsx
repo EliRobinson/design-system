@@ -1,35 +1,35 @@
-import type { InputHTMLAttributes } from 'react';
+import type { TextareaHTMLAttributes } from 'react';
 import { forwardRef, useId } from 'react';
 
-import { cn } from '../lib/cn';
+import { cn } from '../../lib/cn';
 
-export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
+export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label: string;
   hint?: string;
   error?: string;
 };
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
   { className, id, label, hint, error, 'aria-describedby': ariaDescribedBy, ...props },
   ref,
 ) {
   const generatedId = useId();
   const hintId = useId();
   const errorId = useId();
-  const inputId = id ?? generatedId;
+  const textareaId = id ?? generatedId;
   const describedBy =
     [ariaDescribedBy, error ? errorId : null, hint ? hintId : null].filter(Boolean).join(' ') ||
     undefined;
 
   return (
     <div className="ds-field">
-      <label htmlFor={inputId} className="ds-label">
+      <label htmlFor={textareaId} className="ds-label">
         {label}
       </label>
-      <input
+      <textarea
         ref={ref}
-        id={inputId}
-        className={cn('ds-input', error && 'ds-input--error', className)}
+        id={textareaId}
+        className={cn('ds-input', 'ds-textarea', error && 'ds-input--error', className)}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
         {...props}

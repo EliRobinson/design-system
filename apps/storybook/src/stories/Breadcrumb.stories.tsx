@@ -5,7 +5,7 @@ import {
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbSeparator,
-} from '@design-system/react/components/Breadcrumb';
+} from '@design-system/react/components/molecules/Breadcrumb';
 
 const meta = {
   title: 'Components/Breadcrumb',

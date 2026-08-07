@@ -2,7 +2,7 @@ import type { HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useCallback, useContext, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { cn } from '../lib/cn';
+import { cn } from '../../lib/cn';
 
 type TooltipContextValue = {
   open: boolean;

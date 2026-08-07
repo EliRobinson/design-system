@@ -1,6 +1,6 @@
-import { Button } from '@elirobinson/react/components/Button';
-import { Card } from '@elirobinson/react/components/Card';
-import { Input } from '@elirobinson/react/components/Input';
+import { Button } from '@elirobinson/react/components/atoms/Button';
+import { Card } from '@elirobinson/react/components/molecules/Card';
+import { Input } from '@elirobinson/react/components/atoms/Input';
 
 export default function HomePage() {
   return (

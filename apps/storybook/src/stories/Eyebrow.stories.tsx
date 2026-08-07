@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Eyebrow } from '@design-system/react/components/Eyebrow';
+import { Eyebrow } from '@design-system/react/components/atoms/Eyebrow';
 
 const meta = {
   title: 'Components/Eyebrow',

@@ -1,39 +1,41 @@
-import type { TextareaHTMLAttributes } from 'react';
+import type { SelectHTMLAttributes } from 'react';
 import { forwardRef, useId } from 'react';
 
-import { cn } from '../lib/cn';
+import { cn } from '../../lib/cn';
 
-export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
+export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
   label: string;
   hint?: string;
   error?: string;
 };
 
-export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
-  { className, id, label, hint, error, 'aria-describedby': ariaDescribedBy, ...props },
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
+  { className, id, label, hint, error, children, 'aria-describedby': ariaDescribedBy, ...props },
   ref,
 ) {
   const generatedId = useId();
   const hintId = useId();
   const errorId = useId();
-  const textareaId = id ?? generatedId;
+  const selectId = id ?? generatedId;
   const describedBy =
     [ariaDescribedBy, error ? errorId : null, hint ? hintId : null].filter(Boolean).join(' ') ||
     undefined;
 
   return (
     <div className="ds-field">
-      <label htmlFor={textareaId} className="ds-label">
+      <label htmlFor={selectId} className="ds-label">
         {label}
       </label>
-      <textarea
+      <select
         ref={ref}
-        id={textareaId}
-        className={cn('ds-input', 'ds-textarea', error && 'ds-input--error', className)}
+        id={selectId}
+        className={cn('ds-input', 'ds-select', error && 'ds-input--error', className)}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
         {...props}
-      />
+      >
+        {children}
+      </select>
       {hint && !error && (
         <span id={hintId} className="ds-hint">
           {hint}

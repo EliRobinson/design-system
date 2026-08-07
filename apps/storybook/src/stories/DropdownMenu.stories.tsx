@@ -6,7 +6,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@design-system/react/components/DropdownMenu';
+} from '@design-system/react/components/organisms/DropdownMenu';
 
 const meta = {
   title: 'Components/DropdownMenu',
