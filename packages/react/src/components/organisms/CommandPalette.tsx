@@ -2,6 +2,7 @@ import type { KeyboardEvent } from 'react';
 import { forwardRef, useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { cn } from '../../lib/cn';
+import { useActiveDescendant } from '../../hooks/useActiveDescendant';
 import { Kbd } from '../atoms/Kbd';
 import { SearchField } from '../molecules/SearchField';
 import { Dialog, DialogContent, DialogTitle } from './Dialog';
@@ -30,18 +31,16 @@ export type CommandPaletteProps = {
 // and it hardcodes `aria-labelledby="ds-dialog-title"`, which dangles
 // without a `DialogTitle` -- so one is always rendered here too.
 //
-// CommandPaletteProps is a closed set, mirroring Combobox's pattern
-// (A7/A12): no HTML-attribute passthrough and no trailing `{...props}`
-// spread anywhere below, so there is no surface for a consumer -- typed or
-// not -- to clobber the internally computed `id`s, `role`s, or the
-// `aria-activedescendant` wiring this component owns.
+// CommandPaletteProps is a closed set, mirroring Combobox: no HTML-attribute
+// passthrough and no trailing `{...props}` spread anywhere below, so a
+// consumer cannot clobber the internally computed ids, roles, or the
+// aria-activedescendant wiring this component owns.
 export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
   function CommandPalette({ open, onOpenChange, commands, className }, ref) {
     const baseId = useId();
     const listId = `${baseId}-list`;
 
     const [query, setQuery] = useState('');
-    const [activeIndexState, setActiveIndexState] = useState(0);
 
     // A single ref prop can only point one direction, but both this
     // component (to focus the input on open) and a consumer (via the
@@ -63,14 +62,21 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
     const filtered = commands.filter((command) =>
       command.label.toLowerCase().includes(query.toLowerCase()),
     );
-    // Clamp rather than trust activeIndexState: narrowing the query can
-    // shrink `filtered` out from under a previously-valid index. An
-    // unclamped index here would hand aria-activedescendant a dangling id
-    // (same category of bug Combobox's activeIndex clamp guards against).
-    const activeIndex =
-      filtered.length === 0 ? -1 : Math.min(activeIndexState, filtered.length - 1);
-    const activeCommand = activeIndex >= 0 ? filtered[activeIndex] : undefined;
-    const activeId = activeCommand ? `${baseId}-item-${activeIndex}` : undefined;
+
+    const runCommand = useCallback(
+      (index: number) => {
+        const command = filtered[index];
+        if (!command) {
+          return;
+        }
+        command.onSelect();
+        onOpenChange(false);
+      },
+      [filtered, onOpenChange],
+    );
+
+    const { activeIndex, activeId, setActiveIndex, moveActive, getOptionProps } =
+      useActiveDescendant({ count: filtered.length, baseId, onSelect: runCommand });
 
     // Every time the palette opens, start from a clean slate and move focus
     // to the search input. Focusing via `inputRef` relies on SearchField's
@@ -79,46 +85,16 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
     useEffect(() => {
       if (open) {
         setQuery('');
-        setActiveIndexState(0);
+        setActiveIndex(0);
         inputRef.current?.focus();
       }
-    }, [open]);
-
-    // Clamp the CURRENT index against the live `filtered.length` before
-    // applying the arrow-key delta, not after. Clamping only the derived
-    // display value (see `activeIndex` above) leaves the raw state free to
-    // sit far above the valid range after `commands` shrinks -- e.g. state
-    // 5 with a filtered list of length 2 displays clamped to 1, but a naive
-    // `Math.max(0, current - 1)` on ArrowUp takes state from 5 to 4, which
-    // *still* clamps to 1, so the highlight appears stuck. Clamping first
-    // (matching Combobox's `moveActive`, Combobox.tsx) means the delta is
-    // always applied to a value already inside range, so a single key press
-    // always moves the highlight by exactly one step.
-    function moveActive(delta: number) {
-      setActiveIndexState((current) => {
-        if (filtered.length === 0) {
-          return 0;
-        }
-        const clampedCurrent = Math.min(current, filtered.length - 1);
-        return Math.max(0, Math.min(filtered.length - 1, clampedCurrent + delta));
-      });
-    }
-
-    function runCommand(index: number) {
-      const command = filtered[index];
-      if (!command) {
-        return;
-      }
-      command.onSelect();
-      onOpenChange(false);
-    }
+    }, [open, setActiveIndex]);
 
     // Focus stays on the input at all times; the active item is tracked via
     // aria-activedescendant rather than moving DOM focus into the list.
-    // This matches Combobox (Task 18) rather than introducing a second
-    // focus-management convention: keyboard users keep typing to refine the
-    // filter without losing their place, and it keeps exactly one pattern
-    // across the library's two aria-activedescendant-driven components.
+    // Shared with Combobox via useActiveDescendant rather than introducing a
+    // second focus-management convention: keyboard users keep typing to refine
+    // the filter without losing their place.
     function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
       switch (event.key) {
         case 'ArrowDown':
@@ -171,7 +147,7 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
             value={query}
             onValueChange={(next) => {
               setQuery(next);
-              setActiveIndexState(0);
+              setActiveIndex(0);
             }}
             onKeyDown={handleKeyDown}
           />
@@ -179,20 +155,11 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
             {filtered.map((command, index) => (
               <li key={command.id} role="presentation">
                 <div
-                  id={`${baseId}-item-${index}`}
-                  role="option"
-                  aria-selected={index === activeIndex}
-                  tabIndex={-1}
+                  {...getOptionProps(index)}
                   className={cn(
                     'ds-command-palette__item',
                     index === activeIndex && 'ds-command-palette__item--active',
                   )}
-                  // Prevent the option row from ever stealing DOM focus away
-                  // from the input on mousedown -- same reasoning as
-                  // Combobox: focus must stay on the input at all times.
-                  onMouseDown={(event) => event.preventDefault()}
-                  onMouseEnter={() => setActiveIndexState(index)}
-                  onClick={() => runCommand(index)}
                 >
                   <span>{command.label}</span>
                   {command.shortcut ? (
