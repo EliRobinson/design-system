@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Combobox } from './Combobox';
 
+import { stubViewportLayout } from '../../test/viewport';
+
 const options = [
   { label: 'Apple', value: 'apple' },
   { label: 'Banana', value: 'banana' },
@@ -20,6 +22,8 @@ function manyOptions(count: number) {
 }
 
 describe('Combobox', () => {
+  stubViewportLayout();
+
   it('filters options as the user types', async () => {
     const user = userEvent.setup();
     render(<Combobox label="Fruit" options={options} onValueChange={vi.fn()} />);
@@ -192,9 +196,8 @@ describe('Combobox', () => {
 
     const activeId = input.getAttribute('aria-activedescendant');
     expect(activeId).toBeTruthy();
-    // The scroll-into-view that brings a virtualized-out option back into
-    // the rendered window is deferred by one macrotask (see Combobox.tsx),
-    // so give it a tick before asserting it landed.
+    // Scrolling the option back into the rendered window goes through the
+    // virtualizer and lands on a later tick, so wait for it.
     await waitFor(() => {
       expect(document.getElementById(activeId as string)).toBeInTheDocument();
     });
