@@ -9,3 +9,5 @@ dist/
 *.log
 *.zip
 apps/storybook/storybook-static/
+.claude/worktrees/
+.superpowers/
