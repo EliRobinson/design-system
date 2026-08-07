@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes } from 'react';
-import { forwardRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 
 import { cn } from '../../lib/cn';
 
@@ -20,6 +20,9 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
   const isControlled = value !== undefined;
   const currentValue = isControlled ? value : internalValue;
 
+  const innerRef = useRef<HTMLInputElement>(null);
+  useImperativeHandle(ref, () => innerRef.current as HTMLInputElement, []);
+
   const setValue = (next: string) => {
     if (!isControlled) {
       setInternalValue(next);
@@ -33,7 +36,7 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
         ⌕
       </span>
       <input
-        ref={ref}
+        ref={innerRef}
         type="search"
         value={currentValue}
         onChange={(event) => setValue(event.target.value)}
@@ -45,7 +48,10 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
           type="button"
           className="ds-search-field__clear"
           aria-label="Clear search"
-          onClick={() => setValue('')}
+          onClick={() => {
+            setValue('');
+            innerRef.current?.focus();
+          }}
         >
           ×
         </button>

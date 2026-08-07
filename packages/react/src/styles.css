@@ -1241,6 +1241,11 @@
   outline-offset: 1px;
 }
 
+.ds-search-field__input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .ds-search-field__clear {
   position: absolute;
   right: var(--space-2);
