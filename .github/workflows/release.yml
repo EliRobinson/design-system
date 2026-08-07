@@ -1,9 +1,10 @@
-name: Release Metadata
+name: Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: [Quality]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -12,6 +13,9 @@ concurrency:
 
 jobs:
   release:
+    # Only runs after Quality has passed on main (or a manual dispatch), so a
+    # broken build or failing tests can never reach the registry.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -34,15 +38,35 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@elirobinson'
       - run: pnpm install --frozen-lockfile
+      - run: pnpm changeset:version
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "chore(release): version packages"
+            git push origin HEAD:main
+          else
+            echo "No pending changesets; nothing to version."
+          fi
       - run: pnpm build
-      - uses: changesets/action@v1
-        with:
-          version: pnpm changeset:version
-          publish: bash ./scripts/changeset-publish.sh
+      - name: Capture existing tags
+        id: pre_tags
+        run: echo "tags=$(git tag -l | sort | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+      - name: Publish to GitHub Packages
+        run: bash ./scripts/changeset-publish.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Semantic release (tags + GitHub release notes)
-        run: pnpm semantic-release
+      - name: Push new tags and create GitHub releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          before="${{ steps.pre_tags.outputs.tags }}"
+          for tag in $(git tag -l); do
+            if [[ " $before " != *" $tag "* ]]; then
+              git push origin "refs/tags/$tag"
+              gh release create "$tag" --generate-notes
+            fi
+          done
