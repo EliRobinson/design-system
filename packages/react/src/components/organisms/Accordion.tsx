@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, HTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, MouseEventHandler } from 'react';
 import { createContext, forwardRef, useContext, useId, useState } from 'react';
 
 import { cn } from '../../lib/cn';
@@ -13,6 +13,19 @@ const HEADING_TAGS = {
   5: 'h5',
   6: 'h6',
 } as const satisfies Record<AccordionHeadingLevel, string>;
+
+const DEFAULT_HEADING_LEVEL: AccordionHeadingLevel = 3;
+
+// `headingLevel` is typed as 1-6, but this is a published library: consumers
+// outside this repo's type boundary (plain JS, `as any`, a CMS-driven prop)
+// can hand it any number at runtime. `HEADING_TAGS[headingLevel]` on an
+// out-of-range value resolves to `undefined`, which React throws on hard
+// ("Element type is invalid... got: undefined") -- taking down the whole
+// tree, not just the accordion. Normalize once, here, so every consumer of
+// the context (currently just AccordionTrigger) sees an always-valid level.
+function resolveHeadingLevel(level: AccordionHeadingLevel): AccordionHeadingLevel {
+  return level in HEADING_TAGS ? level : DEFAULT_HEADING_LEVEL;
+}
 
 function toArray(value: string | string[] | undefined): string[] {
   if (value === undefined) {
@@ -97,6 +110,7 @@ export const Accordion = forwardRef<HTMLDivElement, AccordionProps>(function Acc
   const [internalValues, setInternalValues] = useState<string[]>(() => toArray(defaultValue));
   const isControlled = value !== undefined;
   const openValues = isControlled ? toArray(value) : internalValues;
+  const safeHeadingLevel = resolveHeadingLevel(headingLevel);
 
   const toggle = (itemValue: string) => {
     const isOpen = openValues.includes(itemValue);
@@ -121,7 +135,9 @@ export const Accordion = forwardRef<HTMLDivElement, AccordionProps>(function Acc
   };
 
   return (
-    <AccordionContext.Provider value={{ openValues, toggle, baseId, headingLevel }}>
+    <AccordionContext.Provider
+      value={{ openValues, toggle, baseId, headingLevel: safeHeadingLevel }}
+    >
       <div ref={ref} className={cn('ds-accordion', className)} {...props}>
         {children}
       </div>
@@ -146,7 +162,21 @@ export const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(func
   );
 });
 
-export type AccordionTriggerProps = ButtonHTMLAttributes<HTMLButtonElement>;
+// `id`, `aria-expanded`, and `aria-controls` are computed internally and
+// wire this trigger to its AccordionContent panel -- AccordionContent's own
+// `aria-labelledby` is derived from the same `${baseId}-trigger-${value}`
+// id. Omitting them from the props type (rather than merely relying on
+// spread order) stops a consumer from silently overriding the id and
+// orphaning that reference, or overriding aria-expanded/aria-controls and
+// breaking the a11y wiring outright. `onClick` is also omitted from the raw
+// button attributes and re-declared below so a consumer-supplied handler is
+// composed with the toggle instead of replacing it (see handleClick).
+export type AccordionTriggerProps = Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'id' | 'onClick' | 'aria-expanded' | 'aria-controls'
+> & {
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+};
 
 // Arrow-key navigation between headers is intentionally NOT implemented here.
 // Per the WAI-ARIA APG, it's optional for accordions (unlike tabs, where it's
@@ -159,11 +189,20 @@ export type AccordionTriggerProps = ButtonHTMLAttributes<HTMLButtonElement>;
 // (arrow keys aren't a documented accordion convention) without fixing
 // anything that's actually broken.
 export const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
-  function AccordionTrigger({ className, children, ...props }, ref) {
+  function AccordionTrigger({ className, children, onClick, ...props }, ref) {
     const { openValues, toggle, baseId, headingLevel } = useAccordionContext();
     const { value } = useAccordionItemContext();
     const isOpen = openValues.includes(value);
     const HeadingTag = HEADING_TAGS[headingLevel];
+
+    // Compose rather than replace: a consumer-supplied onClick still runs,
+    // but it can never prevent the trigger from toggling (see task-16 fix
+    // round 1, finding 1 -- a naive `{...props}` spread after a hardcoded
+    // `onClick` let a consumer's handler silently clobber the toggle).
+    const handleClick: MouseEventHandler<HTMLButtonElement> = (event) => {
+      onClick?.(event);
+      toggle(value);
+    };
 
     return (
       <HeadingTag className="ds-accordion__heading">
@@ -178,7 +217,7 @@ export const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerPr
             isOpen && 'ds-accordion__trigger--open',
             className,
           )}
-          onClick={() => toggle(value)}
+          onClick={handleClick}
           {...props}
         >
           {children}
@@ -188,7 +227,15 @@ export const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerPr
   },
 );
 
-export type AccordionContentProps = Omit<HTMLAttributes<HTMLDivElement>, 'role'>;
+// `id`, `role`, and `aria-labelledby` are all computed internally: `id` and
+// `aria-labelledby` wire this panel to its AccordionTrigger (which points at
+// this same `${baseId}-content-${value}` id via `aria-controls`), and `role`
+// carries the fixed "region" semantics. All three are omitted so a consumer
+// can't silently clobber the wiring or the semantics via `{...props}`.
+export type AccordionContentProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'id' | 'role' | 'aria-labelledby'
+>;
 
 export const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
   function AccordionContent({ className, children, ...props }, ref) {

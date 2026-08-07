@@ -227,4 +227,70 @@ describe('Accordion', () => {
 
     consoleError.mockRestore();
   });
+
+  // Fix round 1, finding 1: a consumer-supplied onClick must run alongside
+  // the internal toggle, never replace it. Before the fix, `{...props}` was
+  // spread after the hardcoded `onClick`, so this exact test failed with
+  // "Content A" never appearing -- the toggle handler was fully overwritten.
+  it('composes a consumer-supplied onClick with the toggle instead of replacing it', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+
+    render(
+      <Accordion>
+        <AccordionItem value="a">
+          <AccordionTrigger onClick={onClick}>Section A</AccordionTrigger>
+          <AccordionContent>Content A</AccordionContent>
+        </AccordionItem>
+      </Accordion>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Section A' }));
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Content A')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Section A' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  // Fix round 1, finding 1: `id` is internally computed and referenced by
+  // AccordionContent's aria-labelledby, so it must not be overridable.
+  it('keeps the trigger id and the content aria-labelledby in sync', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Accordion>
+        <AccordionItem value="a">
+          <AccordionTrigger>Section A</AccordionTrigger>
+          <AccordionContent>Content A</AccordionContent>
+        </AccordionItem>
+      </Accordion>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Section A' }));
+
+    const trigger = screen.getByRole('button', { name: 'Section A' });
+    const content = screen.getByText('Content A');
+    expect(content.getAttribute('aria-labelledby')).toBe(trigger.id);
+  });
+
+  // Fix round 1, finding 2: an out-of-range headingLevel (reachable from
+  // plain JS, `as any`, or a CMS-driven prop even though the TS type is
+  // 1-6) must fall back to the default rather than crash the whole tree.
+  it('falls back to the default heading level when headingLevel is out of range', () => {
+    expect(() =>
+      render(
+        <Accordion headingLevel={0 as unknown as 1 | 2 | 3 | 4 | 5 | 6}>
+          <AccordionItem value="a">
+            <AccordionTrigger>Section A</AccordionTrigger>
+            <AccordionContent>Content A</AccordionContent>
+          </AccordionItem>
+        </Accordion>,
+      ),
+    ).not.toThrow();
+
+    expect(screen.getByRole('heading', { level: 3, name: 'Section A' })).toBeInTheDocument();
+  });
 });
