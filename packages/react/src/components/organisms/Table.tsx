@@ -1,47 +1,27 @@
 import type { ChangeEvent, ForwardedRef, HTMLAttributes, ReactElement } from 'react';
 import { forwardRef, useEffect, useState } from 'react';
 import {
+  flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  useLegacyTable,
-} from '@tanstack/react-table/legacy';
-import type { LegacyColumnDef, LegacyReactTable } from '@tanstack/react-table/legacy';
-// `flexRender`, `PaginationState`, `SortingState`, and `RowData` aren't
-// re-exported from the `/legacy` subpath's own barrel -- only from the main
-// package (which re-exports all of `@tanstack/table-core`, per its
-// `export * from "@tanstack/table-core"`, plus `flexRender` itself, which
-// never moved).
-import { flexRender } from '@tanstack/react-table';
-import type { PaginationState, RowData, SortingState } from '@tanstack/react-table';
+  useReactTable,
+} from '@tanstack/react-table';
+import type { ColumnDef, PaginationState, RowData, SortingState } from '@tanstack/react-table';
 
 import { cn } from '../../lib/cn';
 import { EmptyState } from '../molecules/EmptyState';
 import { Pagination } from '../molecules/Pagination';
 import { VirtualList } from './VirtualList';
 
-// The package installed here is @tanstack/react-table@9, which rebuilt the
-// library around an explicit, tree-shakeable `features` object rather than
-// the v8 `useReactTable({ getCoreRowModel: getCoreRowModel(), ... })` shape
-// the design spec/brief were written against. `useReactTable` no longer
-// exists at all (the top-level hook is now `useTable`), and the top-level
-// `ColumnDef<TFeatures, TData, TValue>` type has no default for `TFeatures`,
-// so the single-generic `ColumnDef<Row>` usage the brief specifies does not
-// compile against it.
-//
-// `@tanstack/react-table/legacy` is the library's own v8-compatibility
-// layer: it ships `useLegacyTable`, v8-shaped `getCoreRowModel()` /
-// `getSortedRowModel()` / `getFilteredRowModel()` / `getPaginationRowModel()`
-// stubs, and `LegacyColumnDef<TData, TValue>` (2 generic params, matching
-// the brief's `ColumnDef<Row>` usage exactly). It is marked `@deprecated` in
-// favor of the new `useTable` + `features` API, but it is the only path that
-// satisfies A6's literal ask (`getPaginationRowModel()` +
-// `table.setPageIndex()` / `table.getPageCount()`) without redesigning this
-// component against an undocumented (to this task) architecture. Aliased
-// below so the rest of this file, and consumers of `Table`, never need to
-// know "Legacy" is involved.
-export type ColumnDef<T extends RowData> = LegacyColumnDef<T>;
+// `@tanstack/react-table` is pinned to `^8` (see package.json) specifically
+// so this component can use the real v8 top-level API -- `useReactTable`,
+// `ColumnDef<TData, TValue>`, and the `get*RowModel()` factories -- rather
+// than a `@deprecated` compatibility shim. Re-exported here so consumers of
+// `Table` get `ColumnDef` from this module without a separate
+// `@tanstack/react-table` import.
+export type { ColumnDef };
 
 const DEFAULT_ROW_HEIGHT = 44;
 const DEFAULT_VIRTUALIZE_HEIGHT = 400;
@@ -74,7 +54,7 @@ export type TableProps<T extends RowData> = Omit<HTMLAttributes<HTMLDivElement>,
   overscan?: number;
 };
 
-type TableInstance<T extends RowData> = LegacyReactTable<T>;
+type TableInstance<T extends RowData> = ReturnType<typeof useReactTable<T>>;
 type TableHeader<T extends RowData> = ReturnType<
   TableInstance<T>['getHeaderGroups']
 >[number]['headers'][number];
@@ -137,7 +117,7 @@ function TableInner<T extends RowData>(
   // manually computed `pageCount`. `getPaginationRowModel()` (registered
   // below) is what makes `table.getPageCount()` / `table.setPageIndex()`
   // correct against the actual filtered+sorted row count.
-  const table = useLegacyTable<T>({
+  const table = useReactTable<T>({
     data,
     columns,
     state: { sorting, globalFilter, pagination },
@@ -159,7 +139,7 @@ function TableInner<T extends RowData>(
   // brief used -- `data.length` stays non-zero once a filter matches
   // nothing, which would silently skip the EmptyState branch (C19).
   const rows: TableRow<T>[] = virtualize
-    ? table.getPrePaginatedRowModel().rows
+    ? table.getPrePaginationRowModel().rows
     : table.getRowModel().rows;
   const isEmpty = rows.length === 0;
   const headerGroups = table.getHeaderGroups();
