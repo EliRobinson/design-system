@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useAnchoredPosition } from '../../hooks/useAnchoredPosition';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { useHasMounted } from '../../hooks/useHasMounted';
 import { cn } from '../../lib/cn';
 
 type PopoverContextValue = {
@@ -103,8 +104,12 @@ export type PopoverContentProps = HTMLAttributes<HTMLDivElement>;
 
 export function PopoverContent({ className, children, ...props }: PopoverContentProps) {
   const { open, contentRef, contentId } = usePopoverContext();
+  const hasMounted = useHasMounted();
 
-  if (!open) {
+  // A closed popover never reaches the portal, so an uncontrolled Popover
+  // survives a server render on its own. One opened via the `open` prop does
+  // not — hence the mount gate.
+  if (!open || !hasMounted) {
     return null;
   }
 

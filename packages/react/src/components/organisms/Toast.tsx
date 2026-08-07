@@ -1,15 +1,8 @@
 import type { HTMLAttributes, ReactNode } from 'react';
-import {
-  createContext,
-  forwardRef,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { createContext, forwardRef, useCallback, useContext, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useHasMounted } from '../../hooks/useHasMounted';
 import { cn } from '../../lib/cn';
 
 export type ToastVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
@@ -45,18 +38,13 @@ export type ToasterProps = {
 export function Toaster({ children }: ToasterProps) {
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
-  // The viewport portals into `document.body`, which does not exist while the
-  // app is server-rendered. Gating on a mount flag keeps `Toaster` renderable
-  // from a server component tree — without it, wrapping an app in `Toaster`
-  // throws `document is not defined` on any Next.js/Remix build, and the
-  // `useToast` context makes mounting it client-only impossible for consumers.
-  // The server and first client render agree (no viewport), so hydration is
-  // clean; toasts can only exist after an interaction anyway.
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Unlike Popover/DropdownMenu, the viewport has no `open` guard in front of
+  // it — it portals into `document.body` on every render, so wrapping an app in
+  // `Toaster` throws `document is not defined` on any Next.js/Remix build, and
+  // the `useToast` context makes mounting it client-only impossible for
+  // consumers. Toasts can only exist after an interaction, so the server pass
+  // loses nothing by skipping the viewport.
+  const hasMounted = useHasMounted();
 
   const dismiss = useCallback((id: string) => {
     setToasts((current) => current.filter((item) => item.id !== id));
@@ -83,7 +71,7 @@ export function Toaster({ children }: ToasterProps) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {mounted
+      {hasMounted
         ? createPortal(
             <div className="ds-toast-viewport" aria-live="polite" aria-relevant="additions">
               {toasts.map((item) => (
