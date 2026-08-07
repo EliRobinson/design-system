@@ -36,6 +36,17 @@ Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
 - Every component that renders a focusable/interactive native element uses `forwardRef`, forwarding to the outermost interactive/native element the component owns.
 - Every interactive control has a minimum 44x44 touch target. Where visual density matters, keep the painted glyph small and expand the hit area (padding, or a `::after` overlay with `position:absolute; inset:-Npx`) rather than inflating the visible control.
 
+### FormField vs Input
+
+- **`Input`** (`atoms/Input`) is the batteries-included labelled control: it requires a
+  `label` prop and renders its own `<label>`, hint, error text, and `aria-describedby`/
+  `aria-invalid` wiring. Reach for it whenever the control is a plain `<input>`.
+- **`FormField`** (`molecules/FormField`) wraps an arbitrary or third-party control that
+  does not do its own label/hint/error wiring. It owns the `<label>` and message markup
+  and hands the child a render-prop bundle (`aria-describedby`, `aria-invalid`) to spread
+  onto that control. Do not nest `Input` inside `FormField` — `Input` already renders its
+  own label and message region, so wrapping it produces duplicate labels.
+
 ## shadcn → Miltinson mapping reference
 
 | shadcn component                                         | Miltinson equivalent / notes                                             |
