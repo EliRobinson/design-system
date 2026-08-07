@@ -4,7 +4,7 @@ import { forwardRef, useId } from 'react';
 import { cn } from '../../lib/cn';
 
 export type SliderProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
-  label?: string;
+  label: string;
 };
 
 export const Slider = forwardRef<HTMLInputElement, SliderProps>(function Slider(
@@ -16,11 +16,9 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(function Slider(
 
   return (
     <div className="ds-slider">
-      {label ? (
-        <label htmlFor={sliderId} className="ds-slider__label">
-          {label}
-        </label>
-      ) : null}
+      <label htmlFor={sliderId} className="ds-slider__label">
+        {label}
+      </label>
       <input
         ref={ref}
         type="range"
