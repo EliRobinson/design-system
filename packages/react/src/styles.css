@@ -1142,7 +1142,8 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 2px var(--space-2);
+  padding: 0 var(--space-2);
+  min-height: 44px;
   border-radius: var(--radius-pill);
   background: var(--bg-subtle);
   border: 1px solid var(--border);
@@ -1151,12 +1152,11 @@
 }
 
 .ds-chip__remove {
-  position: relative;
+  align-self: stretch;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 24px;
   border-radius: 9999px;
   border: none;
   background: transparent;
@@ -1164,12 +1164,6 @@
   cursor: pointer;
   font-size: var(--fs-sm);
   line-height: 1;
-}
-
-.ds-chip__remove::after {
-  content: '';
-  position: absolute;
-  inset: -14px;
 }
 
 .ds-chip__remove:hover {
