@@ -1017,3 +1017,37 @@
   font-size: var(--fs-sm);
   color: var(--fg);
 }
+
+/* ==========================================================================
+   Spinner
+   ========================================================================== */
+
+.ds-spinner {
+  display: inline-block;
+  border-radius: 9999px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: ds-spin 0.7s linear infinite;
+}
+
+.ds-spinner--sm {
+  width: 16px;
+  height: 16px;
+}
+
+.ds-spinner--md {
+  width: 24px;
+  height: 24px;
+}
+
+.ds-spinner--lg {
+  width: 40px;
+  height: 40px;
+  border-width: 3px;
+}
+
+@keyframes ds-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
