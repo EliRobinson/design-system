@@ -19,7 +19,7 @@ function useRadioGroupContext() {
   return context;
 }
 
-export type RadioGroupProps = HTMLAttributes<HTMLDivElement> & {
+export type RadioGroupProps = Omit<HTMLAttributes<HTMLDivElement>, 'role'> & {
   name: string;
   value?: string;
   defaultValue?: string;
