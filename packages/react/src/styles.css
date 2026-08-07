@@ -1176,3 +1176,34 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
+
+/* ==========================================================================
+   FormField
+   ========================================================================== */
+
+.ds-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ds-form-field__label {
+  margin-bottom: 2px;
+}
+
+.ds-form-field__required {
+  color: var(--status-danger);
+}
+
+.ds-form-field__message {
+  font-size: var(--fs-xs);
+  margin: 0;
+}
+
+.ds-form-field__message--hint {
+  color: var(--fg-3);
+}
+
+.ds-form-field__message--error {
+  color: var(--status-danger);
+}
