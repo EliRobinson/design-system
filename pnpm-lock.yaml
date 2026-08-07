@@ -117,6 +117,9 @@ importers:
       '@elirobinson/tokens':
         specifier: 0.2.0
         version: link:../tokens
+      '@tanstack/react-form':
+        specifier: ^1.33.3
+        version: 1.33.3(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@tanstack/react-virtual':
         specifier: ^3.14.9
         version: 3.14.9(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -2473,6 +2476,48 @@ packages:
       typescript:
         optional: true
 
+  '@tanstack/devtools-event-client@0.4.4':
+    resolution:
+      {
+        integrity: sha512-6T5Yop/793YI+H+5J8Hsyj4kCih9sl4t3ElLgKioW5hk3ocn+ZdSJ94tT7vL7uabxSugWYBZlOTMPzEw2puvQw==,
+      }
+    engines: { node: '>=18' }
+    hasBin: true
+
+  '@tanstack/form-core@1.33.3':
+    resolution:
+      {
+        integrity: sha512-htLxe/50GpUxbi2arJleh6uQkw72UOy+3Q0d1AadO3lfBTjs1e51GzyrKk/w8I7qXSkaSnF/JbYlyE+cwbJGNw==,
+      }
+
+  '@tanstack/pacer-lite@0.1.1':
+    resolution:
+      {
+        integrity: sha512-y/xtNPNt/YeyoVxE/JCx+T7yjEzpezmbb+toK8DDD1P4m7Kzs5YR956+7OKexG3f8aXgC3rLZl7b1V+yNUSy5w==,
+      }
+    engines: { node: '>=18' }
+
+  '@tanstack/react-form@1.33.3':
+    resolution:
+      {
+        integrity: sha512-lkzI/y15fHC8lKvzsLXFLLqGWroa+okvV2cKRCGAL+d0Kdf040fdMZbKh6uCXDMc08Ngpl8G3VZFnZ5KVUkUIw==,
+      }
+    peerDependencies:
+      '@tanstack/react-start': '*'
+      react: ^17.0.0 || ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@tanstack/react-start':
+        optional: true
+
+  '@tanstack/react-store@0.11.1':
+    resolution:
+      {
+        integrity: sha512-HaIGKI3YLmjBYIvy5DFDY23oNaYZIsTZfngey07Uh5iLVJgM3bIGCnZeOFOqzjFld9JHWcaHJnasD/bKoGKwJQ==,
+      }
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   '@tanstack/react-virtual@3.14.9':
     resolution:
       {
@@ -2481,6 +2526,12 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  '@tanstack/store@0.11.1':
+    resolution:
+      {
+        integrity: sha512-mzTOBhypOuDJAy/D8n2MfUZ1HFkXnmSETviRyhqEC8LUE7/IZQExOTxMANj3KjTofYTkFNpBY67qaVrT41YccA==,
+      }
 
   '@tanstack/virtual-core@3.17.7':
     resolution:
@@ -10021,11 +10072,38 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@tanstack/devtools-event-client@0.4.4': {}
+
+  '@tanstack/form-core@1.33.3':
+    dependencies:
+      '@tanstack/devtools-event-client': 0.4.4
+      '@tanstack/pacer-lite': 0.1.1
+      '@tanstack/store': 0.11.1
+
+  '@tanstack/pacer-lite@0.1.1': {}
+
+  '@tanstack/react-form@1.33.3(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+    dependencies:
+      '@tanstack/form-core': 1.33.3
+      '@tanstack/react-store': 0.11.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      react: 19.2.5
+    transitivePeerDependencies:
+      - react-dom
+
+  '@tanstack/react-store@0.11.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+    dependencies:
+      '@tanstack/store': 0.11.1
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
+      use-sync-external-store: 1.6.0(react@19.2.5)
+
   '@tanstack/react-virtual@3.14.9(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
       '@tanstack/virtual-core': 3.17.7
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
+
+  '@tanstack/store@0.11.1': {}
 
   '@tanstack/virtual-core@3.17.7': {}
 
