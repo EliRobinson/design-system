@@ -228,7 +228,7 @@ describe('Accordion', () => {
     consoleError.mockRestore();
   });
 
-  // Fix round 1, finding 1: a consumer-supplied onClick must run alongside
+  // A consumer-supplied onClick must run alongside
   // the internal toggle, never replace it. Before the fix, `{...props}` was
   // spread after the hardcoded `onClick`, so this exact test failed with
   // "Content A" never appearing -- the toggle handler was fully overwritten.
@@ -255,7 +255,7 @@ describe('Accordion', () => {
     );
   });
 
-  // Fix round 1, finding 1: `id` is internally computed and referenced by
+  // `id` is internally computed and referenced by
   // AccordionContent's aria-labelledby, so it must not be overridable.
   it('keeps the trigger id and the content aria-labelledby in sync', async () => {
     const user = userEvent.setup();
@@ -276,7 +276,7 @@ describe('Accordion', () => {
     expect(content.getAttribute('aria-labelledby')).toBe(trigger.id);
   });
 
-  // Fix round 1, finding 2: an out-of-range headingLevel (reachable from
+  // An out-of-range headingLevel (reachable from
   // plain JS, `as any`, or a CMS-driven prop even though the TS type is
   // 1-6) must fall back to the default rather than crash the whole tree.
   it('falls back to the default heading level when headingLevel is out of range', () => {

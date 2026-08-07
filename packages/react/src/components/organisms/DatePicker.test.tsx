@@ -47,7 +47,7 @@ describe('DatePicker', () => {
   });
 
   it('renders a valid grid: every row has exactly 7 gridcells', async () => {
-    // Guards against the brief's original defect, where bare <span>/<button>
+    // Guards against bare <span>/<button>
     // elements sat directly inside role="grid" with no role="row" wrapper --
     // `getByRole('grid')` alone can't catch that, so this asserts the actual
     // row > gridcell nesting the ARIA grid pattern requires.

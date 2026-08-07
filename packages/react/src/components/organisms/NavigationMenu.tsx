@@ -21,10 +21,9 @@ export type NavigationMenuProps = HTMLAttributes<HTMLElement> & {
 // ask for. Inventing it here would add undocumented behavior no consumer
 // asked for. Every item renders as a real <a>, so Tab/Shift+Tab already walk
 // the whole tree (including nested items) in document order with zero extra
-// code -- the same reasoning Task 13 (SegmentedControl) and Accordion's
-// trigger docs give for skipping roving-tabindex/arrow-key handling: that
-// pattern exists for widgets with a single roving tab stop, which a list of
-// anchors is not.
+// code -- the same reasoning SegmentedControl and Accordion's trigger give
+// for skipping roving-tabindex/arrow-key handling: that pattern exists for
+// widgets with a single roving tab stop, which a list of anchors is not.
 function NavigationMenuList({
   items,
   currentPath,
@@ -58,15 +57,9 @@ function NavigationMenuList({
   );
 }
 
-// `items`/`currentPath` are destructured out before the `{...props}` spread
-// onto <nav> below, per A12 -- not because either is a hardcoded ARIA
-// attribute (they're not; they're this component's own data props, and
-// leaving them in `props` would just double-render them as invalid DOM
-// attributes), but because destructuring is what makes them usable at all.
-// Nothing else on <nav> is internally computed: there is no hardcoded role,
-// id, or aria-* written here for a consumer to clobber via spread (unlike
-// AccordionTrigger's id/aria-expanded/aria-controls or AccordionContent's
-// id/role/aria-labelledby), so no further Omit is needed on this props type.
+// Nothing on <nav> is internally computed -- no hardcoded role, id, or aria-*
+// for a consumer to clobber via `{...props}` -- so unlike AccordionTrigger or
+// TabsTrigger this props type needs no protective Omit.
 export const NavigationMenu = forwardRef<HTMLElement, NavigationMenuProps>(function NavigationMenu(
   { className, items, currentPath, ...props },
   ref,
