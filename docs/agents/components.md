@@ -29,6 +29,27 @@ Components live under `packages/react/src/components/<tier>/`:
 
 Boundary rule: if a component renders into a portal, traps focus, or manages open/closed state across multiple sub-elements, it's an organism. If it's assembled from 2+ atoms with no such orchestration, it's a molecule. Otherwise it's an atom.
 
+## Styles
+
+Each component's CSS lives next to it (`components/<tier>/<Name>.css`).
+`packages/react/src/styles.css` is the aggregate entry point that `@import`s them
+all in cascade order — keep that order stable when adding a file. Consumers
+import either the aggregate (`@elirobinson/react/styles.css`) or a single
+component's sheet (`@elirobinson/react/styles/<tier>/<Name>.css`).
+
+## Shared interaction hooks
+
+Prefer these over re-implementing keyboard behaviour in a component:
+
+- **`useActiveDescendant`** — the `aria-activedescendant` listbox pattern: DOM
+  focus stays on an input while a highlighted option is tracked by id. Owns the
+  index-clamping invariant (filtering must never leave the highlight pointing at
+  a removed option). Used by `Combobox` and `CommandPalette`.
+- **`useRovingFocus`** — arrow/Home/End traversal for widgets exposing a single
+  tab stop. The caller decides what a move _means_ via `onNavigate` (tabs move
+  focus only; radio-style groups also select). Used by `Tabs` and
+  `SegmentedControl`.
+
 Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
 
 ### Constraints (all components, all tiers)
@@ -53,32 +74,31 @@ Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
 
 ## New components (component library expansion)
 
-19 components and one hook were added in this expansion. Import components via
-the tiered subpath (`@elirobinson/react/components/<tier>/<Name>`, see above);
-import the hook via `@elirobinson/react/hooks/useDsForm`.
+19 components were added in this expansion. Import them via the tiered subpath
+(`@elirobinson/react/components/<tier>/<Name>`, see above).
 
-| Component                       | Tier      | Notes                                                                                                                                                                                                                                                          |
-| ------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RadioGroup` / `RadioGroupItem` | atoms     | Context-based radio group; `RadioGroupItemProps` omits `checked`/`onChange`/`name` since the group owns them.                                                                                                                                                  |
-| `Spinner`                       | atoms     | `role="status"` loading indicator; `size` (`sm`/`md`/`lg`) and `label` (default `"Loading"`).                                                                                                                                                                  |
-| `Slider`                        | atoms     | Labelled native `<input type="range">`; `label` is required, matching `Input`/`Textarea`/`Select`.                                                                                                                                                             |
-| `Kbd`                           | atoms     | Styled `<kbd>` for keyboard-shortcut hints; used by `CommandPalette`.                                                                                                                                                                                          |
-| `Chip`                          | molecules | Optional `onRemove` renders a dense inline remove button sized to the shadcn/MUI scale, not 44px — see Constraints above.                                                                                                                                      |
-| `FormField`                     | molecules | See "FormField vs Input" above.                                                                                                                                                                                                                                |
-| `SearchField`                   | molecules | `type="search"` input with a built-in clear button; `value`/`onValueChange` (controlled) or `defaultValue` (uncontrolled).                                                                                                                                     |
-| `Pagination`                    | molecules | `page`/`pageCount`/`onPageChange`; renders one button per page — no windowing for very large page counts (fine for typical use, flagged as a follow-up for 100+ pages).                                                                                        |
-| `Stepper`                       | molecules | `steps` (`{ label }[]`) + `activeStep`; ordered-list progress indicator.                                                                                                                                                                                       |
-| `SegmentedControl`              | molecules | `role="radiogroup"`/`role="radio"` option group with roving-tabindex arrow-key navigation; a primary control, so it keeps the 44px touch target.                                                                                                               |
-| `EmptyState`                    | molecules | `title` + optional `description`/`icon`/`action`; used by `Table`'s empty-rows branch.                                                                                                                                                                         |
-| `Rating`                        | molecules | Read-only (`role="img"`) when `onValueChange` is omitted; interactive star buttons otherwise (dense inline sizing, not 44px).                                                                                                                                  |
-| `VirtualList`                   | organisms | Generic windowed list wrapping `@tanstack/react-virtual`; `items`/`estimateSize`/`renderItem`/`height`/`overscan`. Composed by `Table` (`virtualize` prop) and `Combobox`.                                                                                     |
-| `Accordion`                     | organisms | Compound `Accordion`/`AccordionItem`/`AccordionTrigger`/`AccordionContent`; `headingLevel` (1-6, default 3) with a runtime fallback for out-of-range values.                                                                                                   |
-| `DatePicker`                    | organisms | Popover date grid (`role="grid"`/`row`/`gridcell`, dense day-cell sizing); `label` required, `value`/`onValueChange`.                                                                                                                                          |
-| `Combobox`                      | organisms | Filterable single-select combobox following the WAI-ARIA combobox-with-listbox-popup pattern; its option list is windowed via `VirtualList` once open.                                                                                                         |
-| `Table`                         | organisms | Built on `@tanstack/react-table`'s row models (not hand-rolled pagination). `data`/`columns` (`ColumnDef<T>`, re-exported from this module); opt-in `virtualize` prop swaps the paginated `<table>` for a windowed ARIA `role="table"` grid via `VirtualList`. |
-| `NavigationMenu`                | organisms | Always-rendered nested link list — every item is a real `<a>`, no collapse/disclosure state; `items` (`{ label, href, items? }[]`) + `currentPath`.                                                                                                            |
-| `CommandPalette`                | organisms | `Dialog`/`DialogContent`/`DialogTitle`-backed command list with a filterable `SearchField` and `Kbd` shortcut hints; `open`/`onOpenChange`/`commands`.                                                                                                         |
-| `useDsForm` (hook)              | —         | Currently a direct alias of `@tanstack/react-form`'s `useForm` — a thin re-export, not yet a bespoke wrapper. Noted so the gap between this and the original "wraps form/field state" description is explicit.                                                 |
+| Component                       | Tier      | Notes                                                                                                                                                                                                                                               |
+| ------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RadioGroup` / `RadioGroupItem` | atoms     | Context-based radio group; `RadioGroupItemProps` omits `checked`/`onChange`/`name` since the group owns them.                                                                                                                                       |
+| `Spinner`                       | atoms     | `role="status"` loading indicator; `size` (`sm`/`md`/`lg`) and `label` (default `"Loading"`).                                                                                                                                                       |
+| `Slider`                        | atoms     | Labelled native `<input type="range">`; `label` is required, matching `Input`/`Textarea`/`Select`.                                                                                                                                                  |
+| `Kbd`                           | atoms     | Styled `<kbd>` for keyboard-shortcut hints; used by `CommandPalette`.                                                                                                                                                                               |
+| `Chip`                          | molecules | Optional `onRemove` renders a dense inline remove button sized to the shadcn/MUI scale, not 44px — see Constraints above.                                                                                                                           |
+| `FormField`                     | molecules | See "FormField vs Input" above.                                                                                                                                                                                                                     |
+| `SearchField`                   | molecules | `type="search"` input with a built-in clear button; `value`/`onValueChange` (controlled) or `defaultValue` (uncontrolled).                                                                                                                          |
+| `Pagination`                    | molecules | `page`/`pageCount`/`onPageChange`; renders one button per page — no windowing for very large page counts (fine for typical use, flagged as a follow-up for 100+ pages).                                                                             |
+| `Stepper`                       | molecules | `steps` (`{ label }[]`) + `activeStep`; ordered-list progress indicator.                                                                                                                                                                            |
+| `SegmentedControl`              | molecules | `role="radiogroup"`/`role="radio"` option group with roving-tabindex arrow-key navigation; a primary control, so it keeps the 44px touch target.                                                                                                    |
+| `EmptyState`                    | molecules | `title` + optional `description`/`icon`/`action`; used by `Table`'s empty-rows branch.                                                                                                                                                              |
+| `Rating`                        | molecules | Read-only (`role="img"`) when `onValueChange` is omitted; interactive star buttons otherwise (dense inline sizing, not 44px).                                                                                                                       |
+| `VirtualList`                   | organisms | Generic windowed list wrapping `@tanstack/react-virtual`; `items`/`estimateSize`/`renderItem`/`height`/`overscan`. Its ref resolves to a `VirtualListHandle` exposing `scrollToIndex`, not the DOM node. Composed by `VirtualTable` and `Combobox`. |
+| `Accordion`                     | organisms | Compound `Accordion`/`AccordionItem`/`AccordionTrigger`/`AccordionContent`; `headingLevel` (1-6, default 3) with a runtime fallback for out-of-range values.                                                                                        |
+| `DatePicker`                    | organisms | Popover date grid (`role="grid"`/`row`/`gridcell`, dense day-cell sizing); `label` required, `value`/`onValueChange`.                                                                                                                               |
+| `Combobox`                      | organisms | Filterable single-select combobox following the WAI-ARIA combobox-with-listbox-popup pattern; its option list is windowed via `VirtualList` once open.                                                                                              |
+| `Table`                         | organisms | Paginated data table built on `@tanstack/react-table`'s row models (not hand-rolled pagination); `data`/`columns` (`ColumnDef<T>`, re-exported from this module) + `pageSize`.                                                                      |
+| `VirtualTable`                  | organisms | Windowed sibling of `Table` for large row counts: same columns/sorting/filtering, but renders an ARIA `role="table"` grid via `VirtualList` instead of a paginated `<table>`. Shared logic lives in `organisms/table/core`.                         |
+| `NavigationMenu`                | organisms | Always-rendered nested link list — every item is a real `<a>`, no collapse/disclosure state; `items` (`{ label, href, items? }[]`) + `currentPath`.                                                                                                 |
+| `CommandPalette`                | organisms | `Dialog`/`DialogContent`/`DialogTitle`-backed command list with a filterable `SearchField` and `Kbd` shortcut hints; `open`/`onOpenChange`/`commands`.                                                                                              |
 
 **A note on `NavigationMenu` and layout patterns:** `docs/agents/layout-patterns.md`
 does not reference a "nav-item-list primitive," despite an earlier planning
@@ -89,30 +109,30 @@ Left as-is rather than inventing one.
 
 ## shadcn → Miltinson mapping reference
 
-| shadcn component                                         | Miltinson equivalent / notes                                                                                                                           |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Badge                                                    | `Badge` — maps to preview tags (default, signal, anchor, solid, outline)                                                                               |
-| Button                                                   | `Button` — primary, accent, secondary, ghost; sm/md/lg sizes                                                                                           |
-| Card                                                     | `Card` + subcomponents — matches preview portfolio cards                                                                                               |
-| Input, Textarea, Select, Label                           | Form primitives — match `components-fields.html` preview                                                                                               |
-| Alert                                                    | `Alert` — status tokens for success/warning/danger/info                                                                                                |
-| Separator                                                | `Separator` — `--border` hairline                                                                                                                      |
-| Tabs                                                     | `Tabs` — ink underline active state                                                                                                                    |
-| Dialog                                                   | `Dialog` — native `<dialog>` with token surfaces                                                                                                       |
-| DropdownMenu, Popover, Tooltip, Sheet, Toast             | Overlay primitives — portal positioning, keyboard nav, aria-live toasts                                                                                |
-| Avatar, Breadcrumb, Checkbox, Switch, Skeleton, Progress | Styled per tokens; check UI kits for context                                                                                                           |
-| Eyebrow, RuleLink                                        | Marketing typography primitives from ui_kits                                                                                                           |
-| RadioGroup                                               | `RadioGroup` / `RadioGroupItem` — context-based group, native radios                                                                                   |
-| Slider                                                   | `Slider` — labelled native `<input type="range">`                                                                                                      |
-| Pagination                                               | `Pagination` — page-button list, `aria-current="page"`                                                                                                 |
-| Accordion                                                | `Accordion` — compound, configurable heading level                                                                                                     |
-| Calendar / Date Picker                                   | `DatePicker` — popover date grid, ARIA `grid`/`row`/`gridcell`                                                                                         |
-| Combobox                                                 | `Combobox` — filterable listbox popup, virtualized option list                                                                                         |
-| Data Table (TanStack Table recipe)                       | `Table` — `@tanstack/react-table` row models, opt-in `virtualize`                                                                                      |
-| NavigationMenu                                           | `NavigationMenu` — simplified: always-rendered nested list, no submenu disclosure/triggers                                                             |
-| Command (cmdk)                                           | `CommandPalette` — built on this repo's `Dialog`, not the `cmdk` library                                                                               |
-| Kbd (registry component)                                 | `Kbd` — styled `<kbd>`, used for shortcut hints                                                                                                        |
-| Badge (removable variant)                                | `Chip` — shadcn ships no removable badge; sized to the MUI/shadcn dense scale                                                                          |
-| Toggle Group                                             | `SegmentedControl` — closest shadcn analog; a primary control, keeps the 44px target                                                                   |
-| Form / FormField (react-hook-form)                       | `FormField` — same render-prop-to-a11y-bundle idea, not bound to react-hook-form                                                                       |
-| —                                                        | `SearchField`, `Stepper`, `EmptyState`, `Rating`, `VirtualList`, `useDsForm` — no direct shadcn primitive; local patterns (see "New components" above) |
+| shadcn component                                         | Miltinson equivalent / notes                                                                                                              |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Badge                                                    | `Badge` — maps to preview tags (default, signal, anchor, solid, outline)                                                                  |
+| Button                                                   | `Button` — primary, accent, secondary, ghost; sm/md/lg sizes                                                                              |
+| Card                                                     | `Card` + subcomponents — matches preview portfolio cards                                                                                  |
+| Input, Textarea, Select, Label                           | Form primitives — match `components-fields.html` preview                                                                                  |
+| Alert                                                    | `Alert` — status tokens for success/warning/danger/info                                                                                   |
+| Separator                                                | `Separator` — `--border` hairline                                                                                                         |
+| Tabs                                                     | `Tabs` — ink underline active state                                                                                                       |
+| Dialog                                                   | `Dialog` — native `<dialog>` with token surfaces                                                                                          |
+| DropdownMenu, Popover, Tooltip, Sheet, Toast             | Overlay primitives — portal positioning, keyboard nav, aria-live toasts                                                                   |
+| Avatar, Breadcrumb, Checkbox, Switch, Skeleton, Progress | Styled per tokens; check UI kits for context                                                                                              |
+| Eyebrow, RuleLink                                        | Marketing typography primitives from ui_kits                                                                                              |
+| RadioGroup                                               | `RadioGroup` / `RadioGroupItem` — context-based group, native radios                                                                      |
+| Slider                                                   | `Slider` — labelled native `<input type="range">`                                                                                         |
+| Pagination                                               | `Pagination` — page-button list, `aria-current="page"`                                                                                    |
+| Accordion                                                | `Accordion` — compound, configurable heading level                                                                                        |
+| Calendar / Date Picker                                   | `DatePicker` — popover date grid, ARIA `grid`/`row`/`gridcell`                                                                            |
+| Combobox                                                 | `Combobox` — filterable listbox popup, virtualized option list                                                                            |
+| Data Table (TanStack Table recipe)                       | `Table` (paginated) / `VirtualTable` (windowed) — `@tanstack/react-table` row models                                                      |
+| NavigationMenu                                           | `NavigationMenu` — simplified: always-rendered nested list, no submenu disclosure/triggers                                                |
+| Command (cmdk)                                           | `CommandPalette` — built on this repo's `Dialog`, not the `cmdk` library                                                                  |
+| Kbd (registry component)                                 | `Kbd` — styled `<kbd>`, used for shortcut hints                                                                                           |
+| Badge (removable variant)                                | `Chip` — shadcn ships no removable badge; sized to the MUI/shadcn dense scale                                                             |
+| Toggle Group                                             | `SegmentedControl` — closest shadcn analog; a primary control, keeps the 44px target                                                      |
+| Form / FormField (react-hook-form)                       | `FormField` — same render-prop-to-a11y-bundle idea, not bound to react-hook-form                                                          |
+| —                                                        | `SearchField`, `Stepper`, `EmptyState`, `Rating`, `VirtualList` — no direct shadcn primitive; local patterns (see "New components" above) |
