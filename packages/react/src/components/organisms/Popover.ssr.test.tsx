@@ -40,4 +40,17 @@ describe('Popover server rendering', () => {
     expect(html).toContain('Open');
     expect(html).not.toContain('panel body');
   });
+
+  // `defaultOpen` seeds the same open state as the `open` prop, so it reaches
+  // the portal on the server too and has to be covered by the same mount gate.
+  it('renders a popover opened via defaultOpen without a document', () => {
+    expect(() =>
+      renderToString(
+        <Popover defaultOpen>
+          <PopoverTrigger>Open</PopoverTrigger>
+          <PopoverContent>panel body</PopoverContent>
+        </Popover>,
+      ),
+    ).not.toThrow();
+  });
 });

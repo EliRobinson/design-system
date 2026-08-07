@@ -35,11 +35,16 @@ export type DropdownMenuProps = {
   children: ReactNode;
 };
 
-export function DropdownMenu({ open: controlledOpen, onOpenChange, children }: DropdownMenuProps) {
+export function DropdownMenu({
+  open: controlledOpen,
+  defaultOpen = false,
+  onOpenChange,
+  children,
+}: DropdownMenuProps) {
   const menuId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
   const [activeIndex, setActiveIndex] = useState(-1);
   const open = controlledOpen ?? uncontrolledOpen;
 

@@ -35,10 +35,15 @@ export type DialogProps = {
   children: ReactNode;
 };
 
-export function Dialog({ open: controlledOpen, onOpenChange, children }: DialogProps) {
+export function Dialog({
+  open: controlledOpen,
+  defaultOpen = false,
+  onOpenChange,
+  children,
+}: DialogProps) {
   const titleId = 'ds-dialog-title';
   const descriptionId = 'ds-dialog-description';
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
   const open = controlledOpen ?? uncontrolledOpen;
 
   const handleOpenChange = useCallback(

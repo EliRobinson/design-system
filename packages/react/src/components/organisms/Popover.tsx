@@ -33,11 +33,16 @@ export type PopoverProps = {
   children: ReactNode;
 };
 
-export function Popover({ open: controlledOpen, onOpenChange, children }: PopoverProps) {
+export function Popover({
+  open: controlledOpen,
+  defaultOpen = false,
+  onOpenChange,
+  children,
+}: PopoverProps) {
   const contentId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
   const open = controlledOpen ?? uncontrolledOpen;
 
   const handleOpenChange = useCallback(

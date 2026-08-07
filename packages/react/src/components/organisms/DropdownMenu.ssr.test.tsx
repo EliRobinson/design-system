@@ -49,4 +49,19 @@ describe('DropdownMenu server rendering', () => {
     expect(html).toContain('Actions');
     expect(html).not.toContain('Duplicate');
   });
+
+  // `defaultOpen` seeds the same open state as the `open` prop, so it reaches
+  // the portal on the server too and has to be covered by the same mount gate.
+  it('renders a menu opened via defaultOpen without a document', () => {
+    expect(() =>
+      renderToString(
+        <DropdownMenu defaultOpen>
+          <DropdownMenuTrigger>Actions</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem>Duplicate</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>,
+      ),
+    ).not.toThrow();
+  });
 });
