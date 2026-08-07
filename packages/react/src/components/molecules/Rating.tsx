@@ -15,13 +15,14 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
 ) {
   const stars = Array.from({ length: max }, (_, index) => index + 1);
   const isInteractive = Boolean(onValueChange);
+  const clampedValue = Math.min(Math.max(value, 0), max);
 
   if (!isInteractive) {
     return (
       <div
         ref={ref}
         role="img"
-        aria-label={`${value} out of ${max} stars`}
+        aria-label={`${clampedValue} out of ${max} stars`}
         className={cn('ds-rating', className)}
         {...props}
       >
@@ -29,7 +30,7 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
           <span
             key={star}
             aria-hidden="true"
-            className={cn('ds-rating__star', star <= value && 'ds-rating__star--filled')}
+            className={cn('ds-rating__star', star <= clampedValue && 'ds-rating__star--filled')}
           >
             ★
           </span>
@@ -45,7 +46,8 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
           key={star}
           type="button"
           aria-label={`Rate ${star} out of ${max} stars`}
-          className={cn('ds-rating__button', star <= value && 'ds-rating__star--filled')}
+          aria-pressed={star <= clampedValue}
+          className={cn('ds-rating__button', star <= clampedValue && 'ds-rating__star--filled')}
           onClick={() => onValueChange?.(star)}
         >
           <span aria-hidden="true">★</span>
