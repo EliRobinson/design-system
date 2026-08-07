@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v6
         with:
           # Uses `packageManager` from ./package.json so CI stays in sync.
@@ -38,3 +40,6 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Require a changeset for package changes
+        if: github.event_name == 'pull_request'
+        run: pnpm changeset status --since=origin/${{ github.event.pull_request.base.ref }}
