@@ -2,10 +2,10 @@ import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useCallback, useContext, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useAnchoredPosition } from '../hooks/useAnchoredPosition';
-import { useClickOutside } from '../hooks/useClickOutside';
-import { useEscapeKey } from '../hooks/useEscapeKey';
-import { cn } from '../lib/cn';
+import { useAnchoredPosition } from '../../hooks/useAnchoredPosition';
+import { useClickOutside } from '../../hooks/useClickOutside';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { cn } from '../../lib/cn';
 
 type DropdownMenuContextValue = {
   open: boolean;

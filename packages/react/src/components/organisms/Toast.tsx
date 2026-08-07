@@ -2,7 +2,7 @@ import type { HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useCallback, useContext, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { cn } from '../lib/cn';
+import { cn } from '../../lib/cn';
 
 export type ToastVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
 

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Input } from '@design-system/react/components/Input';
+import { Input } from '@design-system/react/components/atoms/Input';
 
 const meta = {
   title: 'Components/Input',

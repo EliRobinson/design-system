@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Button } from '@design-system/react/components/Button';
-import { Toaster, useToast } from '@design-system/react/components/Toast';
+import { Button } from '@design-system/react/components/atoms/Button';
+import { Toaster, useToast } from '@design-system/react/components/organisms/Toast';
 
 const meta = {
   title: 'Components/Toast',

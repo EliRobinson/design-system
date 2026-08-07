@@ -8,7 +8,9 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 
 **Common commands:** `pnpm build` · `pnpm test` · `pnpm lint` · `pnpm typecheck` · `pnpm sync:deps`
 
-**Imports:** No barrel files — use package subpaths (`@elirobinson/react/components/Button`, `@elirobinson/tokens/tokens-data`). See `.cursor/rules/no-barrel-files.mdc`.
+**Imports:** No barrel files — use package subpaths (`@elirobinson/react/components/atoms/Button`, `@elirobinson/tokens/tokens-data`). See `.cursor/rules/no-barrel-files.mdc`.
+
+**Components:** Components live under `packages/react/src/components/<tier>/` (atoms/molecules/organisms). Every interactive component uses `forwardRef` and has a >=44x44 touch target. See [Components](docs/agents/components.md) for the tier boundary rule and full constraints.
 
 ## Topic guides
 

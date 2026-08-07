@@ -24,9 +24,9 @@ Barrel files force bundlers to load every re-exported module. In Next.js App Rou
 
 ```typescript
 // Bad
-export { Button } from './components/Button';
+export { Button } from './components/atoms/Button';
 
 // Good
-import { Button } from '@elirobinson/react/components/Button';
+import { Button } from '@elirobinson/react/components/atoms/Button';
 import { tokens } from '@elirobinson/tokens/tokens-data';
 ```

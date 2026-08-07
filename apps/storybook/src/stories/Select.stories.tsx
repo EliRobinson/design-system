@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Select } from '@design-system/react/components/Select';
+import { Select } from '@design-system/react/components/organisms/Select';
 
 const meta = {
   title: 'Components/Select',

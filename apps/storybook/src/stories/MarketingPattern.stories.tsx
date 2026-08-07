@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Badge } from '@design-system/react/components/Badge';
-import { Button } from '@design-system/react/components/Button';
+import { Badge } from '@design-system/react/components/atoms/Badge';
+import { Button } from '@design-system/react/components/atoms/Button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@design-system/react/components/Card';
-import { Eyebrow } from '@design-system/react/components/Eyebrow';
-import { RuleLink } from '@design-system/react/components/RuleLink';
+} from '@design-system/react/components/molecules/Card';
+import { Eyebrow } from '@design-system/react/components/atoms/Eyebrow';
+import { RuleLink } from '@design-system/react/components/molecules/RuleLink';
 
 const meta = {
   title: 'Patterns/Marketing',

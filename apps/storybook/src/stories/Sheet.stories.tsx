@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { Button } from '@design-system/react/components/Button';
+import { Button } from '@design-system/react/components/atoms/Button';
 import {
   Sheet,
   SheetClose,
@@ -10,7 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from '@design-system/react/components/Sheet';
+} from '@design-system/react/components/organisms/Sheet';
 
 const meta = {
   title: 'Components/Sheet',

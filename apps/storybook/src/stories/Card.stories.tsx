@@ -6,9 +6,9 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@design-system/react/components/Card';
-import { Button } from '@design-system/react/components/Button';
-import { Badge } from '@design-system/react/components/Badge';
+} from '@design-system/react/components/molecules/Card';
+import { Button } from '@design-system/react/components/atoms/Button';
+import { Badge } from '@design-system/react/components/atoms/Badge';
 
 const meta = {
   title: 'Components/Card',

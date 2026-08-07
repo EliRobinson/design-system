@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from 'react';
 import { forwardRef } from 'react';
 
-import { cn } from '../lib/cn';
+import { cn } from '../../lib/cn';
 
 export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost';
 export type ButtonSize = 'sm' | 'md' | 'lg';

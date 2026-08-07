@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { RuleLink } from '@design-system/react/components/RuleLink';
+import { RuleLink } from '@design-system/react/components/molecules/RuleLink';
 
 const meta = {
   title: 'Components/RuleLink',
