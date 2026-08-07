@@ -1,8 +1,22 @@
 import type { HTMLAttributes, ReactElement, ReactNode, Ref } from 'react';
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import type { Virtualizer } from '@tanstack/react-virtual';
 
 import { cn } from '../../lib/cn';
+
+/**
+ * What a consumer can drive from outside. Deliberately not the scroll
+ * container element: a row that is currently virtualized out has no DOM node
+ * to scroll to, so "bring index N into view" is only answerable by the
+ * virtualizer that owns the measurements. Handing out the element instead
+ * would force every consumer to re-derive that from scroll offsets and
+ * measured row heights, which is exactly the kind of outside-in DOM math this
+ * handle exists to make unnecessary.
+ */
+export type VirtualListHandle = {
+  scrollToIndex: Virtualizer<HTMLDivElement, Element>['scrollToIndex'];
+};
 
 export type VirtualListProps<T> = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
   /** The full, un-windowed list of items to virtualize. */
@@ -32,10 +46,9 @@ function VirtualListInner<T>(
     style,
     ...props
   }: VirtualListProps<T>,
-  ref: Ref<HTMLDivElement>,
+  ref: Ref<VirtualListHandle>,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
-  useImperativeHandle(ref, () => containerRef.current as HTMLDivElement, []);
 
   const virtualizer = useVirtualizer({
     count: items.length,
@@ -43,6 +56,8 @@ function VirtualListInner<T>(
     estimateSize,
     overscan,
   });
+
+  useImperativeHandle(ref, () => ({ scrollToIndex: virtualizer.scrollToIndex }), [virtualizer]);
 
   return (
     <div
@@ -82,7 +97,10 @@ function VirtualListInner<T>(
  * see the props above for what those consumers need: `height` (container
  * height), `estimateSize` (row height estimate), `overscan`, and
  * `renderItem` (render an arbitrary item by index).
+ *
+ * The forwarded ref resolves to a {@link VirtualListHandle}, not the scroll
+ * container element.
  */
 export const VirtualList = forwardRef(VirtualListInner) as <T>(
-  props: VirtualListProps<T> & { ref?: Ref<HTMLDivElement> },
+  props: VirtualListProps<T> & { ref?: Ref<VirtualListHandle> },
 ) => ReactElement | null;

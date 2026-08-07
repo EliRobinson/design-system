@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import { VirtualList } from './VirtualList';
 
+import { stubViewportLayout } from '../../test/viewport';
+
 describe('VirtualList', () => {
+  stubViewportLayout();
+
   it('renders only the rows within the visible viewport, not the full item list', () => {
     const items = Array.from({ length: 1000 }, (_, index) => `Item ${index}`);
 
