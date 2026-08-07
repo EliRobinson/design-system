@@ -20,7 +20,8 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "@elirobinson/tokens": "0.2.0"
+    "@elirobinson/tokens": "0.2.0",
+    "@tanstack/react-virtual": "^3.14.9"
   },
   "exports": {
     "./styles.css": "./src/styles.css",
