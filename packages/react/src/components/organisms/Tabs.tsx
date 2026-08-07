@@ -1,5 +1,5 @@
-import type { HTMLAttributes } from 'react';
-import { createContext, useContext, useId, useState } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, KeyboardEvent } from 'react';
+import { createContext, useContext, useId, useRef, useState } from 'react';
 
 import { cn } from '../../lib/cn';
 
@@ -55,11 +55,67 @@ export function Tabs({
 
 export type TabsListProps = HTMLAttributes<HTMLDivElement>;
 
-export function TabsList({ className, ...props }: TabsListProps) {
-  return <div role="tablist" className={cn('ds-tabs__list', className)} {...props} />;
+/**
+ * Triggers are opaque `children`, so the tab stops are read from the DOM rather
+ * than a ref array. The query is scoped to this list's own element, which keeps
+ * two tablists on one page independent.
+ */
+const TRIGGER_SELECTOR = '[role="tab"]:not(:disabled)';
+
+export function TabsList({ className, onKeyDown, ...props }: TabsListProps) {
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Focus moves without selecting; Enter/Space on the button activates.
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    onKeyDown?.(event);
+    if (event.defaultPrevented || !listRef.current) {
+      return;
+    }
+
+    const triggers = Array.from(
+      listRef.current.querySelectorAll<HTMLButtonElement>(TRIGGER_SELECTOR),
+    );
+    const index = triggers.indexOf(document.activeElement as HTMLButtonElement);
+    if (index === -1) {
+      return;
+    }
+
+    let nextIndex: number;
+    switch (event.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        nextIndex = (index + 1) % triggers.length;
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        nextIndex = (index - 1 + triggers.length) % triggers.length;
+        break;
+      case 'Home':
+        nextIndex = 0;
+        break;
+      case 'End':
+        nextIndex = triggers.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    triggers[nextIndex]?.focus();
+  };
+
+  return (
+    <div
+      ref={listRef}
+      role="tablist"
+      className={cn('ds-tabs__list', className)}
+      onKeyDown={handleKeyDown}
+      {...props}
+    />
+  );
 }
 
-export type TabsTriggerProps = HTMLAttributes<HTMLButtonElement> & {
+export type TabsTriggerProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'value'> & {
   value: string;
 };
 
