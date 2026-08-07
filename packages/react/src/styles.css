@@ -988,3 +988,32 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+
+.ds-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ds-radio-group__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+
+.ds-radio-group__input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+
+.ds-radio-group__input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-radio-group__label {
+  font-size: var(--fs-sm);
+  color: var(--fg);
+}
