@@ -1683,3 +1683,117 @@
   color: var(--fg-3);
   font-size: var(--fs-sm);
 }
+
+/* ==========================================================================
+   Table
+   ========================================================================== */
+
+.ds-table-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  overflow-x: auto;
+}
+
+.ds-table-wrapper__footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ds-table__filter {
+  max-width: 320px;
+}
+
+/* -- Literal <table> mode ------------------------------------------------ */
+
+table.ds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+table.ds-table th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--fg-2);
+  font-weight: var(--fw-medium);
+}
+
+table.ds-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg);
+}
+
+/* -- Sort control, shared by both table modes ----------------------------- */
+
+.ds-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ds-table__sort:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-table__sort-icon {
+  font-size: var(--fs-2xs);
+  color: var(--fg-3);
+}
+
+/* -- Virtualized ARIA-grid mode ------------------------------------------- */
+
+.ds-table--virtual {
+  display: block;
+  font-size: var(--fs-sm);
+}
+
+.ds-table__vrow {
+  display: grid;
+  align-items: center;
+}
+
+.ds-table__vrow--head {
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.ds-table__vrow:not(.ds-table__vrow--head):not(.ds-table__vrow--empty) {
+  border-bottom: 1px solid var(--border);
+}
+
+.ds-table__vrow--empty {
+  display: block;
+}
+
+.ds-table__vcell {
+  padding: var(--space-2) var(--space-3);
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-table__vcell--head {
+  color: var(--fg-2);
+  font-weight: var(--fw-medium);
+}
+
+.ds-table__vcell--empty {
+  padding: 0;
+  white-space: normal;
+}
+
+.ds-table__vbody {
+  width: 100%;
+}

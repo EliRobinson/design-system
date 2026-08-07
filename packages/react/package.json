@@ -22,6 +22,7 @@
   "dependencies": {
     "@elirobinson/tokens": "0.2.0",
     "@tanstack/react-form": "^1.33.3",
+    "@tanstack/react-table": "^9.0.0",
     "@tanstack/react-virtual": "^3.14.9"
   },
   "exports": {
