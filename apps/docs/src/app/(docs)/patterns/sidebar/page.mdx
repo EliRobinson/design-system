@@ -74,4 +74,5 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
 - Under 960px, don't shrink the sidebar — replace it with a [Sheet](/components/sheet)
   menu from the top bar.
 - Section labels (if you add them above groups) are mono uppercase eyebrows, not
-  headings.
+  headings. Add them as items with no `href` — a header carrying its first child's href
+  renders as the current page whenever that child is open.

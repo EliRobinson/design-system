@@ -33,9 +33,10 @@ sub-elements, it's an organism and moves.
   sibling radio options with no portal or open/closed state — molecule.
 - **`Accordion`** manages expanded state across multiple items — organism, even though
   it renders no portal.
-- **`NavigationMenu`** renders an always-visible nested list — every item is a real
-  link, no disclosure state. It's an organism for its compound structure, but note it
-  deliberately has no open/close behavior.
+- **`NavigationMenu`** renders an always-visible nested list — every item with an `href`
+  is a real link (an item without one is an inert group label), no disclosure state. It's
+  an organism for its compound structure, but note it deliberately has no open/close
+  behavior.
 - **`FormField`** wires ids and ARIA attributes to an arbitrary child — wiring, not
   orchestration — molecule.
 

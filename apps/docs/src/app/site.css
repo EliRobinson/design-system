@@ -138,14 +138,14 @@
   margin-bottom: var(--space-5);
 }
 
-.site-sidebar > nav > .ds-navigation-menu__list > li > .ds-navigation-menu__link {
+.site-sidebar > nav > .ds-navigation-menu__list > li > .ds-navigation-menu__label {
+  padding: var(--space-1) var(--space-2);
   font-family: var(--font-mono);
   font-size: var(--fs-2xs);
   font-weight: var(--fw-medium);
   letter-spacing: var(--tr-caps);
   text-transform: uppercase;
   color: var(--fg-3);
-  pointer-events: none;
 }
 
 .site-sidebar .ds-navigation-menu__link {
