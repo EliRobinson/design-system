@@ -121,13 +121,14 @@ Add `.npmrc` to the app (the generator scaffolds this):
 
 ```
 @elirobinson:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
-Create a GitHub personal access token with `read:packages`, then install:
+Create a GitHub personal access token with `read:packages`. The token goes in your
+user-level npmrc rather than the project one — pnpm 10 ignores registry credentials
+found in a project `.npmrc`, so the older `${NODE_AUTH_TOKEN}` form fails with a 401:
 
 ```bash
-export NODE_AUTH_TOKEN=<your-github-pat>
+pnpm config set "//npm.pkg.github.com/:_authToken" <your-github-pat>
 pnpm add @elirobinson/tokens @elirobinson/react
 ```
 

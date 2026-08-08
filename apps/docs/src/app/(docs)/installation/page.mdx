@@ -15,18 +15,27 @@ Authenticate once, install two packages, import two stylesheets — that's the w
 
 GitHub Packages requires a token even for public reads. Create a
 [personal access token](https://github.com/settings/tokens) with the `read:packages` scope,
-then add an `.npmrc` next to your app's `package.json`:
+then point the `@elirobinson` scope at the registry with an `.npmrc` next to your app's
+`package.json`:
 
 ```bash
 @elirobinson:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
-Export the token in your shell (or set it as a CI secret — never commit it):
+The token itself goes in your **user-level** npmrc, not the one above — pnpm 10 ignores
+registry credentials in a project `.npmrc` (that file is usually committed, so expanding a
+token into it risks leaking the secret to another registry):
 
 ```bash
-export NODE_AUTH_TOKEN=<your-github-pat>
+pnpm config set "//npm.pkg.github.com/:_authToken" <your-github-pat>
 ```
+
+That writes the token to `~/.npmrc`, which stays out of your repo. In CI, prefer a step
+that generates the npmrc from a secret — `actions/setup-node` with
+`registry-url: 'https://npm.pkg.github.com'` does this for you, reading `NODE_AUTH_TOKEN`.
+
+If you use npm or yarn instead, the older `//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}`
+line in a project `.npmrc` still works — only pnpm rejects it.
 
 ## Install the packages
 

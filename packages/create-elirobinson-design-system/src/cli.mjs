@@ -38,10 +38,13 @@ packageJson.dependencies['@elirobinson/react'] = `^${reactVersion}`;
 writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf-8');
 
 console.log(`Created ${projectName} with EliRobinson Next.js design-system defaults.`);
+// The auth token must go in your user-level npmrc, not the scaffolded project's.
+// pnpm 10 refuses to expand ${ENV_VAR} in registry credentials read from a project
+// .npmrc, since that file is usually committed — so the env-var form fails with a 401.
 console.log(
   'Next steps:\n' +
     `  cd ${projectName}\n` +
-    '  export NODE_AUTH_TOKEN=<github-pat-with-read:packages>\n' +
+    '  pnpm config set "//npm.pkg.github.com/:_authToken" <github-pat-with-read:packages>\n' +
     '  pnpm install\n' +
     '  pnpm dev',
 );

@@ -20,8 +20,11 @@ rediscover. Not a deliverable.
 - **Workspace linking confirmed**: `packages/react` → `@elirobinson/tokens` resolves as
   `link:../tokens` in pnpm-lock despite a plain `0.2.0` specifier, so `workspace:*` deps
   from apps/docs will link fine and no GH Packages auth is needed for install.
-- **Root `.npmrc` warning is benign**: `${NODE_AUTH_TOKEN}` unexpanded → pnpm warns; only
-  affects publishing to GH Packages, not local install.
+- **Root `.npmrc` auth line was inert, now removed**: pnpm 10 ignores registry credentials
+  in a project `.npmrc`, so `${NODE_AUTH_TOKEN}` there did nothing. It did not affect
+  publishing either — `actions/setup-node` writes a user-level npmrc (`NPM_CONFIG_USERCONFIG`)
+  that pnpm does expand, which is what actually authenticates the release job. The line only
+  produced a warning on every install, so it's gone; consumers use `pnpm config set`.
 - **Docs consume dist, not source** (unlike Storybook): workspace dep + Nx
   `dependsOn ^build` means the site exercises the real `exports` map — the same
   resolution a consumer gets. Chosen deliberately over source aliasing.
