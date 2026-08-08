@@ -17,9 +17,11 @@ export function SiteSidebar({ sections }: { sections: SidebarSection[] }) {
       <NavigationMenu
         aria-label="Documentation"
         currentPath={pathname}
+        // Section titles are headings, not pages -- no href, so NavigationMenu
+        // renders them as inert labels. Giving one its first page's href made
+        // that page's section header render as current alongside the page.
         items={sections.map((section) => ({
           label: section.title,
-          href: section.pages[0]?.href ?? '/',
           items: section.pages.map((page) => ({ label: page.title, href: page.href })),
         }))}
       />

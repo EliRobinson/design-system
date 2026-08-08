@@ -56,7 +56,10 @@ export default tseslint.config(
     },
   },
   {
-    files: ['packages/create-elirobinson-design-system/src/cli.mjs'],
+    // CLI entry points whose stdout *is* the product: the scaffolder's prompts,
+    // and the repo scripts that report what they changed. Anywhere else a
+    // console.log is debug residue, which is what the base rule catches.
+    files: ['packages/create-elirobinson-design-system/src/cli.mjs', 'scripts/**/*.mjs'],
     rules: {
       'no-console': 'off',
     },

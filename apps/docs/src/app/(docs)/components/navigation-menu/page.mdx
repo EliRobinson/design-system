@@ -5,6 +5,7 @@ import { PropsTables } from '@/components/docs/PropsTables';
 import { RelatedComponents } from '@/components/docs/RelatedComponents';
 import Basic from '@/components/demos/navigation-menu/Basic';
 import NoCurrentPath from '@/components/demos/navigation-menu/NoCurrentPath';
+import SectionLabels from '@/components/demos/navigation-menu/SectionLabels';
 
 export const metadata = { title: 'NavigationMenu' };
 
@@ -31,6 +32,22 @@ marked current — none gets `aria-current`.
   <NoCurrentPath />
 </DemoBlock>
 
+## Section labels
+
+`href` is optional. Omit it when a group's title is a heading rather than a page —
+"Foundations" above a list of foundation pages — and the item renders as an inert
+`<span>` instead of an `<a>`: not focusable, not a navigation target, never marked
+current. The label also names its nested list through `aria-labelledby`, so a screen
+reader announces "Foundations, list, 7 items" on descending into the group.
+
+Don't reach for the group's first child href to satisfy the type. That makes the header
+match `currentPath` whenever the child is open, so the header renders as the current page
+alongside it and a second `aria-current="page"` appears in the tree.
+
+<DemoBlock file="navigation-menu/SectionLabels.tsx">
+  <SectionLabels />
+</DemoBlock>
+
 ## Props
 
 <PropsTables slug="navigation-menu" />
@@ -39,8 +56,9 @@ marked current — none gets `aria-current`.
 
 - Renders a `<nav>` landmark wrapping a plain, always-rendered nested `<ul>`/`<li>`/`<a>` tree
   — not a disclosure widget. Nothing is collapsed, hidden, or toggled.
-- Every item is a real `<a href>`, so `Tab`/`Shift+Tab` already walk the entire tree, including
-  nested items, in document order — zero custom key handling.
+- Every item with an `href` is a real `<a href>`, so `Tab`/`Shift+Tab` already walk the entire
+  tree, including nested items, in document order — zero custom key handling. An item without
+  an `href` is a `<span>` label, so it's skipped by `Tab` — there's nothing there to activate.
 - The item matching `currentPath` gets `aria-current="page"`; every other item has the
   attribute omitted entirely (not set to `"false"`). Nothing is marked current if
   `currentPath` matches nothing.
@@ -51,16 +69,21 @@ marked current — none gets `aria-current`.
 - Nested items render inside their parent `<li>` as their own `<ul>`, so a screen reader
   announces "list, N items" once at the top level and again on descending into a nested group,
   rather than one flattened list.
+- A nested list under a hrefless label is named after that label via `aria-labelledby`, so the
+  group announces as "Foundations, list, N items". A nested list under a link parent stays
+  unnamed — the link is a destination, not a title for the list beneath it.
 
 <DoDont
   do={[
     'Pass real, working hrefs — this is a navigation list, not a menu of actions.',
+    'Omit href on a group title that names its children but isn’t a page of its own.',
     'Keep currentPath in sync with the router so aria-current always matches what’s on screen.',
     'Nest one level deep in practice — the recursive items field supports more, but three-plus levels are hard to scan visually.',
   ]}
   dont={[
     'Use it for a flyout or disclosure submenu that opens on click or hover — reach for DropdownMenu for that toggle behavior.',
     'Attach onClick handlers that prevent navigation — every link should be genuinely middle-click-able.',
+    'Give a section header its first child’s href — the header then renders as current whenever that child is open.',
     'Expect aria-expanded or collapse behavior — nested items are always rendered and always in the tab order.',
   ]}
 />

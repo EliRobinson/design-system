@@ -97,6 +97,85 @@ describe('NavigationMenu', () => {
     expect(dashboard).toHaveAttribute('aria-current', 'page');
   });
 
+  it('renders an item with no href as a plain label, not a link', () => {
+    render(
+      <NavigationMenu
+        items={[
+          {
+            label: 'Foundations',
+            items: [{ label: 'Color', href: '/foundations/color' }],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.queryByRole('link', { name: 'Foundations' })).toBeNull();
+    expect(screen.getByText('Foundations').tagName).toBe('SPAN');
+    // A label is not a navigation target, so it must stay out of the tab order.
+    expect(screen.getByText('Foundations')).not.toHaveAttribute('tabindex');
+  });
+
+  it('never marks a hrefless group label current, even when a child matches currentPath', () => {
+    // Regression: a sidebar section header used to borrow its first child's
+    // href, so landing on that child lit up the header as the current page too.
+    render(
+      <NavigationMenu
+        currentPath="/foundations/color"
+        items={[
+          {
+            label: 'Foundations',
+            items: [
+              { label: 'Color', href: '/foundations/color' },
+              { label: 'Typography', href: '/foundations/typography' },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const label = screen.getByText('Foundations');
+    expect(label).not.toHaveAttribute('aria-current');
+    expect(label).not.toHaveClass('ds-navigation-menu__link--active');
+
+    expect(screen.getByRole('link', { name: 'Color' })).toHaveAttribute('aria-current', 'page');
+    // Exactly one element in the tree claims to be the current page.
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+  });
+
+  it('names a group label’s nested list after the label', () => {
+    render(
+      <NavigationMenu
+        items={[
+          {
+            label: 'Foundations',
+            items: [
+              { label: 'Color', href: '/foundations/color' },
+              { label: 'Typography', href: '/foundations/typography' },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    // A screen reader descending into the group announces "Foundations, list,
+    // 2 items" rather than an anonymous "list, 2 items".
+    const group = screen.getByRole('list', { name: 'Foundations' });
+    expect(within(group).getAllByRole('listitem')).toHaveLength(2);
+    expect(group).toHaveAttribute('aria-labelledby', screen.getByText('Foundations').id);
+  });
+
+  it('leaves a link parent’s nested list unnamed', () => {
+    // A link is a page in its own right, not a name for the list under it --
+    // only a hrefless label exists solely to title its group.
+    render(<NavigationMenu items={items} />);
+
+    const settingsList = screen
+      .getByRole('link', { name: 'Settings' })
+      .closest('li')!
+      .querySelector('ul');
+    expect(settingsList).not.toHaveAttribute('aria-labelledby');
+  });
+
   it('merges a consumer className onto the nav element', () => {
     render(<NavigationMenu items={items} className="custom-nav" />);
 

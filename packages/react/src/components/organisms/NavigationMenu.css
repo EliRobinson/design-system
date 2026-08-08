@@ -14,6 +14,18 @@
   padding-left: var(--space-4);
 }
 
+/* An item with no href: a heading naming the nested list under it, not a
+   navigation target. No hover, active, or focus state -- nothing to click, and
+   no 44px touch target to hit. */
+.ds-navigation-menu__label {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  color: var(--fg-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+
 .ds-navigation-menu__link {
   display: flex;
   align-items: center;
