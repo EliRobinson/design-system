@@ -1,0 +1,86 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/form-field/Basic';
+import WithError from '@/components/demos/form-field/WithError';
+import CustomControl from '@/components/demos/form-field/CustomControl';
+
+export const metadata = { title: 'FormField' };
+
+<ComponentHeader slug="form-field" />
+
+<DemoBlock file="form-field/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `FormField` when you're labelling a control that doesn't wire its own label, hint,
+and error — a plain `<input>`, a native `<select>`, a third-party widget. It owns the
+`<label>` and message markup, and hands the control a bundle of accessibility props
+(`aria-describedby`, `aria-invalid`, `aria-required`) through a render prop.
+
+**Never wrap `Input` or `Textarea` in `FormField`.** Both already render their own label
+and message region — nesting them produces two labels for one control. Reach for
+`FormField` specifically when the control underneath doesn't do that wiring itself.
+
+## With an error
+
+`error` and `hint` are mutually exclusive in the rendered output — when both are set,
+the error wins and the hint is hidden. `required` adds a visible `*` next to the label
+(hidden from screen readers, since `aria-required` on the control already says it).
+
+<DemoBlock file="form-field/WithError.tsx">
+  <WithError />
+</DemoBlock>
+
+## Wrapping an arbitrary control
+
+`FormField`'s render prop works with anything that accepts `aria-describedby`,
+`aria-invalid`, and `aria-required` — not just `<input>`. Here it labels a native
+`<select>`.
+
+<DemoBlock file="form-field/CustomControl.tsx">
+  <CustomControl />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="form-field" />
+
+## Accessibility
+
+- Renders a `<Label htmlFor={htmlFor}>` and calls `children` with a
+  `{ 'aria-describedby', 'aria-invalid', 'aria-required' }` bundle — spread that bundle
+  onto the control you render inside.
+- `FormField` does **not** generate or set the child's `id` for you. You're responsible
+  for giving the control an `id` that matches `htmlFor` — that's what makes clicking the
+  label focus the field.
+- `aria-describedby` is only set when `hint` or `error` is present; both share one
+  generated id, since only one message renders at a time.
+- The `*` appended to a `required` label is `aria-hidden="true"` — the accessible
+  requirement signal is `aria-required="true"` on the control itself, not the asterisk.
+- **Keyboard:** no custom behavior of its own — once the `id`/`htmlFor` pair is wired
+  correctly, clicking the label focuses the control via native browser behavior.
+- The ref forwards to the outer `<div>`.
+
+<DoDont
+  do={[
+    'Keep the child id and htmlFor in sync by hand — FormField does not generate one for you.',
+    "Spread the full fieldProps bundle onto the control, even the props you think you don't need.",
+    "Reach for FormField specifically for controls that don't label themselves — native <select>, a range input, a third-party widget.",
+    'Write error text that says what to do, not just that something is wrong.',
+  ]}
+  dont={[
+    'Nest Input or Textarea inside FormField — they already render their own label and message region.',
+    'Set both hint and error and expect to see both — only error renders.',
+    'Skip the id on the child control; without it the label has nothing to point to.',
+    'Use required without also making the control itself enforce it — the asterisk is a visual cue, not validation.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['input', 'select', 'textarea']} />

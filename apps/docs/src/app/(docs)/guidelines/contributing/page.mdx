@@ -1,0 +1,53 @@
+export const metadata = { title: 'Contributing a component' };
+
+# Contributing a component
+
+New components usually start from shadcn/ui — for its API shapes and accessibility patterns, never
+its styles. This page is the policy for getting a component into `@elirobinson/react` without
+diluting the system.
+
+## The shadcn adoption policy
+
+When pulling a component from shadcn/ui, **do not install Tailwind and do not copy
+shadcn styles verbatim**. Instead:
+
+1. **Take the API shape and accessibility patterns** — prop names, compound
+   sub-components (`CardHeader`, `DialogContent`), ARIA roles, keyboard behavior, focus
+   management.
+2. **Style against Miltinson tokens.** Every visual value comes from
+   `@elirobinson/tokens/tokens.css` via `ds-*` classes; check the canonical swatches in
+   `design-system-docs/preview/` for the intended look of buttons, fields, cards, and
+   tags before styling.
+3. **Skip Radix and Tailwind dependencies** unless explicitly agreed — implement with
+   native HTML elements and React state. The system's Dialog is a native `<dialog>`;
+   its Combobox is an input plus a listbox and two hooks.
+
+## House requirements
+
+- **`forwardRef` on every component that renders an interactive element**, forwarded to
+  the outermost interactive node it owns.
+- **Touch targets by role** — 44×44px for primary controls, dense scale for inline
+  affordances, hit areas never overlapping siblings. See the
+  [accessibility standard](/guidelines/accessibility).
+- **Tier placement by the [boundary rule](/guidelines/tiers)** — it decides the
+  directory and the import path.
+- **Styles in a sibling `<Name>.css`**, added to `packages/react/src/styles.css` in
+  cascade order — that import order is load-bearing; append thoughtfully, don't
+  reorder.
+- **Prefer the [shared hooks](/components/hooks)** for keyboard behavior over local key
+  handlers.
+- **A Storybook story** in `apps/storybook`, and tests for any keyboard contract the
+  component promises.
+
+## Definition of done
+
+- `pnpm build && pnpm lint && pnpm typecheck && pnpm test` green from the repo root.
+- The component appears in the generated manifest (the docs build extracts it
+  automatically — props table, search entry, and AI records come for free).
+- A docs page under `/components/<slug>` following the structure of
+  [Button](/components/button): live demos, when-to-use judgment, the keyboard
+  contract, do/don't.
+- No barrel files anywhere — consumers import the tiered subpath.
+
+The [add-a-component prompt](/build-with-ai) packages this checklist for delegating the
+work to an agent.

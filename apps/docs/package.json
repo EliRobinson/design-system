@@ -1,0 +1,34 @@
+{
+  "name": "docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "extract": "tsx scripts/extract-manifest.mts",
+    "dev": "pnpm run extract && next dev",
+    "build": "pnpm run extract && next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@elirobinson/ai-patterns": "workspace:*",
+    "@elirobinson/react": "workspace:*",
+    "@elirobinson/tokens": "workspace:*",
+    "next": "^16.3.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@mdx-js/loader": "^3.1.0",
+    "@mdx-js/react": "^3.1.0",
+    "@next/mdx": "^16.3.0",
+    "@types/mdx": "^2.0.13",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "react-docgen-typescript": "^2.4.0",
+    "shiki": "^4.4.2",
+    "tsx": "^4.21.0",
+    "vitest": "^3.2.4"
+  }
+}

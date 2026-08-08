@@ -1,0 +1,77 @@
+export const metadata = { title: 'Sidebar pattern' };
+
+# Sidebar
+
+The app-shell sidebar composes [NavigationMenu](/components/navigation-menu) inside a sticky
+column — the docs site you're reading uses exactly this recipe.
+
+## Recipe
+
+```tsx
+import { NavigationMenu } from '@elirobinson/react/components/organisms/NavigationMenu';
+
+export function AppSidebar({ currentPath }: { currentPath: string }) {
+  return (
+    <div className="shell">
+      <aside className="shell__sidebar">
+        <NavigationMenu
+          aria-label="Application"
+          currentPath={currentPath}
+          items={[
+            { label: 'Dashboard', href: '/dashboard' },
+            {
+              label: 'Guides',
+              href: '/guides',
+              items: [
+                { label: 'Drafts', href: '/guides/drafts' },
+                { label: 'Published', href: '/guides/published' },
+              ],
+            },
+            { label: 'Orders', href: '/orders' },
+            { label: 'Settings', href: '/settings' },
+          ]}
+        />
+      </aside>
+      <main className="shell__main">{/* page content */}</main>
+    </div>
+  );
+}
+```
+
+```css
+.shell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: var(--space-10);
+  max-width: var(--container-2xl);
+  margin: 0 auto;
+  padding: var(--space-8) var(--gutter);
+}
+
+.shell__sidebar {
+  position: sticky;
+  top: calc(64px + var(--space-6)); /* header height + breathing room */
+  align-self: start;
+  max-height: calc(100vh - 64px - var(--space-8));
+  overflow-y: auto;
+}
+
+@media (max-width: 960px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .shell__sidebar {
+    display: none; /* move nav into a Sheet-triggered menu */
+  }
+}
+```
+
+## Rules
+
+- **260px wide, sticky below the header**, scrolling independently when tall.
+- `NavigationMenu` marks the current page with `aria-current` — pass the live pathname.
+- Nav items are primary controls: keep their 44px hit height when restyling.
+- Under 960px, don't shrink the sidebar — replace it with a [Sheet](/components/sheet)
+  menu from the top bar.
+- Section labels (if you add them above groups) are mono uppercase eyebrows, not
+  headings.

@@ -1,0 +1,69 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/popover/Basic';
+import Controlled from '@/components/demos/popover/Controlled';
+
+export const metadata = { title: 'Popover' };
+
+<ComponentHeader slug="popover" />
+
+<DemoBlock file="popover/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Popover` for content that's genuinely optional to see — extra detail, a small set of
+filters, a short form — anchored to whatever triggered it. Nothing about it blocks the page: no
+focus trap, no modal backdrop, background content stays fully interactive. If dismissing it
+needs to be unmissable, or it needs to hold focus, that's a `Dialog`, not a `Popover`.
+
+## Controlled, with a manual dismiss
+
+There's no `PopoverClose` — unlike `Dialog`, closing programmatically means calling
+`onOpenChange(false)` yourself from inside the content.
+
+<DemoBlock file="popover/Controlled.tsx">
+  <Controlled />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="popover" />
+
+## Accessibility
+
+- `PopoverContent` renders `role="dialog"`, portaled to `document.body`. This is a
+  **non-modal** dialog role: nothing calls `showModal()`, there's no focus trap, and the rest
+  of the page stays interactive — the opposite of `Dialog`.
+- `Escape` closes it from anywhere (a document-level listener, the same `useEscapeKey` hook
+  `DropdownMenu` uses), and clicking outside the trigger or content closes it too.
+- No initial-focus management: opening the popover doesn't move DOM focus into
+  `PopoverContent`. Focus stays wherever it was — typically the trigger, since activating it
+  doesn't blur it. If your content includes interactive elements a fully keyboard-driven flow
+  depends on, move focus there yourself, or rely on the user tabbing in.
+- No built-in close affordance: there's no `PopoverClose` subcomponent. Closing it from inside
+  the content means calling `onOpenChange(false)` yourself.
+- Content is positioned with fixed coordinates computed from the trigger's bounding rect,
+  the same anchoring mechanism `DropdownMenu` uses — calculated once when it opens, not
+  re-measured on scroll or resize.
+
+<DoDont
+  do={[
+    'Use Popover for supplementary, non-blocking content — a hint, a filter panel, a short form.',
+    'Wire your own dismiss control inside PopoverContent when the content needs an explicit close action.',
+    'Keep content lightweight — nothing here traps focus, so a long or complex form is a sign you actually want Dialog.',
+  ]}
+  dont={[
+    'Use it for anything that must block interaction with the rest of the page — reach for Dialog, an actual native modal.',
+    "Assume focus moves into the content on open — it doesn't; test keyboard flows accordingly.",
+    'Render PopoverContent or PopoverTrigger outside a Popover — it throws.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['dialog', 'dropdown-menu', 'tooltip']} />

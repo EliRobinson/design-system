@@ -9,5 +9,7 @@ dist/
 *.log
 *.zip
 apps/storybook/storybook-static/
+apps/docs/.next/
+*.tsbuildinfo
 .claude/worktrees/
 .superpowers/

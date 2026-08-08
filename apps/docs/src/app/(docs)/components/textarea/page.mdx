@@ -1,0 +1,67 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/textarea/Basic';
+import WithHint from '@/components/demos/textarea/WithHint';
+import WithError from '@/components/demos/textarea/WithError';
+
+export const metadata = { title: 'Textarea' };
+
+<ComponentHeader slug="textarea" />
+
+<DemoBlock file="textarea/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+`Textarea` is `Input`'s multiline sibling — same label/hint/error wiring, same required
+`label`. Use it for anything that needs more than one line: a message, notes, a
+description. Reach for `Input` when a single line is enough.
+
+## With a hint
+
+<DemoBlock file="textarea/WithHint.tsx">
+  <WithHint />
+</DemoBlock>
+
+## With an error
+
+`error` replaces `hint` — only one message shows at a time, and the error text gets
+`role="alert"`.
+
+<DemoBlock file="textarea/WithError.tsx">
+  <WithError />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="textarea" />
+
+## Accessibility
+
+- Same wiring as `Input`: a real `<label htmlFor>`, `hint`/`error` text linked through
+  `aria-describedby`, and `aria-invalid="true"` plus `role="alert"` on the error text
+  when `error` is set.
+- The native resize handle is left on (`resize: vertical` in the stylesheet) — the
+  component doesn't disable it.
+- The ref forwards to the underlying `<textarea>`.
+
+<DoDont
+  do={[
+    'Pass label always — required, same field pattern as Input.',
+    'Use hint to set expectations before typing and error for validation feedback after submit.',
+    'Let the native resize handle work — Textarea doesn’t disable it.',
+  ]}
+  dont={[
+    'Use Textarea for a single line of text — Input is the right call there.',
+    'Expect both hint and error to render together — only error shows once it’s set.',
+    'Hardcode a tiny rows value for content you know runs long — give it room to breathe.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['input', 'label', 'form-field']} />

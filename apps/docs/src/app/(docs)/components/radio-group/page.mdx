@@ -1,0 +1,72 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/radio-group/Basic';
+import Controlled from '@/components/demos/radio-group/Controlled';
+
+export const metadata = { title: 'RadioGroup' };
+
+<ComponentHeader slug="radio-group" />
+
+<DemoBlock file="radio-group/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `RadioGroup` for a small, always-visible set of mutually exclusive options — two to
+six is the sweet spot. Once the list gets long enough to need scrolling or search, reach
+for `Select` or `Combobox` instead.
+
+`RadioGroup` is context-based: the group owns `name`, the current value, and change
+handling. `RadioGroupItem` only takes `value` and `label` — it can't take `checked`,
+`onChange`, or `name` directly, so there's no way to desync an item from its group.
+Rendering a `RadioGroupItem` outside a `RadioGroup` throws immediately; the two aren't
+meant to be used apart.
+
+## Controlled
+
+Pass `value` and `onValueChange` to drive selection from your own state. Passing
+`defaultValue` instead makes it uncontrolled — don't pass both.
+
+<DemoBlock file="radio-group/Controlled.tsx">
+  <Controlled />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="radio-group" />
+
+## Accessibility
+
+- The wrapper renders `role="radiogroup"`; each `RadioGroupItem` renders a native
+  `input[type="radio"]` sharing the group's `name`.
+- **Keyboard:** because the inputs share a native `name`, arrow keys move between items
+  and select as they go, and `Tab` treats the whole group as a single stop — that's the
+  browser's built-in radio-group behavior, not something this component reimplements.
+- `RadioGroup` has no `label` prop of its own — introduce it with a standalone `Label`
+  connected via `aria-labelledby` (a plain `div` isn't a labelable element, so `htmlFor`
+  doesn't reliably associate here).
+- The ref on `RadioGroup` forwards to the wrapping `<div>`; the ref on `RadioGroupItem`
+  forwards to its `<input>`.
+
+<DoDont
+  do={[
+    'Give RadioGroup a name and either defaultValue (uncontrolled) or value + onValueChange (controlled) — pick one mode.',
+    'Use it for 2–6 mutually exclusive, always-visible options.',
+    'Pair a standalone Label above the group via aria-labelledby, since RadioGroup has no label prop of its own.',
+    'Give every RadioGroupItem a distinct, real value and label.',
+  ]}
+  dont={[
+    'Try to pass checked, onChange, or name to a RadioGroupItem — the type doesn’t allow it, and the group owns all three.',
+    'Render a RadioGroupItem outside a RadioGroup — it throws immediately, with no fallback behavior.',
+    'Reach for RadioGroup when the option list is long or needs search — use Select or Combobox.',
+    'Pass both value and defaultValue — value wins, and defaultValue is only read on the first render.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['checkbox', 'switch', 'select']} />

@@ -1,0 +1,109 @@
+export const metadata = { title: 'Data display pattern' };
+
+# Data display
+
+Numbers first, then the records behind them: a stat-card row above a data table. Numerals are mono
+with tabular figures — everything that compares must line up.
+
+## Stat cards
+
+`StatCard` is a composition, not an export — a bordered card with a mono figure and an
+eyebrow label:
+
+```tsx
+import { Card, CardContent } from '@elirobinson/react/components/molecules/Card';
+
+export function StatCard({
+  label,
+  value,
+  delta,
+}: {
+  label: string;
+  value: string;
+  delta?: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="stat-card">
+        <p className="stat-card__label">{label}</p>
+        <p className="stat-card__value">{value}</p>
+        {delta && <p className="stat-card__delta">{delta}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+```css
+.stat-card__label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tr-caps);
+  text-transform: uppercase;
+  color: var(--fg-3);
+  margin: 0 0 var(--space-2);
+}
+
+.stat-card__value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.stat-card__delta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--status-success);
+  margin: var(--space-1) 0 0;
+}
+```
+
+Lay them out in an asymmetric grid — a 2fr card for the headline number beats four
+equal boxes.
+
+## The records
+
+Below the stats, reach for [Table](/components/table) — paginated, sortable,
+filterable — or [VirtualTable](/components/virtual-table) once row counts get into the
+thousands. Both take the same TanStack `ColumnDef` columns, so switching later is a
+rename. Wire the empty case to [EmptyState](/components/empty-state) — Table renders
+one automatically via `emptyMessage`.
+
+```tsx
+import { Table } from '@elirobinson/react/components/organisms/Table';
+import type { ColumnDef } from '@elirobinson/react/components/organisms/Table';
+
+type Order = { id: string; guide: string; amount: string; date: string };
+
+const columns: ColumnDef<Order>[] = [
+  { accessorKey: 'id', header: 'Order' },
+  { accessorKey: 'guide', header: 'Guide' },
+  { accessorKey: 'amount', header: 'Amount' },
+  { accessorKey: 'date', header: 'Date' },
+];
+
+export function OrdersTable({ orders }: { orders: Order[] }) {
+  return (
+    <Table
+      data={orders}
+      columns={columns}
+      pageSize={10}
+      emptyMessage="No orders yet — share your store link."
+    />
+  );
+}
+```
+
+## Rules
+
+- **Mono numerals with `tabular-nums`** anywhere numbers stack: stats, amounts,
+  quantities.
+- **Zebra rows use `--bg-subtle`**, hairline row dividers use `--border` — never both
+  heavier.
+- **Right-align numeric columns**, left-align text; headers match their column.
+- Deltas: `--status-success` up, `--status-danger` down, plain `--fg-3` for flat — and
+  the sign travels with the number ("+12%"), color is never the only signal.
+- An empty table is a first-run experience, not an error — give the
+  [EmptyState](/components/empty-state) a next step.

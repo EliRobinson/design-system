@@ -1,0 +1,72 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/select/Basic';
+import States from '@/components/demos/select/States';
+
+export const metadata = { title: 'Select' };
+
+<ComponentHeader slug="select" />
+
+<DemoBlock file="select/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Select` when the options are plain text and few enough to scan — roughly under twenty.
+It renders a native `<select>`, so you get the platform's picker, keyboard support, and
+typeahead for free, on every device, without a line of extra code.
+
+Reach for `Combobox` instead once the list needs search-as-you-type, or an option needs more
+than a label — an icon, a description, a secondary line. Reach for `RadioGroup` when there
+are only two to four choices and showing them all at once beats hiding them behind a click.
+
+## Hint, error, and disabled
+
+`hint` and `error` share one line under the field — passing both shows only the error,
+with `aria-invalid` set on the `<select>` and the message announced immediately.
+
+<DemoBlock file="select/States.tsx">
+  <States />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="select" />
+
+## Accessibility
+
+- Renders a native `<select>` wired to a real `<label>` via `htmlFor`/`id` — no ARIA
+  substitute needed for the label relationship.
+- `error` sets `aria-invalid="true"` on the `<select>` and renders with `role="alert"`, so
+  assistive tech announces it as soon as it appears. It also takes over the description
+  slot from `hint` — the two never show at once.
+- `hint` and `error` are wired through `aria-describedby`, merged with any
+  `aria-describedby` you pass in yourself rather than overwriting it.
+- **Keyboard:** entirely native. `Tab` focuses the control, `Enter`/`Space`/`Down Arrow`
+  open the option list, arrow keys move through it, and typing jumps to a matching option.
+  None of this is reimplemented — it's the browser's own `<select>` behavior, which is why
+  it also gets the OS-native picker UI on mobile for free.
+- The ref forwards to the underlying `<select>` element.
+
+<DoDont
+  do={[
+    'Pass a real label string every time — it is required, and renders as a genuine <label>.',
+    'Use hint for supporting context and error for validation — error automatically replaces the hint so they never stack.',
+    'Trust the native option list for anything under about twenty items.',
+    'Read the value off the native change event, the same as any uncontrolled <select>.',
+  ]}
+  dont={[
+    'Reach for Select when options need icons, descriptions, or search — use Combobox instead.',
+    'Build a custom-styled dropdown on top of a hidden <select> — the native picker is the accessible one.',
+    'Rely on placeholder-only labelling; an empty or missing label leaves the field unannounced.',
+    'Show a validation error without also setting the field to error — the message and the state should move together.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['combobox', 'form-field', 'radio-group', 'input']} />

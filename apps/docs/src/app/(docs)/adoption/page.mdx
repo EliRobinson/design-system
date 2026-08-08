@@ -1,0 +1,83 @@
+export const metadata = { title: 'Adopting the system' };
+
+# Adopting the system
+
+Bringing an existing app onto the system works best in a specific order — primitives first, then
+token values, then the keyboard and focus pass. Each step ships on its own; none of them requires
+a big-bang rewrite.
+
+## Before you start
+
+Finish [installation](/installation) — packages installed, both stylesheets imported in
+the app shell. Importing `tokens.css` is safe to do first and immediately: it only
+defines custom properties and sensible defaults, so nothing breaks while the rest of
+the migration proceeds.
+
+## Step 1 — replace the primitives
+
+Swap raw `button`, `input`, and card wrappers for their `@elirobinson/react`
+equivalents, one surface at a time:
+
+```tsx
+import { Button } from '@elirobinson/react/components/atoms/Button';
+import { Input } from '@elirobinson/react/components/atoms/Input';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@elirobinson/react/components/molecules/Card';
+```
+
+Two things to know before the swap:
+
+- `Input` requires a `label` prop and renders its own label, hint, and error wiring. If
+  your form pattern keeps labels elsewhere, that's what
+  [`FormField`](/components/form-field) is for — but never nest `Input` inside
+  `FormField`; you'd render two labels.
+- `Button` defaults to `type="button"`. If a form relied on implicit submit buttons,
+  pass `type="submit"` explicitly.
+
+Where you had a shadcn/ui component, the mapping is usually one-to-one — the
+[contributing guide](/guidelines/contributing) carries the full shadcn-to-Miltinson
+table.
+
+## Step 2 — move style values onto tokens
+
+Hunt down hardcoded values and replace them with the custom properties:
+
+```css
+.panel {
+  /* before: color: #333; padding: 14px; border-radius: 8px */
+  color: var(--fg-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+}
+```
+
+Rules that make this stick:
+
+- Reference **semantic** tokens (`--fg`, `--surface`, `--accent`) in app code, not raw
+  scale values (`--ink-600`) — the [color page](/foundations/color) explains why.
+- Odd values round to the nearest [spacing step](/foundations/spacing). If a design
+  really needs 14px, it needed 16px.
+- Delete local `:focus { outline: none }` rules on sight. The tokens stylesheet
+  provides the focus ring; removing outlines is the one thing this system never does.
+
+## Step 3 — the keyboard and focus pass
+
+With primitives and tokens in place, walk each screen with the keyboard:
+
+- `Tab` reaches everything interactive; nothing focusable is invisible.
+- Overlays close on `Escape` and return focus to their trigger (the system's organisms
+  do this; verify anything homegrown that remains).
+- Focus rings are visible on every control — if a ring looks wrong, fix the layout,
+  don't hide the ring.
+- Check the [touch-target policy](/foundations/accessibility): primary controls at
+  44×44px, dense affordances on the dense scale, no overlapping hit areas.
+
+## Auditing at scale
+
+The [Build with AI](/build-with-ai) page has an audit prompt that packages steps 2 and
+3 into something you can point an agent at, page by page — it checks token usage,
+import subpaths, and the accessibility contracts, and reports violations with fixes.

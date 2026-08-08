@@ -1,0 +1,78 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/command-palette/Basic';
+import KeyboardShortcut from '@/components/demos/command-palette/KeyboardShortcut';
+
+export const metadata = { title: 'CommandPalette' };
+
+<ComponentHeader slug="command-palette" />
+
+<DemoBlock file="command-palette/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Reach for `CommandPalette` when there are enough actions or destinations that a keyboard-first
+search beats hunting through menus — bound to a shortcut like `⌘K`, it's there for the users
+who'd rather never touch the mouse. If you only have three or four actions, a `DropdownMenu`
+is less machinery for the same result.
+
+It's built on `Dialog`, so opening it already blocks the rest of the page. It's not the right
+container for something that should stay visible alongside what the reader is browsing — that's
+`Popover`'s job.
+
+## Binding a keyboard shortcut
+
+The component only renders the palette — it doesn't own a global shortcut. Wire your own
+document-level listener to open it, same as most real command palettes.
+
+<DemoBlock file="command-palette/KeyboardShortcut.tsx">
+  <KeyboardShortcut />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="command-palette" />
+
+## Accessibility
+
+- Renders as a genuine modal `<dialog>` via `Dialog`/`DialogContent` — not a positioned `<div>`
+  imitating one. A `DialogTitle` ("Command palette") is always rendered, wiring up the dialog's
+  accessible name through `aria-labelledby`.
+- On open, focus moves to the search input automatically. It's the one place in this component
+  where focus is managed explicitly, rather than left to the browser.
+- Uses the same `aria-activedescendant` pattern as `Combobox` (the two share a hook): DOM focus
+  stays on the search input at all times, and the highlighted command is conveyed purely by id
+  reference via `aria-activedescendant`.
+- **Keyboard:** `ArrowDown`/`ArrowUp` move the highlight by one command, clamped at both ends
+  (no wraparound). `Enter` runs the currently highlighted command — not just the first — and
+  closes the palette. `Escape` closes it without running anything.
+- Every re-open resets the search query and the highlighted command back to the top; nothing is
+  sticky across opens.
+- Filtering narrows the list live as you type; no matches renders a plain "No matching
+  commands" row rather than an empty list.
+- Keyboard-shortcut hints (`shortcut`) render as real `<kbd>` elements next to each command.
+  They're a visual hint only — the component doesn't bind the shortcut itself.
+
+<DoDont
+  do={[
+    'Wire your own document-level keydown listener (e.g. ⌘K) to open it.',
+    'Give every command a stable, unique id and a working onSelect.',
+    'Keep commands limited to what’s actually valid right now — it filters on every keystroke.',
+    'Show the real shortcut as shortcut hints, and also bind it for real elsewhere.',
+  ]}
+  dont={[
+    'Nest another modal inside the palette — it’s already a native <dialog> with showModal(); stacking another on top fights the browser’s own modal handling.',
+    'Rely on the shortcut hints to actually trigger the command — they’re display-only <kbd> tags.',
+    'Pass a huge, unmemoized commands array on every render — it’s re-filtered on every keystroke.',
+    'Use it as your only navigation — it’s a keyboard-first accelerator, not a replacement for a visible nav.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['dialog', 'combobox', 'kbd']} />

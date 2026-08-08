@@ -1,0 +1,67 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/stepper/Basic';
+import Progress from '@/components/demos/stepper/Progress';
+
+export const metadata = { title: 'Stepper' };
+
+<ComponentHeader slug="stepper" />
+
+<DemoBlock file="stepper/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Stepper` to show progress through a fixed, linear, multi-step flow — checkout,
+onboarding, a multi-page form. `activeStep` is 1-indexed: a step is complete when its
+number is below `activeStep`, active when it equals `activeStep`, and upcoming
+otherwise. It's a display component only — it doesn't make steps clickable and it
+doesn't manage which step you're on; your flow's own state drives `activeStep`.
+
+For a continuous percentage rather than discrete named steps, use `Progress` instead.
+
+## Through a flow
+
+<DemoBlock file="stepper/Progress.tsx">
+  <Progress />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="stepper" />
+
+## Accessibility
+
+- Renders a native `<ol>` with one `<li>` per step — the ordered list itself conveys
+  sequence, independent of any visual styling.
+- The active step's `<li>` gets `aria-current="step"`.
+- The step indicator (a number or a `✓` for completed steps) is **not** hidden from
+  screen readers — it's announced along with the label, so a completed step reads as
+  something like "check mark, Account" rather than silently showing just "Account."
+- **Keyboard:** none — `Stepper` renders no interactive elements, so there's nothing to
+  tab to. If you need clickable steps (jump back to a previous one), you'll need to
+  build that affordance yourself; the component doesn't invent it.
+- The ref forwards to the outer `<ol>`.
+
+<DoDont
+  do={[
+    'Keep step labels to one or two words — "Payment," not "Enter your payment details."',
+    "Drive activeStep from the same state that controls which step's content is rendered.",
+    'Use it for a flow with a small, fixed number of steps known up front.',
+    'Reset or preserve step state deliberately when a user navigates away and back.',
+  ]}
+  dont={[
+    "Expect Stepper to make steps clickable — it's a progress display, not navigation.",
+    'Use 0-indexed step numbers — activeStep counts from 1.',
+    'Use Stepper for an open-ended or branching flow; it assumes a fixed linear sequence.',
+    "Reach for Stepper when a simple percentage is all you need — that's Progress.",
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['progress', 'pagination']} />

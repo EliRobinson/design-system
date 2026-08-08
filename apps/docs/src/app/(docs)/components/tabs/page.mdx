@@ -1,0 +1,88 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/tabs/Basic';
+import Controlled from '@/components/demos/tabs/Controlled';
+import Disabled from '@/components/demos/tabs/Disabled';
+
+export const metadata = { title: 'Tabs' };
+
+<ComponentHeader slug="tabs" />
+
+<DemoBlock file="tabs/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Tabs` to switch between views that share the same context — different cuts of one
+dataset, sections of one guide, steps in a self-contained flow. Inactive panels don't just
+hide: `TabsContent` returns `null` when it isn't the active tab, so anything with local
+state inside it unmounts and resets when you navigate away and back.
+
+Reach for `Accordion` instead when the sections aren't mutually exclusive — a reader might
+want two open at once. Reach for a real page or route once the content is substantial
+enough that someone would want to bookmark or share a link straight to one section.
+
+## Controlled
+
+Pass `value` and `onValueChange` when something outside the tablist needs to read or drive
+the active tab — here, external Back/Next buttons step through the same tabs.
+`defaultValue` is still required by the type even in controlled mode; pass the same initial
+value you gave your own state.
+
+<DemoBlock file="tabs/Controlled.tsx">
+  <Controlled />
+</DemoBlock>
+
+## Disabled tab
+
+A disabled `TabsTrigger` can't take focus, so arrow-key navigation skips over it — and if
+it happens to be the active tab, the tablist's single tab stop moves to the first
+focusable trigger instead.
+
+<DemoBlock file="tabs/Disabled.tsx">
+  <Disabled />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="tabs" />
+
+## Accessibility
+
+Implements the WAI-ARIA tabs pattern: `role="tablist"` on `TabsList`, `role="tab"` on each
+`TabsTrigger` (with `aria-selected` and `aria-controls`), `role="tabpanel"` on
+`TabsContent` (with `aria-labelledby` pointing back at its tab).
+
+- **Roving tabindex:** exactly one trigger is in the page's tab order at a time — normally
+  the active one — everything else carries `tabIndex={-1}`.
+- **Keyboard:** `Tab` moves focus into and out of the tablist. `ArrowRight`/`ArrowDown` move
+  to the next trigger, `ArrowLeft`/`ArrowUp` to the previous, both wrapping past the ends.
+  `Home` jumps to the first trigger, `End` to the last. Arrow keys only move focus — they do
+  not select. `Enter` and `Space` activate whichever trigger currently has focus.
+- Disabled triggers are skipped entirely by arrow navigation and can never hold the tab
+  stop; if the active trigger is disabled, ownership falls back to the first focusable one.
+- Two independent `Tabs` instances on the same page keep separate tablists — arrow
+  navigation never crosses from one into the other.
+
+<DoDont
+  do={[
+    'Match TabsTrigger and TabsContent value props exactly — that pairing wires aria-controls and aria-labelledby together.',
+    'Use value and onValueChange when something outside the tablist needs to read or drive the active tab.',
+    'Keep trigger labels to a word or two — TabsList wraps once labels get long.',
+    'Give a disabled tab a reason in its own label ("Basketball (sold out)") since arrow navigation will silently skip past it.',
+  ]}
+  dont={[
+    "Expect a custom onClick's preventDefault() to block the tab switch — TabsTrigger always calls setActiveTab after your handler runs.",
+    'Disable every trigger in a TabsList — with nothing focusable left, the whole tablist drops out of the tab order.',
+    'Keep unsaved form input inside a TabsContent panel and expect it to survive a trip to another tab — panels unmount, they do not hide.',
+    'Test the keyboard contract with clicks only — the real contract is roving focus (arrows, Home, End) plus Enter/Space on the focused trigger.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['accordion', 'segmented-control', 'stepper', 'navigation-menu']} />

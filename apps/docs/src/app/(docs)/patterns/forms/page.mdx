@@ -1,0 +1,90 @@
+export const metadata = { title: 'Form layout pattern' };
+
+# Form layout
+
+Single column, 720px measure, labeled controls stacked with consistent rhythm, actions at the end.
+The form atoms carry their own label and error wiring — the pattern's job is spacing and order.
+
+## Recipe
+
+```tsx
+import { useState } from 'react';
+
+import { Button } from '@elirobinson/react/components/atoms/Button';
+import { Checkbox } from '@elirobinson/react/components/atoms/Checkbox';
+import { Input } from '@elirobinson/react/components/atoms/Input';
+import { Textarea } from '@elirobinson/react/components/atoms/Textarea';
+import { Select } from '@elirobinson/react/components/organisms/Select';
+
+export function ContactForm() {
+  const [topic, setTopic] = useState('consulting');
+
+  return (
+    <form className="form" onSubmit={(event) => event.preventDefault()}>
+      <h2>Get in touch</h2>
+      <p>Tell me what you need and I'll get back to you within 24 hours.</p>
+
+      <Input label="Name" name="name" autoComplete="name" required />
+      <Input
+        label="Email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        hint="I reply from eli@miltinsons.com — add it to your contacts."
+        required
+      />
+      <Select
+        label="What do you need?"
+        name="topic"
+        value={topic}
+        onChange={(event) => setTopic(event.target.value)}
+      >
+        <option value="consulting">AI consulting</option>
+        <option value="support">Tech support</option>
+        <option value="coaching">Coaching guides</option>
+      </Select>
+      <Textarea label="The details" name="details" rows={5} />
+      <Checkbox label="Send me the occasional practical update — no spam" name="updates" />
+
+      <div className="form__actions">
+        <Button type="submit">Send message</Button>
+        <Button type="button" variant="ghost">
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
+```
+
+```css
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: var(--container-md);
+}
+
+.form__actions {
+  display: flex;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+```
+
+## Rules
+
+- **One column.** Two-column forms trade scanning speed for error rates; don't.
+- **`Input`, `Textarea`, and `Select` require their `label` prop** — there is no
+  unlabeled variant, on purpose. For a control that doesn't wire its own labeling
+  (a third-party date picker, say), wrap it in [FormField](/components/form-field) —
+  and never wrap `Input` in `FormField`, which would render two labels.
+- **Errors inline via the `error` prop**, which also sets `aria-invalid` and wires
+  `aria-describedby`. On submit failure, move focus to the first invalid control.
+- **Hints before errors:** if a rule can be stated up front ("at least 8 characters"),
+  put it in `hint` instead of springing it as an error.
+- **Primary action first (left), quiet actions after.** The submit button stays
+  enabled — a disabled submit hides the error instead of showing it.
+- `autoComplete` attributes on identity fields; the browser filling forms correctly is
+  an accessibility feature.

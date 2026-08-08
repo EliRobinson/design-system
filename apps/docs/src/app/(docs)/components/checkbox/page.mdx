@@ -1,0 +1,75 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/checkbox/Basic';
+import States from '@/components/demos/checkbox/States';
+import Controlled from '@/components/demos/checkbox/Controlled';
+
+export const metadata = { title: 'Checkbox' };
+
+<ComponentHeader slug="checkbox" />
+
+<DemoBlock file="checkbox/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Reach for `Checkbox` when the choice is independent and part of a form that gets
+submitted — pick any number of options, in any combination. Reach for `Switch` instead
+when flipping it takes effect immediately, with no submit step (a notification
+preference, a feature flag). Reach for `RadioGroup` when only one of several options can
+be true at once.
+
+## States
+
+<DemoBlock file="checkbox/States.tsx">
+  <States />
+</DemoBlock>
+
+## Controlled
+
+`Checkbox` forwards every native input prop, so `checked` and `onChange` work exactly
+like a plain `<input type="checkbox">`.
+
+<DemoBlock file="checkbox/Controlled.tsx">
+  <Controlled />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="checkbox" />
+
+## Accessibility
+
+- Renders a native `<input type="checkbox">` paired with a `<label>` — `label` is
+  required and is the input's only accessible name.
+- The id is auto-generated with `useId` when you don't pass one, so `htmlFor` always
+  resolves.
+- **Keyboard:** `Tab` focuses, `Space` toggles — native `input` behavior, nothing
+  reimplemented.
+- The row reserves a 44px minimum height for rhythm alongside other controls, but the
+  actual hit target is the 18×18 box and the label text — clicking the empty vertical
+  space around them doesn't toggle it.
+- The ref forwards to the underlying `<input>`.
+
+<DoDont
+  do={[
+    'Use Checkbox for independent yes/no choices inside a form that submits together.',
+    'Always pass a real, specific label — it’s required, and it’s the input’s only accessible name.',
+    'Group related checkboxes visually (a card, a list) so “N selected” context is clear.',
+    'Let defaultChecked or checked drive pre-selected state — don’t manage a shadow copy elsewhere.',
+  ]}
+  dont={[
+    'Use Checkbox when only one answer can be true — that’s RadioGroup.',
+    'Use Checkbox for a setting that takes effect the instant it’s flipped — that’s Switch.',
+    'Expect the full 44px row to be clickable — only the box and the label text respond.',
+    'Omit the label prop and lean on placeholder or nearby text — there’s no other accessible name path.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['switch', 'radio-group', 'label']} />

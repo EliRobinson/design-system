@@ -1,0 +1,70 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/navigation-menu/Basic';
+import NoCurrentPath from '@/components/demos/navigation-menu/NoCurrentPath';
+
+export const metadata = { title: 'NavigationMenu' };
+
+<ComponentHeader slug="navigation-menu" />
+
+<DemoBlock file="navigation-menu/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `NavigationMenu` for a site's real navigation — every item renders as a genuine `<a>`, so
+it works with middle-click, cmd-click, and JavaScript disabled. It supports one level of nested
+links (a section with sub-pages), but the nested items are always rendered inline, not hidden
+behind a hover or click. If you need a menu that opens and closes on demand, that's
+`DropdownMenu`, not this.
+
+## Without a current page
+
+`currentPath` is optional. When it's omitted, or when it matches nothing in `items`, no item is
+marked current — none gets `aria-current`.
+
+<DemoBlock file="navigation-menu/NoCurrentPath.tsx">
+  <NoCurrentPath />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="navigation-menu" />
+
+## Accessibility
+
+- Renders a `<nav>` landmark wrapping a plain, always-rendered nested `<ul>`/`<li>`/`<a>` tree
+  — not a disclosure widget. Nothing is collapsed, hidden, or toggled.
+- Every item is a real `<a href>`, so `Tab`/`Shift+Tab` already walk the entire tree, including
+  nested items, in document order — zero custom key handling.
+- The item matching `currentPath` gets `aria-current="page"`; every other item has the
+  attribute omitted entirely (not set to `"false"`). Nothing is marked current if
+  `currentPath` matches nothing.
+- Deliberately has **no** `Escape` handling and **no** `aria-expanded`/`aria-controls` anywhere
+  — there's no toggleable submenu here to escape out of or expand. That's an explicit design
+  choice, not an oversight: if you need a collapsible or flyout submenu, this isn't that
+  component.
+- Nested items render inside their parent `<li>` as their own `<ul>`, so a screen reader
+  announces "list, N items" once at the top level and again on descending into a nested group,
+  rather than one flattened list.
+
+<DoDont
+  do={[
+    'Pass real, working hrefs — this is a navigation list, not a menu of actions.',
+    'Keep currentPath in sync with the router so aria-current always matches what’s on screen.',
+    'Nest one level deep in practice — the recursive items field supports more, but three-plus levels are hard to scan visually.',
+  ]}
+  dont={[
+    'Use it for a flyout or disclosure submenu that opens on click or hover — reach for DropdownMenu for that toggle behavior.',
+    'Attach onClick handlers that prevent navigation — every link should be genuinely middle-click-able.',
+    'Expect aria-expanded or collapse behavior — nested items are always rendered and always in the tab order.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['dropdown-menu', 'breadcrumb', 'tabs']} />

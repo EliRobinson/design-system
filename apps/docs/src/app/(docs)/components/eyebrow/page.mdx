@@ -1,0 +1,59 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/eyebrow/Basic';
+import InContext from '@/components/demos/eyebrow/InContext';
+
+export const metadata = { title: 'Eyebrow' };
+
+<ComponentHeader slug="eyebrow" />
+
+<DemoBlock file="eyebrow/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+`Eyebrow` is marketing typography — an uppercase, tracked mono label that introduces a
+section on a landing or content page ("Case Study", "Coaching Guides"). It's not a form
+label (use `Label` or the built-in `label` prop on a field) and it's not a status tag
+(use `Badge`).
+
+## Paired with a heading
+
+Eyebrow carries no heading semantics — it's a visual lead-in, so keep the real `<h1>`
+through `<h6>` right after it.
+
+<DemoBlock file="eyebrow/InContext.tsx">
+  <InContext />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="eyebrow" />
+
+## Accessibility
+
+- Renders a plain `<span>` — no heading role, no landmark, nothing implied beyond its
+  visible text.
+- Screen readers and search engines read it as ordinary inline text; it doesn't
+  substitute for document structure.
+
+<DoDont
+  do={[
+    'Pair every Eyebrow with a real heading right after it — it’s a lead-in, not the heading itself.',
+    'Keep eyebrow text short — two to four words reads best in the tracked uppercase type.',
+    'Use it to introduce a section on a marketing or landing page.',
+  ]}
+  dont={[
+    'Use Eyebrow as a heading substitute — it has no heading semantics for assistive tech or SEO.',
+    'Use Eyebrow inside product UI chrome where Label or a section heading already does the job.',
+    'Write full sentences in an Eyebrow — the uppercase tracking makes long text hard to read.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['label', 'badge', 'card']} />

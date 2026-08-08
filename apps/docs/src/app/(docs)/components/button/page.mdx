@@ -1,0 +1,84 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/button/Basic';
+import Variants from '@/components/demos/button/Variants';
+import Sizes from '@/components/demos/button/Sizes';
+import States from '@/components/demos/button/States';
+
+export const metadata = { title: 'Button' };
+
+<ComponentHeader slug="button" />
+
+<DemoBlock file="button/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Button` for actions — submitting a form, opening a dialog, confirming a step. For
+navigation, use a real link: an `<a>` styled as a link is honest about what happens on
+click, works with middle-click and cmd-click, and needs no JavaScript.
+
+- **primary** is the default: ink-solid, one per view is a good ceiling.
+- **accent** is Miltinson Amber — reserve it for the one action I most want taken.
+- **secondary** is the bordered workhorse for everything alongside a primary.
+- **ghost** sits in toolbars and card corners where a border would add noise.
+
+## Variants
+
+<DemoBlock file="button/Variants.tsx">
+  <Variants />
+</DemoBlock>
+
+## Sizes
+
+All three sizes keep the 44×44px minimum touch target — the smaller sizes shrink the
+visible control, not the hit area.
+
+<DemoBlock file="button/Sizes.tsx">
+  <Sizes />
+</DemoBlock>
+
+## Disabled
+
+<DemoBlock file="button/States.tsx">
+  <States />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="button" />
+
+## Accessibility
+
+- Renders a native `<button>` with `type="button"` by default, so a button inside a form
+  never submits it by accident — pass `type="submit"` when submitting is the point.
+- **Keyboard:** `Tab` focuses, `Enter` and `Space` activate. That contract comes from the
+  native element; nothing re-implements it.
+- Focus is marked with the system's high-contrast ink ring (`:focus-visible`), never
+  removed.
+- The ref forwards to the underlying `<button>` element, so focus management from a
+  parent (`ref.current.focus()`) works directly.
+- Icon-only buttons need an `aria-label` — the component doesn't invent one.
+
+<DoDont
+  do={[
+    'Use one primary or accent button per view — hierarchy is the point.',
+    'Write button labels as verbs: "Save changes", not "Changes".',
+    'Pass type="submit" explicitly inside forms when submitting is intended.',
+    'Give icon-only buttons an aria-label.',
+  ]}
+  dont={[
+    'Use a Button for navigation — style a link instead.',
+    'Disable a submit button to signal a validation error — show the error and keep it clickable.',
+    'Stack multiple accent buttons in one section; amber is a signal, not a fill.',
+    'Shrink the hit area below 44×44px — density comes from the visible control, not the target.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['badge', 'chip', 'rule-link', 'dropdown-menu']} />

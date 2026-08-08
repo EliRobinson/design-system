@@ -1,0 +1,40 @@
+import { RadiusGallery } from '@/components/foundations/RadiusGallery';
+import { ShadowGallery } from '@/components/foundations/ShadowGallery';
+
+export const metadata = { title: 'Radii and elevation' };
+
+# Radii and elevation
+
+Sharp by default, and borders do most of the work shadows usually do. A card in this system is a
+1px hairline on white — not a floating drop shadow.
+
+## Radii
+
+4px for buttons and inputs, 6px for cards, 10px for modals. The pill radius is reserved
+for tags — category labels like "Food" or "Education" — and never for CTAs: a pill
+button reads as a different brand.
+
+<RadiusGallery />
+
+## Shadows
+
+The scale is deliberately restrained. Default cards take `--shadow-sm` — a hairline
+tint that reads as paper, not levitation. `--shadow-lg` and up are for modals only.
+`--shadow-inset` marks input wells.
+
+<ShadowGallery />
+
+## Borders
+
+- `--border` (1px hairline) is the primary divider — between cards, table rows,
+  sections.
+- `--border-strong` for emphasis and hover states.
+- On dark surfaces, `--border-inverse` (12% white) keeps hairlines visible without
+  glowing.
+
+## What to avoid
+
+- No glassmorphism, no frosted panels — the one sanctioned blur is the sticky header
+  at 92% white when scrolled.
+- No left-border accent stripes on cards.
+- No stacking shadows to fake depth; if hierarchy isn't reading, fix the spacing.

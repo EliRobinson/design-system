@@ -1,0 +1,69 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/card/Basic';
+import WithContent from '@/components/demos/card/WithContent';
+
+export const metadata = { title: 'Card' };
+
+<ComponentHeader slug="card" />
+
+<DemoBlock file="card/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `Card` to group related content into one bordered surface — a portfolio tile, a
+pricing tier, a contact block. It's a layout primitive, not a status signal: for a
+message about the state of the page, reach for `Alert`; for a placeholder where a list
+of cards would normally go, use `EmptyState`.
+
+`CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, and `CardFooter` are plain
+layout slots — use the ones you need and skip the rest. A card doesn't require content
+and a footer both.
+
+## With content and actions
+
+<DemoBlock file="card/WithContent.tsx">
+  <WithContent />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="card" />
+
+## Accessibility
+
+- `Card` and its subcomponents render plain `<div>`s (and `CardTitle` an `<h3>`,
+  `CardDescription` a `<p>`) with no implicit ARIA role — a card is a visual grouping,
+  not a landmark.
+- `CardTitle` always renders an `<h3>`. It isn't configurable, so check that an `<h3>`
+  is the right level in the surrounding heading outline before reaching for it — inside
+  a page that's already past `<h3>`, write your own heading element instead.
+- Only `Card` itself forwards a ref, to the outer `<div>`. `CardHeader`, `CardTitle`,
+  `CardDescription`, `CardContent`, and `CardFooter` are plain functions with no ref
+  forwarding.
+- **Keyboard:** a `Card` has no interaction of its own. Any buttons or links placed
+  inside it (as in `CardFooter`) keep their own native keyboard behavior.
+
+<DoDont
+  do={[
+    'Put the primary action in CardFooter as a real Button or link.',
+    'Keep CardTitle to a short name — a product, a plan, a project — and put detail in CardDescription.',
+    'Use Badge inside CardHeader for category tags above the title.',
+    'Give a Card a fixed maxWidth in a grid so cards align instead of stretching unevenly.',
+  ]}
+  dont={[
+    "Wrap an entire page section in a Card — it's a content surface, not a page layout tool.",
+    'Nest a Card inside a Card; flatten the hierarchy instead.',
+    'Make the whole card clickable with a div onClick — wrap the title or an explicit link so keyboard users can reach it.',
+    'Skip CardHeader and put a raw heading directly in CardContent — the header slot carries the spacing that makes the title read as a title.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['badge', 'button', 'empty-state']} />

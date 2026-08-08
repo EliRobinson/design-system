@@ -1,0 +1,56 @@
+export const metadata = { title: 'Accessibility' };
+
+# Accessibility
+
+Accessibility is a foundation here, not a review step. The tokens, the components, and the brand
+rules are all shaped by it — if you build with the system's defaults, you inherit most of this for
+free.
+
+## The standard
+
+- **WCAG 2.1 AA at minimum.** Every color pairing the system ships passes AA for its
+  intended use — the [color page](/foundations/color) computes the ratios live so the
+  claim stays checkable.
+- **16px minimum body text.** The smaller type steps exist for captions and metadata,
+  never paragraphs.
+- **Visible focus, always.** A high-contrast ink ring (`2px solid var(--focus-ring)`,
+  2px offset) on every interactive element, applied globally via `:focus-visible` in
+  tokens.css. It's ink on both light and dark — never amber on amber.
+- **Reduced motion honored globally.** tokens.css collapses all animation under
+  `prefers-reduced-motion: reduce`.
+
+## Touch targets are scoped, not blanket
+
+Two classes of control, two rules — this is the system's most misunderstood policy:
+
+- **Primary interactive controls** — buttons, pagination items, segmented-control
+  options, nav items — get a minimum **44×44px** hit area. Where visual density
+  matters, the painted control stays small and the hit area expands via padding or a
+  bounded overlay.
+- **Dense inline affordances** — a chip's remove glyph, a search field's clear button,
+  rating stars, calendar day cells — follow the shadcn/MUI dense scale instead. A 44px
+  remove button inside a 24px chip is how you get overlapping hit areas.
+- **In both cases** an expanded hit area must never overlap sibling content — a hit
+  area that covers a neighboring label fires the wrong action from a correct click.
+
+## Keyboard, by construction
+
+- Native elements first: `<button>`, `<input>`, `<dialog>` — their keyboard behavior
+  comes from the platform, not a re-implementation.
+- Composite widgets (tabs, segmented controls) use a roving tabindex via
+  `useRovingFocus`; listbox popups (combobox, command palette) keep DOM focus in the
+  input and track the highlighted option with `aria-activedescendant` via
+  `useActiveDescendant`.
+- Every component page documents its exact keyboard contract in its Accessibility
+  section — those contracts are backed by the component test suites.
+
+## What the system can't do for you
+
+- **Labels.** Icon-only buttons need `aria-label`; images need real `alt` text.
+- **Reading order.** The DOM order is the reading order — keep it sensible before
+  reaching for CSS ordering.
+- **Content.** Plain language is an accessibility feature; see
+  [voice and content](/guidelines/voice).
+
+The [audit prompt](/build-with-ai) packages these checks for an agent to run against a
+page of your app.

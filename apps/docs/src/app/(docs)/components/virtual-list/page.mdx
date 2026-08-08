@@ -1,0 +1,78 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/virtual-list/Basic';
+import ScrollToIndex from '@/components/demos/virtual-list/ScrollToIndex';
+
+export const metadata = { title: 'VirtualList' };
+
+<ComponentHeader slug="virtual-list" />
+
+200 rows, but scroll and check the DOM — only the rows near the viewport actually render.
+
+<DemoBlock file="virtual-list/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `VirtualList` when you have hundreds or thousands of items and rendering every one to
+the DOM would make scrolling stutter. It only renders the rows currently within, or just
+outside, its viewport. `Combobox` already uses it internally for long option lists, and
+`VirtualTable` uses it for windowed table rows — reaching for it directly usually means a
+plain list, not a table (grab `VirtualTable` for that).
+
+If the list rarely runs past a few dozen items, skip it — a plain `.map()` is simpler, and
+the fixed-height viewport plus row-measurement bookkeeping cost more than they save at that
+size.
+
+## Scrolling to a row
+
+<DemoBlock file="virtual-list/ScrollToIndex.tsx">
+  <ScrollToIndex />
+</DemoBlock>
+
+The forwarded ref does not resolve to the scroll container element. A row currently outside
+the window has no DOM node to scroll to, so the ref exposes a `VirtualListHandle` with
+`scrollToIndex` instead — backed by the underlying virtualizer's own measurements, not
+manual `scrollTop` math.
+
+## Props
+
+<PropsTables slug="virtual-list" />
+
+## Accessibility
+
+- Renders a plain scrollable `<div>` (`overflow: auto`) with no ARIA role of its own — it
+  doesn't add list semantics (`role="list"`/`"listitem"`) on your behalf. `VirtualTable`
+  layers `role="table"`/`"row"`/`"cell"` on top for that reason; do the same if your content
+  needs it.
+- **Keyboard:** scrolling is native. The container is a real scrollable element, so once
+  something inside it has focus, arrow keys, Page Up/Down, and the mouse wheel or trackpad
+  all move it through the browser's own scroll handling — nothing custom is layered on top.
+- Rows outside the current window aren't hidden, they don't exist in the DOM yet. Don't rely
+  on find-in-page (Cmd/Ctrl+F) to reach one, or hold a ref to a specific row's element — call
+  `scrollToIndex` to bring it into range first.
+- `estimateSize` is required even for uniform rows — pass a constant function like
+  `() => 40`. Once a row renders, its real measured height replaces the estimate.
+
+<DoDont
+  do={[
+    'Always pass an explicit height — the viewport needs a fixed size for the virtualizer to know how many rows fit.',
+    'Use scrollToIndex from the ref to jump to a row, instead of hand-rolled scrollTop math.',
+    'Keep renderItem cheap — it runs for every row in the current window on every scroll frame.',
+    'Pass a larger overscan (5-10) if tall rows make scrolling look like content is popping in.',
+  ]}
+  dont={[
+    'Expect the ref to be a DOM node — it resolves to a VirtualListHandle with scrollToIndex, not an element you can call .focus() or .scrollTo() on.',
+    'Nest VirtualList inside another scrollable container without its own fixed height — two independent scroll regions fighting each other is confusing to use.',
+    'Reach for it under a few dozen items — a plain .map() is simpler and the bookkeeping is not worth it.',
+    'Assume Cmd/Ctrl+F will find text in a row that has not rendered yet — virtualized rows outside the window are not in the DOM.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['virtual-table', 'combobox', 'table']} />

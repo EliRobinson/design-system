@@ -1,0 +1,75 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/search-field/Basic';
+import Controlled from '@/components/demos/search-field/Controlled';
+
+export const metadata = { title: 'SearchField' };
+
+<ComponentHeader slug="search-field" />
+
+<DemoBlock file="search-field/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `SearchField` for an inline filter — a table toolbar, a list you want to narrow as
+you type. It's an `<input type="search">` with a built-in clear button, nothing more. For
+filtering that also opens a list of matching options to pick from, use `Combobox`
+instead; `SearchField` never renders a popup.
+
+Like `Input`, it supports both patterns: pass `value`/`onValueChange` to drive it from
+your own state (as in the filtering example below), or `defaultValue` and let it manage
+its own state uncontrolled.
+
+## Controlled, filtering a list
+
+<DemoBlock file="search-field/Controlled.tsx">
+  <Controlled />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="search-field" />
+
+## Accessibility
+
+- `SearchField` doesn't render its own `<label>` — unlike `Input`, it has no `label`
+  prop. Give it an accessible name yourself with `aria-label` (as every demo on this page
+  does) or `aria-labelledby`, or wrap it in `FormField` if you want a visible label plus
+  hint/error text.
+- The underlying element is a native `<input type="search">`, which browsers and screen
+  readers expose with the `searchbox` role automatically.
+- The clear button only renders once there's a value, carries
+  `aria-label="Clear search"`, and returns focus to the input after clearing — so
+  clearing never strands keyboard focus.
+- The clear button follows dense inline sizing (MUI/shadcn scale), not the 44px
+  primary-control minimum.
+- **Keyboard:** standard text-input behavior — type to filter, `Tab` reaches the clear
+  button when it's present, `Enter`/`Space` activates it. There's no `Escape`-to-clear
+  shortcut wired in.
+- The ref forwards to the real `<input>` element, not the wrapping `<div>` — calling
+  `ref.current.focus()` works directly. `Combobox` and `CommandPalette` both depend on
+  this.
+
+<DoDont
+  do={[
+    'Always give it an aria-label or aria-labelledby — it has no visible label of its own.',
+    'Debounce the filtering logic in onValueChange for anything more expensive than an in-memory array filter.',
+    'Show a "no results" message in the list below rather than leaving it silently empty.',
+    "Use defaultValue for a simple, self-contained search box that doesn't need to sync with other state.",
+  ]}
+  dont={[
+    "Wrap Input inside FormField expecting SearchField-like behavior — they're different components with different label handling.",
+    "Expect a popup of matching options — that's Combobox, not SearchField.",
+    'Rely on Escape to clear the field; wire your own keydown handler if you want that.',
+    "Forget the clear button's dense hit area when laying out tight toolbar spacing — verify it doesn't overlap adjacent controls.",
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['combobox', 'command-palette', 'input']} />

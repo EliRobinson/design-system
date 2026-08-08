@@ -16,6 +16,8 @@ export default tseslint.config(
       // Agent worktrees contain a full second copy of the repo.
       '.claude/**',
       'apps/storybook/storybook-static/**',
+      'apps/docs/.next/**',
+      'apps/docs/src/generated/**',
       'design-system-docs/**',
       '.nx/**',
     ],

@@ -1,0 +1,69 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/empty-state/Basic';
+import WithAction from '@/components/demos/empty-state/WithAction';
+
+export const metadata = { title: 'EmptyState' };
+
+<ComponentHeader slug="empty-state" />
+
+<DemoBlock file="empty-state/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+Use `EmptyState` wherever a list, table, or search result would normally render rows
+and currently has none — a fresh account with no data yet, or a filtered view that
+matched nothing. It's `Table`'s own empty-rows branch under the hood.
+
+It's not a loading indicator — while data is in flight, use `Skeleton`. And it's not a
+system message about something that went wrong — an error belongs in `Alert`.
+
+## With icon and action
+
+`icon` and `action` are both optional. An action gives the reader a way out of the empty
+state — clear a filter, create the first item — instead of leaving them at a dead end.
+
+<DemoBlock file="empty-state/WithAction.tsx">
+  <WithAction />
+</DemoBlock>
+
+## Props
+
+<PropsTables slug="empty-state" />
+
+## Accessibility
+
+- Renders a plain `<div>` with no ARIA role — it's a content placeholder, not a live
+  region or an alert.
+- `title` renders as a `<p>`, not a heading element. If the empty state is the main
+  content of a section that needs a heading in the outline, add your own heading
+  alongside it rather than relying on `title`.
+- `icon` renders exactly what you pass, with no automatic `aria-hidden` — mark decorative
+  icons `aria-hidden="true"` yourself, the way the demo above does.
+- `action` is a plain slot — usually a `Button` — and keeps whatever accessible name and
+  keyboard behavior that control already has.
+- The ref forwards to the outer `<div>`.
+
+<DoDont
+  do={[
+    'Say what happened and, when there\'s a way forward, give an action for it — "No results — clear filters."',
+    'Match the tone to the situation: a fresh empty list reads differently than a filtered-to-zero one.',
+    'Mark decorative icons aria-hidden yourself.',
+    'Reuse the same EmptyState across a table and its windowed VirtualTable sibling — the placeholder logic is identical.',
+  ]}
+  dont={[
+    'Use EmptyState for a loading placeholder — reach for Skeleton while data is in flight.',
+    'Use EmptyState to report an error — that belongs in Alert, with recovery guidance.',
+    'Leave title blank and lean on description alone; title is the one line every empty state needs.',
+    'Bury the action below the fold in a tall empty region — keep it close to the message.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['skeleton', 'alert', 'button']} />

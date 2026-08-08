@@ -16,7 +16,8 @@
   ],
   "exports": {
     "./patterns": "./src/patterns.md",
-    "./contracts": "./src/contracts.json"
+    "./contracts": "./src/contracts.json",
+    "./prompts/*": "./src/prompts/*"
   },
   "scripts": {
     "build": "echo 'No build step required for ai-patterns'",

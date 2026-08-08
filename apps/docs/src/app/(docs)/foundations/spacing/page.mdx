@@ -1,0 +1,36 @@
+import { SpaceScale } from '@/components/foundations/SpaceScale';
+import { TokenTable } from '@/components/foundations/TokenTable';
+
+export const metadata = { title: 'Spacing' };
+
+# Spacing
+
+A 4px base, 8px-friendly, sixteen steps. Use the scale and nothing else — a magic number is a bug
+waiting for a redesign.
+
+## The scale
+
+<SpaceScale />
+
+## How the scale gets used
+
+- **Generous vertical rhythm.** Major sections on landing pages breathe —
+  `--space-13` (128px) between them. Cramped sections read as clutter, not density.
+- **Tight horizontal density inside cards.** `--space-4` (16px) is the default inner
+  padding for compact components; `--space-6` (24px) for roomier cards.
+- **Gaps within a control cluster:** `--space-2` or `--space-3`. Between distinct
+  groups: `--space-6` and up.
+- When in doubt, take the larger step for vertical space and the smaller for
+  horizontal.
+
+## Layout containers
+
+Content clamps at `--container-xl` (1280px); editorial body copy clamps tighter at
+`--container-md` (768px) for a readable measure. `--gutter` scales with the viewport.
+
+<TokenTable prefix="container" />
+
+## Asymmetry is encouraged
+
+7–5 and 8–4 column splits beat 6–6. A perfectly symmetric layout reads as template-made;
+the brand prefers a deliberate lean.
