@@ -249,7 +249,14 @@
   margin-bottom: var(--space-1);
 }
 
-.prose .lead {
+/* .lead is used by TSX components (ComponentHeader) that pass description
+   text through a JSX expression. Plain MDX pages can't wrap prose in a
+   literal <p className="lead"> — remark treats a JSX tag's own-line content
+   as block markdown and wraps it in another <p>, nesting <p> in <p> and
+   breaking hydration — so their intro is just the first paragraph after the
+   h1, styled via the adjacent-sibling selector below instead. */
+.prose .lead,
+.prose > h1 + p {
   font-size: var(--fs-xl);
   line-height: var(--lh-relaxed);
   color: var(--fg-2);

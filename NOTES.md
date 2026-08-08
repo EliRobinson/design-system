@@ -3,6 +3,17 @@
 Scratch log: one entry per decision/correction a future session would otherwise
 rediscover. Not a deliverable.
 
+- **Hydration bug found post-PR**: every MDX page's intro used
+  `<p className="lead">\n  text...\n</p>`. Remark treats a JSX tag's own-line
+  content as block markdown, wraps it in a `<p>` mdast node, and nests that
+  inside the literal `<p>` — `<p><p>...</p></p>` in the DOM, which React
+  flags as invalid HTML and a hydration mismatch. Fixed across all 20 MDX
+  pages by dropping the wrapper and letting the paragraph stand as plain
+  markdown (the first paragraph after the page's `h1`), with the `.lead`
+  visual style moved onto a `.prose > h1 + p` CSS selector. `ComponentHeader.tsx`
+  and the two `.tsx` index pages keep `<p className="lead">` as real JSX
+  (not MDX-parsed), which was never affected.
+
 - **Worktree already contained the spec + prompt** (`docs/superpowers/specs/2026-08-07-docs-site-design.md`,
   `docs/prompts/fable-docs-site.md`), untracked. They match the run brief; treated the
   spec's decision table as settled.
