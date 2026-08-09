@@ -20,6 +20,14 @@ export default tseslint.config(
       'apps/docs/src/generated/**',
       'design-system-docs/**',
       '.nx/**',
+      // design-sync (claude.ai/design) scratch: the staged converter, its
+      // generated preview wrappers, the reference storybook build, and the
+      // emitted bundle. All gitignored and regenerated on every sync.
+      // .design-sync/gen-entry.mjs is committed and stays linted.
+      '.design-sync/.cache/**',
+      '.design-sync/sb-reference/**',
+      '.ds-sync/**',
+      'ds-bundle/**',
     ],
   },
   js.configs.recommended,

@@ -13,3 +13,14 @@ apps/docs/.next/
 *.tsbuildinfo
 .claude/worktrees/
 .superpowers/
+
+# design-sync (claude.ai/design) — transient build + verification state
+.design-sync/sb-reference/
+.design-sync/learnings/
+.design-sync/.cache/
+.design-sync/node_modules
+.ds-sync/
+ds-bundle/
+
+# design-sync: generated types-only entry (see .design-sync/gen-entry.mjs)
+packages/react/index.d.ts
