@@ -22,6 +22,4 @@ apps/docs/.next/
 .design-sync/node_modules
 .ds-sync/
 ds-bundle/
-
-# design-sync: generated types-only entry (see .design-sync/gen-entry.mjs)
-packages/react/index.d.ts
+packages/react/_ds-entry.mjs

@@ -21,25 +21,56 @@ kit from `design-system-docs/` — a DIFFERENT project. Never sync into it.)
 The package deliberately ships no `index.ts` and no `"."` export
 (`.cursor/rules/no-barrel-files.mdc`), but the converter needs ONE entry to
 bundle and ONE `.d.ts` to read the component roster from.
-`.design-sync/gen-entry.mjs` generates both; `cfg.buildCmd` re-runs it after
-every `pnpm build` (which `rm -rf`s dist).
+`.design-sync/gen-entry.mjs` generates both; `cfg.buildCmd` re-runs it.
 
-- `packages/react/dist/_ds-entry.mjs` — the JS entry (`cfg.entry`).
-- `packages/react/index.d.ts` — the types entry.
+| File                           | Committed?      | Why                                       |
+| ------------------------------ | --------------- | ----------------------------------------- |
+| `packages/react/_ds-entry.mjs` | no (gitignored) | value entry; missing = **loud** failure   |
+| `packages/react/index.d.ts`    | **yes**         | types entry; missing = **silent** failure |
 
-Both are gitignored, and `index.d.ts` is excluded from the published tarball by
-`files: ["dist","src"]` (verified with `npm pack --dry-run`). It is types-only,
-so the no-barrel rule's rationale — a runtime barrel forcing consumer bundlers
-to load every module — does not apply. **Do not "fix" this by adding a `types`
-or `"."` field to `packages/react/package.json`**; that would change the
-published package.
+**Both live in the package ROOT, not in `dist/`.** `files: ["dist","src"]`
+excludes the root, so neither ships in the tarball (verified with
+`npm pack --dry-run`: 332 files = 208 dist + 123 src + package.json). An
+earlier revision wrote the value entry into `dist/` and it **did** ship — a
+barrel inside the published package. Never move them back into `dist/`.
 
-Why the entry must live inside `packages/react/` and not `.design-sync/`: the
-converter walks UP from `--entry` to the nearest **named** `package.json` to
-pick `PKG_DIR`. From `.design-sync/` that walk lands on the monorepo root, and
-the build then reads the repo's `types/` dir instead of `packages/react/dist`
-— it discovers **0 components** and still exits 0. Silent failure; watch for
-`exported PascalCase symbols: 0` in the build log.
+Consumers can't reach either one: `exports` has no `"."`, and the repo uses
+`moduleResolution: "Bundler"`, so a root import doesn't resolve even in-repo.
+The no-barrel rule targets a RUNTIME barrel inflating consumer bundles; a
+`.d.ts` is erased at build time. **Do not "fix" this by adding a `types` or
+`"."` field to `packages/react/package.json`** — pnpm substitutes
+`publishConfig` fields at publish time, so that would change the real package.
+
+### Why index.d.ts is committed
+
+Because its absence is **silent and catastrophic**. Verified by experiment:
+with it missing, the converter reports `exported PascalCase symbols: 0`, emits
+a zero-component bundle, and **both `package-build.mjs` and
+`package-validate.mjs` exit 0** — validate even prints `✓ bundle is complete`
+and `tokens-only DS`. A re-sync would publish an empty design system over a
+good one with every gate green. It lives in the package root so it survives
+`pnpm build` (which only `rm -rf`s `dist/`), and committing it removes the last
+realistic trigger: missing on a fresh clone.
+
+The residual risk is drift (a component added without regenerating). Guard:
+
+```bash
+node .design-sync/gen-entry.mjs --check   # exits 1 if index.d.ts is stale
+```
+
+Its diff is meaningful review signal — it changes only when a component enters
+or leaves the public surface. Same rationale as a committed API-surface report.
+
+**`resync.mjs` does NOT run `cfg.buildCmd`.** The driver goes straight to
+`package-build.mjs`, so it never regenerates the entries. Run
+`pnpm build && node .design-sync/gen-entry.mjs` yourself before the driver
+whenever the DS source changed.
+
+Why the entries must live inside `packages/react/` at all: the converter walks
+UP from `--entry` to the nearest **named** `package.json` to pick `PKG_DIR`.
+From `.design-sync/` that walk lands on the monorepo root, and the build then
+reads the repo's `types/` dir instead of `packages/react/dist` — 0 components,
+exit 0. Watch for `exported PascalCase symbols: 0` in the build log.
 
 ## [GENERAL] Config paths are resolved relative to PKG_DIR
 
@@ -94,17 +125,16 @@ font and grades pass falsely. `[FONT_REMOTE]` in validate is expected, not
 
 What can silently go stale or was only partially verified. Check these first.
 
-- **The two generated entries are the fragile part.** `pnpm build` does
-  `rm -rf dist`, so `packages/react/dist/_ds-entry.mjs` disappears with it —
-  always run the full `cfg.buildCmd`, never a bare `pnpm build`. If a component
-  is ADDED or RENAMED and `gen-entry.mjs` isn't re-run, it is silently missing
-  from both the bundle and the roster while the build still exits 0. The tell
-  is the `components: N` line in the build log — compare it against
+- **Component drift in the generated entries.** If a component is ADDED or
+  RENAMED without re-running `gen-entry.mjs`, it is missing from the bundle and
+  the roster while the build still exits 0. Run
+  `node .design-sync/gen-entry.mjs --check` (exits 1 on drift), and sanity-check
+  the `components: N` line against
   `ls apps/storybook/src/stories/*.stories.tsx | wc -l`.
-- **`packages/react/index.d.ts` is untracked and unpublished by design.** If
-  someone "tidies" it away or adds a `types`/`"."` field to the package to
-  "fix" it, component discovery silently drops to 0. See the no-barrel section
-  above before changing anything there.
+- **Don't let anyone "tidy away" `packages/react/index.d.ts`,** move either
+  entry into `dist/`, or add a `types`/`"."` field to the package. See the
+  no-barrel section above — each of those either silently zeroes the roster or
+  ships a barrel in the tarball.
 - **CSS depends on the storybook reference.** `_ds_bundle.css` is scraped from
   `.design-sync/sb-reference` (`[CSS_FROM_STORYBOOK]`), so the reference MUST be
   rebuilt whenever component CSS changes — a stale reference ships stale styles
