@@ -32,7 +32,7 @@
 // is current without writing (exits 1 on drift).
 //
 // Re-run via cfg.buildCmd — never hand-edit the generated files.
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -96,6 +96,15 @@ const typesSource = [
 ].join('\n');
 
 if (CHECK) {
+  if (!existsSync(typesEntry)) {
+    console.error(
+      `[gen-entry] ${relative(repoRoot, typesEntry)} is MISSING. It is committed on purpose — ` +
+        `without it the converter silently builds a zero-component bundle and every gate still ` +
+        `passes. Restore it with \`git checkout -- ${relative(repoRoot, typesEntry)}\` or regenerate ` +
+        `with \`node .design-sync/gen-entry.mjs\`.`,
+    );
+    process.exit(1);
+  }
   const current = readFileSync(typesEntry, 'utf8').replace(/\r\n/g, '\n');
   // Compare export lines only — prettier owns the committed file's formatting.
   const lines = (s) => s.split('\n').filter((l) => l.startsWith('export '));
