@@ -52,6 +52,20 @@ export function fetchLatestVersion(name, { cwd = process.cwd() } = {}) {
 }
 
 /**
+ * `npm view … versions --json` yields an array normally, but a bare string when
+ * the package has exactly one published version.
+ */
+export function normalizeVersionsPayload(parsed) {
+  if (Array.isArray(parsed)) return parsed;
+  if (typeof parsed === 'string') return [parsed];
+  return [];
+}
+
+export function fetchAllVersions(name, { cwd = process.cwd() } = {}) {
+  return normalizeVersionsPayload(JSON.parse(runNpm(['view', name, 'versions', '--json'], cwd)));
+}
+
+/**
  * Downloads the published tarball and reads CHANGELOG.md out of it. Returns
  * null when the tarball predates the packages shipping their changelog — that
  * is expected for older versions, not an error.
