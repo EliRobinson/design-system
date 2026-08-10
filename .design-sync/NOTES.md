@@ -29,6 +29,16 @@ types entry is current, warns if the reference storybook is older than the DS
 source, runs the driver, and then asserts the built roster matches Storybook.
 Any extra flags are passed through to `resync.mjs`.
 
+**`cfg.buildCmd` is scoped to `pnpm -F "@elirobinson/react..." build`, not
+`pnpm build`.** The converter only needs `packages/react/dist` and
+`packages/tokens/dist`; `pnpm build` is `nx run-many -t build` across all six
+projects, so it also builds the Next.js docs site and a full
+`apps/storybook/storybook-static/` — minutes of work the sync throws away, plus
+the Vite `[PLUGIN_TIMINGS]` and >500 kB chunk warnings that come with it. The
+trailing `...` is required: it pulls in the workspace deps (tokens). Scoped, the
+build is ~4s and touches 2 of 6 projects. Note this is unrelated to
+`.design-sync/sb-reference/`, which is built separately and IS needed.
+
 **The roster assertion is the important part.** `built === storybook titles −
 cfg.titleMap nulls`. It is the only check that catches an empty or short
 roster: the converter's own gates do not — see below.
