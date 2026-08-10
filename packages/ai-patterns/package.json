@@ -11,6 +11,9 @@
     "access": "restricted"
   },
   "type": "module",
+  "bin": {
+    "ds-resync": "./src/resync/cli.mjs"
+  },
   "files": [
     "src",
     "CHANGELOG.md"
@@ -18,7 +21,8 @@
   "exports": {
     "./patterns": "./src/patterns.md",
     "./contracts": "./src/contracts.json",
-    "./prompts/*": "./src/prompts/*"
+    "./prompts/*": "./src/prompts/*",
+    "./resync/skill": "./src/resync/SKILL.md"
   },
   "scripts": {
     "build": "echo 'No build step required for ai-patterns'",
