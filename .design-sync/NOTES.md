@@ -16,6 +16,33 @@ kit from `design-system-docs/` — a DIFFERENT project. Never sync into it.)
 - `--node-modules` is the **repo root** `node_modules` (pnpm symlinks the
   workspace packages into it; `packages/react/node_modules` is sparse).
 
+## How to run a sync
+
+```bash
+node .design-sync/sync.mjs                      # full run
+node .design-sync/sync.mjs --remote .design-sync/.cache/remote-sync.json
+node .design-sync/sync.mjs --skip-build         # iterate without rebuilding dist
+```
+
+It runs `cfg.buildCmd` (which `resync.mjs` does not), checks the generated
+types entry is current, warns if the reference storybook is older than the DS
+source, runs the driver, and then asserts the built roster matches Storybook.
+Any extra flags are passed through to `resync.mjs`.
+
+**`cfg.buildCmd` is scoped to `pnpm -F "@elirobinson/react..." build`, not
+`pnpm build`.** The converter only needs `packages/react/dist` and
+`packages/tokens/dist`; `pnpm build` is `nx run-many -t build` across all six
+projects, so it also builds the Next.js docs site and a full
+`apps/storybook/storybook-static/` — minutes of work the sync throws away, plus
+the Vite `[PLUGIN_TIMINGS]` and >500 kB chunk warnings that come with it. The
+trailing `...` is required: it pulls in the workspace deps (tokens). Scoped, the
+build is ~4s and touches 2 of 6 projects. Note this is unrelated to
+`.design-sync/sb-reference/`, which is built separately and IS needed.
+
+**The roster assertion is the important part.** `built === storybook titles −
+cfg.titleMap nulls`. It is the only check that catches an empty or short
+roster: the converter's own gates do not — see below.
+
 ## [GENERAL] The package has no barrel — the converter needs two entries
 
 The package deliberately ships no `index.ts` and no `"."` export
@@ -61,10 +88,10 @@ node .design-sync/gen-entry.mjs --check   # exits 1 if index.d.ts is stale
 Its diff is meaningful review signal — it changes only when a component enters
 or leaves the public surface. Same rationale as a committed API-surface report.
 
-**`resync.mjs` does NOT run `cfg.buildCmd`.** The driver goes straight to
-`package-build.mjs`, so it never regenerates the entries. Run
-`pnpm build && node .design-sync/gen-entry.mjs` yourself before the driver
-whenever the DS source changed.
+**Run `node .design-sync/sync.mjs`, not `resync.mjs` directly.** The driver
+goes straight to `package-build.mjs` and never runs `cfg.buildCmd`, so on its
+own it converts a stale `dist/` with stale entries. `sync.mjs` runs the inputs
+first and guards the output (see "How to run a sync" below).
 
 Why the entries must live inside `packages/react/` at all: the converter walks
 UP from `--entry` to the nearest **named** `package.json` to pick `PKG_DIR`.
@@ -127,10 +154,8 @@ What can silently go stale or was only partially verified. Check these first.
 
 - **Component drift in the generated entries.** If a component is ADDED or
   RENAMED without re-running `gen-entry.mjs`, it is missing from the bundle and
-  the roster while the build still exits 0. Run
-  `node .design-sync/gen-entry.mjs --check` (exits 1 on drift), and sanity-check
-  the `components: N` line against
-  `ls apps/storybook/src/stories/*.stories.tsx | wc -l`.
+  the roster while the build still exits 0. `sync.mjs` now catches this (roster
+  assertion); it only bites if someone runs `resync.mjs` directly.
 - **Don't let anyone "tidy away" `packages/react/index.d.ts`,** move either
   entry into `dist/`, or add a `types`/`"."` field to the package. See the
   no-barrel section above — each of those either silently zeroes the roster or

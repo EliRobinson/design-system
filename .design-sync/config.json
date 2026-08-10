@@ -4,7 +4,7 @@
   "pkg": "@elirobinson/react",
   "globalName": "MiltinsonDS",
   "entry": "packages/react/_ds-entry.mjs",
-  "buildCmd": "pnpm build && node .design-sync/gen-entry.mjs",
+  "buildCmd": "pnpm -F \"@elirobinson/react...\" build && node .design-sync/gen-entry.mjs",
   "tsconfig": "../../tsconfig.base.json",
   "tokensPkg": "@elirobinson/tokens",
   "storybookConfigDir": "apps/storybook/.storybook",
