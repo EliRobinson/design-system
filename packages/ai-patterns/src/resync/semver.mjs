@@ -76,3 +76,37 @@ export function jumpClass(from, to) {
 
   return 'none';
 }
+
+const TARGET_CONSTRAINTS = {
+  latest: () => true,
+  minor: (current, candidate) => candidate.major === current.major,
+  patch: (current, candidate) =>
+    candidate.major === current.major && candidate.minor === current.minor,
+};
+
+/**
+ * The furthest version worth moving to, given how far the caller is willing to
+ * jump. Prereleases are excluded from the candidate set — opting into one is a
+ * deliberate act, not something an upgrade command should do on your behalf —
+ * but a prerelease is still valid as the version you are on.
+ */
+export function selectTarget(current, versions, target) {
+  const constraint = TARGET_CONSTRAINTS[target];
+  if (!constraint) throw new TypeError(`Unknown target: ${target}`);
+
+  const from = parseVersion(current);
+  if (!from) throw new TypeError(`Unparseable version: ${current}`);
+
+  let best = null;
+
+  for (const value of versions) {
+    const candidate = parseVersion(value);
+    if (!candidate) continue;
+    if (candidate.prerelease.length > 0) continue;
+    if (!constraint(from, candidate)) continue;
+    if (compareVersions(value, current) < 0) continue;
+    if (best === null || compareVersions(value, best) > 0) best = value;
+  }
+
+  return best;
+}
