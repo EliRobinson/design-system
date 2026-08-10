@@ -12,7 +12,8 @@
   },
   "type": "module",
   "files": [
-    "src"
+    "src",
+    "CHANGELOG.md"
   ],
   "exports": {
     "./patterns": "./src/patterns.md",

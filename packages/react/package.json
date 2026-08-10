@@ -13,7 +13,8 @@
   "type": "module",
   "files": [
     "dist",
-    "src"
+    "src",
+    "CHANGELOG.md"
   ],
   "peerDependencies": {
     "react": "^19.0.0",
