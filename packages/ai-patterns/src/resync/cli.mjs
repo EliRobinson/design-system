@@ -4,6 +4,7 @@ import { resolve as resolvePath } from 'node:path';
 import { bumpRange, detectPackageManager, installCommand, writeVersions } from './apply.mjs';
 import { isBreaking, sliceChangelog } from './changelog.mjs';
 import { detect } from './detect.mjs';
+import { promptSelections } from './prompt.mjs';
 import { fetchAllVersions, fetchChangelog, RegistryError } from './registry.mjs';
 import { compareVersions, jumpClass, selectTarget } from './semver.mjs';
 import {
@@ -247,7 +248,7 @@ function applyUpgrades(result, cwd) {
   }
 }
 
-export function main(argv) {
+export async function main(argv) {
   let args;
   try {
     args = parseArgs(argv);
@@ -263,7 +264,27 @@ export function main(argv) {
 
   let result;
   try {
-    result = resolve(survey(args.cwd, args.only), args.targetSpec, args.cwd);
+    const surveyed = survey(args.cwd, args.only);
+
+    let targetSpec = args.targetSpec;
+    if (args.interactive) {
+      if (!process.stdin.isTTY) {
+        process.stderr.write(
+          'ds-resync: --interactive needs a terminal. Use --only and --target instead.\n',
+        );
+        return 1;
+      }
+
+      const selection = await promptSelections(surveyed.entries, {
+        input: process.stdin,
+        output: process.stdout,
+      });
+
+      surveyed.entries = surveyed.entries.filter((entry) => selection.only.includes(entry.name));
+      targetSpec = selection.targetSpec;
+    }
+
+    result = resolve(surveyed, targetSpec, args.cwd);
     if (args.write) {
       applyUpgrades(result, args.cwd);
       result.wrote = true;
@@ -286,5 +307,13 @@ export function main(argv) {
 
 // Only run when invoked as a binary, so the module stays importable by tests.
 if (process.argv[1] && process.argv[1].endsWith('cli.mjs')) {
-  process.exitCode = main(process.argv.slice(2));
+  main(process.argv.slice(2)).then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (error) => {
+      process.stderr.write(`${error.message}\n`);
+      process.exitCode = 1;
+    },
+  );
 }
