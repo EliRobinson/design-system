@@ -140,7 +140,11 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jsdom@26.1.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)
 
-  packages/ai-patterns: {}
+  packages/ai-patterns:
+    devDependencies:
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jsdom@26.1.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)
 
   packages/create-elirobinson-design-system: {}
 
