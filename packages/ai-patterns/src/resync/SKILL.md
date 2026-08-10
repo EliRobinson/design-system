@@ -18,7 +18,11 @@ pnpm dlx @elirobinson/ai-patterns ds-resync --json
 This is read-only — it never modifies the repo. It prints one record per
 `@elirobinson/*` dependency:
 
-- `installedVersion` / `latestVersion` — where the repo is and where it could be
+- `installedVersion` / `targetVersion` / `latestVersion` — where the repo is, where this
+  run would take it, and the newest thing published
+- `target` — the distance requested for this package: `latest`, `minor`, or `patch`
+- `heldBack` — true when `targetVersion` is below `latestVersion` because of `target`.
+  A held-back package is not "current"; a newer version is waiting.
 - `jump` — `major`, `minor`, `patch`, `prerelease`, or `none`. Below 1.0.0 a
   minor bump is reported as `major`, because these packages make no stability
   promise before 1.0.
@@ -59,6 +63,22 @@ runs the repo's package manager install.
 If it reports that `package.json` was updated but the install exited non-zero,
 the ranges have already changed. Read the install output before re-running —
 some package managers exit non-zero on warnings that are not install failures.
+
+## 3b. When a major is too much right now
+
+If a package has a breaking major the user is not ready for, they do not have to
+skip the upgrade entirely. Take everything below it:
+
+```bash
+pnpm dlx @elirobinson/ai-patterns ds-resync --write --target react=minor
+```
+
+`--only react,tokens` restricts the run to named packages; the scope is optional.
+`--target` accepts one distance for everything (`--target minor`) or per-package
+assignments (`--target minor,react=latest`).
+
+Offer this whenever the report shows a `major` jump the user hesitates over. Then
+tell them what remains held back, so the deferred migration stays visible.
 
 ## 4. Migrate
 

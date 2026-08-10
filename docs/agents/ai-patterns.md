@@ -11,6 +11,7 @@ some Markdown, a JSON contract file, and test helpers.
 - Follow `packages/ai-patterns/src/contracts.json` for touch targets, focus-visible, and WCAG AA contrast.
 - `ds-resync` (`packages/ai-patterns/src/resync/`) brings a consuming repo's `@elirobinson/*`
   deps up to date: `pnpm dlx @elirobinson/ai-patterns ds-resync` reports, `--write` applies.
+  `--only` and `--target` narrow which packages move and how far; `-i` picks interactively.
   The agent-facing instructions ship at `@elirobinson/ai-patterns/resync/skill`.
 
 ## Two bins, two questions
