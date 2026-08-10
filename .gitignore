@@ -12,4 +12,14 @@ apps/storybook/storybook-static/
 apps/docs/.next/
 *.tsbuildinfo
 .claude/worktrees/
+.claude/settings.local.json
 .superpowers/
+
+# design-sync (claude.ai/design) — transient build + verification state
+.design-sync/sb-reference/
+.design-sync/learnings/
+.design-sync/.cache/
+.design-sync/node_modules
+.ds-sync/
+ds-bundle/
+packages/react/_ds-entry.mjs
