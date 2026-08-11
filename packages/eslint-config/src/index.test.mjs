@@ -9,6 +9,7 @@ import cssModule from '@eslint/css';
 
 import { designSystem } from './index.mjs';
 import { designSystemCss } from './css.mjs';
+import { isExempt } from './rules/value-patterns.mjs';
 
 const linter = new Linter();
 
@@ -26,6 +27,10 @@ function lint(code, { filename = 'src/app/page.jsx', options } = {}) {
   ];
 
   return linter.verify(code, config, filename);
+}
+
+function lintCss(code, { filename = 'src/app/app.css', options } = {}) {
+  return linter.verify(code, designSystemCss(options), filename);
 }
 
 const messagesOf = (results) => results.map((result) => result.message);
@@ -214,10 +219,6 @@ describe('configurability', () => {
 });
 
 describe('CSS', () => {
-  function lintCss(code, { filename = 'src/app/app.css', options } = {}) {
-    return linter.verify(code, designSystemCss(options), filename);
-  }
-
   it('has the css language available', () => {
     expect(cssModule.languages['css']).toBeTruthy();
   });
@@ -260,5 +261,105 @@ describe('CSS', () => {
     // Linter#verify still returns the "file is ignored" notice; what matters is
     // that no rule fired.
     expect(results.filter((result) => result.ruleId)).toHaveLength(0);
+  });
+});
+
+// The two rules answer the same question about a value and only differ in how
+// they reach it, so every case below is asserted in both languages. A future
+// change that teaches one rule something the other does not know fails here
+// rather than shipping — which is how `color(display-p3 ...)` came to be an
+// error in a .tsx and silent in a .css.
+//
+// Exemptions that no check could have flagged anyway — `revert` is the case —
+// cannot fail at this level in both languages however wrong they get. Those are
+// pinned directly against isExempt below instead.
+describe('the JS and CSS rules agree about values', () => {
+  it.each([
+    {
+      what: 'color() is a colour function like any other',
+      js: '<div style={{ color: "color(display-p3 1 0 0)" }} />',
+      css: 'a { color: color(display-p3 1 0 0); }',
+      flagged: 'Hardcoded colour',
+    },
+    {
+      what: 'a hex literal',
+      js: '<div style={{ color: "#0f172a" }} />',
+      css: 'a { color: #0f172a; }',
+      flagged: 'Hardcoded colour',
+    },
+    {
+      what: 'a magic radius',
+      js: '<div style={{ borderRadius: "8px" }} />',
+      css: 'a { border-radius: 8px; }',
+      flagged: 'Hardcoded radius',
+    },
+    {
+      what: 'a magic duration',
+      js: '<div style={{ transitionDuration: "200ms" }} />',
+      css: 'a { transition-duration: 200ms; }',
+      flagged: 'Hardcoded motion',
+    },
+    {
+      what: 'zero is zero, not a design decision',
+      js: '<div style={{ borderRadius: "0px" }} />',
+      css: 'a { border-radius: 0px; }',
+      flagged: null,
+    },
+    {
+      what: 'revert is a CSS-wide keyword, valid in a style object too',
+      js: '<div style={{ color: "revert" }} />',
+      css: 'a { color: revert; }',
+      flagged: null,
+    },
+    {
+      // Tailwind v3's dot syntax — theme(colors.slate.200) — is not parseable
+      // CSS, so the form that can reach the CSS rule is Tailwind v4's.
+      what: "Tailwind's theme() resolves to a token",
+      js: '<div style={{ boxShadow: "0 1px 2px theme(--color-slate-200)" }} />',
+      css: 'a { box-shadow: 0 1px 2px theme(--color-slate-200); }',
+      flagged: null,
+    },
+    {
+      what: 'a var() reference',
+      js: '<div style={{ color: "var(--fg)" }} />',
+      css: 'a { color: var(--fg); }',
+      flagged: null,
+    },
+  ])('$what', ({ js, css, flagged }) => {
+    const jsResults = lint(`export const A = () => (${js})`);
+    const cssResults = lintCss(css);
+
+    if (flagged) {
+      expect(messagesOf(jsResults)).toHaveLength(1);
+      expect(messagesOf(cssResults)).toHaveLength(1);
+      expect(jsResults[0].message).toContain(flagged);
+      expect(cssResults[0].message).toContain(flagged);
+    } else {
+      expect(messagesOf(jsResults)).toEqual([]);
+      expect(messagesOf(cssResults)).toEqual([]);
+    }
+  });
+});
+
+describe('isExempt', () => {
+  it.each([
+    ['var(--fg)', true],
+    ['theme(colors.accent)', true],
+    ['0', true],
+    ['0px', true],
+    ['revert', true],
+    ['  transparent  ', true],
+    ['#0f172a', false],
+    ['color(display-p3 1 0 0)', false],
+    ['0.5rem', false],
+    ['revert-layer', false],
+  ])('%j is %s', (value, expected) => {
+    expect(isExempt(value)).toBe(expected);
+  });
+
+  it('a token reference anywhere in the value exempts the whole of it', () => {
+    expect(isExempt('0 1px 2px var(--shadow-hue)')).toBe(true);
+    expect(isExempt('0 1px 2px theme(--color-slate-200)')).toBe(true);
+    expect(isExempt('0 1px 2px #e2e8f0')).toBe(false);
   });
 });

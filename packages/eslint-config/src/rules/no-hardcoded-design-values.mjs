@@ -10,8 +10,14 @@
 // Tailwind's own scales are the sanctioned source for layout, and flagging
 // `p-4` would train people to disable the rule.
 
-const COLOR_FUNCTIONS = /\b(?:rgba?|hsla?|hwb|oklch|oklab|lch|lab|color)\s*\(/i;
-const HEX_COLOR = /#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})\b/i;
+import {
+  COLOR_FUNCTIONS,
+  HEX_COLOR,
+  MAGIC_DURATION,
+  MAGIC_LENGTH,
+  isExempt,
+} from './value-patterns.mjs';
+
 const NAMED_COLOR_PROPS = new Set([
   'color',
   'backgroundColor',
@@ -48,15 +54,6 @@ const DURATION_PROPS = new Set([
 
 const DEFAULT_CLASS_NAME_FUNCTIONS = ['cn', 'clsx', 'classnames', 'classNames', 'cva', 'twMerge'];
 
-/** A value that already points at a token, or is too trivial to be a decision. */
-function isExempt(value) {
-  return (
-    value.includes('var(--') ||
-    value.includes('theme(') ||
-    /^(?:0|0px|none|inherit|initial|unset|currentcolor|transparent)$/i.test(value.trim())
-  );
-}
-
 /** Tailwind arbitrary values: rounded-[8px] -> { utility: 'rounded', value: '8px' } */
 function* arbitraryValues(className) {
   for (const [, utility, value] of className.matchAll(/([\w-]+)-\[([^\]]+)\]/g)) {
@@ -71,10 +68,6 @@ const DURATION_UTILITIES = /^(?:duration|delay|ease|animate)$/;
 // the value rather than the utility — so `w-[320px]` is ignored while
 // `bg-[#fff]`, `grid-cols-[...rgb()...]` and any future colour-bearing utility
 // are caught without maintaining a list of utility prefixes.
-
-// A magic length/time: a bare number with a unit, no token behind it.
-const MAGIC_LENGTH = /(?:^|[\s(,])\d*\.?\d+(?:px|rem|em)\b/;
-const MAGIC_DURATION = /(?:^|[\s(,])\d*\.?\d+m?s\b/;
 
 export default {
   meta: {

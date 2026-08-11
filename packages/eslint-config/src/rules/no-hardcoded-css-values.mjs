@@ -1,17 +1,23 @@
 // The CSS half of no-hardcoded-design-values, for @eslint/css.
 //
 // It works on the declaration's source text rather than on css-tree's value
-// AST: the checks are the same string-level checks the JS rule runs, and
-// keeping one set of definitions is worth more than a tidier traversal.
+// AST, so that the value it judges is the same kind of string the JS rule
+// judges: both rules import what counts as a literal from ./value-patterns.mjs,
+// and a value that is exempt in a style object is exempt in a stylesheet. What
+// stays here is CSS-specific — which property names belong to which axis, and
+// the declaration traversal.
 //
 // Custom-property *definitions* (--x: #fff) are the one place a literal
 // belongs — that is what a token is — so they are left alone. Everything that
 // consumes a value has to name a token.
 
-const HEX_COLOR = /#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})\b/i;
-const COLOR_FUNCTIONS = /\b(?:rgba?|hsla?|hwb|oklch|oklab|lch|lab)\s*\(/i;
-const MAGIC_LENGTH = /(?:^|[\s(,])\d*\.?\d+(?:px|rem|em)\b/;
-const MAGIC_DURATION = /(?:^|[\s(,])\d*\.?\d+m?s\b/;
+import {
+  COLOR_FUNCTIONS,
+  HEX_COLOR,
+  MAGIC_DURATION,
+  MAGIC_LENGTH,
+  isExempt,
+} from './value-patterns.mjs';
 
 const COLOR_PROPERTIES =
   /^(?:color|background(?:-color)?|border(?:-[a-z]+)?-color|outline-color|text-decoration-color|caret-color|accent-color|fill|stroke|box-shadow|text-shadow)$/;
@@ -19,13 +25,6 @@ const RADIUS_PROPERTIES = /^border(?:-[a-z]+)*-radius$/;
 const SHADOW_PROPERTIES = /^(?:box-shadow|text-shadow)$/;
 const MOTION_PROPERTIES =
   /^(?:transition|transition-duration|transition-timing-function|animation|animation-duration|animation-timing-function)$/;
-
-function isExempt(value) {
-  return (
-    value.includes('var(--') ||
-    /^(?:0|none|inherit|initial|unset|revert|currentcolor|transparent)$/i.test(value.trim())
-  );
-}
 
 export const cssRule = {
   meta: {
