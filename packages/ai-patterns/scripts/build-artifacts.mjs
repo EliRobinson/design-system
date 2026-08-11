@@ -30,8 +30,10 @@ import {
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
+
 import { BRAND_INDEX, transformBrandDocs } from '../src/artifacts/brand.mjs';
-import { llmsFull, llmsIndex, parseTokensCss } from '../src/artifacts/llms.mjs';
+import { llmsFull, llmsIndex } from '../src/artifacts/llms.mjs';
 import { referenceSkillDoc, SKILL_DIRS } from '../src/artifacts/skills.mjs';
 
 const packageDir = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -103,7 +105,8 @@ function main() {
   for (const entry of BRAND_SOURCES) {
     const from = join(brandSource, entry);
     statSync(from); // throws with the path if the source moved
-    cpSync(from, join(brandOut, entry), { recursive: true });
+    // dereference: colors_and_type.css is a symlink to packages/tokens/src/tokens.css.
+    cpSync(from, join(brandOut, entry), { recursive: true, dereference: true });
   }
 
   const { readme, skill } = transformBrandDocs({

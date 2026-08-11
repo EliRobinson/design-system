@@ -5,6 +5,11 @@
    Single source of truth for color, type, spacing, radii, shadow, motion.
    All values are exposed as CSS custom properties on :root.
    Semantic tokens reference base tokens — never hardcode values in components.
+
+   This is the only copy. `design-system-docs/colors_and_type.css` is a symlink
+   to this file, and `src/tokens.json` is generated from it by
+   `scripts/build-tokens-json.mjs` — edit here, run the package build, and every
+   derived form follows.
    ========================================================================== */
 
 /* --- Webfonts ------------------------------------------------------------ */

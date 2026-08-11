@@ -49,32 +49,10 @@ export function versionStamp(versions) {
   ].join('\n');
 }
 
-/**
- * Token names, values, and their trailing comments, straight out of the
- * committed `tokens.css`. `var()` chains are followed so a reader gets a
- * concrete value without having to resolve the graph by hand.
- */
-export function parseTokensCss(css) {
-  const root = css.match(/:root\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
-  const raw = [...root.matchAll(/(--[\w-]+):\s*([^;]+);(?:[ \t]*\/\*\s*([\s\S]*?)\s*\*\/)?/g)].map(
-    (match) => ({
-      name: match[1],
-      value: match[2].trim(),
-      comment: match[3]?.replace(/\s+/g, ' ') ?? null,
-    }),
-  );
-
-  const byName = new Map(raw.map((token) => [token.name, token.value]));
-  const resolve = (value, depth = 0) => {
-    if (depth > 8) return value;
-    return value.replace(/var\((--[\w-]+)\)/g, (whole, name) => {
-      const target = byName.get(name);
-      return target ? resolve(target, depth + 1) : whole;
-    });
-  };
-
-  return raw.map((token) => ({ ...token, resolved: resolve(token.value) }));
-}
+/* The token list this file renders comes from `parseTokensCss` in
+   @elirobinson/tokens — the one parser — which `scripts/build-artifacts.mjs`
+   calls before handing the result to `llmsFull`. This module used to carry a
+   character-for-character copy of it. */
 
 function propsTable(props) {
   if (!props || props.length === 0) {
