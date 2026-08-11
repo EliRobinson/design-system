@@ -3,28 +3,15 @@
 // It works on the declaration's source text rather than on css-tree's value
 // AST, so that the value it judges is the same kind of string the JS rule
 // judges: both rules import what counts as a literal from ./value-patterns.mjs,
-// and a value that is exempt in a style object is exempt in a stylesheet. What
-// stays here is CSS-specific — which property names belong to which axis, and
-// the declaration traversal.
+// and a value that is exempt in a style object is exempt in a stylesheet. Which
+// property belongs to which axis comes from there too, keyed by the kebab-case
+// spelling. What stays here is the declaration traversal.
 //
 // Custom-property *definitions* (--x: #fff) are the one place a literal
 // belongs — that is what a token is — so they are left alone. Everything that
 // consumes a value has to name a token.
 
-import {
-  COLOR_FUNCTIONS,
-  HEX_COLOR,
-  MAGIC_DURATION,
-  MAGIC_LENGTH,
-  isExempt,
-} from './value-patterns.mjs';
-
-const COLOR_PROPERTIES =
-  /^(?:color|background(?:-color)?|border(?:-[a-z]+)?-color|outline-color|text-decoration-color|caret-color|accent-color|fill|stroke|box-shadow|text-shadow)$/;
-const RADIUS_PROPERTIES = /^border(?:-[a-z]+)*-radius$/;
-const SHADOW_PROPERTIES = /^(?:box-shadow|text-shadow)$/;
-const MOTION_PROPERTIES =
-  /^(?:transition|transition-duration|transition-timing-function|animation|animation-duration|animation-timing-function)$/;
+import { axisForCssProperty, isExempt } from './value-patterns.mjs';
 
 export const cssRule = {
   meta: {
@@ -60,31 +47,12 @@ export const cssRule = {
         const value = text.slice(text.indexOf(':') + 1).trim();
         if (!value || isExempt(value)) return;
 
-        const data = { property, value };
-
-        if (RADIUS_PROPERTIES.test(property) && MAGIC_LENGTH.test(value)) {
-          context.report({ node, messageId: 'radius', data });
-          return;
-        }
-
-        if (SHADOW_PROPERTIES.test(property) && MAGIC_LENGTH.test(value)) {
-          context.report({ node, messageId: 'shadow', data });
-          return;
-        }
-
-        if (
-          MOTION_PROPERTIES.test(property) &&
-          (MAGIC_DURATION.test(value) || value.includes('cubic-bezier'))
-        ) {
-          context.report({ node, messageId: 'duration', data });
-          return;
-        }
-
-        if (
-          COLOR_PROPERTIES.test(property) &&
-          (HEX_COLOR.test(value) || COLOR_FUNCTIONS.test(value))
-        ) {
-          context.report({ node, messageId: 'color', data });
+        // One axis per property, so there is no branch order here to disagree
+        // with the JS rule's — which is how `text-shadow: 0 0 rgb(...)` used to
+        // come out as a colour here and as a shadow there.
+        const axis = axisForCssProperty(property);
+        if (axis?.matches(value)) {
+          context.report({ node, messageId: axis.messageId, data: { property, value } });
         }
       },
     };

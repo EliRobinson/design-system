@@ -9,7 +9,12 @@ import cssModule from '@eslint/css';
 
 import { designSystem } from './index.mjs';
 import { designSystemCss } from './css.mjs';
-import { isExempt } from './rules/value-patterns.mjs';
+import {
+  DESIGN_PROPERTIES,
+  axisForCssProperty,
+  axisForJsProperty,
+  isExempt,
+} from './rules/value-patterns.mjs';
 
 const linter = new Linter();
 
@@ -324,6 +329,120 @@ describe('the JS and CSS rules agree about values', () => {
       js: '<div style={{ color: "var(--fg)" }} />',
       css: 'a { color: var(--fg); }',
       flagged: null,
+    },
+  ])('$what', ({ js, css, flagged }) => {
+    const jsResults = lint(`export const A = () => (${js})`);
+    const cssResults = lintCss(css);
+
+    if (flagged) {
+      expect(messagesOf(jsResults)).toHaveLength(1);
+      expect(messagesOf(cssResults)).toHaveLength(1);
+      expect(jsResults[0].message).toContain(flagged);
+      expect(cssResults[0].message).toContain(flagged);
+    } else {
+      expect(messagesOf(jsResults)).toEqual([]);
+      expect(messagesOf(cssResults)).toEqual([]);
+    }
+  });
+});
+
+// The value half of the question is settled above. This is the property half:
+// which *axis* a property belongs to — colour, radius, shadow or motion. That
+// used to be answered separately in each rule, off a camelCase Set on one side
+// and a kebab-case regex on the other, and had drifted the same way the regexes
+// had: `filter: drop-shadow(...)` was an error in a style object and silent in a
+// stylesheet, and `text-shadow: 0 0 rgb(...)` reported two different message ids
+// depending on the language.
+//
+// Both rules now read the axis from one table in value-patterns.mjs, so a
+// property has exactly one axis and both spellings of it resolve to the same
+// one. The generated case below walks that table; the hand-written cases pin the
+// specific disagreements that were reconciled.
+describe('the JS and CSS rules agree about which axis a property belongs to', () => {
+  it('every property in the table resolves to the same axis in both spellings', () => {
+    expect(DESIGN_PROPERTIES.length).toBeGreaterThan(0);
+
+    for (const { js, css, axis } of DESIGN_PROPERTIES) {
+      expect(axisForJsProperty(js)?.name, `${js} (js)`).toBe(axis);
+      expect(axisForCssProperty(css)?.name, `${css} (css)`).toBe(axis);
+      // Same axis object, not merely the same name — one predicate, not two.
+      expect(axisForCssProperty(css), `${css} vs ${js}`).toBe(axisForJsProperty(js));
+    }
+  });
+
+  it('no property sits on two axes', () => {
+    const seen = new Map();
+
+    for (const { js, axis } of DESIGN_PROPERTIES) {
+      expect(seen.has(js), `${js} listed twice`).toBe(false);
+      seen.set(js, axis);
+    }
+  });
+
+  it.each([
+    {
+      what: 'a filter carrying a drop-shadow is a shadow',
+      js: '<div style={{ filter: "drop-shadow(0 4px 8px #000)" }} />',
+      css: 'a { filter: drop-shadow(0 4px 8px #000); }',
+      flagged: 'Hardcoded shadow',
+    },
+    {
+      what: 'a backdrop-filter carrying a drop-shadow is a shadow',
+      js: '<div style={{ backdropFilter: "drop-shadow(0 4px 8px #000)" }} />',
+      css: 'a { backdrop-filter: drop-shadow(0 4px 8px #000); }',
+      flagged: 'Hardcoded shadow',
+    },
+    {
+      // A blur radius is not a shadow, and "use shadow-md" is wrong advice for
+      // it. filter only counts on the shadow axis when it carries a shadow.
+      what: 'a filter that is not a shadow is not a shadow',
+      js: '<div style={{ filter: "blur(4px)" }} />',
+      css: 'a { filter: blur(4px); }',
+      flagged: null,
+    },
+    {
+      // Reported as a shadow in both, not as a stray colour in one of them:
+      // box-shadow's axis is shadow whatever the value happens to carry.
+      what: 'a shadow whose only literal is a colour is still a shadow',
+      js: '<div style={{ textShadow: "0 0 rgb(0 0 0 / .5)" }} />',
+      css: 'a { text-shadow: 0 0 rgb(0 0 0 / .5); }',
+      flagged: 'Hardcoded shadow',
+    },
+    {
+      what: 'a box-shadow whose only literal is a colour is still a shadow',
+      js: '<div style={{ boxShadow: "0 0 rgb(0 0 0 / .5)" }} />',
+      css: 'a { box-shadow: 0 0 rgb(0 0 0 / .5); }',
+      flagged: 'Hardcoded shadow',
+    },
+    {
+      what: 'a box-shadow with a magic length is a shadow',
+      js: '<div style={{ boxShadow: "0 4px 12px rgba(0,0,0,.1)" }} />',
+      css: 'a { box-shadow: 0 4px 12px rgba(0,0,0,.1); }',
+      flagged: 'Hardcoded shadow',
+    },
+    {
+      what: 'column-rule-color is a colour',
+      js: '<div style={{ columnRuleColor: "#0f172a" }} />',
+      css: 'a { column-rule-color: #0f172a; }',
+      flagged: 'Hardcoded colour',
+    },
+    {
+      what: 'a logical border colour is a colour',
+      js: '<div style={{ borderBlockColor: "#0f172a" }} />',
+      css: 'a { border-block-color: #0f172a; }',
+      flagged: 'Hardcoded colour',
+    },
+    {
+      what: 'a two-segment logical border colour is a colour',
+      js: '<div style={{ borderInlineStartColor: "#0f172a" }} />',
+      css: 'a { border-inline-start-color: #0f172a; }',
+      flagged: 'Hardcoded colour',
+    },
+    {
+      what: 'a logical border radius is a radius',
+      js: '<div style={{ borderStartStartRadius: "8px" }} />',
+      css: 'a { border-start-start-radius: 8px; }',
+      flagged: 'Hardcoded radius',
     },
   ])('$what', ({ js, css, flagged }) => {
     const jsResults = lint(`export const A = () => (${js})`);

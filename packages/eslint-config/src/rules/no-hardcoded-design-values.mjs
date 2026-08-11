@@ -15,42 +15,9 @@ import {
   HEX_COLOR,
   MAGIC_DURATION,
   MAGIC_LENGTH,
+  axisForJsProperty,
   isExempt,
 } from './value-patterns.mjs';
-
-const NAMED_COLOR_PROPS = new Set([
-  'color',
-  'backgroundColor',
-  'background',
-  'borderColor',
-  'borderTopColor',
-  'borderRightColor',
-  'borderBottomColor',
-  'borderLeftColor',
-  'outlineColor',
-  'textDecorationColor',
-  'caretColor',
-  'accentColor',
-  'columnRuleColor',
-  'fill',
-  'stroke',
-]);
-const RADIUS_PROPS = new Set([
-  'borderRadius',
-  'borderTopLeftRadius',
-  'borderTopRightRadius',
-  'borderBottomLeftRadius',
-  'borderBottomRightRadius',
-]);
-const SHADOW_PROPS = new Set(['boxShadow', 'textShadow', 'filter', 'backdropFilter']);
-const DURATION_PROPS = new Set([
-  'transition',
-  'transitionDuration',
-  'transitionTimingFunction',
-  'animation',
-  'animationDuration',
-  'animationTimingFunction',
-]);
 
 const DEFAULT_CLASS_NAME_FUNCTIONS = ['cn', 'clsx', 'classnames', 'classNames', 'cva', 'twMerge'];
 
@@ -159,28 +126,10 @@ export default {
     function checkStyleProperty(node, name, value) {
       if (isExempt(value)) return;
 
-      // Order matters: a shadow carries a colour inside it, and "use a shadow
-      // token" is the more actionable of the two messages.
-      if (SHADOW_PROPS.has(name)) {
-        if (MAGIC_LENGTH.test(value) || HEX_COLOR.test(value) || COLOR_FUNCTIONS.test(value)) {
-          report(node, 'shadow', value);
-        }
-        return;
-      }
-
-      if (RADIUS_PROPS.has(name)) {
-        if (MAGIC_LENGTH.test(value)) report(node, 'radius', value);
-        return;
-      }
-
-      if (DURATION_PROPS.has(name)) {
-        if (MAGIC_DURATION.test(value) || value.includes('cubic-bezier')) {
-          report(node, 'duration', value);
-        }
-        return;
-      }
-
-      if (NAMED_COLOR_PROPS.has(name)) checkColor(node, value);
+      // No branch order to get wrong — the property has one axis, and the axis
+      // brings its own test and message. A shadow carrying a colour is a shadow.
+      const axis = axisForJsProperty(name);
+      if (axis?.matches(value)) report(node, axis.messageId, axis.highlight(value));
     }
 
     /** Every static string inside an expression, template literals included. */
@@ -259,15 +208,7 @@ export default {
       // Style objects living outside JSX still ship the same literal.
       Property(node) {
         const name = propertyName(node);
-        if (!name) return;
-        if (
-          !NAMED_COLOR_PROPS.has(name) &&
-          !RADIUS_PROPS.has(name) &&
-          !SHADOW_PROPS.has(name) &&
-          !DURATION_PROPS.has(name)
-        ) {
-          return;
-        }
+        if (!name || !axisForJsProperty(name)) return;
         if (node.value.type !== 'Literal' || typeof node.value.value !== 'string') return;
         checkStyleProperty(node.value, name, node.value.value);
       },
