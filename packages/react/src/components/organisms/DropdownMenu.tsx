@@ -1,19 +1,15 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
-import { createContext, forwardRef, useCallback, useContext, useId, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { createContext, forwardRef, useContext, useEffect, useMemo, useState } from 'react';
 
-import { useAnchoredPosition } from '../../hooks/useAnchoredPosition';
-import { useClickOutside } from '../../hooks/useClickOutside';
-import { useEscapeKey } from '../../hooks/useEscapeKey';
-import { useHasMounted } from '../../hooks/useHasMounted';
 import { cn } from '../../lib/cn';
+import type { AnchoredOverlayContextValue } from './overlay/anchoredOverlay';
+import {
+  AnchoredOverlayContent,
+  AnchoredOverlayTrigger,
+  useAnchoredOverlay,
+} from './overlay/anchoredOverlay';
 
-type DropdownMenuContextValue = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  triggerRef: React.RefObject<HTMLButtonElement | null>;
-  contentRef: React.RefObject<HTMLDivElement | null>;
-  menuId: string;
+type DropdownMenuContextValue = AnchoredOverlayContextValue & {
   activeIndex: number;
   setActiveIndex: (index: number) => void;
 };
@@ -36,111 +32,66 @@ export type DropdownMenuProps = {
 };
 
 export function DropdownMenu({
-  open: controlledOpen,
+  open,
   defaultOpen = false,
   onOpenChange,
   children,
 }: DropdownMenuProps) {
-  const menuId = useId();
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const overlay = useAnchoredOverlay({ open, defaultOpen, onOpenChange });
   const [activeIndex, setActiveIndex] = useState(-1);
-  const open = controlledOpen ?? uncontrolledOpen;
 
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (controlledOpen === undefined) {
-        setUncontrolledOpen(next);
-      }
-      if (!next) {
-        setActiveIndex(-1);
-      }
-      onOpenChange?.(next);
-    },
-    [controlledOpen, onOpenChange],
+  // The roving highlight is only meaningful while the menu is on screen, so a
+  // closed menu always reopens on nothing. Keyed off the resolved state rather
+  // than the close callback so a controlled consumer closing via the `open`
+  // prop resets it too.
+  useEffect(() => {
+    if (!overlay.open) {
+      setActiveIndex(-1);
+    }
+  }, [overlay.open]);
+
+  const context = useMemo(
+    () => ({ ...overlay, activeIndex, setActiveIndex }),
+    [overlay, activeIndex],
   );
 
-  useAnchoredPosition(open, triggerRef, contentRef);
-  useClickOutside([triggerRef, contentRef], () => handleOpenChange(false), open);
-  useEscapeKey(() => handleOpenChange(false), open);
-
-  return (
-    <DropdownMenuContext.Provider
-      value={{
-        open,
-        onOpenChange: handleOpenChange,
-        triggerRef,
-        contentRef,
-        menuId,
-        activeIndex,
-        setActiveIndex,
-      }}
-    >
-      {children}
-    </DropdownMenuContext.Provider>
-  );
+  return <DropdownMenuContext.Provider value={context}>{children}</DropdownMenuContext.Provider>;
 }
 
 export type DropdownMenuTriggerProps = ButtonHTMLAttributes<HTMLButtonElement>;
 
 export const DropdownMenuTrigger = forwardRef<HTMLButtonElement, DropdownMenuTriggerProps>(
-  function DropdownMenuTrigger({ className, onClick, children, ...props }, ref) {
-    const { open, onOpenChange, triggerRef, menuId } = useDropdownMenuContext();
-
-    const setRefs = useCallback(
-      (node: HTMLButtonElement | null) => {
-        triggerRef.current = node;
-        if (typeof ref === 'function') {
-          ref(node);
-        } else if (ref) {
-          ref.current = node;
-        }
-      },
-      [ref, triggerRef],
-    );
+  function DropdownMenuTrigger({ className, ...props }, ref) {
+    const overlay = useDropdownMenuContext();
 
     return (
-      <button
-        ref={setRefs}
-        type="button"
+      <AnchoredOverlayTrigger
+        ref={ref}
+        overlay={overlay}
         className={cn('ds-dropdown__trigger', className)}
         aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={menuId}
-        onClick={(event) => {
-          onClick?.(event);
-          onOpenChange(!open);
-        }}
         {...props}
-      >
-        {children}
-      </button>
+      />
     );
   },
 );
 
 export type DropdownMenuContentProps = HTMLAttributes<HTMLDivElement>;
 
-export function DropdownMenuContent({ className, children, ...props }: DropdownMenuContentProps) {
-  const { open, onOpenChange, contentRef, menuId, activeIndex, setActiveIndex } =
-    useDropdownMenuContext();
-  const hasMounted = useHasMounted();
+export function DropdownMenuContent({ className, ...props }: DropdownMenuContentProps) {
+  const context = useDropdownMenuContext();
+  const { onOpenChange, contentRef, activeIndex, setActiveIndex } = context;
 
-  // A closed menu never reaches the portal, so an uncontrolled DropdownMenu
-  // survives a server render on its own. One opened via the `open` prop does
-  // not — hence the mount gate.
-  if (!open || !hasMounted) {
-    return null;
-  }
-
-  return createPortal(
-    <div
-      ref={contentRef}
-      id={menuId}
+  return (
+    <AnchoredOverlayContent
+      overlay={context}
       role="menu"
       className={cn('ds-dropdown__content', className)}
       onKeyDown={(event) => {
+        // DOM focus moves with the highlight here, unlike the
+        // aria-activedescendant widgets: menu items are real buttons, so the
+        // menu is queried live rather than kept in state — items can be
+        // rendered conditionally by the consumer.
         const items = contentRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]');
         if (!items?.length) {
           return;
@@ -170,10 +121,7 @@ export function DropdownMenuContent({ className, children, ...props }: DropdownM
         }
       }}
       {...props}
-    >
-      {children}
-    </div>,
-    document.body,
+    />
   );
 }
 

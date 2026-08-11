@@ -1,14 +1,17 @@
-import type { HTMLAttributes, ReactNode } from 'react';
-import { createContext, forwardRef, useCallback, useContext, useId, useRef, useState } from 'react';
+import type { HTMLAttributes, ReactNode, RefObject } from 'react';
+import { createContext, forwardRef, useContext, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useAnchoredPosition } from '../../hooks/useAnchoredPosition';
+import { useHasMounted } from '../../hooks/useHasMounted';
 import { cn } from '../../lib/cn';
+import { useMergedRef } from '../../lib/useMergedRef';
 
 type TooltipContextValue = {
   open: boolean;
   setOpen: (open: boolean) => void;
-  triggerRef: React.RefObject<HTMLElement | null>;
-  contentRef: React.RefObject<HTMLDivElement | null>;
+  triggerRef: RefObject<HTMLSpanElement | null>;
+  contentRef: RefObject<HTMLDivElement | null>;
   tooltipId: string;
 };
 
@@ -29,9 +32,18 @@ export type TooltipProps = {
 
 export function Tooltip({ children }: TooltipProps) {
   const tooltipId = useId();
-  const triggerRef = useRef<HTMLElement>(null);
+  const triggerRef = useRef<HTMLSpanElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+
+  // Same anchoring as Popover and DropdownMenu, so a tooltip follows its
+  // trigger through a scroll or a resize instead of being measured once during
+  // render and left behind. It is centred rather than left-aligned, and it
+  // rides above the other overlays.
+  useAnchoredPosition(open, triggerRef, contentRef, {
+    align: 'center',
+    zIndex: 'var(--z-tooltip)',
+  });
 
   return (
     <TooltipContext.Provider value={{ open, setOpen, triggerRef, contentRef, tooltipId }}>
@@ -48,18 +60,7 @@ export const TooltipTrigger = forwardRef<HTMLSpanElement, TooltipTriggerProps>(
     ref,
   ) {
     const { setOpen, triggerRef, tooltipId } = useTooltipContext();
-
-    const setRefs = useCallback(
-      (node: HTMLSpanElement | null) => {
-        triggerRef.current = node;
-        if (typeof ref === 'function') {
-          ref(node);
-        } else if (ref) {
-          ref.current = node;
-        }
-      },
-      [ref, triggerRef],
-    );
+    const setRefs = useMergedRef<HTMLSpanElement>(triggerRef, ref);
 
     const show = () => setOpen(true);
     const hide = () => setOpen(false);
@@ -94,13 +95,17 @@ export const TooltipTrigger = forwardRef<HTMLSpanElement, TooltipTriggerProps>(
 export type TooltipContentProps = HTMLAttributes<HTMLDivElement>;
 
 export function TooltipContent({ className, children, ...props }: TooltipContentProps) {
-  const { open, triggerRef, contentRef, tooltipId } = useTooltipContext();
+  const { open, contentRef, tooltipId } = useTooltipContext();
+  const hasMounted = useHasMounted();
 
-  if (!open || !triggerRef.current) {
+  // The mount gate its siblings use, rather than the old `!triggerRef.current`
+  // check: that guard existed because positioning was read off the trigger
+  // during render, and it only kept the portal off the server by accident.
+  // `useAnchoredPosition` now measures in a layout effect, so what is left to
+  // guard is the portal's `document.body` — which is exactly this.
+  if (!open || !hasMounted) {
     return null;
   }
-
-  const rect = triggerRef.current.getBoundingClientRect();
 
   return createPortal(
     <div
@@ -108,13 +113,6 @@ export function TooltipContent({ className, children, ...props }: TooltipContent
       id={tooltipId}
       role="tooltip"
       className={cn('ds-tooltip__content', className)}
-      style={{
-        position: 'fixed',
-        top: rect.bottom + 6,
-        left: rect.left + rect.width / 2,
-        transform: 'translateX(-50%)',
-        zIndex: 'var(--z-tooltip)',
-      }}
       {...props}
     >
       {children}

@@ -2,6 +2,7 @@ import type { KeyboardEvent } from 'react';
 import { forwardRef, useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { cn } from '../../lib/cn';
+import { useMergedRef } from '../../lib/useMergedRef';
 import { useActiveDescendant } from '../../hooks/useActiveDescendant';
 import { Kbd } from '../atoms/Kbd';
 import { SearchField } from '../molecules/SearchField';
@@ -28,8 +29,9 @@ export type CommandPaletteProps = {
 // did) renders no role="dialog", no modality, no focus trap, and no Escape
 // handling -- it's an inert <div> that happens to be positioned by nothing.
 // `DialogContent` must be the thing that actually wraps the palette markup,
-// and it hardcodes `aria-labelledby="ds-dialog-title"`, which dangles
-// without a `DialogTitle` -- so one is always rendered here too.
+// and its `aria-labelledby` points at the id the surrounding `Dialog` minted
+// for its title, which dangles without a `DialogTitle` -- so one is always
+// rendered here too.
 //
 // CommandPaletteProps is a closed set, mirroring Combobox: no HTML-attribute
 // passthrough and no trailing `{...props}` spread anywhere below, so a
@@ -44,20 +46,9 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
 
     // A single ref prop can only point one direction, but both this
     // component (to focus the input on open) and a consumer (via the
-    // forwarded `ref`) need the underlying input node. Merge them, same
-    // pattern as DialogContent's `setRefs`.
+    // forwarded `ref`) need the underlying input node.
     const inputRef = useRef<HTMLInputElement>(null);
-    const setInputRef = useCallback(
-      (node: HTMLInputElement | null) => {
-        inputRef.current = node;
-        if (typeof ref === 'function') {
-          ref(node);
-        } else if (ref) {
-          ref.current = node;
-        }
-      },
-      [ref],
-    );
+    const setInputRef = useMergedRef<HTMLInputElement>(inputRef, ref);
 
     const filtered = commands.filter((command) =>
       command.label.toLowerCase().includes(query.toLowerCase()),

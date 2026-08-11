@@ -52,9 +52,9 @@ describe('CommandPalette', () => {
     const dialog = screen.getByRole('dialog');
     const labelledbyId = dialog.getAttribute('aria-labelledby');
 
-    // DialogContent hardcodes aria-labelledby="ds-dialog-title" -- if this
-    // component never renders a <DialogTitle>, that id dangles and the
-    // dialog has no accessible name at all.
+    // DialogContent's aria-labelledby points at the id Dialog minted for its
+    // title -- if this component never renders a <DialogTitle>, that id
+    // dangles and the dialog has no accessible name at all.
     expect(labelledbyId).toBeTruthy();
     expect(document.getElementById(labelledbyId as string)).toBeInTheDocument();
     expect(dialog).toHaveAccessibleName();

@@ -2321,12 +2321,17 @@
     {
       "name": "useAnchoredPosition",
       "importPath": "@elirobinson/react/hooks/useAnchoredPosition",
-      "description": "Fixed-position layout for a floating panel relative to its trigger, above or below, kept inside the viewport."
+      "description": "Positions a floating panel against its trigger with `position: fixed`, and\nkeeps it there while the page scrolls or the window resizes.\n\nGeometry is written straight to the node's inline style rather than held in\nstate: this runs in a layout effect, before paint, so the panel never shows\nup in the wrong place first. The fourth argument accepts a bare side for the\ncommon case (`'top'` / `'bottom'`) or an options object.\n\nIt does not flip or clamp the panel to stay inside the viewport — a panel\nanchored near an edge can overflow it."
     },
     {
       "name": "useClickOutside",
       "importPath": "@elirobinson/react/hooks/useClickOutside",
       "description": "Calls back when a pointer-down lands outside the given refs — the dismissal half of every overlay."
+    },
+    {
+      "name": "useDisclosure",
+      "importPath": "@elirobinson/react/hooks/useDisclosure",
+      "description": "Open/closed state for a component that has to work both ways round: a\nconsumer either passes `open` and owns the value, or passes neither and lets\nthe component own it, seeded by `defaultOpen`.\n\n`open` resolves to the controlled prop whenever there is one and to internal\nstate otherwise, and `setOpen` writes internal state only in the\nuncontrolled case while always reporting through `onOpenChange` — so a\ncontrolled consumer never ends up fighting a second copy of the truth.\n\n`setOpen` keeps one identity for the component's lifetime; the current\n`onOpenChange` is read from a ref at call time. That matters because the\ndismissal hooks (`useClickOutside`, `useEscapeKey`) take a callback as a\ndependency, and callers write that callback inline."
     },
     {
       "name": "useEscapeKey",

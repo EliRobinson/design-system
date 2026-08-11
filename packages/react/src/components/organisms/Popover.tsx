@@ -1,22 +1,15 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
-import { createContext, forwardRef, useCallback, useContext, useId, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { createContext, forwardRef, useContext } from 'react';
 
-import { useAnchoredPosition } from '../../hooks/useAnchoredPosition';
-import { useClickOutside } from '../../hooks/useClickOutside';
-import { useEscapeKey } from '../../hooks/useEscapeKey';
-import { useHasMounted } from '../../hooks/useHasMounted';
 import { cn } from '../../lib/cn';
+import type { AnchoredOverlayContextValue } from './overlay/anchoredOverlay';
+import {
+  AnchoredOverlayContent,
+  AnchoredOverlayTrigger,
+  useAnchoredOverlay,
+} from './overlay/anchoredOverlay';
 
-type PopoverContextValue = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  triggerRef: React.RefObject<HTMLButtonElement | null>;
-  contentRef: React.RefObject<HTMLDivElement | null>;
-  contentId: string;
-};
-
-const PopoverContext = createContext<PopoverContextValue | null>(null);
+const PopoverContext = createContext<AnchoredOverlayContextValue | null>(null);
 
 function usePopoverContext() {
   const context = useContext(PopoverContext);
@@ -33,101 +26,40 @@ export type PopoverProps = {
   children: ReactNode;
 };
 
-export function Popover({
-  open: controlledOpen,
-  defaultOpen = false,
-  onOpenChange,
-  children,
-}: PopoverProps) {
-  const contentId = useId();
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
-  const open = controlledOpen ?? uncontrolledOpen;
+export function Popover({ open, defaultOpen = false, onOpenChange, children }: PopoverProps) {
+  const overlay = useAnchoredOverlay({ open, defaultOpen, onOpenChange });
 
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (controlledOpen === undefined) {
-        setUncontrolledOpen(next);
-      }
-      onOpenChange?.(next);
-    },
-    [controlledOpen, onOpenChange],
-  );
-
-  useAnchoredPosition(open, triggerRef, contentRef);
-  useClickOutside([triggerRef, contentRef], () => handleOpenChange(false), open);
-  useEscapeKey(() => handleOpenChange(false), open);
-
-  return (
-    <PopoverContext.Provider
-      value={{ open, onOpenChange: handleOpenChange, triggerRef, contentRef, contentId }}
-    >
-      {children}
-    </PopoverContext.Provider>
-  );
+  return <PopoverContext.Provider value={overlay}>{children}</PopoverContext.Provider>;
 }
 
 export type PopoverTriggerProps = ButtonHTMLAttributes<HTMLButtonElement>;
 
 export const PopoverTrigger = forwardRef<HTMLButtonElement, PopoverTriggerProps>(
-  function PopoverTrigger({ className, onClick, children, ...props }, ref) {
-    const { open, onOpenChange, triggerRef, contentId } = usePopoverContext();
-
-    const setRefs = useCallback(
-      (node: HTMLButtonElement | null) => {
-        triggerRef.current = node;
-        if (typeof ref === 'function') {
-          ref(node);
-        } else if (ref) {
-          ref.current = node;
-        }
-      },
-      [ref, triggerRef],
-    );
+  function PopoverTrigger({ className, ...props }, ref) {
+    const overlay = usePopoverContext();
 
     return (
-      <button
-        ref={setRefs}
-        type="button"
+      <AnchoredOverlayTrigger
+        ref={ref}
+        overlay={overlay}
         className={cn('ds-popover__trigger', className)}
-        aria-expanded={open}
-        aria-controls={contentId}
-        onClick={(event) => {
-          onClick?.(event);
-          onOpenChange(!open);
-        }}
         {...props}
-      >
-        {children}
-      </button>
+      />
     );
   },
 );
 
 export type PopoverContentProps = HTMLAttributes<HTMLDivElement>;
 
-export function PopoverContent({ className, children, ...props }: PopoverContentProps) {
-  const { open, contentRef, contentId } = usePopoverContext();
-  const hasMounted = useHasMounted();
+export function PopoverContent({ className, ...props }: PopoverContentProps) {
+  const overlay = usePopoverContext();
 
-  // A closed popover never reaches the portal, so an uncontrolled Popover
-  // survives a server render on its own. One opened via the `open` prop does
-  // not — hence the mount gate.
-  if (!open || !hasMounted) {
-    return null;
-  }
-
-  return createPortal(
-    <div
-      ref={contentRef}
-      id={contentId}
+  return (
+    <AnchoredOverlayContent
+      overlay={overlay}
       role="dialog"
       className={cn('ds-popover__content', className)}
       {...props}
-    >
-      {children}
-    </div>,
-    document.body,
+    />
   );
 }

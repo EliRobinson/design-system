@@ -1,27 +1,16 @@
 import type { HTMLAttributes, ReactNode } from 'react';
-import {
-  createContext,
-  forwardRef,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { createContext, forwardRef, useContext } from 'react';
 
 import { cn } from '../../lib/cn';
+import type { ModalSurfaceContextValue } from './overlay/modalSurface';
+import { ModalClose, ModalSurface, ModalTrigger, useModalSurface } from './overlay/modalSurface';
 
 type SheetSide = 'left' | 'right' | 'top' | 'bottom';
 
-type SheetContextValue = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  titleId: string;
-  descriptionId: string;
-  side: SheetSide;
-};
-
-const SheetContext = createContext<SheetContextValue | null>(null);
+// `side` is deliberately not on the context: `SheetContent` takes it as a prop
+// and is the only thing that renders anything positional, so a second copy on
+// the context could only ever disagree with it.
+const SheetContext = createContext<ModalSurfaceContextValue | null>(null);
 
 function useSheetContext() {
   const context = useContext(SheetContext);
@@ -38,54 +27,17 @@ export type SheetProps = {
   children: ReactNode;
 };
 
-export function Sheet({
-  open: controlledOpen,
-  defaultOpen = false,
-  onOpenChange,
-  children,
-}: SheetProps) {
-  const titleId = 'ds-sheet-title';
-  const descriptionId = 'ds-sheet-description';
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
-  const open = controlledOpen ?? uncontrolledOpen;
+export function Sheet({ open, defaultOpen = false, onOpenChange, children }: SheetProps) {
+  const context = useModalSurface({ open, defaultOpen, onOpenChange });
 
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (controlledOpen === undefined) {
-        setUncontrolledOpen(next);
-      }
-      onOpenChange?.(next);
-    },
-    [controlledOpen, onOpenChange],
-  );
-
-  return (
-    <SheetContext.Provider
-      value={{ open, onOpenChange: handleOpenChange, titleId, descriptionId, side: 'right' }}
-    >
-      {children}
-    </SheetContext.Provider>
-  );
+  return <SheetContext.Provider value={context}>{children}</SheetContext.Provider>;
 }
 
 export type SheetTriggerProps = HTMLAttributes<HTMLButtonElement>;
 
-export function SheetTrigger({ className, onClick, children, ...props }: SheetTriggerProps) {
+export function SheetTrigger(props: SheetTriggerProps) {
   const { onOpenChange } = useSheetContext();
-
-  return (
-    <button
-      type="button"
-      className={className}
-      onClick={(event) => {
-        onClick?.(event);
-        onOpenChange(true);
-      }}
-      {...props}
-    >
-      {children}
-    </button>
-  );
+  return <ModalTrigger onOpenChange={onOpenChange} {...props} />;
 }
 
 export type SheetContentProps = HTMLAttributes<HTMLDialogElement> & {
@@ -93,52 +45,19 @@ export type SheetContentProps = HTMLAttributes<HTMLDialogElement> & {
 };
 
 export const SheetContent = forwardRef<HTMLDialogElement, SheetContentProps>(function SheetContent(
-  { className, side = 'right', children, ...props },
+  { className, side = 'right', ...props },
   ref,
 ) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const { open, onOpenChange, titleId, descriptionId } = useSheetContext();
-
-  const setRefs = useCallback(
-    (node: HTMLDialogElement | null) => {
-      dialogRef.current = node;
-      if (typeof ref === 'function') {
-        ref(node);
-      } else if (ref) {
-        ref.current = node;
-      }
-    },
-    [ref],
-  );
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) {
-      return;
-    }
-    if (open && !dialog.open) {
-      dialog.showModal();
-    } else if (!open && dialog.open) {
-      dialog.close();
-    }
-  }, [open]);
+  const context = useSheetContext();
 
   return (
-    <dialog
-      ref={setRefs}
+    <ModalSurface
+      ref={ref}
+      context={context}
       className={cn('ds-sheet', `ds-sheet--${side}`, className)}
-      aria-labelledby={titleId}
-      aria-describedby={descriptionId}
-      onClose={() => onOpenChange(false)}
-      onClick={(event) => {
-        if (event.target === dialogRef.current) {
-          onOpenChange(false);
-        }
-      }}
+      innerClassName="ds-sheet__inner"
       {...props}
-    >
-      <div className="ds-sheet__inner">{children}</div>
-    </dialog>
+    />
   );
 });
 
@@ -170,20 +89,7 @@ export function SheetFooter({ className, ...props }: SheetFooterProps) {
 
 export type SheetCloseProps = HTMLAttributes<HTMLButtonElement>;
 
-export function SheetClose({ className, onClick, children, ...props }: SheetCloseProps) {
+export function SheetClose(props: SheetCloseProps) {
   const { onOpenChange } = useSheetContext();
-
-  return (
-    <button
-      type="button"
-      className={cn('ds-button ds-button--secondary', className)}
-      onClick={(event) => {
-        onClick?.(event);
-        onOpenChange(false);
-      }}
-      {...props}
-    >
-      {children ?? 'Close'}
-    </button>
-  );
+  return <ModalClose onOpenChange={onOpenChange} {...props} />;
 }
