@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useContext } from 'react';
 
 import { cn } from '../../lib/cn';
@@ -33,12 +33,14 @@ export function Sheet({ open, defaultOpen = false, onOpenChange, children }: She
   return <SheetContext.Provider value={context}>{children}</SheetContext.Provider>;
 }
 
-export type SheetTriggerProps = HTMLAttributes<HTMLButtonElement>;
+export type SheetTriggerProps = ButtonHTMLAttributes<HTMLButtonElement>;
 
-export function SheetTrigger(props: SheetTriggerProps) {
-  const { onOpenChange } = useSheetContext();
-  return <ModalTrigger onOpenChange={onOpenChange} {...props} />;
-}
+export const SheetTrigger = forwardRef<HTMLButtonElement, SheetTriggerProps>(
+  function SheetTrigger(props, ref) {
+    const { onOpenChange } = useSheetContext();
+    return <ModalTrigger ref={ref} onOpenChange={onOpenChange} {...props} />;
+  },
+);
 
 export type SheetContentProps = HTMLAttributes<HTMLDialogElement> & {
   side?: SheetSide;
@@ -87,9 +89,11 @@ export function SheetFooter({ className, ...props }: SheetFooterProps) {
   return <div className={cn('ds-sheet__footer', className)} {...props} />;
 }
 
-export type SheetCloseProps = HTMLAttributes<HTMLButtonElement>;
+export type SheetCloseProps = ButtonHTMLAttributes<HTMLButtonElement>;
 
-export function SheetClose(props: SheetCloseProps) {
-  const { onOpenChange } = useSheetContext();
-  return <ModalClose onOpenChange={onOpenChange} {...props} />;
-}
+export const SheetClose = forwardRef<HTMLButtonElement, SheetCloseProps>(
+  function SheetClose(props, ref) {
+    const { onOpenChange } = useSheetContext();
+    return <ModalClose ref={ref} onOpenChange={onOpenChange} {...props} />;
+  },
+);

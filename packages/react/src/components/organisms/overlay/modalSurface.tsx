@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes } from 'react';
 import { forwardRef, useEffect, useId, useMemo, useRef } from 'react';
 
 import type { UseDisclosureOptions } from '../../../hooks/useDisclosure';
@@ -102,14 +102,29 @@ export const ModalSurface = forwardRef<HTMLDialogElement, ModalSurfaceProps>(fun
   );
 });
 
-export type ModalTriggerProps = HTMLAttributes<HTMLButtonElement> & {
+export type ModalTriggerProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   onOpenChange: (open: boolean) => void;
 };
 
-/** Unstyled button that opens the surface. */
-export function ModalTrigger({ onOpenChange, onClick, children, ...props }: ModalTriggerProps) {
+/**
+ * Unstyled button that opens the surface.
+ *
+ * The ref is forwarded straight to the <button>: this owns that node outright
+ * and holds no second reference to it, so there is nothing to merge.
+ *
+ * `type="button"` sits before the spread, so it is a default a consumer can
+ * override rather than a pin — same as `DropdownMenuItem` and
+ * `AnchoredOverlayTrigger`. A trigger inside a <form> that should also submit
+ * is a real case, and `ButtonHTMLAttributes` advertises `type`; accepting the
+ * prop and then discarding it would be the worse of the two behaviours.
+ */
+export const ModalTrigger = forwardRef<HTMLButtonElement, ModalTriggerProps>(function ModalTrigger(
+  { onOpenChange, onClick, children, ...props },
+  ref,
+) {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={(event) => {
         onClick?.(event);
@@ -120,22 +135,21 @@ export function ModalTrigger({ onOpenChange, onClick, children, ...props }: Moda
       {children}
     </button>
   );
-}
+});
 
-export type ModalCloseProps = HTMLAttributes<HTMLButtonElement> & {
+export type ModalCloseProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   onOpenChange: (open: boolean) => void;
 };
 
-/** Secondary-styled button that closes the surface. */
-export function ModalClose({
-  onOpenChange,
-  className,
-  onClick,
-  children,
-  ...props
-}: ModalCloseProps) {
+/** Secondary-styled button that closes the surface. See `ModalTrigger` on the
+ * forwarded ref and on why `type` stays overridable. */
+export const ModalClose = forwardRef<HTMLButtonElement, ModalCloseProps>(function ModalClose(
+  { onOpenChange, className, onClick, children, ...props },
+  ref,
+) {
   return (
     <button
+      ref={ref}
       type="button"
       className={cn('ds-button ds-button--secondary', className)}
       onClick={(event) => {
@@ -147,4 +161,4 @@ export function ModalClose({
       {children ?? 'Close'}
     </button>
   );
-}
+});
