@@ -22,15 +22,31 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v6
-        with:
-          # Uses `packageManager` from ./package.json so CI stays in sync.
-          run_install: false
       - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
-          cache: 'pnpm'
-          cache-dependency-path: 'pnpm-lock.yaml'
+      # Corepack activates the exact pnpm from `packageManager` in ./package.json,
+      # same as pnpm/action-setup did, but without installing a second pnpm to get
+      # there. That action bootstrapped its own pnpm into a flat, v10-style
+      # PNPM_HOME and then unconditionally ran `self-update` into it, which warned
+      # `Detected a pnpm v10 installation layout` on every job regardless of the
+      # version pinned.
+      - name: Set up pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+      # `actions/setup-node` can cache the pnpm store itself, but only if pnpm is
+      # already on PATH when it runs — under corepack it is not, because corepack
+      # needs the Node that setup-node installs. Cache the store directly instead.
+      - name: Locate the pnpm store
+        id: pnpm_store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
       # No NODE_AUTH_TOKEN needed: every `@elirobinson/*` dependency resolves to
       # a `link:` workspace entry in the lockfile, so this never hits the
       # GitHub Packages registry.
