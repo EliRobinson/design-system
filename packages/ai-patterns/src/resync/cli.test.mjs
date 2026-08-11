@@ -5,8 +5,27 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { formatReport, main, parseArgs, parseArtifactsArgs } from './cli.mjs';
+import { TARGETS } from './targets.mjs';
 
 const CLI_PATH = join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
+
+async function captureStdout(argv) {
+  const chunks = [];
+  const original = process.stdout.write;
+  process.stdout.write = (chunk) => {
+    chunks.push(chunk);
+    return true;
+  };
+
+  let code;
+  try {
+    code = await main(argv);
+  } finally {
+    process.stdout.write = original;
+  }
+
+  return { code, text: chunks.join('') };
+}
 
 describe('parseArgs', () => {
   it('defaults to a read-only run in the process cwd', () => {
@@ -273,20 +292,9 @@ describe('the artifacts subcommand', () => {
   });
 
   it('routes `artifacts --help` to its own usage', async () => {
-    const chunks = [];
-    const original = process.stdout.write;
-    process.stdout.write = (chunk) => {
-      chunks.push(chunk);
-      return true;
-    };
-
-    try {
-      expect(await main(['artifacts', '--help'])).toBe(0);
-    } finally {
-      process.stdout.write = original;
-    }
-
-    expect(chunks.join('')).toContain('ds-resync artifacts — sync');
+    const { code, text } = await captureStdout(['artifacts', '--help']);
+    expect(code).toBe(0);
+    expect(text).toContain('ds-resync artifacts — sync');
   });
 });
 
@@ -325,6 +333,74 @@ describe('flags belonging to only one command', () => {
     expect(() => parseArtifactsArgs(['--fail-on-outdated'])).toThrow(
       /Unknown option: --fail-on-outdated/,
     );
+  });
+});
+
+// Byte-for-byte the help text as it stood when the options section was still
+// hand-written, pinned before it was generated from the flag table. Drift here
+// is a user-visible change to the CLI's documented surface, so it should be a
+// deliberate edit to these strings, never a side effect of touching a renderer.
+const EXPECTED_USAGE = `ds-resync — bring this repo's @elirobinson packages up to date
+
+Usage: ds-resync [options]
+       ds-resync artifacts [options]
+
+Commands:
+  (default)             Report and optionally apply dependency upgrades
+  artifacts             Sync the design system's agent skills into this repo
+
+Options:
+  --write               Apply the upgrades and install (default is read-only)
+  --only <names>        Restrict to these packages (comma-separated, scope optional)
+  --target <spec>       How far to jump: latest | minor | patch
+                        Global ("minor") or per-package ("react=minor,tokens=latest")
+  --interactive, -i     Choose per package, then apply (implies --write)
+  --json                Emit the report as JSON
+  --cwd <dir>           Target a directory other than the current one
+  --fail-on-outdated    Exit 2 when anything is behind (for CI)
+  -h, --help            Show this message
+
+Run \`ds-resync artifacts --help\` for that command's options.
+`;
+
+const EXPECTED_ARTIFACTS_USAGE = `ds-resync artifacts — sync the design system's agent skills into this repo
+
+Writes the brand skill, a version-stamped component reference (llms.txt /
+llms-full.txt), and the re-sync instructions into .claude/skills/. Files you have
+edited since they were written are left alone and listed in the report.
+
+Usage: ds-resync artifacts [options]
+
+Options:
+  --write               Apply the changes (default is read-only)
+  --force               Overwrite files you have edited locally
+  --json                Emit the plan as JSON
+  --cwd <dir>           Target a directory other than the current one
+  --fail-on-drift       Exit 2 when the snapshot and the installed
+                        @elirobinson/react disagree (for CI)
+  -h, --help            Show this message
+`;
+
+describe('the help text', () => {
+  it('prints the default run’s usage unchanged, down to the column alignment', async () => {
+    const { code, text } = await captureStdout(['--help']);
+    expect(code).toBe(0);
+    expect(text).toBe(EXPECTED_USAGE);
+  });
+
+  it('prints the artifacts usage unchanged, down to the column alignment', async () => {
+    const { code, text } = await captureStdout(['artifacts', '--help']);
+    expect(code).toBe(0);
+    expect(text).toBe(EXPECTED_ARTIFACTS_USAGE);
+  });
+
+  it('spells out the real target vocabulary rather than a placeholder', async () => {
+    // The line is interpolated from TARGETS, so a renderer that lost the
+    // interpolation would still look plausible against a frozen string. Tying
+    // the assertion back to TARGETS also means adding a target fails here
+    // rather than leaving the pinned text quietly stale.
+    const { text } = await captureStdout(['--help']);
+    expect(text).toContain(`How far to jump: ${TARGETS.join(' | ')}`);
   });
 });
 
