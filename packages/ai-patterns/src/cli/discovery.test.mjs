@@ -7,16 +7,17 @@
  * two readers must agree on the real stylesheet, or one of them has drifted. */
 
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 import { effectiveTokens, parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
 import { describe, expect, it } from 'vitest';
 
 import { cssVariables } from './discovery.mjs';
 
+/* Through the exports map, so this reads the same file `ds` reads out of a
+   consumer's node_modules rather than a path relative to the monorepo layout. */
 const tokensCss = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'tokens', 'src', 'tokens.css'),
+  createRequire(import.meta.url).resolve('@elirobinson/tokens/tokens.css'),
   'utf8',
 );
 

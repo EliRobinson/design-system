@@ -1,6 +1,6 @@
 ---
 '@elirobinson/tokens': minor
-'@elirobinson/ai-patterns': patch
+'@elirobinson/ai-patterns': minor
 ---
 
 Make `tokens.css` the only place the token set is written down.
@@ -16,8 +16,7 @@ Make `tokens.css` the only place the token set is written down.
   `@elirobinson/tokens/tokens.json` keep working; 62 leaves were added.
   Values are now copied verbatim out of the stylesheet, so a few that the
   hand-written file had padded change spelling without changing meaning
-  (`oklch(86.0% …)` → `oklch(86% …)`). `--status-success` / `--status-warning`
-  now carry the value CSS actually computes (the later, re-pointed declaration).
+  (`oklch(86.0% …)` → `oklch(86% …)`).
 - New export `@elirobinson/tokens/parse-tokens-css` — the one CSS token parser,
   previously duplicated in three places across the monorepo.
 - The package has tests for the first time, including one that fails if
@@ -31,5 +30,7 @@ Make `tokens.css` the only place the token set is written down.
   compatibility selector and the dark-mode `--focus-ring` override, so every
   `outline: 2px solid var(--focus-ring)` was black-on-black in dark mode — a
   silent failure of the `focusVisibleRequired` contract.
-- `ds tokens` now reports the value CSS resolves to when a token is declared
-  twice, and reads only `:root`.
+- `ds tokens` now reads only `:root` and, when a token is declared twice, prints
+  the declaration CSS actually applies. `--status-success` and
+  `--status-warning` are re-pointed at brand colors after the base scale
+  declares them, so they previously printed the shadowed value.

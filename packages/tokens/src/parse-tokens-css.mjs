@@ -18,6 +18,13 @@
 const MAX_VAR_DEPTH = 8;
 
 /**
+ * One declaration. Kept in step with `TokenEntry` in parse-tokens-css.d.mts,
+ * which is what TypeScript callers see.
+ *
+ * @typedef {{name: string, value: string, resolved: string, comment: string | null}} TokenEntry
+ */
+
+/**
  * Parse the `:root` block of a tokens stylesheet.
  *
  * Declarations are returned in source order, duplicates included — CSS is
@@ -27,7 +34,7 @@ const MAX_VAR_DEPTH = 8;
  * token and is deliberately ignored.
  *
  * @param {string} css
- * @returns {{name: string, value: string, resolved: string, comment: string | null}[]}
+ * @returns {TokenEntry[]}
  */
 export function parseTokensCss(css) {
   const root = css.match(/:root\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
@@ -54,8 +61,8 @@ export function parseTokensCss(css) {
 /**
  * The effective value of every token, with CSS's last-declaration-wins applied.
  *
- * @param {ReturnType<typeof parseTokensCss>} tokens
- * @returns {Map<string, {name: string, value: string, resolved: string, comment: string | null}>}
+ * @param {TokenEntry[]} tokens
+ * @returns {Map<string, TokenEntry>}
  */
 export function effectiveTokens(tokens) {
   return new Map(tokens.map((token) => [token.name, token]));

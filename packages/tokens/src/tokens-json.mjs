@@ -125,6 +125,10 @@ function primaryFamily(token) {
     .replace(/^['"]|['"]$/g, '');
 }
 
+function at(target, path) {
+  return path.reduce((node, key) => node?.[key], target);
+}
+
 function assign(target, path, value) {
   let node = target;
   for (const key of path.slice(0, -1)) {
@@ -176,6 +180,11 @@ export function buildTokensJson(css) {
         `tokens.json derives ${path.join('.')} from ${from}, which tokens.css no longer declares.`,
       );
     }
+    if (at(result, path) !== undefined) {
+      throw new Error(
+        `The derived entry ${path.join('.')} would overwrite a token GROUPS already mapped there.`,
+      );
+    }
     assign(result, path, read(token));
   }
 
@@ -185,11 +194,31 @@ export function buildTokensJson(css) {
 /* Keys come out in Map insertion order, which is source order in tokens.css,
    except for the DERIVED entries appended last. Re-order the top level so the
    file reads brand-first the way the hand-written one did. */
+const TOP_LEVEL_ORDER = [
+  'brand',
+  'color',
+  'typography',
+  'radius',
+  'space',
+  'shadow',
+  'motion',
+  'layout',
+];
+
 function withTopLevelOrder(result) {
-  const order = ['brand', 'color', 'typography', 'radius', 'space', 'shadow', 'motion', 'layout'];
+  /* A new top-level group would otherwise sort to the front on indexOf's -1 —
+     quietly, which is the one thing this file is not allowed to do. */
+  const unordered = Object.keys(result).filter((key) => !TOP_LEVEL_ORDER.includes(key));
+  if (unordered.length > 0) {
+    throw new Error(
+      `GROUPS produced top-level ${unordered.length === 1 ? 'group' : 'groups'} ` +
+        `${unordered.join(', ')} that TOP_LEVEL_ORDER does not rank.`,
+    );
+  }
+
   return Object.fromEntries(
     Object.keys(result)
-      .sort((a, b) => order.indexOf(a) - order.indexOf(b))
+      .sort((a, b) => TOP_LEVEL_ORDER.indexOf(a) - TOP_LEVEL_ORDER.indexOf(b))
       .map((key) => [key, result[key]]),
   );
 }
