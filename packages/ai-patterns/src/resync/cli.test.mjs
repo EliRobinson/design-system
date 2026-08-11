@@ -39,6 +39,7 @@ describe('formatReport', () => {
         name: '@elirobinson/react',
         declaredRange: '^1.0.0',
         installedVersion: '1.0.2',
+        targetVersion: '2.0.0',
         latestVersion: '2.0.0',
         jump: 'major',
         outdated: true,
@@ -48,6 +49,7 @@ describe('formatReport', () => {
         name: '@elirobinson/tokens',
         declaredRange: '^0.2.0',
         installedVersion: '0.2.0',
+        targetVersion: '0.2.0',
         latestVersion: '0.2.0',
         jump: 'none',
         outdated: false,
@@ -77,6 +79,7 @@ describe('formatReport', () => {
           name: '@elirobinson/tokens',
           declaredRange: '^0.2.0',
           installedVersion: '0.2.0',
+          targetVersion: '0.2.0',
           latestVersion: '0.2.0',
           jump: 'none',
           outdated: false,
@@ -100,6 +103,7 @@ describe('formatReport', () => {
           name: '@elirobinson/react',
           declaredRange: '^1.0.0',
           installedVersion: '1.0.2',
+          targetVersion: '1.1.0',
           latestVersion: '1.1.0',
           jump: 'minor',
           outdated: true,
@@ -123,6 +127,7 @@ describe('formatReport', () => {
           name: '@elirobinson/react',
           declaredRange: '^1.0.0 || ^2.0.0',
           installedVersion: '1.0.2',
+          targetVersion: '2.0.0',
           latestVersion: '2.0.0',
           jump: 'major',
           outdated: true,
@@ -133,5 +138,95 @@ describe('formatReport', () => {
       wrote: true,
     });
     expect(text).toMatch(/left unchanged/i);
+  });
+});
+
+describe('parseArgs — selection', () => {
+  it('defaults to every package at latest', () => {
+    const args = parseArgs([]);
+    expect(args.only).toBeNull();
+    expect(args.targetSpec).toEqual({ fallback: 'latest', byName: {} });
+    expect(args.interactive).toBe(false);
+  });
+
+  it('reads --only with short names', () => {
+    expect(parseArgs(['--only', 'react,tokens']).only).toEqual([
+      '@elirobinson/react',
+      '@elirobinson/tokens',
+    ]);
+  });
+
+  it('reads --only=value', () => {
+    expect(parseArgs(['--only=react']).only).toEqual(['@elirobinson/react']);
+  });
+
+  it('reads a global --target', () => {
+    expect(parseArgs(['--target', 'minor']).targetSpec).toEqual({
+      fallback: 'minor',
+      byName: {},
+    });
+  });
+
+  it('reads per-package targets', () => {
+    expect(parseArgs(['--target=react=patch']).targetSpec).toEqual({
+      fallback: 'latest',
+      byName: { '@elirobinson/react': 'patch' },
+    });
+  });
+
+  it('rejects an unknown target', () => {
+    expect(() => parseArgs(['--target', 'sideways'])).toThrow(/Unknown target/);
+  });
+
+  it('reads --interactive and -i', () => {
+    expect(parseArgs(['--interactive']).interactive).toBe(true);
+    expect(parseArgs(['-i']).interactive).toBe(true);
+  });
+});
+
+describe('formatReport — held back', () => {
+  function entry(overrides) {
+    return {
+      name: '@elirobinson/react',
+      declaredRange: '^1.0.0',
+      installedVersion: '1.0.2',
+      targetVersion: '1.4.0',
+      latestVersion: '2.0.0',
+      target: 'minor',
+      jump: 'minor',
+      outdated: true,
+      heldBack: true,
+      entries: [],
+      ...overrides,
+    };
+  }
+
+  it('reports the target version, not the latest, as the transition', () => {
+    const text = formatReport({ packages: [entry()], wrote: false });
+    expect(text).toContain('1.0.2 → 1.4.0');
+    expect(text).not.toContain('1.0.2 → 2.0.0');
+  });
+
+  it('names the version being held back and why', () => {
+    const text = formatReport({ packages: [entry()], wrote: false });
+    expect(text).toContain('2.0.0 is available');
+    expect(text).toContain('--target minor');
+  });
+
+  it('omits the held-back line when the target is the latest', () => {
+    const text = formatReport({
+      packages: [entry({ targetVersion: '2.0.0', heldBack: false, jump: 'major' })],
+      wrote: false,
+    });
+    expect(text).not.toContain('is available, held back');
+  });
+
+  it('still notes a held-back version on an otherwise current package', () => {
+    const text = formatReport({
+      packages: [entry({ targetVersion: '1.0.2', outdated: false, heldBack: true, jump: 'none' })],
+      wrote: false,
+    });
+    expect(text).toMatch(/up to date/i);
+    expect(text).toContain('2.0.0 is available');
   });
 });

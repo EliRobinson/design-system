@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeNpmFailure, RegistryError } from './registry.mjs';
+import { describeNpmFailure, normalizeVersionsPayload, RegistryError } from './registry.mjs';
 
 describe('describeNpmFailure', () => {
   it('turns an auth failure into the fix', () => {
@@ -27,5 +27,19 @@ describe('RegistryError', () => {
     expect(error).toBeInstanceOf(Error);
     expect(error.name).toBe('RegistryError');
     expect(error.hint).toBe('set your token');
+  });
+});
+
+describe('normalizeVersionsPayload', () => {
+  it('passes an array through', () => {
+    expect(normalizeVersionsPayload(['1.0.0', '1.1.0'])).toEqual(['1.0.0', '1.1.0']);
+  });
+
+  it('wraps the bare string npm returns for a single-version package', () => {
+    expect(normalizeVersionsPayload('1.0.0')).toEqual(['1.0.0']);
+  });
+
+  it('returns an empty list for null', () => {
+    expect(normalizeVersionsPayload(null)).toEqual([]);
   });
 });
