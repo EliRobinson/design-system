@@ -1,30 +1,17 @@
 // The CSS half of no-hardcoded-design-values, for @eslint/css.
 //
 // It works on the declaration's source text rather than on css-tree's value
-// AST, so that the value it judges is the same kind of string the JS rule
-// judges: both rules import what counts as a literal from ./value-patterns.mjs,
-// and a value that is exempt in a style object is exempt in a stylesheet. What
-// stays here is CSS-specific — which property names belong to which axis, and
-// the declaration traversal.
+// AST, so that the declaration it judges is the same kind of pair the JS rule
+// judges: both rules hand a property and a value string to `hardcodedAxis` in
+// ./value-patterns.mjs, which owns both which properties belong to which axis
+// and what counts as a literal. What stays here is CSS-specific — the
+// declaration traversal and the wording of the messages.
 //
 // Custom-property *definitions* (--x: #fff) are the one place a literal
 // belongs — that is what a token is — so they are left alone. Everything that
 // consumes a value has to name a token.
 
-import {
-  COLOR_FUNCTIONS,
-  HEX_COLOR,
-  MAGIC_DURATION,
-  MAGIC_LENGTH,
-  isExempt,
-} from './value-patterns.mjs';
-
-const COLOR_PROPERTIES =
-  /^(?:color|background(?:-color)?|border(?:-[a-z]+)?-color|outline-color|text-decoration-color|caret-color|accent-color|fill|stroke|box-shadow|text-shadow)$/;
-const RADIUS_PROPERTIES = /^border(?:-[a-z]+)*-radius$/;
-const SHADOW_PROPERTIES = /^(?:box-shadow|text-shadow)$/;
-const MOTION_PROPERTIES =
-  /^(?:transition|transition-duration|transition-timing-function|animation|animation-duration|animation-timing-function)$/;
+import { hardcodedAxis } from './value-patterns.mjs';
 
 export const cssRule = {
   meta: {
@@ -58,34 +45,10 @@ export const cssRule = {
 
         const text = sourceCode.getText(node);
         const value = text.slice(text.indexOf(':') + 1).trim();
-        if (!value || isExempt(value)) return;
+        if (!value) return;
 
-        const data = { property, value };
-
-        if (RADIUS_PROPERTIES.test(property) && MAGIC_LENGTH.test(value)) {
-          context.report({ node, messageId: 'radius', data });
-          return;
-        }
-
-        if (SHADOW_PROPERTIES.test(property) && MAGIC_LENGTH.test(value)) {
-          context.report({ node, messageId: 'shadow', data });
-          return;
-        }
-
-        if (
-          MOTION_PROPERTIES.test(property) &&
-          (MAGIC_DURATION.test(value) || value.includes('cubic-bezier'))
-        ) {
-          context.report({ node, messageId: 'duration', data });
-          return;
-        }
-
-        if (
-          COLOR_PROPERTIES.test(property) &&
-          (HEX_COLOR.test(value) || COLOR_FUNCTIONS.test(value))
-        ) {
-          context.report({ node, messageId: 'color', data });
-        }
+        const messageId = hardcodedAxis(property, value);
+        if (messageId) context.report({ node, messageId, data: { property, value } });
       },
     };
   },

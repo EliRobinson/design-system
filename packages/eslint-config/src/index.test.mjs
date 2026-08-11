@@ -9,7 +9,7 @@ import cssModule from '@eslint/css';
 
 import { designSystem } from './index.mjs';
 import { designSystemCss } from './css.mjs';
-import { isExempt } from './rules/value-patterns.mjs';
+import { AXIS_PROPERTIES, axisOf, isExempt, toCamelCase } from './rules/value-patterns.mjs';
 
 const linter = new Linter();
 
@@ -35,6 +35,7 @@ function lintCss(code, { filename = 'src/app/app.css', options } = {}) {
 
 const messagesOf = (results) => results.map((result) => result.message);
 const rulesOf = (results) => results.map((result) => result.ruleId);
+const messageIdsOf = (results) => results.map((result) => result.messageId);
 
 describe('no-barrel-imports', () => {
   it('flags a bare package specifier', () => {
@@ -337,6 +338,165 @@ describe('the JS and CSS rules agree about values', () => {
     } else {
       expect(messagesOf(jsResults)).toEqual([]);
       expect(messagesOf(cssResults)).toEqual([]);
+    }
+  });
+});
+
+// The value half of the two rules is shared, so it cannot drift. The property
+// half is what this table pins: the same declaration, spelled camelCase in a
+// style object and kebab-case in a stylesheet, has to reach the same messageId.
+// Asserting on the id rather than the prose is deliberate — consumers pin ids
+// in eslint-disable comments and in their own severity overrides, so an id that
+// silently changes axis is a breaking change even when both rules still fire.
+describe('the JS and CSS rules agree about properties', () => {
+  it.each([
+    {
+      what: 'a filter carries a shadow only when it names one',
+      kebab: 'filter',
+      value: 'drop-shadow(0 4px 8px #000)',
+      messageId: 'shadow',
+    },
+    {
+      what: 'a blur radius is not a shadow, and no shadow token fixes it',
+      kebab: 'filter',
+      value: 'blur(4px)',
+      messageId: null,
+    },
+    {
+      what: 'backdrop-filter is judged the same way as filter',
+      kebab: 'backdrop-filter',
+      value: 'drop-shadow(0 4px 8px #000)',
+      messageId: 'shadow',
+    },
+    {
+      what: 'a backdrop blur is not a shadow either',
+      kebab: 'backdrop-filter',
+      value: 'blur(12px)',
+      messageId: null,
+    },
+    {
+      // The shadow axis owns box-shadow and text-shadow outright, colour and
+      // all — "use a shadow token" is the more actionable of the two messages.
+      what: 'a colour-only text-shadow is still a shadow, not a stray colour',
+      kebab: 'text-shadow',
+      value: '0 0 rgb(0 0 0 / .5)',
+      messageId: 'shadow',
+    },
+    {
+      what: 'a colour-only box-shadow is a shadow too',
+      kebab: 'box-shadow',
+      value: '0 0 rgb(0 0 0 / .5)',
+      messageId: 'shadow',
+    },
+    {
+      what: 'a box-shadow with a magic length',
+      kebab: 'box-shadow',
+      value: '0 1px 2px #e2e8f0',
+      messageId: 'shadow',
+    },
+    {
+      what: 'column-rule-color is a colour property',
+      kebab: 'column-rule-color',
+      value: '#fff',
+      messageId: 'color',
+    },
+    {
+      what: 'a logical border colour',
+      kebab: 'border-block-color',
+      value: '#fff',
+      messageId: 'color',
+    },
+    {
+      what: 'a one-sided logical border colour',
+      kebab: 'border-inline-start-color',
+      value: '#fff',
+      messageId: 'color',
+    },
+    {
+      what: 'a logical corner radius',
+      kebab: 'border-start-start-radius',
+      value: '8px',
+      messageId: 'radius',
+    },
+    {
+      what: 'a physical corner radius',
+      kebab: 'border-top-left-radius',
+      value: '8px',
+      messageId: 'radius',
+    },
+    { what: 'plain colour', kebab: 'color', value: '#0f172a', messageId: 'color' },
+    { what: 'accent-color', kebab: 'accent-color', value: '#0f172a', messageId: 'color' },
+    { what: 'caret-color', kebab: 'caret-color', value: 'rgb(15 23 42)', messageId: 'color' },
+    { what: 'fill', kebab: 'fill', value: '#0f172a', messageId: 'color' },
+    { what: 'stroke', kebab: 'stroke', value: '#0f172a', messageId: 'color' },
+    {
+      what: 'transition-duration',
+      kebab: 'transition-duration',
+      value: '200ms',
+      messageId: 'duration',
+    },
+    {
+      what: 'animation-timing-function',
+      kebab: 'animation-timing-function',
+      value: 'cubic-bezier(0.4, 0, 0.2, 1)',
+      messageId: 'duration',
+    },
+    {
+      // The rule owns four axes. Widening the shared table must not quietly
+      // recruit layout properties into one of them.
+      what: 'a width is not a design-system axis',
+      kebab: 'width',
+      value: '8px',
+      messageId: null,
+    },
+    {
+      what: 'padding is Tailwind’s scale to own, not this rule’s',
+      kebab: 'padding',
+      value: '16px',
+      messageId: null,
+    },
+    {
+      what: 'a token reference is exempt on every axis',
+      kebab: 'box-shadow',
+      value: 'var(--shadow-md)',
+      messageId: null,
+    },
+  ])('$what — $kebab: $value', ({ kebab, value, messageId }) => {
+    const camel = toCamelCase(kebab);
+    const js = lint(
+      `export const A = () => (<div style={{ ${camel}: ${JSON.stringify(value)} }} />)`,
+    );
+    const css = lintCss(`a { ${kebab}: ${value}; }`);
+
+    expect(messageIdsOf(js)).toEqual(messageId ? [messageId] : []);
+    expect(messageIdsOf(css)).toEqual(messageId ? [messageId] : []);
+  });
+});
+
+describe('axisOf', () => {
+  it('maps every shared property to one axis in either spelling', () => {
+    for (const [axis, properties] of Object.entries(AXIS_PROPERTIES)) {
+      for (const property of properties) {
+        expect({ property, axis: axisOf(property) }).toEqual({ property, axis });
+        expect({ property, axis: axisOf(toCamelCase(property)) }).toEqual({ property, axis });
+      }
+    }
+  });
+
+  it('claims no property twice', () => {
+    const seen = new Set();
+    for (const properties of Object.values(AXIS_PROPERTIES)) {
+      for (const property of properties) {
+        expect(seen.has(property)).toBe(false);
+        seen.add(property);
+      }
+    }
+  });
+
+  it('returns null for a property no axis owns', () => {
+    for (const property of ['width', 'padding', 'font-size', 'margin-top', 'z-index']) {
+      expect(axisOf(property)).toBe(null);
+      expect(axisOf(toCamelCase(property))).toBe(null);
     }
   });
 });

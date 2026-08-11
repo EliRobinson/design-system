@@ -15,42 +15,10 @@ import {
   HEX_COLOR,
   MAGIC_DURATION,
   MAGIC_LENGTH,
+  axisOf,
+  hardcodedAxis,
   isExempt,
 } from './value-patterns.mjs';
-
-const NAMED_COLOR_PROPS = new Set([
-  'color',
-  'backgroundColor',
-  'background',
-  'borderColor',
-  'borderTopColor',
-  'borderRightColor',
-  'borderBottomColor',
-  'borderLeftColor',
-  'outlineColor',
-  'textDecorationColor',
-  'caretColor',
-  'accentColor',
-  'columnRuleColor',
-  'fill',
-  'stroke',
-]);
-const RADIUS_PROPS = new Set([
-  'borderRadius',
-  'borderTopLeftRadius',
-  'borderTopRightRadius',
-  'borderBottomLeftRadius',
-  'borderBottomRightRadius',
-]);
-const SHADOW_PROPS = new Set(['boxShadow', 'textShadow', 'filter', 'backdropFilter']);
-const DURATION_PROPS = new Set([
-  'transition',
-  'transitionDuration',
-  'transitionTimingFunction',
-  'animation',
-  'animationDuration',
-  'animationTimingFunction',
-]);
 
 const DEFAULT_CLASS_NAME_FUNCTIONS = ['cn', 'clsx', 'classnames', 'classNames', 'cva', 'twMerge'];
 
@@ -155,32 +123,19 @@ export default {
       checkColor(node, outsideArbitrary);
     }
 
-    /** A style-object property: which axis it belongs to decides the check. */
+    /**
+     * A style-object property. A style object sets real CSS, so the axis it
+     * belongs to is decided by the same shared table the CSS rule reads —
+     * `backdropFilter` and `backdrop-filter` resolve alike.
+     */
     function checkStyleProperty(node, name, value) {
-      if (isExempt(value)) return;
+      const axis = hardcodedAxis(name, value);
+      if (!axis) return;
 
-      // Order matters: a shadow carries a colour inside it, and "use a shadow
-      // token" is the more actionable of the two messages.
-      if (SHADOW_PROPS.has(name)) {
-        if (MAGIC_LENGTH.test(value) || HEX_COLOR.test(value) || COLOR_FUNCTIONS.test(value)) {
-          report(node, 'shadow', value);
-        }
-        return;
-      }
-
-      if (RADIUS_PROPS.has(name)) {
-        if (MAGIC_LENGTH.test(value)) report(node, 'radius', value);
-        return;
-      }
-
-      if (DURATION_PROPS.has(name)) {
-        if (MAGIC_DURATION.test(value) || value.includes('cubic-bezier')) {
-          report(node, 'duration', value);
-        }
-        return;
-      }
-
-      if (NAMED_COLOR_PROPS.has(name)) checkColor(node, value);
+      // The colour axis reports the literal it matched rather than the whole
+      // declaration, so a gradient points at the offending stop.
+      if (axis === 'color') checkColor(node, value);
+      else report(node, axis, value);
     }
 
     /** Every static string inside an expression, template literals included. */
@@ -259,15 +214,7 @@ export default {
       // Style objects living outside JSX still ship the same literal.
       Property(node) {
         const name = propertyName(node);
-        if (!name) return;
-        if (
-          !NAMED_COLOR_PROPS.has(name) &&
-          !RADIUS_PROPS.has(name) &&
-          !SHADOW_PROPS.has(name) &&
-          !DURATION_PROPS.has(name)
-        ) {
-          return;
-        }
+        if (!name || !axisOf(name)) return;
         if (node.value.type !== 'Literal' || typeof node.value.value !== 'string') return;
         checkStyleProperty(node.value, name, node.value.value);
       },
