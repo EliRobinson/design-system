@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
-    "@elirobinson/eslint-config": "0.2.0",
+    "@elirobinson/eslint-config": "workspace:*",
     "@eslint/js": "^9.39.4",
     "@nx/eslint": "22.7.0",
     "@nx/storybook": "22.7.0",
