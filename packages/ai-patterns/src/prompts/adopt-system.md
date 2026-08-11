@@ -43,11 +43,14 @@ Before migrating any screen, install the things that keep this from drifting bac
 4. `pnpm ds init --agents` — installs the Claude Code skill, the Cursor rule, the Copilot
    instructions, and an `AGENTS.md` block. Coverage matters: teammates drive different
    tools, and an agent only follows what it actually loads.
-5. On Tailwind v4, add `@import '@elirobinson/tokens/tailwind.css'` after the tokens
+5. `pnpm exec ds-resync artifacts --write` — writes the brand skill and a version-stamped
+   component reference (`llms.txt`, `llms-full.txt`) into `.claude/skills/`. Re-run it
+   after any upgrade; it refreshes what it wrote and leaves anything you edited alone.
+6. On Tailwind v4, add `@import '@elirobinson/tokens/tailwind.css'` after the tokens
    import. Without it, `bg-background` and friends resolve to nothing.
-6. If the app has a theme switcher, point it at `data-theme` (`next-themes`:
+7. If the app has a theme switcher, point it at `data-theme` (`next-themes`:
    `attribute="data-theme"`).
-7. Drop `expectDesignSystemContracts` from `@elirobinson/ai-patterns/testing/playwright`
+8. Drop `expectDesignSystemContracts` from `@elirobinson/ai-patterns/testing/playwright`
    into the E2E suite for the routes in scope.
 
 ## Constraints

@@ -4,9 +4,16 @@ description: Use this skill to generate well-branded interfaces and assets for M
 user-invocable: true
 ---
 
+<!-- ds-artifacts:managed:begin -->
+<!-- Everything between these markers is replaced when this skill is packed for a
+     consuming repo (packages/ai-patterns/scripts/build-artifacts.mjs). The copy below is
+     the in-repo version; the consumer version names the subset that actually ships. -->
+
 Read the README.md file within this skill, and explore the other available files (`colors_and_type.css`, `assets/`, `ui_kits/`, `slides/`, `preview/`).
 
-The component library's documentation site lives at `apps/docs` in this repo (`pnpm nx run docs:dev`) — it documents all 44 `@elirobinson/react` components with live demos and generated prop tables, and serves the machine-readable system description at `/llms.txt`, `/llms-full.txt`, and `/r/<component>.json`. When writing production code against the design system, prefer those generated references; this skill folder remains the source of truth for brand voice, assets, and visual direction.
+The component library's documentation site lives at `apps/docs` in this repo (`pnpm nx run docs:dev`) — it documents every `@elirobinson/react` component with live demos and generated prop tables, and serves the machine-readable system description at `/llms.txt`, `/llms-full.txt`, and `/r/<component>.json`. When writing production code against the design system, prefer those generated references; this skill folder remains the source of truth for brand voice, assets, and visual direction.
+
+<!-- ds-artifacts:managed:end -->
 
 If creating visual artifacts (slides, mocks, throwaway prototypes, marketing pages, etc), copy assets out and create static HTML files for the user to view — always link `colors_and_type.css` and use the wordmark from `assets/`. If working on production code, copy assets and read the rules in README.md to become an expert in designing with the Miltinson brand.
 

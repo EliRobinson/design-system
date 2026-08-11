@@ -13,6 +13,8 @@ some Markdown, a JSON contract file, and test helpers.
   deps up to date: `pnpm dlx @elirobinson/ai-patterns ds-resync` reports, `--write` applies.
   `--only` and `--target` narrow which packages move and how far; `-i` picks interactively.
   The agent-facing instructions ship at `@elirobinson/ai-patterns/resync/skill`.
+- `ds-resync artifacts` syncs the agent _skills_ rather than the versions. See
+  "Packed artifacts" below.
 
 ## Two bins, two questions
 
@@ -54,6 +56,41 @@ It prefers `@elirobinson/react`'s `dist/manifest.json` and falls back to parsing
 **Never add an inventory to prose** — not to this file, not to the agent templates, not to
 a README. Anything listing components, tokens, or props is wrong as of the next release.
 Point at `ds`.
+
+## Packed artifacts
+
+This package has a real build step — `scripts/build-artifacts.mjs`, wired to both `build`
+and `prepack`, so a tarball cannot be produced without it. It stages `dist/artifacts/`:
+
+| Staged at                         | Made from                                                                                                 |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `skills/miltinson-design/`        | A subset of `design-system-docs/`                                                                         |
+| `skills/design-system-reference/` | `apps/docs/src/generated/component-manifest.json`, `packages/tokens/src/tokens.css`, `src/contracts.json` |
+| `skills/ds-resync/SKILL.md`       | `src/resync/SKILL.md`                                                                                     |
+| `artifacts.json`                  | The version stamp and a sha256 per staged file                                                            |
+
+`ds-resync artifacts` copies `skills/**` into a consuming repo's `.claude/skills/`. The
+tree in `dist` is laid out exactly as it lands there, so the writer copies a directory and
+holds no opinion about its contents — adding or removing a skill is a change to
+`build-artifacts.mjs` alone.
+
+Four things are load-bearing:
+
+- **The llms snapshot never builds `apps/docs`.** It reads the _committed_ component
+  manifest. `.github/workflows/quality.yml` fails the build if `pnpm build` produces a diff
+  in that file, which is the only reason reading it is safe. Do not delete that guard.
+- **`design-system-docs/preview/` and `uploads/` never ship** — working material. Neither do
+  `slides/` or `templates/`, which produce Miltinson marketing collateral a consuming
+  product repo has no use for. `BRAND_SOURCES` in the build script is the list.
+- **Every artifact carries the `@elirobinson/react` version it was generated against.**
+  `ds-resync artifacts` compares that stamp to the consuming repo's install and prints a
+  loud STALE SNAPSHOT warning on a mismatch. A snapshot that silently describes a different
+  release is exactly how an agent produces confidently wrong prop tables.
+- **Two passages in the brand docs are generated, not copied.** The README's INDEX table and
+  the SKILL.md pointer at the component reference differ between this repo and a consumer,
+  so they live between `<!-- ds-artifacts:managed:begin -->` markers and are rewritten at
+  pack time from what actually shipped. A missing marker fails the build rather than
+  shipping repo-relative prose.
 
 ## Contracts and what verifies them
 

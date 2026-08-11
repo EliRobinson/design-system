@@ -21,8 +21,9 @@ never its styles and never a Tailwind dependency.
   policy, FormField-vs-Input precedent.
 - `@elirobinson/ai-patterns/contracts` (`componentConstraints`) — the machine-checkable
   rules you are subject to.
-- The docs site's `/llms-full.txt` (or `design-system-docs/preview/` in this repo) — the
-  canonical look of buttons, fields, cards, and tags.
+- `design-system-docs/preview/` in this repo, or the packed brand skill in a consuming one
+  (`.claude/skills/miltinson-design/`) — the canonical look of buttons, fields, cards, and
+  tags. `pnpm dlx @elirobinson/ai-patterns ds-resync artifacts --write` puts it there.
 - Two existing components in the target tier, read end to end, as the pattern to match.
 
 ## Constraints

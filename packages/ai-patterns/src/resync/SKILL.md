@@ -92,10 +92,31 @@ conventions. Constraints that always apply:
 - Reference semantic tokens (`--fg`, `--surface`, `--accent`), never raw scale
   values (`--ink-500`).
 
-For the full component inventory and prop tables at the new version, read the
-docs site's `/llms-full.txt`.
+For the full component inventory and prop tables, run `pnpm ds` and
+`pnpm ds props <Name>` — they read the installed package, so they are correct by
+construction. To read the system in bulk instead, use
+`.claude/skills/design-system-reference/llms-full.txt`, which step 5 refreshes.
 
-## 5. Verify
+## 5. Re-sync the agent artifacts
+
+The upgrade moved the packages; the skills in `.claude/skills/` still describe the
+old ones. Bring them along:
+
+```bash
+pnpm dlx @elirobinson/ai-patterns ds-resync artifacts --write
+```
+
+This rewrites the brand skill, the version-stamped component reference
+(`llms.txt` / `llms-full.txt`), and this file. Any of them you have edited
+locally are left alone and named in the output — reconcile those by hand, or
+re-run with `--force` to take the shipped copy.
+
+Read the output. If it prints a **STALE SNAPSHOT** warning, the artifacts and the
+installed `@elirobinson/react` disagree; the most likely cause is that
+`@elirobinson/ai-patterns` itself is behind, so run the default `ds-resync` first
+and then repeat this step.
+
+## 6. Verify
 
 Run the repo's own checks — typecheck, tests, build — and report the results. Do
 not claim the upgrade is done until they pass.

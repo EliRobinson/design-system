@@ -17,6 +17,7 @@
   },
   "files": [
     "src",
+    "dist",
     "CHANGELOG.md",
     "!src/**/*.test.mjs"
   ],
@@ -26,6 +27,10 @@
     "./prompts/*": "./src/prompts/*",
     "./agents/*": "./src/agents/*",
     "./resync/skill": "./src/resync/SKILL.md",
+    "./artifacts": "./dist/artifacts/artifacts.json",
+    "./artifacts/*": "./dist/artifacts/*",
+    "./llms": "./dist/artifacts/skills/design-system-reference/llms.txt",
+    "./llms-full": "./dist/artifacts/skills/design-system-reference/llms-full.txt",
     "./testing/playwright": {
       "types": "./src/testing/playwright.d.ts",
       "import": "./src/testing/playwright.mjs"
@@ -44,7 +49,8 @@
     }
   },
   "scripts": {
-    "build": "echo 'No build step required for ai-patterns'",
+    "build": "node scripts/build-artifacts.mjs",
+    "prepack": "node scripts/build-artifacts.mjs",
     "lint": "echo 'No lint configured for ai-patterns'",
     "test": "vitest run",
     "test:watch": "vitest"

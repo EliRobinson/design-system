@@ -29,9 +29,11 @@ export default [...designSystem()];
 @import '@elirobinson/tokens/tailwind.css';
 ```
 
-Then `pnpm ds init --agents` for the agent instruction files, and
+Then `pnpm ds init --agents` for the agent instruction files,
+`pnpm exec ds-resync artifacts --write` for the skills, and
 `expectDesignSystemContracts` from `@elirobinson/ai-patterns/testing/playwright` in the E2E
-suite. `pnpm exec ds-resync` keeps the versions current afterwards.
+suite. `pnpm exec ds-resync` keeps the versions current afterwards, and
+`ds-resync artifacts` re-run keeps the skills in step with them.
 
 The step-by-step version of all this lives in the repo README, under **Adopt the design
 system in an app**.
@@ -47,6 +49,7 @@ system in an app**.
 | Playwright contract helpers                       | `ai-patterns` (`./testing/playwright`) | Nothing — most consumers never check the runtime contracts                    |
 | Agent templates                                   | `ai-patterns` (`./agents/*`)           | Four near-identical instruction files per repo, each aging separately         |
 | `ds-resync` CLI                                   | `ai-patterns` (`bin`)                  | Noticing by hand that a repo is several releases behind                       |
+| `ds-resync artifacts`                             | `ai-patterns` (`bin`)                  | A copy of the brand skill and a hand-written component cheatsheet per repo    |
 
 ## Rules for changing any of it
 
@@ -57,6 +60,11 @@ system in an app**.
   one and assert identical behaviour.
 - **Additive only.** Existing export subpaths keep working. New capability arrives as a new
   subpath, a new bin, or a new optional export.
+- **Nothing synced into a consumer is hand-maintained there.** Everything `ds init` and
+  `ds-resync artifacts` write is regenerable by re-running the command. Re-running must
+  never destroy a local edit: `ds-resync artifacts` records a sha256 of every file it
+  writes in `.claude/ds-artifacts.json`, updates only files that still match, and reports
+  the rest.
 - **A contract without a check is a comment.** Adding an entry to `contracts.json` means
   shipping its `verifiedBy` — a lint rule or a Playwright helper — or stating plainly that
   it is review-only.
