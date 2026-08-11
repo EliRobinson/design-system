@@ -62,14 +62,18 @@ Options:
 /**
  * Every flag either command understands, declared once. A `boolean` flag sets
  * its key to true; a `value` flag takes the next argv item — or the text after
- * `=`, both spellings come free — runs it through `parse`, and falls back to
- * `missing` when the value is absent. `initial` is the value when the flag is
- * not passed at all, resolved per call so `--cwd` still defaults to the cwd of
- * the moment.
+ * `=`, both spellings come free — and runs it through `parse`, substituting
+ * `whenValueAbsent` if the flag ends argv with nothing after it.
  *
- * The point of the table is that a flag exists in exactly one place: adding one
- * both commands should honour is a one-line change to each command's list
- * below, and there is no second else-if chain to forget.
+ * `whenOmitted` supplies the key's value when the flag is not passed at all. It
+ * is a function rather than a value because `--cwd` has to read `process.cwd()`
+ * at parse time, not at module load; the other two follow the same shape so the
+ * field has one type rather than two.
+ *
+ * The point of the table is that a flag's parsing lives in exactly one place:
+ * teaching both commands a new flag is a line here and a line in each command's
+ * list below, with no second else-if chain to forget. The usage text above is
+ * still written by hand, so that much remains a separate edit.
  */
 const FLAGS = {
   write: { flag: '--write', key: 'write', type: 'boolean' },
@@ -84,24 +88,24 @@ const FLAGS = {
     key: 'cwd',
     type: 'value',
     parse: (value) => resolvePath(value),
-    missing: '.',
-    initial: () => process.cwd(),
+    whenValueAbsent: '.',
+    whenOmitted: () => process.cwd(),
   },
   only: {
     flag: '--only',
     key: 'only',
     type: 'value',
     parse: parseOnly,
-    missing: '',
-    initial: () => null,
+    whenValueAbsent: '',
+    whenOmitted: () => null,
   },
   target: {
     flag: '--target',
     key: 'targetSpec',
     type: 'value',
     parse: parseTargetSpec,
-    missing: '',
-    initial: () => DEFAULT_TARGET_SPEC,
+    whenValueAbsent: '',
+    whenOmitted: () => DEFAULT_TARGET_SPEC,
   },
 };
 
@@ -134,19 +138,19 @@ function parseFlags(argv, specs) {
   const byName = new Map();
 
   for (const spec of specs) {
-    args[spec.key] = spec.type === 'boolean' ? false : spec.initial();
+    args[spec.key] = spec.type === 'boolean' ? false : spec.whenOmitted();
     byName.set(spec.flag, spec);
     if (spec.alias) byName.set(spec.alias, spec);
   }
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    const separator = argument.indexOf('=');
-    const spec = byName.get(separator === -1 ? argument : argument.slice(0, separator));
+    const equalsIndex = argument.indexOf('=');
+    const spec = byName.get(equalsIndex === -1 ? argument : argument.slice(0, equalsIndex));
 
     // An `=` only means something to a flag that takes a value, so `--write=1`
     // stays an unknown option rather than quietly reading as true.
-    if (!spec || (spec.type === 'boolean' && separator !== -1)) {
+    if (!spec || (spec.type === 'boolean' && equalsIndex !== -1)) {
       throw new Error(`Unknown option: ${argument}`);
     }
 
@@ -156,14 +160,14 @@ function parseFlags(argv, specs) {
     }
 
     let value;
-    if (separator === -1) {
+    if (equalsIndex === -1) {
       index += 1;
       value = argv[index];
     } else {
-      value = argument.slice(separator + 1);
+      value = argument.slice(equalsIndex + 1);
     }
 
-    args[spec.key] = spec.parse(value ?? spec.missing);
+    args[spec.key] = spec.parse(value ?? spec.whenValueAbsent);
   }
 
   return args;
