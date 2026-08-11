@@ -46,5 +46,8 @@ console.log(
     `  cd ${projectName}\n` +
     '  pnpm config set "//npm.pkg.github.com/:_authToken" <github-pat-with-read:packages>\n' +
     '  pnpm install\n' +
+    // AGENTS.md in the template points at these skills; without this step the
+    // pointer dangles in a freshly scaffolded repo.
+    '  pnpm dlx @elirobinson/ai-patterns ds-resync artifacts --write\n' +
     '  pnpm dev',
 );

@@ -1,5 +1,12 @@
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { formatReport, parseArgs } from './cli.mjs';
+import { formatReport, main, parseArgs, parseArtifactsArgs } from './cli.mjs';
+
+const CLI_PATH = join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
 
 describe('parseArgs', () => {
   it('defaults to a read-only run in the process cwd', () => {
@@ -228,5 +235,75 @@ describe('formatReport — held back', () => {
     });
     expect(text).toMatch(/up to date/i);
     expect(text).toContain('2.0.0 is available');
+  });
+});
+
+describe('the artifacts subcommand', () => {
+  it('does not disturb the default run — `artifacts` is only a subcommand, never a flag', () => {
+    // Regression guard for the version-sync path: everything below `artifacts`
+    // in argv goes to the old parser, unchanged.
+    expect(() => parseArgs(['artifacts'])).toThrow(/Unknown option/);
+    expect(parseArgs(['--write', '--json']).write).toBe(true);
+  });
+
+  it('is read-only by default, like the command it hangs off', () => {
+    const args = parseArtifactsArgs([]);
+    expect(args.write).toBe(false);
+    expect(args.force).toBe(false);
+    expect(args.failOnDrift).toBe(false);
+    expect(args.cwd).toBe(process.cwd());
+  });
+
+  it('reads every supported flag, in both --cwd forms', () => {
+    const args = parseArtifactsArgs([
+      '--write',
+      '--force',
+      '--json',
+      '--fail-on-drift',
+      '--cwd',
+      '/tmp/app',
+    ]);
+    expect(args).toMatchObject({ write: true, force: true, json: true, failOnDrift: true });
+    expect(args.cwd).toContain('app');
+    expect(parseArtifactsArgs(['--cwd=/tmp/app']).cwd).toContain('app');
+  });
+
+  it('rejects a flag that only the other command understands', () => {
+    expect(() => parseArtifactsArgs(['--target', 'minor'])).toThrow(/Unknown option/);
+  });
+
+  it('routes `artifacts --help` to its own usage', async () => {
+    const chunks = [];
+    const original = process.stdout.write;
+    process.stdout.write = (chunk) => {
+      chunks.push(chunk);
+      return true;
+    };
+
+    try {
+      expect(await main(['artifacts', '--help'])).toBe(0);
+    } finally {
+      process.stdout.write = original;
+    }
+
+    expect(chunks.join('')).toContain('ds-resync artifacts — sync');
+  });
+});
+
+describe('the binary entry point', () => {
+  function runCli(entry) {
+    return execFileSync(process.execPath, [entry, '--help'], { encoding: 'utf8' });
+  }
+
+  it('runs when invoked directly', () => {
+    expect(runCli(CLI_PATH)).toContain('ds-resync — bring');
+  });
+
+  it('runs when invoked through a bin symlink', () => {
+    // npm installs a bin as a symlink and Node reports that path in argv[1],
+    // so a filename match on "cli.mjs" fails and the CLI silently does nothing.
+    const link = join(mkdtempSync(join(tmpdir(), 'ds-bin-')), 'ds-resync');
+    symlinkSync(CLI_PATH, link);
+    expect(runCli(link)).toContain('ds-resync — bring');
   });
 });

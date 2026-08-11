@@ -17,8 +17,10 @@ about severity, free of nitpicks dressed up as blockers.
 
 - `@elirobinson/ai-patterns/contracts` — `uiContracts` and `componentConstraints` are the
   rulebook; cite the constraint id in every finding.
-- The docs site's `/llms-full.txt` — token names/values and each component's documented
-  accessibility contract.
+- `pnpm ds tokens` and `pnpm ds props <Name>` — token names/values and each component's
+  documented accessibility contract, read from the installed package. For a bulk read,
+  `.claude/skills/design-system-reference/llms-full.txt`, which
+  `pnpm dlx @elirobinson/ai-patterns ds-resync artifacts --write` writes and refreshes.
 
 ## What to check
 

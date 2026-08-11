@@ -140,7 +140,17 @@ pnpm ds init --agents
 
 Writes a Claude Code skill, a Cursor rule, Copilot instructions, and an `AGENTS.md` block — so whichever tool a teammate drives reaches for the system first. None of them contains an inventory; they all point at `ds`. Re-running is safe: existing files are left alone unless you pass `--force`, and the `AGENTS.md` block updates in place between its markers.
 
-### 7. Check the contracts a browser has to settle
+### 7. Sync the agent artifacts
+
+```bash
+pnpm exec ds-resync artifacts --write
+```
+
+Writes three skills into `.claude/skills/`: the brand skill (voice, colour, type, assets, UI kits), a version-stamped component reference (`llms.txt` / `llms-full.txt`, generated at publish time from the component manifest), and the `ds-resync` instructions. Read-only without `--write`.
+
+Re-run it after every upgrade. It refreshes the files it wrote, leaves anything you have edited alone and names them in the output, and warns loudly when the snapshot's `@elirobinson/react` version is not the one you have installed — a snapshot that quietly describes a different release is how an agent ends up with confidently wrong prop tables.
+
+### 8. Check the contracts a browser has to settle
 
 ```ts
 // e2e/design-system.spec.ts
@@ -155,7 +165,7 @@ test('home page meets the design system contracts', async ({ page }) => {
 
 Covers 44×44 touch targets, visible focus, non-overlapping hit areas, and WCAG AA contrast. Needs `axe-core` alongside your Playwright install.
 
-### 8. If you have a theme switcher, point it at `data-theme`
+### 9. If you have a theme switcher, point it at `data-theme`
 
 ```tsx
 <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
@@ -166,8 +176,9 @@ Covers 44×44 touch targets, visible focus, non-overlapping hit areas, and WCAG 
 ### Staying current
 
 ```bash
-pnpm exec ds-resync           # what's out of date, and what changed while you were away
-pnpm exec ds-resync --write   # apply it
+pnpm exec ds-resync                    # what's out of date, and what changed while you were away
+pnpm exec ds-resync --write            # apply it
+pnpm exec ds-resync artifacts --write  # then bring the agent skills along
 ```
 
 If the package isn't installed — a repo scaffolded before any of this existed, or a one-off check — run it straight from the registry instead:

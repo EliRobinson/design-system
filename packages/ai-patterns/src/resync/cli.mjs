@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { bumpRange, detectPackageManager, installCommand, writeVersions } from './apply.mjs';
+import { formatArtifactsReport, runArtifacts } from './artifacts.mjs';
 import { isBreaking, sliceChangelog } from './changelog.mjs';
 import { detect } from './detect.mjs';
 import { promptSelections } from './prompt.mjs';
@@ -18,6 +21,11 @@ import {
 const USAGE = `ds-resync — bring this repo's @elirobinson packages up to date
 
 Usage: ds-resync [options]
+       ds-resync artifacts [options]
+
+Commands:
+  (default)             Report and optionally apply dependency upgrades
+  artifacts             Sync the design system's agent skills into this repo
 
 Options:
   --write               Apply the upgrades and install (default is read-only)
@@ -29,7 +37,87 @@ Options:
   --cwd <dir>           Target a directory other than the current one
   --fail-on-outdated    Exit 2 when anything is behind (for CI)
   -h, --help            Show this message
+
+Run \`ds-resync artifacts --help\` for that command's options.
 `;
+
+const ARTIFACTS_USAGE = `ds-resync artifacts — sync the design system's agent skills into this repo
+
+Writes the brand skill, a version-stamped component reference (llms.txt /
+llms-full.txt), and the re-sync instructions into .claude/skills/. Files you have
+edited since they were written are left alone and listed in the report.
+
+Usage: ds-resync artifacts [options]
+
+Options:
+  --write               Apply the changes (default is read-only)
+  --force               Overwrite files you have edited locally
+  --json                Emit the plan as JSON
+  --cwd <dir>           Target a directory other than the current one
+  --fail-on-drift       Exit 2 when the snapshot and the installed
+                        @elirobinson/react disagree (for CI)
+  -h, --help            Show this message
+`;
+
+export function parseArtifactsArgs(argv) {
+  const args = {
+    write: false,
+    force: false,
+    json: false,
+    cwd: process.cwd(),
+    failOnDrift: false,
+    help: false,
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+
+    if (argument === '--write') args.write = true;
+    else if (argument === '--force') args.force = true;
+    else if (argument === '--json') args.json = true;
+    else if (argument === '--fail-on-drift') args.failOnDrift = true;
+    else if (argument === '--help' || argument === '-h') args.help = true;
+    else if (argument === '--cwd') {
+      index += 1;
+      args.cwd = resolvePath(argv[index] ?? '.');
+    } else if (argument.startsWith('--cwd=')) {
+      args.cwd = resolvePath(argument.slice('--cwd='.length));
+    } else {
+      throw new Error(`Unknown option: ${argument}`);
+    }
+  }
+
+  return args;
+}
+
+async function artifactsCommand(argv) {
+  let args;
+  try {
+    args = parseArtifactsArgs(argv);
+  } catch (error) {
+    process.stderr.write(`${error.message}\n\n${ARTIFACTS_USAGE}`);
+    return 1;
+  }
+
+  if (args.help) {
+    process.stdout.write(ARTIFACTS_USAGE);
+    return 0;
+  }
+
+  let result;
+  try {
+    result = runArtifacts({ cwd: args.cwd, write: args.write, force: args.force });
+  } catch (error) {
+    process.stderr.write(`ds-resync artifacts: ${error.message}\n`);
+    return 1;
+  }
+
+  process.stdout.write(
+    args.json ? `${JSON.stringify(result, null, 2)}\n` : `${formatArtifactsReport(result)}\n`,
+  );
+
+  return args.failOnDrift && result.drift ? 2 : 0;
+}
 
 export function parseArgs(argv) {
   const args = {
@@ -249,6 +337,11 @@ function applyUpgrades(result, cwd) {
 }
 
 export async function main(argv) {
+  // A subcommand, not a flag on the default run: the version sync and the
+  // artifact sync share nothing but a package name, and folding them together
+  // would make every flag ambiguous about which half it applies to.
+  if (argv[0] === 'artifacts') return artifactsCommand(argv.slice(1));
+
   let args;
   try {
     args = parseArgs(argv);
@@ -305,8 +398,24 @@ export async function main(argv) {
   return args.failOnOutdated && anyOutdated && !result.wrote ? 2 : 0;
 }
 
-// Only run when invoked as a binary, so the module stays importable by tests.
-if (process.argv[1] && process.argv[1].endsWith('cli.mjs')) {
+/**
+ * True when this file is the process entry point, and not an import from a
+ * test. Matching on the argv[1] filename is not enough: npm installs a bin as a
+ * symlink, and Node reports the symlink path in argv[1] — `.bin/ds-resync`,
+ * which ends in neither `.mjs` nor `cli`. Under such an install the whole CLI
+ * silently did nothing. Resolving the link and comparing URLs handles the
+ * symlink, the pnpm shim, and a direct `node src/resync/cli.mjs` alike.
+ */
+function invokedAsBinary() {
+  if (!process.argv[1]) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+  } catch {
+    return false;
+  }
+}
+
+if (invokedAsBinary()) {
   main(process.argv.slice(2)).then(
     (code) => {
       process.exitCode = code;

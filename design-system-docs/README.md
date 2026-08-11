@@ -26,6 +26,8 @@ Eli runs many small projects. The point of this system is to keep them **visuall
 
 ## INDEX
 
+<!-- ds-artifacts:managed:begin -->
+
 | Path                  | What's there                                                                            |
 | --------------------- | --------------------------------------------------------------------------------------- |
 | `colors_and_type.css` | All design tokens — colors, type, spacing, radii, shadow, motion. Import this anywhere. |
@@ -38,6 +40,8 @@ Eli runs many small projects. The point of this system is to keep them **visuall
 | `slides/`             | Slide deck template (title, content, comparison, quote, closer)                         |
 | `templates/`          | Email + social-carousel starter templates                                               |
 | `SKILL.md`            | Agent Skills frontmatter — drop this folder into Claude Code as a skill                 |
+
+<!-- ds-artifacts:managed:end -->
 
 ---
 
