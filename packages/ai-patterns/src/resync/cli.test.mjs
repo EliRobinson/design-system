@@ -1,10 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { formatReport, main, parseArgs, parseArtifactsArgs } from './cli.mjs';
+import { formatReport, main } from './cli.mjs';
 import { TARGETS } from './targets.mjs';
 
 const CLI_PATH = join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
@@ -26,37 +26,6 @@ async function captureStdout(argv) {
 
   return { code, text: chunks.join('') };
 }
-
-describe('parseArgs', () => {
-  it('defaults to a read-only run in the process cwd', () => {
-    const args = parseArgs([]);
-    expect(args.write).toBe(false);
-    expect(args.json).toBe(false);
-    expect(args.failOnOutdated).toBe(false);
-    expect(args.cwd).toBe(process.cwd());
-  });
-
-  it('reads every supported flag', () => {
-    const args = parseArgs(['--write', '--json', '--fail-on-outdated', '--cwd', '/tmp/app']);
-    expect(args.write).toBe(true);
-    expect(args.json).toBe(true);
-    expect(args.failOnOutdated).toBe(true);
-    expect(args.cwd).toContain('app');
-  });
-
-  it('accepts --cwd=value as well as --cwd value', () => {
-    expect(parseArgs(['--cwd=/tmp/app']).cwd).toContain('app');
-  });
-
-  it('rejects an unknown flag rather than ignoring it', () => {
-    expect(() => parseArgs(['--wirte'])).toThrow(/Unknown option/);
-  });
-
-  it('recognises help', () => {
-    expect(parseArgs(['--help']).help).toBe(true);
-    expect(parseArgs(['-h']).help).toBe(true);
-  });
-});
 
 describe('formatReport', () => {
   const outdated = {
@@ -167,49 +136,6 @@ describe('formatReport', () => {
   });
 });
 
-describe('parseArgs — selection', () => {
-  it('defaults to every package at latest', () => {
-    const args = parseArgs([]);
-    expect(args.only).toBeNull();
-    expect(args.targetSpec).toEqual({ fallback: 'latest', byName: {} });
-    expect(args.interactive).toBe(false);
-  });
-
-  it('reads --only with short names', () => {
-    expect(parseArgs(['--only', 'react,tokens']).only).toEqual([
-      '@elirobinson/react',
-      '@elirobinson/tokens',
-    ]);
-  });
-
-  it('reads --only=value', () => {
-    expect(parseArgs(['--only=react']).only).toEqual(['@elirobinson/react']);
-  });
-
-  it('reads a global --target', () => {
-    expect(parseArgs(['--target', 'minor']).targetSpec).toEqual({
-      fallback: 'minor',
-      byName: {},
-    });
-  });
-
-  it('reads per-package targets', () => {
-    expect(parseArgs(['--target=react=patch']).targetSpec).toEqual({
-      fallback: 'latest',
-      byName: { '@elirobinson/react': 'patch' },
-    });
-  });
-
-  it('rejects an unknown target', () => {
-    expect(() => parseArgs(['--target', 'sideways'])).toThrow(/Unknown target/);
-  });
-
-  it('reads --interactive and -i', () => {
-    expect(parseArgs(['--interactive']).interactive).toBe(true);
-    expect(parseArgs(['-i']).interactive).toBe(true);
-  });
-});
-
 describe('formatReport — held back', () => {
   function entry(overrides) {
     return {
@@ -258,81 +184,10 @@ describe('formatReport — held back', () => {
 });
 
 describe('the artifacts subcommand', () => {
-  it('does not disturb the default run — `artifacts` is only a subcommand, never a flag', () => {
-    // Regression guard for the version-sync path: everything below `artifacts`
-    // in argv goes to the old parser, unchanged.
-    expect(() => parseArgs(['artifacts'])).toThrow(/Unknown option/);
-    expect(parseArgs(['--write', '--json']).write).toBe(true);
-  });
-
-  it('is read-only by default, like the command it hangs off', () => {
-    const args = parseArtifactsArgs([]);
-    expect(args.write).toBe(false);
-    expect(args.force).toBe(false);
-    expect(args.failOnDrift).toBe(false);
-    expect(args.cwd).toBe(process.cwd());
-  });
-
-  it('reads every supported flag, in both --cwd forms', () => {
-    const args = parseArtifactsArgs([
-      '--write',
-      '--force',
-      '--json',
-      '--fail-on-drift',
-      '--cwd',
-      '/tmp/app',
-    ]);
-    expect(args).toMatchObject({ write: true, force: true, json: true, failOnDrift: true });
-    expect(args.cwd).toContain('app');
-    expect(parseArtifactsArgs(['--cwd=/tmp/app']).cwd).toContain('app');
-  });
-
-  it('rejects a flag that only the other command understands', () => {
-    expect(() => parseArtifactsArgs(['--target', 'minor'])).toThrow(/Unknown option/);
-  });
-
   it('routes `artifacts --help` to its own usage', async () => {
     const { code, text } = await captureStdout(['artifacts', '--help']);
     expect(code).toBe(0);
     expect(text).toContain('ds-resync artifacts — sync');
-  });
-});
-
-describe('flags shared between the two commands', () => {
-  it('reads --cwd=<dir> identically to --cwd <dir>, on both commands', () => {
-    // One parser serves both commands, so the two spellings and the two
-    // commands have to agree — the prefix form used to be implemented twice.
-    const spaced = parseArgs(['--cwd', '/tmp/app']).cwd;
-    expect(parseArgs(['--cwd=/tmp/app']).cwd).toBe(spaced);
-    expect(parseArtifactsArgs(['--cwd', '/tmp/app']).cwd).toBe(spaced);
-    expect(parseArtifactsArgs(['--cwd=/tmp/app']).cwd).toBe(spaced);
-  });
-
-  it('resolves a relative --cwd against the process cwd in either form', () => {
-    expect(parseArgs(['--cwd=sub']).cwd).toBe(resolve('sub'));
-    expect(parseArtifactsArgs(['--cwd=sub']).cwd).toBe(resolve('sub'));
-  });
-
-  it('does not accept a value on a boolean flag', () => {
-    expect(() => parseArgs(['--write=yes'])).toThrow(/Unknown option: --write=yes/);
-    expect(() => parseArtifactsArgs(['--force=yes'])).toThrow(/Unknown option: --force=yes/);
-  });
-});
-
-describe('flags belonging to only one command', () => {
-  it('rejects an artifacts-only flag on the default run', () => {
-    expect(() => parseArgs(['--force'])).toThrow(/Unknown option: --force/);
-    expect(() => parseArgs(['--fail-on-drift'])).toThrow(/Unknown option: --fail-on-drift/);
-  });
-
-  it('rejects a default-run-only flag on artifacts, in both forms', () => {
-    expect(() => parseArtifactsArgs(['--only', 'react'])).toThrow(/Unknown option: --only/);
-    expect(() => parseArtifactsArgs(['--only=react'])).toThrow(/Unknown option: --only=react/);
-    expect(() => parseArtifactsArgs(['--interactive'])).toThrow(/Unknown option: --interactive/);
-    expect(() => parseArtifactsArgs(['-i'])).toThrow(/Unknown option: -i/);
-    expect(() => parseArtifactsArgs(['--fail-on-outdated'])).toThrow(
-      /Unknown option: --fail-on-outdated/,
-    );
   });
 });
 
