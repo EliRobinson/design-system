@@ -13,11 +13,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import contracts from '@elirobinson/ai-patterns/contracts';
-import {
-  llmsFull as buildFull,
-  llmsIndex as buildIndex,
-  type Contracts,
-} from '@elirobinson/ai-patterns/corpus';
+import { llmsFull as buildFull, llmsIndex as buildIndex } from '@elirobinson/ai-patterns/corpus';
 
 import type { ComponentRecord } from './manifest';
 import { components, hooks, TIERS } from './manifest';
@@ -132,7 +128,7 @@ export function llmsIndex(): string {
 export function llmsFull(): string {
   return buildFull({
     manifest,
-    contracts: contracts as Contracts,
+    contracts,
     tokens: cssTokens(),
     prose: { foundations: sectionProse('Foundations'), patterns: sectionProse('Patterns') },
     componentAppendix,

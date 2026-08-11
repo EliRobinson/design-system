@@ -48,8 +48,15 @@ export type HookRecord = {
 };
 
 export type Manifest = {
-  /** Every distinct non-null tier, in the order components are rendered. */
-  tiers: string[];
+  /**
+   * Every distinct non-null tier, as the manifest reports them. Components are
+   * grouped and emitted tier by tier in exactly this order — the corpus has no
+   * opinion of its own about which tier comes first.
+   *
+   * Optional because a manifest predating `manifestVersion: 2` has no `tiers`;
+   * given none, components are emitted in the order the manifest lists them.
+   */
+  tiers?: string[];
   components: ComponentRecord[];
   hooks: HookRecord[];
 };

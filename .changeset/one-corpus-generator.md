@@ -26,9 +26,14 @@ the two callers, each optional and absent by default:
 - `alsoAvailable` — the "what else is here" bullets, which are URLs on a website
   and filenames plus a CLI in a tarball.
 
-The packed snapshot is byte-identical to what it produced before. The docs
-`/llms-full.txt` gains exactly one trailing newline, so neither a file nor a
-`text/plain` body ends mid-line.
+The packed snapshot is byte-identical to what it produced before, and so is the
+docs `/llms.txt`. Two docs outputs change, both deliberately:
+
+- `/llms-full.txt` gains exactly one trailing newline, so neither a file nor a
+  `text/plain` body ends mid-line. Nothing else in it moves.
+- `/r/<slug>.json` spreads the manifest record, so its `importPath` key is now
+  `importSpecifier` — the same rename described below, surfacing on the one
+  machine-readable route that isn't a corpus.
 
 Two fixes that only became possible once there was one reader:
 

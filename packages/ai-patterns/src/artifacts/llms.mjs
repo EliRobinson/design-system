@@ -130,8 +130,12 @@ function componentSection(component, appendix) {
  * Driven off `manifest.tiers` rather than a hardcoded ['atoms','molecules',
  * 'organisms'], which is how a tier added to @elirobinson/react used to drop
  * every component in it out of the corpus without a word. Anything the manifest
- * gives no tier — a flat layout reports `tier: null` — is emitted after the
- * tiers rather than silently discarded.
+ * gives no tier — a flat layout reports `tier: null`, and a manifest older than
+ * `tiers` gives none at all — is emitted after the tiers rather than silently
+ * discarded.
+ *
+ * Both the index and the full corpus go through this, so the two never disagree
+ * about what order the components are in.
  */
 function orderedComponents(manifest) {
   const tiers = manifest.tiers ?? [];
@@ -167,7 +171,7 @@ export function llmsIndex({ manifest, versions, alsoAvailable }) {
     ...(alsoAvailable ? [`## ${alsoAvailable.heading}`, '', ...alsoAvailable.entries, ''] : []),
     '## Components',
     '',
-    ...manifest.components.map(
+    ...orderedComponents(manifest).map(
       (component) =>
         `- ${component.name} (${component.tier}) — ${component.description} — import '${component.importSpecifier}'`,
     ),

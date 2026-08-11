@@ -202,6 +202,30 @@ describe('llmsFull', () => {
     it('emits each component exactly once', () => {
       expect(text.match(/^### Button /gm)).toHaveLength(1);
     });
+
+    it('orders the index the same way as the full corpus', () => {
+      /* One corpus, one order. These are two files a reader flips between; a
+         tier order applied to only one of them is worse than neither. */
+      const reversed = { ...manifest, tiers: ['organisms', 'atoms'] };
+      const index = llmsIndex({ manifest: reversed });
+      const full = llmsFull({ manifest: reversed, contracts, tokens });
+
+      expect(index.indexOf('- Dialog (organisms)')).toBeLessThan(index.indexOf('- Button (atoms)'));
+      expect(full.indexOf('### Dialog (organisms)')).toBeLessThan(
+        full.indexOf('### Button (atoms)'),
+      );
+    });
+
+    it('falls back to manifest order when the manifest reports no tiers at all', () => {
+      /* An install predating `tiers`. Degrading to the manifest's own order
+         beats emitting an empty component list. */
+      const untiered = { components: manifest.components, hooks: manifest.hooks };
+
+      expect(llmsIndex({ manifest: untiered })).toContain('- Button (atoms)');
+      expect(llmsFull({ manifest: untiered, contracts, tokens })).toContain(
+        '### Dialog (organisms)',
+      );
+    });
   });
 
   describe('caller-supplied material', () => {
