@@ -21,7 +21,7 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "@elirobinson/tokens": "0.3.0",
+    "@elirobinson/tokens": "workspace:*",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.14.9"
   },

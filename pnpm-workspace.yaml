@@ -2,12 +2,14 @@ packages:
   - './packages/*'
   - './apps/*'
 
-# Internal deps are declared as exact versions ("@elirobinson/tokens": "0.2.0")
-# rather than workspace:*, and scripts/sync-workspace-deps.mjs keeps them in step
-# with each package's version. pnpm 10 defaults this to false, which turns those
-# specs into registry lookups — so during a release, right after `changeset
-# version` bumps a package, the install resolves a version that has not been
-# published yet and 404s. Pin it on so the workspace copy always wins.
+# Internal deps are declared with the workspace protocol ("@elirobinson/tokens":
+# "workspace:*"), which pins them to the workspace copy no matter what this
+# setting says; pnpm rewrites the spec to the real version at pack time, so
+# consumers still receive an exact pin. This stays on as the safety net for any
+# internal dep not on the protocol: pnpm 10 defaults it to false, which turns a
+# plain version spec into a registry lookup — so during a release, right after
+# `changeset version` bumps a package, the install resolves a version that has
+# not been published yet and 404s. Pin it on so the workspace copy always wins.
 linkWorkspacePackages: true
 
 onlyBuiltDependencies:

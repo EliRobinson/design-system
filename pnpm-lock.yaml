@@ -19,7 +19,7 @@ importers:
         specifier: ^2.31.0
         version: 2.31.0(@types/node@25.6.0)
       '@elirobinson/eslint-config':
-        specifier: 0.2.0
+        specifier: workspace:*
         version: link:packages/eslint-config
       '@eslint/js':
         specifier: ^9.39.4
@@ -176,7 +176,7 @@ importers:
   packages/react:
     dependencies:
       '@elirobinson/tokens':
-        specifier: 0.3.0
+        specifier: workspace:*
         version: link:../tokens
       '@tanstack/react-table':
         specifier: ^8.21.3
