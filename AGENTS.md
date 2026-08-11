@@ -6,7 +6,7 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 
 > Edit this file only. `CLAUDE.md` is a symlink to `AGENTS.md`.
 
-**Package manager:** pnpm (`pnpm@10.11.1`)
+**Package manager:** pnpm (`pnpm@11.21.0`)
 
 **Common commands:** `pnpm build` · `pnpm test` · `pnpm lint` · `pnpm typecheck` · `pnpm sync:deps`
 

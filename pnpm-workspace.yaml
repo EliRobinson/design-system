@@ -12,6 +12,9 @@ packages:
 # not been published yet and 404s. Pin it on so the workspace copy always wins.
 linkWorkspacePackages: true
 
-onlyBuiltDependencies:
-  - esbuild
-  - nx
+# pnpm 11 replaced `onlyBuiltDependencies` (an allowlist array) with `allowBuilds`
+# (a map). Without it these two are reported as ERR_PNPM_IGNORED_BUILDS and their
+# native binaries never get linked.
+allowBuilds:
+  esbuild: true
+  nx: true
