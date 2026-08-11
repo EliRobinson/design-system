@@ -26,17 +26,27 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - uses: pnpm/action-setup@v6
-        with:
-          # Uses `packageManager` from ./package.json so CI stays in sync.
-          run_install: false
       - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
-          cache: 'pnpm'
-          cache-dependency-path: 'pnpm-lock.yaml'
           registry-url: 'https://npm.pkg.github.com'
           scope: '@elirobinson'
+      # See quality.yml for why this is corepack rather than pnpm/action-setup.
+      # Keep the two workflows' setup in step: this one publishes, so a
+      # difference in how it resolves pnpm is a difference in what ships.
+      - name: Set up pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+      - name: Locate the pnpm store
+        id: pnpm_store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
       - run: pnpm install --frozen-lockfile
       - run: pnpm changeset:version
       - name: Commit version bump
