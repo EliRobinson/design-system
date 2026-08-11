@@ -1,15 +1,23 @@
-/* Builds the `llms.txt` / `llms-full.txt` snapshot that ships in the tarball.
+/* The one llms.txt / llms-full.txt generator.
  *
- * The docs site builds the same corpus at request time from live sources. This
- * is the offline twin: it derives from `@elirobinson/react/manifest`, the
- * committed `packages/tokens/src/tokens.css`, and this package's own
- * `contracts.json` — so packing never has to build `apps/docs`, which reads
- * that same manifest rather than producing it. The price is that the MDX prose
- * the site interleaves is absent here, which the header says out loud rather
- * than letting a reader assume this is the whole corpus.
+ * Two callers render this corpus and there is exactly one implementation of it:
  *
- * Everything is a pure function of its inputs so the shape can be tested
- * without touching a filesystem.
+ *   - `scripts/build-artifacts.mjs` stages the offline snapshot that ships in
+ *     this package's tarball. It has a version stamp and no page prose.
+ *   - `apps/docs` serves `/llms.txt` and `/llms-full.txt` at request time. It
+ *     has the MDX prose the human pages render and a URL per component record,
+ *     and no version stamp — a live site is never a stale snapshot of itself.
+ *
+ * Those four things are the *only* differences, and each is an optional
+ * argument below, absent by default. Everything else — the intro, the import
+ * rules, the prop tables, the constraint and token rendering, the component and
+ * hook sections — is this file, once. It used to be two files that said in
+ * their headers that they were twins, which is not a mechanism.
+ *
+ * Everything is a pure function of its inputs, so the shape can be tested
+ * without touching a filesystem. The manifest argument is
+ * `@elirobinson/react/manifest`; the reader here only ever reads, so a field
+ * added there needs no change until this file wants to render it.
  */
 
 const INTRO =
@@ -30,11 +38,12 @@ const IMPORT_RULES = [
 export const RESYNC_COMMAND = 'pnpm dlx @elirobinson/ai-patterns ds-resync artifacts --write';
 
 /**
- * The stamp is the whole point of this file existing as a snapshot rather than
- * a live query: a reader (human or agent) has to be able to tell, without
- * trusting anything else, which package versions these prop tables describe.
+ * The stamp is the whole point of a snapshot existing rather than a live query:
+ * a reader (human or agent) has to be able to tell, without trusting anything
+ * else, which package versions these prop tables describe. The docs site passes
+ * no versions and gets no stamp, because it is not a snapshot.
  *
- * @param {{ aiPatterns: string, react: string, tokens: string }} versions
+ * @param {import('./llms.js').Versions} versions
  */
 export function versionStamp(versions) {
   return [
@@ -50,9 +59,8 @@ export function versionStamp(versions) {
 }
 
 /* The token list this file renders comes from `parseTokensCss` in
-   @elirobinson/tokens — the one parser — which `scripts/build-artifacts.mjs`
-   calls before handing the result to `llmsFull`. This module used to carry a
-   character-for-character copy of it. */
+   @elirobinson/tokens — the one parser — which each caller runs before handing
+   the result in. This module used to carry a copy of it. */
 
 function propsTable(props) {
   if (!props || props.length === 0) {
@@ -73,7 +81,7 @@ function propsTable(props) {
   ].join('\n');
 }
 
-function componentSection(component) {
+function componentSection(component, appendix) {
   const exported = [
     component.name,
     ...component.subComponents.map((sub) => sub.name),
@@ -85,7 +93,7 @@ function componentSection(component) {
     '',
     component.description,
     '',
-    `Import: \`import { ${exported} } from '${component.importPath}';\``,
+    `Import: \`import { ${exported} } from '${component.importSpecifier}';\``,
   ];
 
   if (component.stylesheetPaths.length > 0) {
@@ -109,17 +117,46 @@ function componentSection(component) {
     parts.push(`Notes: ${component.extractionGaps.join('; ')}`);
   }
 
+  for (const block of appendix(component)) {
+    parts.push('', block);
+  }
+
   return parts.join('\n');
 }
 
-/** @param {{ manifest: object, versions: object }} input */
-export function llmsIndex({ manifest, versions }) {
+/**
+ * Components grouped by tier, in the order the manifest reports its tiers.
+ *
+ * Driven off `manifest.tiers` rather than a hardcoded ['atoms','molecules',
+ * 'organisms'], which is how a tier added to @elirobinson/react used to drop
+ * every component in it out of the corpus without a word. Anything the manifest
+ * gives no tier — a flat layout reports `tier: null`, and a manifest older than
+ * `tiers` gives none at all — is emitted after the tiers rather than silently
+ * discarded.
+ *
+ * Both the index and the full corpus go through this, so the two never disagree
+ * about what order the components are in.
+ */
+function orderedComponents(manifest) {
+  const tiers = manifest.tiers ?? [];
+  return [
+    ...tiers.flatMap((tier) => manifest.components.filter((entry) => entry.tier === tier)),
+    ...manifest.components.filter((entry) => !tiers.includes(entry.tier)),
+  ];
+}
+
+/**
+ * The index: what this system is, how to install it, and one line per component
+ * and hook.
+ *
+ * @param {import('./llms.js').IndexInput} input
+ */
+export function llmsIndex({ manifest, versions, alsoAvailable }) {
   return [
     '# Miltinson Design System',
     '',
     `> ${INTRO}`,
-    '',
-    versionStamp(versions),
+    ...(versions ? ['', versionStamp(versions)] : []),
     '',
     '## Install',
     '',
@@ -131,39 +168,47 @@ export function llmsIndex({ manifest, versions }) {
     '',
     IMPORT_RULES,
     '',
-    '## The rest of this snapshot',
-    '',
-    '- `llms-full.txt` — every token, every constraint, and every component with its prop table',
-    '- `pnpm ds` / `pnpm ds props <Name>` — the same information read live from the installed',
-    '  package. Always authoritative; this file is a convenience for reading in bulk.',
-    '',
+    ...(alsoAvailable ? [`## ${alsoAvailable.heading}`, '', ...alsoAvailable.entries, ''] : []),
     '## Components',
     '',
-    ...manifest.components.map(
+    ...orderedComponents(manifest).map(
       (component) =>
-        `- ${component.name} (${component.tier}) — ${component.description} — import '${component.importPath}'`,
+        `- ${component.name} (${component.tier}) — ${component.description} — import '${component.importSpecifier}'`,
     ),
     '',
     '## Hooks',
     '',
     ...manifest.hooks.map(
       (hook) =>
-        `- ${hook.name} — ${hook.description.split(/[.\n]/)[0].trim()}. — import '${hook.importPath}'`,
+        `- ${hook.name} — ${hook.description.split(/[.\n]/)[0].trim()}. — import '${hook.importSpecifier}'`,
     ),
     '',
   ].join('\n');
 }
 
-/** @param {{ manifest: object, contracts: object, tokens: Array, versions: object }} input */
-export function llmsFull({ manifest, contracts, tokens, versions }) {
+/**
+ * The full corpus: constraints, tokens, every component with its prop table,
+ * every hook, and whatever narrative prose the caller has.
+ *
+ * @param {import('./llms.js').FullInput} input
+ */
+export function llmsFull({
+  manifest,
+  contracts,
+  tokens,
+  versions,
+  prose = {},
+  componentAppendix = () => [],
+}) {
   const constraintEntries = Object.entries(contracts.componentConstraints ?? {});
+  const foundations = prose.foundations ?? [];
+  const patterns = prose.patterns ?? [];
 
   const parts = [
     '# Miltinson Design System — full corpus',
     '',
     `> ${INTRO}`,
-    '',
-    versionStamp(versions),
+    ...(versions ? ['', versionStamp(versions)] : []),
     '',
     '## System constraints (machine-checkable ids from @elirobinson/ai-patterns/contracts)',
     '',
@@ -184,14 +229,18 @@ export function llmsFull({ manifest, contracts, tokens, versions }) {
     ...tokens.map(
       (token) => `- \`${token.name}: ${token.value}\`${token.comment ? ` — ${token.comment}` : ''}`,
     ),
-    '',
-    '## Components',
   ];
 
-  for (const tier of ['atoms', 'molecules', 'organisms']) {
-    for (const component of manifest.components.filter((entry) => entry.tier === tier)) {
-      parts.push('', componentSection(component));
+  if (foundations.length > 0) {
+    parts.push('', '## Foundations');
+    for (const page of foundations) {
+      parts.push('', page);
     }
+  }
+
+  parts.push('', '## Components');
+  for (const component of orderedComponents(manifest)) {
+    parts.push('', componentSection(component, componentAppendix));
   }
 
   parts.push('', '## Hooks');
@@ -200,11 +249,26 @@ export function llmsFull({ manifest, contracts, tokens, versions }) {
       '',
       `### ${hook.name}`,
       '',
-      `Import: \`import { ${hook.name} } from '${hook.importPath}';\``,
+      `Import: \`import { ${hook.name} } from '${hook.importSpecifier}';\``,
     );
     if (hook.description) parts.push('', hook.description);
   }
 
+  if (patterns.length > 0) {
+    parts.push(
+      '',
+      '## Patterns',
+      '',
+      'These are recipes composed from the primitives above — they are NOT importable components.',
+    );
+    for (const page of patterns) {
+      parts.push('', page);
+    }
+  }
+
+  /* Both outputs end with a newline: one is written to a file, the other is
+     served as text/plain, and neither reader benefits from a truncated last
+     line. */
   parts.push('');
   return parts.join('\n');
 }

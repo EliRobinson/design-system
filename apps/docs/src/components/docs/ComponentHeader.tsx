@@ -17,7 +17,7 @@ export function ComponentHeader({ slug }: { slug: string }) {
     ...component.subComponents.map((s) => s.name),
     ...component.hooks.map((h) => h.name),
   ];
-  const importLine = `import { ${names.join(', ')} } from '${component.importPath}';`;
+  const importLine = `import { ${names.join(', ')} } from '${component.importSpecifier}';`;
 
   return (
     <header className="component-header">

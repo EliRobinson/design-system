@@ -90,7 +90,6 @@ describe('buildManifest against this package', () => {
       tier: 'atoms',
       subpath: 'atoms/Button',
       importSpecifier: '@elirobinson/react/components/atoms/Button',
-      importPath: '@elirobinson/react/components/atoms/Button',
       propsType: 'ButtonProps',
       stylesheetPaths: ['@elirobinson/react/styles/atoms/Button.css'],
       inherits: 'ButtonHTMLAttributes<HTMLButtonElement>',
@@ -176,7 +175,6 @@ describe('buildManifest against this package', () => {
     const hook = manifest.hooks.find((entry) => entry.name === 'useClickOutside');
     expect(hook).toMatchObject({
       importSpecifier: '@elirobinson/react/hooks/useClickOutside',
-      importPath: '@elirobinson/react/hooks/useClickOutside',
       exports: ['useClickOutside'],
     });
     expect(hook.description.length).toBeGreaterThan(0);

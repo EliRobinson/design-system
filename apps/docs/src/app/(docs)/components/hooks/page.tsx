@@ -30,7 +30,10 @@ export default function HooksPage() {
       {hooks.map((hook) => (
         <section key={hook.name}>
           <h2 id={hook.name.toLowerCase()}>{hook.name}</h2>
-          <CodeSnippet code={`import { ${hook.name} } from '${hook.importPath}';`} lang="tsx" />
+          <CodeSnippet
+            code={`import { ${hook.name} } from '${hook.importSpecifier}';`}
+            lang="tsx"
+          />
           {hook.description
             .split(/\n\n+/)
             .slice(0, 3)

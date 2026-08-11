@@ -187,10 +187,6 @@ function componentEntry(componentsDir, packageName, { subpath, analysis }, docs)
     tier: segments.length > 1 ? segments.slice(0, -1).join('/') : null,
     subpath,
     importSpecifier,
-    // Alias of importSpecifier. The docs site and the llms snapshot read
-    // `importPath`; the `ds` CLI reads `importSpecifier`. Collapse to one name
-    // when those readers are unified.
-    importPath: importSpecifier,
     stylesheetPaths,
     description,
     inherits: propsType ? inheritsOf(declarations, propsType) : null,
@@ -225,7 +221,6 @@ function hookEntry(packageName, { subpath, analysis }) {
     name,
     subpath,
     importSpecifier,
-    importPath: importSpecifier,
     description: hooks.find((hook) => hook.name === name)?.description || curatedHooks[name] || '',
     exports: values,
     types,

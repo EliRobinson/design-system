@@ -1,34 +1,42 @@
-/* Builds the machine-readable surface: /llms.txt, /llms-full.txt, and the
-   /r/[component].json records. Everything here derives from the generated
-   manifest, the live tokens.css, the ai-patterns contracts, and the same MDX
-   prose the human pages render — no hand-kept second copy of anything. */
+/* The site's machine-readable surface: /llms.txt, /llms-full.txt, and the
+   /r/[component].json records.
+
+   The corpus itself is built by `@elirobinson/ai-patterns/corpus` — the same
+   generator that stages the offline snapshot in that package's tarball. This
+   module is the docs site's half of that contract and nothing else: it reads
+   the manifest, the live tokens.css and the contracts, turns the MDX pages the
+   humans read into plain markdown, and hands all of it over. What used to live
+   here was a second implementation of the generator that happened to agree with
+   the first. */
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import contracts from '@elirobinson/ai-patterns/contracts';
+import { llmsFull as buildFull, llmsIndex as buildIndex } from '@elirobinson/ai-patterns/corpus';
 
 import type { ComponentRecord } from './manifest';
-import { components, hooks } from './manifest';
+import { components, hooks, TIERS } from './manifest';
 import { siteSections } from './site-map';
 import { cssTokens } from './tokens-css';
 
 const APP_DIR = join(process.cwd(), 'src/app/(docs)');
 
-const INTRO =
-  'Miltinson Design System — tokens, React 19 components, and AI patterns for ' +
-  'Miltinson Technologies products. Ink-led palette with one amber accent, sharp radii, ' +
-  'hairline borders, WCAG AA by default. Packages: @elirobinson/tokens, ' +
-  '@elirobinson/react, @elirobinson/ai-patterns (GitHub Packages registry).';
+/* What a reader of /llms.txt can fetch next. The packed snapshot answers the
+   same question with filenames and the `ds` CLI; a website answers it with
+   URLs, which is why the generator takes this rather than guessing. */
+const MACHINE_READABLE_DOCS = {
+  heading: 'Machine-readable docs',
+  entries: [
+    '- /llms-full.txt — the full corpus: tokens, constraints, every component with its prop table, patterns',
+    '- /r/<slug>.json — one component record (e.g. /r/button.json)',
+  ],
+};
 
-const IMPORT_RULES = [
-  'There are no barrel files. Every import names a subpath:',
-  "  import '@elirobinson/tokens/tokens.css';",
-  "  import '@elirobinson/react/styles.css';",
-  "  import { Button } from '@elirobinson/react/components/atoms/Button';",
-  "  import { useRovingFocus } from '@elirobinson/react/hooks/useRovingFocus';",
-  "A bare import from '@elirobinson/react' does not resolve.",
-].join('\n');
+/* The generator reads the manifest structurally, naming only the fields it
+   renders — including `tiers`, so a tier @elirobinson/react adds shows up here
+   by bumping a version rather than by editing a list. */
+const manifest = { tiers: TIERS, components, hooks };
 
 function pagePath(href: string): string {
   return join(APP_DIR, href.replace(/^\//, ''), 'page.mdx');
@@ -85,181 +93,46 @@ function pageProse(href: string): string | null {
   return stripMdx(readFileSync(path, 'utf8'));
 }
 
-function propsTable(props: ComponentRecord['props']): string {
-  if (props.length === 0) {
-    return '(no props of its own beyond inherited HTML attributes)';
+/** Every page of a named site section that has prose, in sidebar order. */
+function sectionProse(title: string): string[] {
+  const section = siteSections().find((s) => s.title === title);
+  if (!section) {
+    return [];
   }
-  const rows = props.map(
-    (p) =>
-      `| ${p.name} | \`${p.type.replace(/\|/g, '\\|')}\` | ${p.required ? 'yes' : 'no'} | ${
-        p.defaultValue ?? '—'
-      } | ${p.description || '—'} |`,
-  );
-  return [
-    '| Prop | Type | Required | Default | Description |',
-    '| --- | --- | --- | --- | --- |',
-    ...rows,
-  ].join('\n');
+  return section.pages.map((page) => pageProse(page.href)).filter((prose) => prose !== null);
 }
 
-function componentSection(component: ComponentRecord): string {
-  const parts = [
-    `### ${component.name} (${component.tier})`,
-    '',
-    component.description,
-    '',
-    `Import: \`import { ${[
-      component.name,
-      ...component.subComponents.map((s) => s.name),
-      ...component.hooks.map((h) => h.name),
-    ].join(', ')} } from '${component.importPath}';\``,
-  ];
-  if (component.stylesheetPaths.length > 0) {
-    parts.push(`Styles: ${component.stylesheetPaths.join(', ')} (included in styles.css)`);
-  }
-  if (component.inherits) {
-    parts.push(`Also accepts all \`${component.inherits}\` props.`);
-  }
-  parts.push('', propsTable(component.props));
-  for (const sub of component.subComponents) {
-    parts.push('', `#### ${sub.name}`, '', propsTable(sub.props));
-    if (sub.inherits) {
-      parts.push(`Also accepts all \`${sub.inherits}\` props.`);
-    }
-  }
-  if (component.constraints.length > 0) {
-    parts.push('', `Constraints: ${component.constraints.join(', ')} (see System constraints)`);
-  }
-  if (component.extractionGaps.length > 0) {
-    parts.push(`Notes: ${component.extractionGaps.join('; ')}`);
-  }
+/* What the docs site has and a packed snapshot does not: the component's own
+   page, and a URL for its record. */
+function componentAppendix(component: ComponentRecord): string[] {
+  const blocks: string[] = [];
   const prose = pageProse(`/components/${component.slug}`);
   if (prose) {
-    /* Drop the H1 (the section heading above carries the name) and demote the
-       page's H2s so they nest under this component's H3. */
-    parts.push(
-      '',
+    /* Drop the H1 (the section heading the generator emits carries the name)
+       and demote the page's H2s so they nest under its H3. */
+    blocks.push(
       prose
         .replace(/^# .*\n/, '')
         .replace(/^## /gm, '#### ')
         .trim(),
     );
   }
-  parts.push('', `Machine-readable record: /r/${component.slug}.json`);
-  return parts.join('\n');
+  blocks.push(`Machine-readable record: /r/${component.slug}.json`);
+  return blocks;
 }
 
 export function llmsIndex(): string {
-  const lines = [
-    '# Miltinson Design System',
-    '',
-    `> ${INTRO}`,
-    '',
-    '## Install',
-    '',
-    'GitHub Packages registry — .npmrc with @elirobinson:registry=https://npm.pkg.github.com',
-    'and a PAT with read:packages. The token must go in the user-level npmrc, not the',
-    "project's — pnpm 10 ignores registry credentials in a project .npmrc. Then:",
-    '  pnpm config set "//npm.pkg.github.com/:_authToken" <pat>',
-    '  pnpm add @elirobinson/tokens @elirobinson/react',
-    '',
-    IMPORT_RULES,
-    '',
-    '## Machine-readable docs',
-    '',
-    '- /llms-full.txt — the full corpus: tokens, constraints, every component with its prop table, patterns',
-    '- /r/<slug>.json — one component record (e.g. /r/button.json)',
-    '',
-    '## Components',
-    '',
-    ...components.map(
-      (c) => `- ${c.name} (${c.tier}) — ${c.description} — import '${c.importPath}'`,
-    ),
-    '',
-    '## Hooks',
-    '',
-    ...hooks.map(
-      (h) => `- ${h.name} — ${h.description.split(/[.\n]/)[0].trim()}. — import '${h.importPath}'`,
-    ),
-    '',
-  ];
-  return lines.join('\n');
+  return buildIndex({ manifest, alsoAvailable: MACHINE_READABLE_DOCS });
 }
 
 export function llmsFull(): string {
-  const constraintEntries = Object.entries(
-    contracts.componentConstraints as Record<string, { summary: string; check: string }>,
-  );
-
-  const parts: string[] = [
-    '# Miltinson Design System — full corpus',
-    '',
-    `> ${INTRO}`,
-    '',
-    '## System constraints (machine-checkable ids from @elirobinson/ai-patterns/contracts)',
-    '',
-    ...constraintEntries.map(([id, c]) => `- **${id}** — ${c.summary} Check: ${c.check}`),
-    '',
-    `UI contracts: minimum touch target ${contracts.uiContracts.minimumTouchTarget} (scoped — see touch-target-dense), ` +
-      `focus-visible required: ${contracts.uiContracts.focusVisibleRequired}, contrast level ${contracts.uiContracts.contrastLevel}.`,
-    '',
-    '## Import rules',
-    '',
-    IMPORT_RULES,
-    '',
-    '## Design tokens (from @elirobinson/tokens/tokens.css)',
-    '',
-    ...cssTokens().map((t) => `- \`${t.name}: ${t.value}\`${t.comment ? ` — ${t.comment}` : ''}`),
-  ];
-
-  const foundations = siteSections().find((s) => s.title === 'Foundations');
-  if (foundations) {
-    parts.push('', '## Foundations');
-    for (const page of foundations.pages) {
-      const prose = pageProse(page.href);
-      if (prose) {
-        parts.push('', prose);
-      }
-    }
-  }
-
-  parts.push('', '## Components');
-  for (const tier of ['atoms', 'molecules', 'organisms'] as const) {
-    for (const component of components.filter((c) => c.tier === tier)) {
-      parts.push('', componentSection(component));
-    }
-  }
-
-  parts.push('', '## Hooks');
-  for (const hook of hooks) {
-    parts.push(
-      '',
-      `### ${hook.name}`,
-      '',
-      `Import: \`import { ${hook.name} } from '${hook.importPath}';\``,
-    );
-    if (hook.description) {
-      parts.push('', hook.description);
-    }
-  }
-
-  const patterns = siteSections().find((s) => s.title === 'Patterns');
-  if (patterns) {
-    parts.push(
-      '',
-      '## Patterns',
-      '',
-      'These are recipes composed from the primitives above — they are NOT importable components.',
-    );
-    for (const page of patterns.pages) {
-      const prose = pageProse(page.href);
-      if (prose) {
-        parts.push('', prose);
-      }
-    }
-  }
-
-  return parts.join('\n');
+  return buildFull({
+    manifest,
+    contracts,
+    tokens: cssTokens(),
+    prose: { foundations: sectionProse('Foundations'), patterns: sectionProse('Patterns') },
+    componentAppendix,
+  });
 }
 
 export function recordSlugs(): string[] {
