@@ -9,9 +9,10 @@
  *
  * Two deliberate simplifications:
  *
- * - The llms snapshot derives from the *committed* component manifest, not from
- *   a fresh `apps/docs` build. `.github/workflows/quality.yml` fails the build
- *   if that committed file is stale, which is what makes reading it safe.
+ * - The llms snapshot derives from `@elirobinson/react/manifest` — the same
+ *   published artifact a consumer reads — so packing depends on that package
+ *   being built and on nothing else. In particular it never builds `apps/docs`,
+ *   which is a reader of the manifest exactly like this script is.
  * - `preview/` and `uploads/` are working material for this repo and never
  *   ship; `slides/` and `templates/` produce Miltinson marketing collateral,
  *   which a consuming product repo has no use for. See BRAND_SOURCES.
@@ -27,6 +28,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,6 +49,23 @@ const BRAND_SOURCES = ['colors_and_type.css', 'assets', 'ui_kits'];
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
+}
+
+/* The one component inventory, resolved through @elirobinson/react's exports
+   map rather than by path, so this reads exactly what a consumer would. It is a
+   build output of that package: `pnpm build` orders it first because
+   package.json declares the dependency. */
+function componentManifest() {
+  const resolve = createRequire(import.meta.url).resolve;
+  try {
+    return readJson(resolve('@elirobinson/react/manifest'));
+  } catch (error) {
+    throw new Error(
+      'Cannot resolve @elirobinson/react/manifest. Build that package first: ' +
+        'pnpm nx build react.',
+      { cause: error },
+    );
+  }
 }
 
 function version(packageName) {
@@ -81,14 +100,14 @@ function main() {
     tokens: version('tokens'),
   };
 
-  const manifest = readJson(join(repoRoot, 'apps/docs/src/generated/component-manifest.json'));
+  const manifest = componentManifest();
   const contracts = readJson(join(packageDir, 'src/contracts.json'));
   const tokens = parseTokensCss(
     readFileSync(join(repoRoot, 'packages/tokens/src/tokens.css'), 'utf8'),
   );
 
   if (!manifest.components?.length) {
-    throw new Error('component-manifest.json has no components — run `pnpm nx run docs:build`.');
+    throw new Error('@elirobinson/react/manifest describes no components.');
   }
   if (tokens.length === 0) {
     throw new Error('No tokens parsed from packages/tokens/src/tokens.css.');
@@ -129,7 +148,7 @@ function main() {
     }
   }
 
-  /* 2. Component reference — generated from the committed manifest. */
+  /* 2. Component reference — generated from the published manifest. */
   write(join(SKILL_DIRS.reference, 'llms.txt'), llmsIndex({ manifest, versions }));
   write(
     join(SKILL_DIRS.reference, 'llms-full.txt'),

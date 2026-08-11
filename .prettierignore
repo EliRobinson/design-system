@@ -5,7 +5,6 @@ dist
 .claude
 apps/storybook/storybook-static
 apps/docs/.next
-apps/docs/src/generated
 apps/docs/next-env.d.ts
 design-system-docs
 pnpm-lock.yaml

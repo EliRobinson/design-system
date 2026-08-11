@@ -28,9 +28,12 @@ rediscover. Not a deliverable.
 - **Docs consume dist, not source** (unlike Storybook): workspace dep + Nx
   `dependsOn ^build` means the site exercises the real `exports` map — the same
   resolution a consumer gets. Chosen deliberately over source aliasing.
-- **Committed generated manifest** (`apps/docs/src/generated/component-manifest.json`):
-  regenerated before every build/dev, committed so lint/typecheck/format work without a
-  build step. Drift window is zero in artifacts; repo copy refreshed by build.
+- **One manifest, owned by `packages/react`** (`dist/manifest.json`, published as
+  `@elirobinson/react/manifest`): the docs site and the ai-patterns pack step are both
+  readers of it. The docs app used to run its own extractor over `packages/react/src` and
+  commit the result, which made a published package's build depend on a Next.js app's
+  build artifact; a CI gate existed purely to keep that committed copy honest. Both are
+  gone — the manifest is a build output of the package that owns the components.
 - **Turbopack MDX constraint**: Next 16 builds with Turbopack; MDX plugin options must be
   serializable, so no function-valued rehype/remark plugins. Syntax highlighting is done
   in the `pre` MDX component mapping (shiki, server-side) instead of a rehype plugin.
@@ -40,10 +43,11 @@ rediscover. Not a deliverable.
 - **`ds-radio-group` styles live in `molecules/RuleLink.css`**, not a RadioGroup sheet —
   repo wrinkle, recorded as an extraction gap in the manifest rather than fixed (component
   CSS is out of scope). Input/Textarea/Select/Label share `atoms/field.css`; mapped via a
-  small config block in the extractor.
+  small config block in `packages/react/scripts/manifest.mjs`.
 - **Descriptions are curated, not extracted**: component source has no JSDoc descriptions,
-  so `scripts/component-descriptions.json` feeds one-liners into the manifest (source
-  JSDoc wins when present — three hooks have real JSDoc, two plus a curated fallback).
+  so `packages/react/scripts/component-descriptions.json` feeds one-liners into the
+  manifest (source JSDoc wins when present). Every entry there is debt — the description
+  belongs on the declaration, where it cannot drift.
 - **Committed the "no purple" rule for code**: shiki's stock themes use purple, so
   `src/lib/shiki-theme.ts` defines a brand theme from computed ink/amber/forest hexes.
   The oklch→sRGB math in `src/lib/color.ts` is verified against the brand README's

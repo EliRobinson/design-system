@@ -1,10 +1,10 @@
 /* Builds the `llms.txt` / `llms-full.txt` snapshot that ships in the tarball.
  *
  * The docs site builds the same corpus at request time from live sources. This
- * is the offline twin: it derives from the *committed*
- * `apps/docs/src/generated/component-manifest.json`, the committed
- * `packages/tokens/src/tokens.css`, and this package's own `contracts.json` —
- * so packing never has to build `apps/docs`. The price is that the MDX prose
+ * is the offline twin: it derives from `@elirobinson/react/manifest`, the
+ * committed `packages/tokens/src/tokens.css`, and this package's own
+ * `contracts.json` — so packing never has to build `apps/docs`, which reads
+ * that same manifest rather than producing it. The price is that the MDX prose
  * the site interleaves is absent here, which the header says out loud rather
  * than letting a reader assume this is the whole corpus.
  *

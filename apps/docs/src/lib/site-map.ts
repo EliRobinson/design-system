@@ -14,11 +14,12 @@ export type SiteSection = {
   pages: SitePage[];
 };
 
-const TIER_LABELS: Record<Tier, string> = {
-  atoms: 'Atoms',
-  molecules: 'Molecules',
-  organisms: 'Organisms',
-};
+/* Tier names come from the package's own directory layout, so the label is
+   derived rather than looked up — a new tier gets a sidebar section without an
+   edit here. */
+function tierLabel(tier: Tier): string {
+  return tier.charAt(0).toUpperCase() + tier.slice(1);
+}
 
 export function siteSections(): SiteSection[] {
   return [
@@ -42,7 +43,7 @@ export function siteSections(): SiteSection[] {
       ],
     },
     ...TIERS.map((tier) => ({
-      title: TIER_LABELS[tier],
+      title: tierLabel(tier),
       pages: components
         .filter((c) => c.tier === tier)
         .map((c) => ({ title: c.name, href: `/components/${c.slug}` })),

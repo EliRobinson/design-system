@@ -1,21 +1,61 @@
 // Builds the machine-readable inventory of what this package exports.
-// dist/manifest.json is generated from this at build time (see
-// generate-manifest.mjs); tooling reads the JSON rather than regex-parsing
-// emitted .d.ts, which is brittle against any change in how TypeScript emits
-// declarations.
+//
+// This is the *only* extractor. dist/manifest.json is generated from it at
+// build time (see generate-manifest.mjs) and published as
+// `@elirobinson/react/manifest`; the `ds` CLI, the docs site, and the
+// ai-patterns llms snapshot all read that one file. Nothing downstream may
+// keep a second copy of this data or grow a second walk over src/components.
 //
 // Discovery is layout-agnostic on purpose: components are found by walking
 // src/components, and the tier is whatever directory segments sit between that
-// root and the file. A flat layout yields tier: null and still works.
+// root and the file. A flat layout yields tier: null and still works — the
+// package went from 24 flat components to 45 across atoms/molecules/organisms
+// without an edit here, and it must keep surviving that.
 //
-// Analysis is syntactic (ts.createSourceFile, no type checker) so it stays fast
-// and needs no resolved program. That is enough for what the manifest claims:
-// exported value names, the props type name, and unions of literal types.
+// Two layers produce a record, and they degrade independently:
+//
+//   source-analysis.mjs  ts.createSourceFile, no type checker. Exports, the
+//                        props type name, literal-union variants, the base
+//                        type the props extend, declared hooks. Always available.
+//   prop-docs.mjs        react-docgen-typescript over a resolved program. Full
+//                        prop tables, descriptions, compound sub-components.
+//                        A file it cannot parse records an extractionGap and
+//                        still gets everything from the layer above.
 
-import { readdirSync, readFileSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import ts from 'typescript';
+import { parseComponentDocs, toPropRecords } from './prop-docs.mjs';
+import { analyzeSource, inheritsOf, variantsFor } from './source-analysis.mjs';
+
+const scriptsDir = dirname(fileURLToPath(import.meta.url));
+
+/* Components whose styles live in a shared or misplaced sheet rather than a
+   sibling <Name>.css. Pipeline config, not documentation content: paths are
+   relative to src/components, and one that stops resolving records a gap
+   rather than publishing a stylesheet path that 404s. */
+const SHARED_STYLESHEETS = {
+  Input: { path: 'atoms/field.css' },
+  Textarea: { path: 'atoms/field.css' },
+  Select: { path: 'atoms/field.css' },
+  Label: { path: 'atoms/field.css' },
+  RadioGroup: {
+    path: 'molecules/RuleLink.css',
+    gap: 'ds-radio-group styles are defined in molecules/RuleLink.css, not a RadioGroup sheet',
+  },
+};
+
+/* Touch-target scoping from docs/agents/components.md — constraint ids
+   resolve against packages/ai-patterns/src/contracts.json. */
+const PRIMARY_CONTROLS = new Set(['Button', 'Pagination', 'SegmentedControl', 'NavigationMenu']);
+const DENSE_AFFORDANCES = new Set(['Chip', 'SearchField', 'Rating', 'DatePicker']);
+
+/* Fallback one-liners for components and hooks whose source carries no JSDoc.
+   Every entry is debt: the description belongs on the declaration, where it
+   cannot drift. A component with neither records an extractionGap. */
+const curated = JSON.parse(readFileSync(join(scriptsDir, 'component-descriptions.json'), 'utf8'));
+const curatedHooks = curated.hooks ?? {};
 
 /** Source files that are implementation, not tests or fixtures. */
 function sourceFiles(dir) {
@@ -43,160 +83,170 @@ function subpathOf(root, path) {
     .join('/');
 }
 
-function isExported(node) {
-  return (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Export) !== 0;
-}
-
-/** Literal union -> its values. Anything else -> null. */
-function literalUnionValues(typeNode) {
-  if (!typeNode || !ts.isUnionTypeNode(typeNode)) return null;
-
-  const values = typeNode.types.map((member) => {
-    if (!ts.isLiteralTypeNode(member)) return undefined;
-    const { literal } = member;
-    if (ts.isStringLiteral(literal)) return literal.text;
-    if (ts.isNumericLiteral(literal)) return Number(literal.text);
-    return undefined;
-  });
-
-  return values.every((value) => value !== undefined) ? values : null;
-}
-
-/** Property signatures of a type node, following intersections and aliases. */
-function propertySignatures(typeNode, aliases, seen = new Set()) {
-  if (!typeNode) return [];
-
-  if (ts.isIntersectionTypeNode(typeNode)) {
-    return typeNode.types.flatMap((member) => propertySignatures(member, aliases, seen));
-  }
-
-  // A named alias standing in for the shape, e.g. `type XProps = YProps`.
-  if (ts.isTypeReferenceNode(typeNode)) {
-    const name = typeNode.typeName.getText();
-    if (seen.has(name)) return [];
-    seen.add(name);
-    const alias = aliases.get(name);
-    return alias ? propertySignatures(alias.type, aliases, seen) : [];
-  }
-
-  if (ts.isTypeLiteralNode(typeNode)) {
-    return typeNode.members.filter(ts.isPropertySignature);
-  }
-
-  return [];
+/** 'SegmentedControl' -> 'segmented-control'. */
+function toSlug(name) {
+  return name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 }
 
 /**
- * Variant-shaped props: any prop whose type is a union of literals, whether
- * written inline (`size?: 'sm' | 'md'`) or behind an exported alias
- * (`variant?: ButtonVariant`). The alias name is reported when there is one so
- * consumers can import the union type itself.
+ * Every stylesheet that dresses a component: the sibling <Name>.css, the sheet
+ * belonging to any relatively-imported module (Table -> ./table/core with
+ * table/core.css), and any shared sheet declared above.
  */
-function variantsOf(propsTypeNode, aliases) {
-  const variants = [];
+function stylesheetsFor(componentsDir, packageName, subpath, relativeImports) {
+  const dir = dirname(subpath);
+  const prefix = (sheet) => `${packageName}/styles/${sheet}`;
+  const beside = (sheet) => (dir === '.' ? sheet : `${dir}/${sheet}`);
 
-  for (const property of propertySignatures(propsTypeNode, aliases)) {
-    const name = property.name.getText().replace(/^['"]|['"]$/g, '');
-    const typeNode = property.type;
-    if (!typeNode) continue;
+  const paths = new Set();
+  const gaps = [];
 
-    const inline = literalUnionValues(typeNode);
-    if (inline) {
-      variants.push({ prop: name, type: null, values: inline });
-      continue;
-    }
+  const sibling = `${subpath}.css`;
+  if (existsSync(join(componentsDir, sibling))) paths.add(prefix(sibling));
 
-    if (ts.isTypeReferenceNode(typeNode)) {
-      const aliasName = typeNode.typeName.getText();
-      const values = literalUnionValues(aliases.get(aliasName)?.type);
-      if (values) variants.push({ prop: name, type: aliasName, values });
-    }
+  for (const specifier of relativeImports) {
+    const sheet = beside(`${specifier.slice(2)}.css`);
+    if (existsSync(join(componentsDir, sheet))) paths.add(prefix(sheet));
   }
 
-  return variants;
-}
-
-function analyze(path) {
-  const source = ts.createSourceFile(
-    path,
-    readFileSync(path, 'utf8'),
-    ts.ScriptTarget.Latest,
-    true,
-    path.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
-  );
-
-  const values = [];
-  const types = [];
-  const aliases = new Map();
-
-  for (const statement of source.statements) {
-    if (ts.isTypeAliasDeclaration(statement)) {
-      aliases.set(statement.name.text, statement);
-      if (isExported(statement)) types.push(statement.name.text);
-      continue;
-    }
-
-    if (ts.isInterfaceDeclaration(statement) && isExported(statement)) {
-      types.push(statement.name.text);
-      continue;
-    }
-
-    if (ts.isFunctionDeclaration(statement) && statement.name && isExported(statement)) {
-      values.push(statement.name.text);
-      continue;
-    }
-
-    if (ts.isVariableStatement(statement) && isExported(statement)) {
-      for (const declaration of statement.declarationList.declarations) {
-        if (ts.isIdentifier(declaration.name)) values.push(declaration.name.text);
-      }
-      continue;
-    }
-
-    // `export type { ColumnDef } from './table/core'` and friends.
-    if (ts.isExportDeclaration(statement) && statement.exportClause) {
-      if (ts.isNamedExports(statement.exportClause)) {
-        for (const element of statement.exportClause.elements) {
-          (statement.isTypeOnly || element.isTypeOnly ? types : values).push(element.name.text);
-        }
-      }
-    }
+  const shared = SHARED_STYLESHEETS[subpath.split('/').at(-1)];
+  if (shared) {
+    if (existsSync(join(componentsDir, shared.path))) paths.add(prefix(shared.path));
+    else gaps.push(`shared stylesheet ${shared.path} is declared but does not exist`);
+    if (shared.gap) gaps.push(shared.gap);
   }
 
-  return { values, types, aliases };
+  return { paths: [...paths], gaps };
 }
 
-function componentEntry(componentsDir, packageName, path) {
-  const subpath = subpathOf(componentsDir, path);
+const renderLiteral = (value) => (typeof value === 'string' ? `"${value}"` : String(value));
+
+const sameMembers = (a, b) => {
+  if (a.length !== b.length) return false;
+  const left = [...a].sort();
+  const right = [...b].sort();
+  return left.every((value, index) => value === right[index]);
+};
+
+/**
+ * The type checker orders union members by an internal type id, so which file
+ * happened to be compiled first decides whether a prop reads `1 | 2 | 3` or
+ * `3 | 1 | 2`. Where the source spells the union out, publish it in the order
+ * it was written — but only when both agree on the members, so this stays a
+ * reordering and never a rewrite.
+ */
+function inSourceUnionOrder(props, variants) {
+  const byProp = new Map(variants.map((variant) => [variant.prop, variant]));
+
+  return props.map((prop) => {
+    const variant = byProp.get(prop.name);
+    if (!variant) return prop;
+    const values = variant.values.map(renderLiteral);
+    return sameMembers(values, prop.type.split(' | '))
+      ? { ...prop, type: values.join(' | ') }
+      : prop;
+  });
+}
+
+function constraintsFor(name, source) {
+  const ids = ['no-barrel-imports'];
+  if (source.includes('forwardRef')) ids.push('forward-ref');
+  if (PRIMARY_CONTROLS.has(name)) ids.push('touch-target-primary', 'hit-area-no-overlap');
+  if (DENSE_AFFORDANCES.has(name)) ids.push('touch-target-dense', 'hit-area-no-overlap');
+  return ids;
+}
+
+function componentEntry(componentsDir, packageName, { subpath, analysis }, docs) {
   const segments = subpath.split('/');
   const name = segments.at(-1);
 
-  const { values, types, aliases } = analyze(path);
+  const { text, values, types, declarations, hooks, relativeImports } = analysis;
   const propsType = types.includes(`${name}Props`) ? `${name}Props` : null;
+  const importSpecifier = `${packageName}/components/${subpath}`;
+
+  const gaps = [];
+  const primary = docs.find((doc) => doc.displayName === name) ?? null;
+  if (!primary) gaps.push('react-docgen-typescript found no component named after this file');
+
+  const { paths: stylesheetPaths, gaps: styleGaps } = stylesheetsFor(
+    componentsDir,
+    packageName,
+    subpath,
+    relativeImports,
+  );
+  gaps.push(...styleGaps);
+
+  const description = (primary?.description ?? '').trim() || curated[name] || '';
+  if (!description) gaps.push('no description available from source JSDoc or curated list');
+
+  const variants = propsType ? variantsFor(declarations, propsType) : [];
 
   return {
     name,
+    slug: toSlug(name),
     tier: segments.length > 1 ? segments.slice(0, -1).join('/') : null,
     subpath,
-    importSpecifier: `${packageName}/components/${subpath}`,
+    importSpecifier,
+    // Alias of importSpecifier. The docs site and the llms snapshot read
+    // `importPath`; the `ds` CLI reads `importSpecifier`. Collapse to one name
+    // when those readers are unified.
+    importPath: importSpecifier,
+    stylesheetPaths,
+    description,
+    inherits: propsType ? inheritsOf(declarations, propsType) : null,
     exports: values,
     types,
     propsType,
-    variants: propsType ? variantsOf(aliases.get(propsType)?.type, aliases) : [],
+    variants,
+    props: primary ? inSourceUnionOrder(toPropRecords(primary), variants) : [],
+    subComponents: docs
+      .filter((doc) => doc !== primary)
+      .map((doc) => {
+        const subProps = `${doc.displayName}Props`;
+        return {
+          name: doc.displayName,
+          description: (doc.description ?? '').trim(),
+          inherits: inheritsOf(declarations, subProps),
+          props: inSourceUnionOrder(toPropRecords(doc), variantsFor(declarations, subProps)),
+        };
+      }),
+    hooks,
+    constraints: constraintsFor(name, text),
+    extractionGaps: gaps,
   };
 }
 
-function hookEntry(hooksDir, packageName, path) {
-  const subpath = subpathOf(hooksDir, path);
-  const { values, types } = analyze(path);
+function hookEntry(packageName, { subpath, analysis }) {
+  const name = subpath.split('/').at(-1);
+  const { values, types, hooks } = analysis;
+  const importSpecifier = `${packageName}/hooks/${subpath}`;
 
   return {
-    name: subpath.split('/').at(-1),
+    name,
     subpath,
-    importSpecifier: `${packageName}/hooks/${subpath}`,
+    importSpecifier,
+    importPath: importSpecifier,
+    description: hooks.find((hook) => hook.name === name)?.description || curatedHooks[name] || '',
     exports: values,
     types,
   };
+}
+
+/** Every source file under `root`, parsed once, sorted by module subpath. */
+function modulesUnder(root) {
+  return sourceFiles(root)
+    .map((path) => ({ path, subpath: subpathOf(root, path), analysis: analyzeSource(path) }))
+    .sort((a, b) => a.subpath.localeCompare(b.subpath));
+}
+
+/**
+ * A file describes a component when it exports a value named after itself.
+ * `Button.tsx` exports `Button`; `table/core.tsx` exports helpers that `Table`
+ * and `VirtualTable` share and is not itself importable as a component. The
+ * rule is structural rather than a list of names, so it holds under any layout.
+ */
+function isComponent({ subpath, analysis }) {
+  return analysis.values.includes(subpath.split('/').at(-1));
 }
 
 /**
@@ -207,22 +257,24 @@ export function buildManifest(packageRoot) {
   const pkg = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
   const srcDir = join(packageRoot, 'src');
   const componentsDir = join(srcDir, 'components');
-  const hooksDir = join(srcDir, 'hooks');
 
-  const components = sourceFiles(componentsDir)
-    .map((path) => componentEntry(componentsDir, pkg.name, path))
-    // Internal building blocks export no values worth importing on their own.
-    .filter((entry) => entry.exports.length > 0)
-    .sort((a, b) => a.subpath.localeCompare(b.subpath));
+  const modules = modulesUnder(componentsDir).filter(isComponent);
+  const docsByFile = parseComponentDocs(
+    modules.map((module) => module.path),
+    join(packageRoot, 'tsconfig.json'),
+  );
 
-  const hooks = sourceFiles(hooksDir)
-    .map((path) => hookEntry(hooksDir, pkg.name, path))
-    .filter((entry) => entry.exports.length > 0)
-    .sort((a, b) => a.subpath.localeCompare(b.subpath));
+  const components = modules.map((module) =>
+    componentEntry(componentsDir, pkg.name, module, docsByFile.get(module.path) ?? []),
+  );
+
+  const hooks = modulesUnder(join(srcDir, 'hooks'))
+    .map((module) => hookEntry(pkg.name, module))
+    .filter((entry) => entry.exports.length > 0);
 
   return {
     // Bump when the manifest's own shape changes, so readers can degrade.
-    manifestVersion: 1,
+    manifestVersion: 2,
     package: pkg.name,
     version: pkg.version,
     tiers: [...new Set(components.map((entry) => entry.tier).filter(Boolean))].sort(),

@@ -18,7 +18,6 @@ export default tseslint.config(
       '.claude/**',
       'apps/storybook/storybook-static/**',
       'apps/docs/.next/**',
-      'apps/docs/src/generated/**',
       'design-system-docs/**',
       '.nx/**',
       // design-sync (claude.ai/design) scratch: the staged converter, its

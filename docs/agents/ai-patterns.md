@@ -62,12 +62,12 @@ Point at `ds`.
 This package has a real build step — `scripts/build-artifacts.mjs`, wired to both `build`
 and `prepack`, so a tarball cannot be produced without it. It stages `dist/artifacts/`:
 
-| Staged at                         | Made from                                                                                                 |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `skills/miltinson-design/`        | A subset of `design-system-docs/`                                                                         |
-| `skills/design-system-reference/` | `apps/docs/src/generated/component-manifest.json`, `packages/tokens/src/tokens.css`, `src/contracts.json` |
-| `skills/ds-resync/SKILL.md`       | `src/resync/SKILL.md`                                                                                     |
-| `artifacts.json`                  | The version stamp and a sha256 per staged file                                                            |
+| Staged at                         | Made from                                                                             |
+| --------------------------------- | ------------------------------------------------------------------------------------- |
+| `skills/miltinson-design/`        | A subset of `design-system-docs/`                                                     |
+| `skills/design-system-reference/` | `@elirobinson/react/manifest`, `packages/tokens/src/tokens.css`, `src/contracts.json` |
+| `skills/ds-resync/SKILL.md`       | `src/resync/SKILL.md`                                                                 |
+| `artifacts.json`                  | The version stamp and a sha256 per staged file                                        |
 
 `ds-resync artifacts` copies `skills/**` into a consuming repo's `.claude/skills/`. The
 tree in `dist` is laid out exactly as it lands there, so the writer copies a directory and
@@ -76,9 +76,11 @@ holds no opinion about its contents — adding or removing a skill is a change t
 
 Four things are load-bearing:
 
-- **The llms snapshot never builds `apps/docs`.** It reads the _committed_ component
-  manifest. `.github/workflows/quality.yml` fails the build if `pnpm build` produces a diff
-  in that file, which is the only reason reading it is safe. Do not delete that guard.
+- **The llms snapshot never builds `apps/docs`.** It reads `@elirobinson/react/manifest`,
+  the same published artifact a consumer reads, resolved through the exports map. There is
+  exactly one component manifest and `packages/react` owns it; `apps/docs` is another
+  reader, not a producer. Do not reintroduce an extractor outside that package, and do not
+  make packing depend on an app.
 - **`design-system-docs/preview/` and `uploads/` never ship** — working material. Neither do
   `slides/` or `templates/`, which produce Miltinson marketing collateral a consuming
   product repo has no use for. `BRAND_SOURCES` in the build script is the list.

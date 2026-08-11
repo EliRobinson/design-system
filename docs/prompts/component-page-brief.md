@@ -10,10 +10,10 @@ brief exactly; the Button page is the exemplar and this file is the contract.
 - Demos: `apps/docs/src/components/demos/button/*.tsx`
 - Available building blocks: `apps/docs/src/components/docs/` (ComponentHeader, DemoBlock,
   PropsTables, DoDont, RelatedComponents, CodeSnippet)
-- The manifest record for your component: search
-  `apps/docs/src/generated/component-manifest.json` for its name (slug, import path,
-  props, sub-components — do not restate these by hand; ComponentHeader and PropsTables
-  render them).
+- The manifest record for your component: run `pnpm nx build react`, then search
+  `packages/react/dist/manifest.json` for its name (slug, import path, props,
+  sub-components — do not restate these by hand; ComponentHeader and PropsTables render
+  them).
 
 ## Files you create per component
 
