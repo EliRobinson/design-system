@@ -38,7 +38,7 @@ correctly is a design system that gets used incorrectly at scale.
 Facts about the repo as it stands. Verify anything here that affects your work — this is
 orientation, not a substitute for reading the code.
 
-**Stack.** pnpm 10.11.1 workspaces, Nx 22.7, TypeScript, React 19, Vite 8. Node >= 24.
+**Stack.** pnpm 11.21.0 workspaces, Nx 22.7, TypeScript, React 19, Vite 8. Node >= 24.
 
 **Packages.**
 
