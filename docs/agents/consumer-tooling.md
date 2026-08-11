@@ -59,7 +59,12 @@ system in an app**.
   may assume a directory structure. Both have tests that build a flat layout and a tiered
   one and assert identical behaviour.
 - **Additive only.** Existing export subpaths keep working. New capability arrives as a new
-  subpath, a new bin, or a new optional export.
+  subpath, a new bin, or a new optional export. The one exception is a subpath that resolves
+  to something it was never meant to serve — a wildcard wide enough to hand out files of a
+  kind its name does not describe. Narrowing that is allowed, but it is a breaking change and
+  ships as a major with the resolution failure spelled out in the changeset, never as a
+  quiet fix. (`./styles/*` → `./styles/*.css` in `@elirobinson/react` v2 is the worked
+  example: the old pattern served raw `.tsx` source through a path named "styles".)
 - **Nothing synced into a consumer is hand-maintained there.** Everything `ds init` and
   `ds-resync artifacts` write is regenerable by re-running the command. Re-running must
   never destroy a local edit: `ds-resync artifacts` records a sha256 of every file it
