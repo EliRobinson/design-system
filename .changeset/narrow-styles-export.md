@@ -19,8 +19,9 @@ and nothing else.
 **Migration:** every documented and generated specifier already ends in `.css`
 (`@elirobinson/react/styles/atoms/Button.css`, and nested sheets like
 `@elirobinson/react/styles/organisms/table/core.css`) and is unaffected —
-verified against all 45 unique `stylesheetPaths` in the component manifest. If
-you were importing anything else through `styles/*`, import the component from
+verified by resolving all 41 unique `stylesheetPaths` in the component manifest
+(49 occurrences) under both the CJS and ESM resolvers. If you were importing
+anything else through `styles/*`, import the component from
 `@elirobinson/react/components/<tier>/<Name>` instead.
 
 **Why `major` and not `minor`.** Serving TSX from `styles/*` was plainly

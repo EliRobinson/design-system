@@ -14,3 +14,8 @@ lie.
 `playwright.types.test.mjs` compares the module's real runtime exports against
 the value declarations parsed out of the `.d.ts` in both directions, and names
 the specific export that drifted in the failure message. No new dependencies.
+
+Also updates the `no-barrel-imports` check text in `contracts.json`, which
+enumerates the legal `@elirobinson/*` subpaths, to say `styles/*.css` rather
+than `styles/*` — `@elirobinson/react` v2 narrows that export, and the shipped
+contract must not advertise a pattern that no longer resolves.

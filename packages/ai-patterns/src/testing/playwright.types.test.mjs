@@ -20,11 +20,12 @@ const declarationSource = readFileSync(
   'utf8',
 );
 
-/* Comments come out first so a usage example inside a JSDoc block can never be
-   read as a declaration. */
-const declarationBody = declarationSource
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/^[^\n]*\/\/.*$/gm, '');
+/* Comments come out first so a usage example inside one can never be read as a
+   declaration. The line-comment pass deliberately strips only from `//` to the
+   end of the line, not the whole line: `export declare const X: string; // note`
+   is a declaration with a comment on it, and deleting the line would drop X and
+   report it as drift. */
+const declarationBody = declarationSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 /* Only value declarations matter. `export interface` / `export type` are erased
    at compile time and have no runtime counterpart to drift from. */
@@ -52,9 +53,7 @@ describe('playwright.d.ts matches playwright.mjs', () => {
 
     expect(
       undeclared,
-      `playwright.mjs exports ${undeclared.join(', ')} but playwright.d.ts does not declare ${
-        undeclared.length === 1 ? 'it' : 'them'
-      } — consumers get no types for that export`,
+      `exported by playwright.mjs, undeclared in playwright.d.ts: ${undeclared.join(', ')} — consumers get no types for it`,
     ).toEqual([]);
   });
 
@@ -63,9 +62,7 @@ describe('playwright.d.ts matches playwright.mjs', () => {
 
     expect(
       phantom,
-      `playwright.d.ts declares ${phantom.join(', ')} but playwright.mjs does not export ${
-        phantom.length === 1 ? 'it' : 'them'
-      } — importing that name type-checks and then crashes at runtime`,
+      `declared in playwright.d.ts, not exported by playwright.mjs: ${phantom.join(', ')} — importing it type-checks and then crashes at runtime`,
     ).toEqual([]);
   });
 
@@ -78,8 +75,8 @@ describe('playwright.d.ts matches playwright.mjs', () => {
       .filter(([name, kind]) => kind === 'function' && runtimeExports.includes(name))
       .filter(([name]) => typeof runtimeModule[name] !== 'function')
       .map(
-        (entry) =>
-          `${entry[0]}: declared as a function, runtime value is a ${typeof runtimeModule[entry[0]]}`,
+        ([name]) =>
+          `${name}: declared a function, runtime value is a ${typeof runtimeModule[name]}`,
       );
 
     expect(notCallable, notCallable.join('; ')).toEqual([]);
