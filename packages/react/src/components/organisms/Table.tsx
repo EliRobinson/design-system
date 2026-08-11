@@ -109,7 +109,12 @@ function TableInner<T extends RowData>(
       {!isEmpty && table.getPageCount() > 1 ? (
         <div className="ds-table-wrapper__footer">
           <Pagination
-            page={table.getState().pagination.pageIndex + 1}
+            // v9 removed `table.getState()`; `pagination` is the controlled
+            // state this component already owns, and is the same value the
+            // row model paginated with. TanStack's `pageIndex` is 0-indexed
+            // and `Pagination` is 1-indexed, hence the +1 here and the -1 on
+            // the way back.
+            page={pagination.pageIndex + 1}
             pageCount={table.getPageCount()}
             onPageChange={(page) => table.setPageIndex(page - 1)}
           />
