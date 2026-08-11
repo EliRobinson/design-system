@@ -35,8 +35,8 @@ describe('component manifest', () => {
 
   it('has an import path that resolves to a real source file for every component', () => {
     for (const c of components) {
-      const rel = c.importPath.replace('@elirobinson/react/', '');
-      expect(existsSync(join(reactSrc, `${rel}.tsx`)), c.importPath).toBe(true);
+      const rel = c.importSpecifier.replace('@elirobinson/react/', '');
+      expect(existsSync(join(reactSrc, `${rel}.tsx`)), c.importSpecifier).toBe(true);
     }
   });
 
@@ -51,8 +51,8 @@ describe('component manifest', () => {
 
   it('has hook import paths that resolve to real source files', () => {
     for (const h of hooks) {
-      const rel = h.importPath.replace('@elirobinson/react/', '');
-      expect(existsSync(join(reactSrc, `${rel}.ts`)), h.importPath).toBe(true);
+      const rel = h.importSpecifier.replace('@elirobinson/react/', '');
+      expect(existsSync(join(reactSrc, `${rel}.ts`)), h.importSpecifier).toBe(true);
     }
   });
 

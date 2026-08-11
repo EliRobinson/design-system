@@ -74,8 +74,16 @@ tree in `dist` is laid out exactly as it lands there, so the writer copies a dir
 holds no opinion about its contents — adding or removing a skill is a change to
 `build-artifacts.mjs` alone.
 
-Four things are load-bearing:
+Five things are load-bearing:
 
+- **There is one llms corpus generator**, `src/artifacts/llms.mjs`, published as
+  `@elirobinson/ai-patterns/corpus`. `scripts/build-artifacts.mjs` renders the packed
+  snapshot with it and `apps/docs` serves `/llms.txt` and `/llms-full.txt` from it. The two
+  differ in exactly four optional arguments — a `versions` stamp, `prose`, a
+  `componentAppendix`, and the `alsoAvailable` bullets — and in nothing else. Do not add a
+  second renderer, however well commented: the two used to be twin files whose headers said
+  so, and they drifted anyway. `llms.d.ts` is hand-written because this package ships `src`
+  uncompiled; `llms.types.test.mjs` is what stops it lying.
 - **The llms snapshot never builds `apps/docs`.** It reads `@elirobinson/react/manifest`,
   the same published artifact a consumer reads, resolved through the exports map. There is
   exactly one component manifest and `packages/react` owns it; `apps/docs` is another

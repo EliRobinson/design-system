@@ -47,6 +47,18 @@ const skillsDir = join(outDir, 'skills');
    repo-internal. Keep in step with BRAND_INDEX — the check below enforces it. */
 const BRAND_SOURCES = ['colors_and_type.css', 'assets', 'ui_kits'];
 
+/* Where a reader of the packed llms.txt goes next. The docs site answers the
+   same question with URLs; a consumer holding this tarball has files and a
+   CLI, so this is one of the few things the two corpora cannot share. */
+const SNAPSHOT_CONTENTS = {
+  heading: 'The rest of this snapshot',
+  entries: [
+    '- `llms-full.txt` — every token, every constraint, and every component with its prop table',
+    '- `pnpm ds` / `pnpm ds props <Name>` — the same information read live from the installed',
+    '  package. Always authoritative; this file is a convenience for reading in bulk.',
+  ],
+};
+
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
@@ -148,8 +160,14 @@ function main() {
     }
   }
 
-  /* 2. Component reference — generated from the published manifest. */
-  write(join(SKILL_DIRS.reference, 'llms.txt'), llmsIndex({ manifest, versions }));
+  /* 2. Component reference — generated from the published manifest by the same
+        builder apps/docs serves /llms.txt from. Passing `versions` is what
+        makes this output a snapshot rather than a live corpus; there is no
+        prose to interleave here, so none is passed. */
+  write(
+    join(SKILL_DIRS.reference, 'llms.txt'),
+    llmsIndex({ manifest, versions, alsoAvailable: SNAPSHOT_CONTENTS }),
+  );
   write(
     join(SKILL_DIRS.reference, 'llms-full.txt'),
     llmsFull({ manifest, contracts, tokens, versions }),

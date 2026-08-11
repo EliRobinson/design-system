@@ -53,8 +53,6 @@ export type ComponentRecord = {
   subpath: string;
   /** The specifier a consumer types to import this component. */
   importSpecifier: string;
-  /** Alias of `importSpecifier`. */
-  importPath: string;
   /** Stylesheets this component needs, all of them included in styles.css. */
   stylesheetPaths: string[];
   description: string;
@@ -79,8 +77,6 @@ export type HookRecord = {
   name: string;
   subpath: string;
   importSpecifier: string;
-  /** Alias of `importSpecifier`. */
-  importPath: string;
   description: string;
   exports: string[];
   types: string[];
