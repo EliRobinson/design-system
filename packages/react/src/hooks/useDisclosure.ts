@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
+
+import { useLatest } from '../lib/useLatest';
 
 export type UseDisclosureOptions = {
   /** Controlled open state. Passing it hands ownership of the value to the caller. */
@@ -40,17 +42,17 @@ export function useDisclosure({
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : uncontrolledOpen;
 
-  const latest = useRef({ isControlled, onOpenChange });
-  useEffect(() => {
-    latest.current = { isControlled, onOpenChange };
-  });
+  const latest = useLatest({ isControlled, onOpenChange });
 
-  const setOpen = useCallback((next: boolean) => {
-    if (!latest.current.isControlled) {
-      setUncontrolledOpen(next);
-    }
-    latest.current.onOpenChange?.(next);
-  }, []);
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (!latest.current.isControlled) {
+        setUncontrolledOpen(next);
+      }
+      latest.current.onOpenChange?.(next);
+    },
+    [latest],
+  );
 
   return { open, setOpen };
 }

@@ -12,7 +12,7 @@ const USED_BY: Record<string, string> = {
   useRovingFocus: 'Used by Tabs and SegmentedControl.',
   useClickOutside: 'Used by the anchored overlays — Popover, DropdownMenu, Combobox, DatePicker.',
   useEscapeKey: 'Used by the anchored overlays alongside useClickOutside.',
-  useAnchoredPosition: 'Used by Popover, DropdownMenu, Tooltip, Combobox, and DatePicker.',
+  useAnchoredPosition: 'Used by Popover, DropdownMenu, and Tooltip.',
   useDisclosure: 'Used by Dialog, Sheet, Popover, and DropdownMenu.',
   useHasMounted:
     'Used by Toaster, PopoverContent, DropdownMenuContent, and TooltipContent to skip their portals during server rendering.',

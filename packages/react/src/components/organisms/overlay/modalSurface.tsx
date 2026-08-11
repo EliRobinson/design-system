@@ -1,6 +1,7 @@
 import type { HTMLAttributes } from 'react';
 import { forwardRef, useEffect, useId, useMemo, useRef } from 'react';
 
+import type { UseDisclosureOptions } from '../../../hooks/useDisclosure';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { cn } from '../../../lib/cn';
 import { useMergedRef } from '../../../lib/useMergedRef';
@@ -21,11 +22,7 @@ export type ModalSurfaceContextValue = {
   descriptionId: string;
 };
 
-export type ModalSurfaceOptions = {
-  open?: boolean;
-  defaultOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-};
+export type ModalSurfaceOptions = UseDisclosureOptions;
 
 /**
  * Builds the context value a modal surface publishes to its compound parts.

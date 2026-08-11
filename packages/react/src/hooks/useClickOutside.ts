@@ -1,5 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import type { RefObject } from 'react';
+
+import { useLatest } from '../lib/useLatest';
 
 export function useClickOutside(
   refs: RefObject<HTMLElement | null>[],
@@ -8,13 +10,9 @@ export function useClickOutside(
 ) {
   // Every caller passes a fresh array literal and a fresh closure, so having
   // either in the listener effect's dependencies would tear down and re-attach
-  // the document listener on every render. Reading both from a ref at event
-  // time keeps the listener bound to `enabled` alone; the ref objects inside
-  // the array are stable, so nothing is lost by not observing the array.
-  const latest = useRef({ refs, onClickOutside });
-  useEffect(() => {
-    latest.current = { refs, onClickOutside };
-  });
+  // the document listener on every render. The ref objects inside the array are
+  // themselves stable, so nothing is lost by not observing the array.
+  const latest = useLatest({ refs, onClickOutside });
 
   useEffect(() => {
     if (!enabled) {
@@ -32,5 +30,5 @@ export function useClickOutside(
 
     document.addEventListener('mousedown', handlePointerDown);
     return () => document.removeEventListener('mousedown', handlePointerDown);
-  }, [enabled]);
+  }, [enabled, latest]);
 }

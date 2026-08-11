@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 
 import { useAnchoredPosition } from '../../../hooks/useAnchoredPosition';
 import { useClickOutside } from '../../../hooks/useClickOutside';
+import type { UseDisclosureOptions } from '../../../hooks/useDisclosure';
 import { useDisclosure } from '../../../hooks/useDisclosure';
 import { useEscapeKey } from '../../../hooks/useEscapeKey';
 import { useHasMounted } from '../../../hooks/useHasMounted';
@@ -24,11 +25,7 @@ export type AnchoredOverlayContextValue = {
   contentId: string;
 };
 
-export type AnchoredOverlayOptions = {
-  open?: boolean;
-  defaultOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-};
+export type AnchoredOverlayOptions = UseDisclosureOptions;
 
 /**
  * Open state, the trigger/content refs, and the three behaviours every
@@ -43,9 +40,14 @@ export function useAnchoredOverlay({
   const contentId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const hasMounted = useHasMounted();
   const { open, setOpen } = useDisclosure({ open: controlledOpen, defaultOpen, onOpenChange });
 
-  useAnchoredPosition(open, triggerRef, contentRef);
+  // Gated on the same mount flag the portal is, because an overlay that starts
+  // open has no content node on the first render — positioning it then measures
+  // nothing, and without this the panel would stay unpositioned until the next
+  // scroll or resize.
+  useAnchoredPosition(open && hasMounted, triggerRef, contentRef);
   useClickOutside([triggerRef, contentRef], () => setOpen(false), open);
   useEscapeKey(() => setOpen(false), open);
 
