@@ -1891,7 +1891,7 @@
       "props": [
         {
           "name": "columns",
-          "type": "ColumnDef<T>[]",
+          "type": "ColumnDef<T, unknown>[]",
           "required": true,
           "defaultValue": null,
           "description": ""
@@ -1915,7 +1915,7 @@
           "type": "boolean",
           "required": false,
           "defaultValue": null,
-          "description": "Shows a built-in global filter input above the table, wired to TanStack's `getFilteredRowModel()`."
+          "description": "Shows a built-in global filter input above the table, wired to TanStack's filtered row model."
         },
         {
           "name": "filterPlaceholder",
@@ -2245,7 +2245,7 @@
       "props": [
         {
           "name": "columns",
-          "type": "ColumnDef<T>[]",
+          "type": "ColumnDef<T, unknown>[]",
           "required": true,
           "defaultValue": null,
           "description": ""
@@ -2269,7 +2269,7 @@
           "type": "boolean",
           "required": false,
           "defaultValue": null,
-          "description": "Shows a built-in global filter input above the table, wired to TanStack's `getFilteredRowModel()`."
+          "description": "Shows a built-in global filter input above the table, wired to TanStack's filtered row model."
         },
         {
           "name": "filterPlaceholder",

@@ -38,6 +38,30 @@ describe('Table', () => {
     expect(document.querySelector('.ds-table-wrapper.custom-table')).toBeInTheDocument();
   });
 
+  it('wraps EmptyState in a <tr><td colSpan> spanning every column, not as a bare <tbody> child', () => {
+    render(<Table data={[]} columns={columns} emptyMessage="No rows yet" />);
+
+    // EmptyState renders a <div>, which is invalid as a direct child of
+    // <tbody> -- browsers hoist it out of the table during parsing, so the
+    // message would render *above* the table rather than inside it. Assert
+    // the actual ancestry rather than merely that the text is somewhere on
+    // the page (which the other empty-state tests already cover, and which
+    // stays true even when the <div> has been hoisted out).
+    const emptyState = document.querySelector('.ds-empty-state');
+    expect(emptyState).toBeInTheDocument();
+
+    const cell = emptyState?.closest('td');
+    expect(cell).toBeInTheDocument();
+    expect(cell?.parentElement?.tagName).toBe('TR');
+    expect(cell?.parentElement?.parentElement?.tagName).toBe('TBODY');
+
+    // The cell has to span the full header width, otherwise the empty message
+    // sits under column 1 and the remaining columns collapse. Compared
+    // against the rendered header count so this tracks the real column model
+    // rather than a hardcoded number.
+    expect(cell).toHaveAttribute('colspan', String(screen.getAllByRole('columnheader').length));
+  });
+
   it('paginates via TanStack row models: page 1 and the last page show different, correct rows', () => {
     render(<Table data={makeRows(25)} columns={columns} pageSize={10} />);
 

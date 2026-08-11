@@ -24,6 +24,14 @@ const data: Row[] = Array.from({ length: 25 }, (_, index) => ({
 // realistic `args` (required by B3) and does the actual rendering through
 // `render`, which calls the properly-typed `Table<Row>` directly rather than
 // through the collapsed `meta.component` type.
+//
+// Re-checked against `@tanstack/react-table@9`: still required. v9 did not
+// relax the variance -- it tightened it. `ColumnDef` carries
+// `getUniqueValues?: AccessorFn<TData, …>`, which puts `TData` in a parameter
+// position and so makes the type *contra*variant there, and v9 additionally
+// annotates `TData` as explicitly invariant (`in out`) on `ColumnMeta` and
+// `IdIdentifier`. Dropping these casts fails typecheck with
+// "Type 'RowData' is not assignable to type 'Row'".
 function TableDemo() {
   return <Table data={data} columns={columns} pageSize={10} />;
 }
