@@ -149,7 +149,8 @@
 }
 
 .site-sidebar .ds-navigation-menu__link {
-  display: block;
+  display: flex;
+  align-items: center;
   padding: var(--space-1) var(--space-2);
   font-size: var(--fs-sm);
   color: var(--fg-2);
