@@ -1,43 +1,31 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { formatReport, main, parseArgs, parseArtifactsArgs } from './cli.mjs';
+import { formatReport, main } from './cli.mjs';
+import { TARGETS } from './targets.mjs';
 
 const CLI_PATH = join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
 
-describe('parseArgs', () => {
-  it('defaults to a read-only run in the process cwd', () => {
-    const args = parseArgs([]);
-    expect(args.write).toBe(false);
-    expect(args.json).toBe(false);
-    expect(args.failOnOutdated).toBe(false);
-    expect(args.cwd).toBe(process.cwd());
-  });
+async function captureStdout(argv) {
+  const chunks = [];
+  const original = process.stdout.write;
+  process.stdout.write = (chunk) => {
+    chunks.push(chunk);
+    return true;
+  };
 
-  it('reads every supported flag', () => {
-    const args = parseArgs(['--write', '--json', '--fail-on-outdated', '--cwd', '/tmp/app']);
-    expect(args.write).toBe(true);
-    expect(args.json).toBe(true);
-    expect(args.failOnOutdated).toBe(true);
-    expect(args.cwd).toContain('app');
-  });
+  let code;
+  try {
+    code = await main(argv);
+  } finally {
+    process.stdout.write = original;
+  }
 
-  it('accepts --cwd=value as well as --cwd value', () => {
-    expect(parseArgs(['--cwd=/tmp/app']).cwd).toContain('app');
-  });
-
-  it('rejects an unknown flag rather than ignoring it', () => {
-    expect(() => parseArgs(['--wirte'])).toThrow(/Unknown option/);
-  });
-
-  it('recognises help', () => {
-    expect(parseArgs(['--help']).help).toBe(true);
-    expect(parseArgs(['-h']).help).toBe(true);
-  });
-});
+  return { code, text: chunks.join('') };
+}
 
 describe('formatReport', () => {
   const outdated = {
@@ -148,49 +136,6 @@ describe('formatReport', () => {
   });
 });
 
-describe('parseArgs — selection', () => {
-  it('defaults to every package at latest', () => {
-    const args = parseArgs([]);
-    expect(args.only).toBeNull();
-    expect(args.targetSpec).toEqual({ fallback: 'latest', byName: {} });
-    expect(args.interactive).toBe(false);
-  });
-
-  it('reads --only with short names', () => {
-    expect(parseArgs(['--only', 'react,tokens']).only).toEqual([
-      '@elirobinson/react',
-      '@elirobinson/tokens',
-    ]);
-  });
-
-  it('reads --only=value', () => {
-    expect(parseArgs(['--only=react']).only).toEqual(['@elirobinson/react']);
-  });
-
-  it('reads a global --target', () => {
-    expect(parseArgs(['--target', 'minor']).targetSpec).toEqual({
-      fallback: 'minor',
-      byName: {},
-    });
-  });
-
-  it('reads per-package targets', () => {
-    expect(parseArgs(['--target=react=patch']).targetSpec).toEqual({
-      fallback: 'latest',
-      byName: { '@elirobinson/react': 'patch' },
-    });
-  });
-
-  it('rejects an unknown target', () => {
-    expect(() => parseArgs(['--target', 'sideways'])).toThrow(/Unknown target/);
-  });
-
-  it('reads --interactive and -i', () => {
-    expect(parseArgs(['--interactive']).interactive).toBe(true);
-    expect(parseArgs(['-i']).interactive).toBe(true);
-  });
-});
-
 describe('formatReport — held back', () => {
   function entry(overrides) {
     return {
@@ -239,92 +184,78 @@ describe('formatReport — held back', () => {
 });
 
 describe('the artifacts subcommand', () => {
-  it('does not disturb the default run — `artifacts` is only a subcommand, never a flag', () => {
-    // Regression guard for the version-sync path: everything below `artifacts`
-    // in argv goes to the old parser, unchanged.
-    expect(() => parseArgs(['artifacts'])).toThrow(/Unknown option/);
-    expect(parseArgs(['--write', '--json']).write).toBe(true);
-  });
-
-  it('is read-only by default, like the command it hangs off', () => {
-    const args = parseArtifactsArgs([]);
-    expect(args.write).toBe(false);
-    expect(args.force).toBe(false);
-    expect(args.failOnDrift).toBe(false);
-    expect(args.cwd).toBe(process.cwd());
-  });
-
-  it('reads every supported flag, in both --cwd forms', () => {
-    const args = parseArtifactsArgs([
-      '--write',
-      '--force',
-      '--json',
-      '--fail-on-drift',
-      '--cwd',
-      '/tmp/app',
-    ]);
-    expect(args).toMatchObject({ write: true, force: true, json: true, failOnDrift: true });
-    expect(args.cwd).toContain('app');
-    expect(parseArtifactsArgs(['--cwd=/tmp/app']).cwd).toContain('app');
-  });
-
-  it('rejects a flag that only the other command understands', () => {
-    expect(() => parseArtifactsArgs(['--target', 'minor'])).toThrow(/Unknown option/);
-  });
-
   it('routes `artifacts --help` to its own usage', async () => {
-    const chunks = [];
-    const original = process.stdout.write;
-    process.stdout.write = (chunk) => {
-      chunks.push(chunk);
-      return true;
-    };
-
-    try {
-      expect(await main(['artifacts', '--help'])).toBe(0);
-    } finally {
-      process.stdout.write = original;
-    }
-
-    expect(chunks.join('')).toContain('ds-resync artifacts — sync');
+    const { code, text } = await captureStdout(['artifacts', '--help']);
+    expect(code).toBe(0);
+    expect(text).toContain('ds-resync artifacts — sync');
   });
 });
 
-describe('flags shared between the two commands', () => {
-  it('reads --cwd=<dir> identically to --cwd <dir>, on both commands', () => {
-    // One parser serves both commands, so the two spellings and the two
-    // commands have to agree — the prefix form used to be implemented twice.
-    const spaced = parseArgs(['--cwd', '/tmp/app']).cwd;
-    expect(parseArgs(['--cwd=/tmp/app']).cwd).toBe(spaced);
-    expect(parseArtifactsArgs(['--cwd', '/tmp/app']).cwd).toBe(spaced);
-    expect(parseArtifactsArgs(['--cwd=/tmp/app']).cwd).toBe(spaced);
+// Byte-for-byte the help text as it stood when the options section was still
+// hand-written, pinned before it was generated from the flag table. Drift here
+// is a user-visible change to the CLI's documented surface, so it should be a
+// deliberate edit to these strings, never a side effect of touching a renderer.
+const EXPECTED_USAGE = `ds-resync — bring this repo's @elirobinson packages up to date
+
+Usage: ds-resync [options]
+       ds-resync artifacts [options]
+
+Commands:
+  (default)             Report and optionally apply dependency upgrades
+  artifacts             Sync the design system's agent skills into this repo
+
+Options:
+  --write               Apply the upgrades and install (default is read-only)
+  --only <names>        Restrict to these packages (comma-separated, scope optional)
+  --target <spec>       How far to jump: latest | minor | patch
+                        Global ("minor") or per-package ("react=minor,tokens=latest")
+  --interactive, -i     Choose per package, then apply (implies --write)
+  --json                Emit the report as JSON
+  --cwd <dir>           Target a directory other than the current one
+  --fail-on-outdated    Exit 2 when anything is behind (for CI)
+  -h, --help            Show this message
+
+Run \`ds-resync artifacts --help\` for that command's options.
+`;
+
+const EXPECTED_ARTIFACTS_USAGE = `ds-resync artifacts — sync the design system's agent skills into this repo
+
+Writes the brand skill, a version-stamped component reference (llms.txt /
+llms-full.txt), and the re-sync instructions into .claude/skills/. Files you have
+edited since they were written are left alone and listed in the report.
+
+Usage: ds-resync artifacts [options]
+
+Options:
+  --write               Apply the changes (default is read-only)
+  --force               Overwrite files you have edited locally
+  --json                Emit the plan as JSON
+  --cwd <dir>           Target a directory other than the current one
+  --fail-on-drift       Exit 2 when the snapshot and the installed
+                        @elirobinson/react disagree (for CI)
+  -h, --help            Show this message
+`;
+
+describe('the help text', () => {
+  it('prints the default run’s usage unchanged, down to the column alignment', async () => {
+    const { code, text } = await captureStdout(['--help']);
+    expect(code).toBe(0);
+    expect(text).toBe(EXPECTED_USAGE);
   });
 
-  it('resolves a relative --cwd against the process cwd in either form', () => {
-    expect(parseArgs(['--cwd=sub']).cwd).toBe(resolve('sub'));
-    expect(parseArtifactsArgs(['--cwd=sub']).cwd).toBe(resolve('sub'));
+  it('prints the artifacts usage unchanged, down to the column alignment', async () => {
+    const { code, text } = await captureStdout(['artifacts', '--help']);
+    expect(code).toBe(0);
+    expect(text).toBe(EXPECTED_ARTIFACTS_USAGE);
   });
 
-  it('does not accept a value on a boolean flag', () => {
-    expect(() => parseArgs(['--write=yes'])).toThrow(/Unknown option: --write=yes/);
-    expect(() => parseArtifactsArgs(['--force=yes'])).toThrow(/Unknown option: --force=yes/);
-  });
-});
-
-describe('flags belonging to only one command', () => {
-  it('rejects an artifacts-only flag on the default run', () => {
-    expect(() => parseArgs(['--force'])).toThrow(/Unknown option: --force/);
-    expect(() => parseArgs(['--fail-on-drift'])).toThrow(/Unknown option: --fail-on-drift/);
-  });
-
-  it('rejects a default-run-only flag on artifacts, in both forms', () => {
-    expect(() => parseArtifactsArgs(['--only', 'react'])).toThrow(/Unknown option: --only/);
-    expect(() => parseArtifactsArgs(['--only=react'])).toThrow(/Unknown option: --only=react/);
-    expect(() => parseArtifactsArgs(['--interactive'])).toThrow(/Unknown option: --interactive/);
-    expect(() => parseArtifactsArgs(['-i'])).toThrow(/Unknown option: -i/);
-    expect(() => parseArtifactsArgs(['--fail-on-outdated'])).toThrow(
-      /Unknown option: --fail-on-outdated/,
-    );
+  it('spells out the real target vocabulary rather than a placeholder', async () => {
+    // The line is interpolated from TARGETS, so a renderer that lost the
+    // interpolation would still look plausible against a frozen string. Tying
+    // the assertion back to TARGETS also means adding a target fails here
+    // rather than leaving the pinned text quietly stale.
+    const { text } = await captureStdout(['--help']);
+    expect(text).toContain(`How far to jump: ${TARGETS.join(' | ')}`);
   });
 });
 
