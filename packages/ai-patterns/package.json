@@ -12,17 +12,36 @@
   },
   "type": "module",
   "bin": {
-    "ds-resync": "./src/resync/cli.mjs"
+    "ds-resync": "./src/resync/cli.mjs",
+    "elirobinson-ds": "./src/cli/cli.mjs"
   },
   "files": [
     "src",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "!src/**/*.test.mjs"
   ],
   "exports": {
     "./patterns": "./src/patterns.md",
     "./contracts": "./src/contracts.json",
     "./prompts/*": "./src/prompts/*",
-    "./resync/skill": "./src/resync/SKILL.md"
+    "./agents/*": "./src/agents/*",
+    "./resync/skill": "./src/resync/SKILL.md",
+    "./testing/playwright": {
+      "types": "./src/testing/playwright.d.ts",
+      "import": "./src/testing/playwright.mjs"
+    }
+  },
+  "peerDependencies": {
+    "@playwright/test": ">=1.40.0",
+    "axe-core": ">=4.8.0"
+  },
+  "peerDependenciesMeta": {
+    "@playwright/test": {
+      "optional": true
+    },
+    "axe-core": {
+      "optional": true
+    }
   },
   "scripts": {
     "build": "echo 'No build step required for ai-patterns'",
@@ -31,6 +50,8 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "axe-core": "^4.11.0",
+    "playwright": "^1.56.0",
     "vitest": "^3.2.4"
   }
 }

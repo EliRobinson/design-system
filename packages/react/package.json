@@ -28,6 +28,7 @@
   "exports": {
     "./styles.css": "./src/styles.css",
     "./styles/*": "./src/components/*",
+    "./manifest": "./dist/manifest.json",
     "./components/*": {
       "types": "./dist/components/*.d.ts",
       "import": "./dist/components/*.js"
@@ -39,7 +40,7 @@
   },
   "scripts": {
     "prepublishOnly": "pnpm run build",
-    "build": "rm -rf dist && tsc -p ./tsconfig.json",
+    "build": "rm -rf dist && tsc -p ./tsconfig.json && node ./scripts/generate-manifest.mjs",
     "lint": "echo 'No lint configured for react package'",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -49,6 +50,7 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "jsdom": "^26.1.0",
+    "typescript": "^6.0.3",
     "vitest": "^3.2.4"
   }
 }

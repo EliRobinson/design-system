@@ -1,3 +1,4 @@
+import designSystem from '@elirobinson/eslint-config';
 import js from '@eslint/js';
 import prettierConfig from 'eslint-config-prettier';
 import globals from 'globals';
@@ -67,10 +68,25 @@ export default tseslint.config(
     // CLI entry points whose stdout *is* the product: the scaffolder's prompts,
     // and the repo scripts that report what they changed. Anywhere else a
     // console.log is debug residue, which is what the base rule catches.
-    files: ['packages/create-elirobinson-design-system/src/cli.mjs', 'scripts/**/*.mjs'],
+    files: [
+      'packages/create-elirobinson-design-system/src/cli.mjs',
+      'packages/react/scripts/**/*.mjs',
+      'scripts/**/*.mjs',
+    ],
     rules: {
       'no-console': 'off',
     },
   },
+  // We publish these rules; we hold ourselves to them. The component library is
+  // the one place `@elirobinson/react` may be authored without importing itself,
+  // so only the hardcoded-values half applies here.
+  ...designSystem({ gapFiller: [] }).map((entry) => ({
+    ...entry,
+    files: ['packages/react/src/**/*.{ts,tsx}'],
+    rules: {
+      '@elirobinson/no-hardcoded-design-values':
+        entry.rules['@elirobinson/no-hardcoded-design-values'],
+    },
+  })),
   prettierConfig,
 );
