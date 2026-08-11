@@ -168,20 +168,24 @@ describe('Dialog', () => {
       expect(seen[0]).toBe(screen.getByRole('button', { name: 'Close' }));
     });
 
-    it('lets a forwarded ref focus the trigger', async () => {
-      const user = userEvent.setup();
+    // Focus starts on a different element on purpose. Clicking the trigger
+    // first would focus it anyway, and `ref.current?.focus()` no-ops on a null
+    // ref, so that version of this test passed even with no ref forwarded at
+    // all -- it asserted the click, not the ref.
+    it('lets a forwarded ref move focus to the trigger', () => {
       const ref = createRef<HTMLButtonElement>();
 
       render(
         <Dialog>
+          <button type="button">Elsewhere</button>
           <DialogTrigger ref={ref}>Open dialog</DialogTrigger>
-          <DialogContent>
-            <DialogTitle>Contact</DialogTitle>
-          </DialogContent>
         </Dialog>,
       );
 
-      await user.click(screen.getByRole('button', { name: 'Open dialog' }));
+      const elsewhere = screen.getByRole('button', { name: 'Elsewhere' });
+      elsewhere.focus();
+      expect(elsewhere).toHaveFocus();
+
       ref.current?.focus();
 
       expect(screen.getByRole('button', { name: 'Open dialog' })).toHaveFocus();
