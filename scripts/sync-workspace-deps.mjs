@@ -124,8 +124,17 @@ function hasUnstagedChanges(filePath) {
   }
 }
 
+// Only ever called once we know the lockfile is stale, so the whole point is to
+// rewrite it. --no-frozen-lockfile is required rather than merely convenient:
+// pnpm defaults frozen-lockfile to true whenever CI=true, which made this fail
+// in exactly the situation it exists to repair. `changeset version` bumps an
+// internal dependency, the release job commits, this hook fires, and a bare
+// `pnpm install` aborts with ERR_PNPM_OUTDATED_LOCKFILE.
+//
+// Detection stays strict — isLockfileOutOfSync() keeps --frozen-lockfile as its
+// read-only probe, so nothing here loosens what counts as out of sync.
 function runPnpmInstall() {
-  execSync('pnpm install', { cwd: root, stdio: 'inherit' });
+  execSync('pnpm install --no-frozen-lockfile', { cwd: root, stdio: 'inherit' });
 }
 
 function stagePaths(paths) {
