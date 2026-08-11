@@ -184,12 +184,28 @@ export function cssClasses(css) {
   return [...new Set([...css.matchAll(/^\.([\w-]+)/gm)].map((match) => match[1]))].sort();
 }
 
+/**
+ * Custom properties declared on `:root`, with CSS's last-declaration-wins
+ * applied — `--status-success` is declared in the base scale and then
+ * re-pointed at a brand color, and `ds tokens` must print the one that wins.
+ *
+ * This deliberately does NOT import `parseTokensCss` from @elirobinson/tokens,
+ * which owns that parser everywhere else in the monorepo. Importing it would
+ * make @elirobinson/tokens a *runtime* dependency of this package, and
+ * `findPackageDir` walks up from this module's own location as well as the
+ * consumer's cwd — so the package manager's private copy would be found and
+ * `ds` would report tokens as installed, at ai-patterns' pinned version, in a
+ * project that has not installed it. That would break the graceful degradation
+ * this file's header calls load-bearing. `discovery.test.mjs` asserts this
+ * function agrees with the shared parser on the real tokens.css instead.
+ */
 export function cssVariables(css) {
   if (!css) return [];
 
+  const root = css.match(/:root\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
   const seen = new Map();
-  for (const [, name, value] of css.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)) {
-    if (!seen.has(name)) seen.set(name, value.trim());
+  for (const [, name, value] of root.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)) {
+    seen.set(name, value.trim());
   }
   return [...seen.entries()].map(([name, value]) => ({ name, value }));
 }

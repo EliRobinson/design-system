@@ -1,5 +1,7 @@
+import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
 import { describe, expect, it } from 'vitest';
-import { llmsFull, llmsIndex, parseTokensCss, versionStamp } from './llms.mjs';
+
+import { llmsFull, llmsIndex, versionStamp } from './llms.mjs';
 
 const versions = { aiPatterns: '0.5.0', react: '1.2.0', tokens: '0.3.0' };
 
@@ -69,24 +71,7 @@ const tokens = parseTokensCss(`
 }
 `);
 
-describe('parseTokensCss', () => {
-  it('reads names, raw values, and trailing comments', () => {
-    expect(tokens[0]).toEqual({
-      name: '--ink-500',
-      value: '#333',
-      comment: 'base ink',
-      resolved: '#333',
-    });
-  });
-
-  it('follows var() chains so a reader gets a concrete value', () => {
-    expect(tokens[1]).toMatchObject({ name: '--fg', value: 'var(--ink-500)', resolved: '#333' });
-  });
-
-  it('returns nothing rather than throwing when there is no :root block', () => {
-    expect(parseTokensCss('.thing { color: red; }')).toEqual([]);
-  });
-});
+/* parseTokensCss itself is tested in @elirobinson/tokens, which owns it. */
 
 describe('versionStamp', () => {
   it('names the react version the snapshot describes', () => {
