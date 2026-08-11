@@ -86,6 +86,16 @@ pnpm add -D @elirobinson/ai-patterns@latest @elirobinson/eslint-config@latest
 
 This is the single most useful line in the list. `pnpm ds` reads `node_modules` at run time, so it always describes the versions actually installed — which is why no doc here lists components.
 
+Three ways to reach it, in order of how often you'll want them:
+
+```bash
+pnpm ds                                          # with the script above
+pnpm exec elirobinson-ds                         # installed, no script
+pnpm dlx @elirobinson/ai-patterns elirobinson-ds # not installed at all
+```
+
+All three describe the _project you run them in_ — even the `dlx` form, which reads the local `@elirobinson/react` and `@elirobinson/tokens` and falls back to its own copy for contracts, patterns and prompts. Handy for inspecting a repo you haven't set up yet.
+
 ### 3. Import the stylesheets once, in the app shell
 
 ```tsx
@@ -158,6 +168,13 @@ Covers 44×44 touch targets, visible focus, non-overlapping hit areas, and WCAG 
 ```bash
 pnpm exec ds-resync           # what's out of date, and what changed while you were away
 pnpm exec ds-resync --write   # apply it
+```
+
+If the package isn't installed — a repo scaffolded before any of this existed, or a one-off check — run it straight from the registry instead:
+
+```bash
+pnpm dlx @elirobinson/ai-patterns ds-resync
+pnpm dlx @elirobinson/ai-patterns ds-resync --write
 ```
 
 `ds-resync` ships in the same package and answers the other question: `ds` describes the version you have, `ds-resync` tells you whether you should have a newer one.

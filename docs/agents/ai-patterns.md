@@ -26,6 +26,12 @@ The package ships both, and they are easy to confuse:
 touches the network — it only describes what is already in `node_modules`. A consumer runs
 `ds-resync` occasionally and `ds` constantly.
 
+Both work whether or not the package is installed in the project they are pointed at, so
+`pnpm dlx @elirobinson/ai-patterns <bin>` is always a valid entry point. That is why
+`loadEnvironment` takes a `selfDir`: when the binary runs from a dlx store it is absent
+from the project's `node_modules`, and without the fallback every command backed by this
+package's own data would report itself as not installed. `src/cli/cli.test.mjs` pins it.
+
 ## Discover, don't document
 
 The **`elirobinson-ds`** bin (`src/cli/`) reads the _installed_ packages at run time, so

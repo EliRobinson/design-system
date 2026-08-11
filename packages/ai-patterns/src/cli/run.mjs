@@ -36,7 +36,7 @@ function valueOf(argv, flag) {
  */
 export function run(argv, { origins, cwd = process.cwd(), selfDir } = {}) {
   if (flagged(argv, '--version') || flagged(argv, '-v')) {
-    const env = loadEnvironment(origins);
+    const env = loadEnvironment(origins, selfDir);
     return {
       text: [REACT_PKG, TOKENS_PKG, PATTERNS_PKG]
         .map((name) => `${name}@${env.versions[name] ?? '(not installed)'}`)
@@ -70,7 +70,7 @@ export function run(argv, { origins, cwd = process.cwd(), selfDir } = {}) {
   }
 
   const handler = HANDLERS[command];
-  const env = loadEnvironment(origins);
+  const env = loadEnvironment(origins, selfDir);
 
   // Bare `ds Button` is treated as `ds props Button`.
   if (!handler) {

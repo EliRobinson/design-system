@@ -143,6 +143,49 @@ describe('package resolution', () => {
   it('returns null rather than throwing when nothing is installed', () => {
     expect(findPackageDir('@elirobinson/react', [consumer({})])).toBeNull();
   });
+
+  // `pnpm dlx @elirobinson/ai-patterns elirobinson-ds` runs the binary from a
+  // throwaway store, so this package is absent from the project it is
+  // describing. Its own data must still be readable.
+  describe('run from outside the project (pnpm dlx)', () => {
+    const project = () =>
+      consumer({
+        '@elirobinson/react': {
+          'package.json': { name: '@elirobinson/react', version: '1.1.0' },
+          'dist/manifest.json': BUTTON_MANIFEST,
+        },
+        '@elirobinson/tokens': {
+          'package.json': { name: '@elirobinson/tokens', version: '0.2.0' },
+          'src/tokens.css': TOKENS_CSS,
+        },
+      });
+
+    it('still describes the project it is pointed at', () => {
+      const { text } = run([], at(project()));
+
+      expect(text).toContain('COMPONENTS (1)');
+      expect(text).toContain('@elirobinson/react@1.1.0');
+    });
+
+    it('falls back to its own package for contracts, patterns and prompts', () => {
+      const env = at(project());
+
+      expect(run(['contracts'], env)).toMatchObject({ exitCode: 0 });
+      expect(run(['contracts'], env).text).toContain('no-barrel-imports');
+      expect(run(['patterns'], env).text).toContain('AI Product Patterns');
+      expect(run(['prompts'], env).text).toContain('adopt-system');
+    });
+
+    it('does not claim to be uninstalled when it is the thing running', () => {
+      expect(run([], at(project())).text).not.toContain('@elirobinson/ai-patterns (not installed)');
+    });
+
+    it('still reports a genuinely missing package', () => {
+      const { text } = run([], { origins: [consumer({})], cwd: '/nowhere', selfDir: patternsRoot });
+
+      expect(text).toContain('@elirobinson/react (not installed)');
+    });
+  });
 });
 
 describe('inventory source', () => {

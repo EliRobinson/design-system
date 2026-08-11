@@ -12,3 +12,8 @@ package tree rather than assuming a directory structure, so the same command des
 flat 0.x layout and a tiered 1.x one; it reads `@elirobinson/react`'s new `manifest.json`
 and falls back to parsing emitted declarations on older installs. A missing package
 produces an instruction naming what to install.
+
+It works from an install (`pnpm ds`, `pnpm exec elirobinson-ds`) or straight from the
+registry (`pnpm dlx @elirobinson/ai-patterns elirobinson-ds`). In the `dlx` case the binary
+is absent from the project's own `node_modules`, so it falls back to its own package root
+for contracts, patterns and prompts rather than reporting itself as not installed.

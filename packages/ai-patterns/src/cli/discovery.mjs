@@ -46,6 +46,12 @@ function defaultOrigins() {
   return [process.cwd(), dirname(fileURLToPath(import.meta.url))];
 }
 
+/** The directory this CLI ships from, if it really is the ai-patterns package. */
+function ownPackageRoot(selfDir) {
+  const root = selfDir ?? join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+  return readJson(join(root, 'package.json'))?.name === PATTERNS_PKG ? root : null;
+}
+
 export function readFile(path) {
   return path && existsSync(path) ? readFileSync(path, 'utf8') : null;
 }
@@ -192,10 +198,17 @@ export function cssVariables(css) {
  * Resolve every package the CLI can describe. Missing ones are null; each
  * command decides for itself whether it can still do its job.
  */
-export function loadEnvironment(origins) {
+export function loadEnvironment(origins, selfDir) {
   const react = findPackageDir(REACT_PKG, origins);
   const tokens = findPackageDir(TOKENS_PKG, origins);
-  const patterns = findPackageDir(PATTERNS_PKG, origins);
+
+  // This CLI *is* @elirobinson/ai-patterns, so its own package root is always a
+  // valid source for patterns, contracts and prompts. That matters when the
+  // binary is not installed in the project it is describing — `pnpm dlx
+  // @elirobinson/ai-patterns elirobinson-ds` runs from a throwaway store, and
+  // without this fallback every command backed by this package's own data would
+  // report itself as not installed.
+  const patterns = findPackageDir(PATTERNS_PKG, origins) ?? ownPackageRoot(selfDir);
 
   return {
     react,
