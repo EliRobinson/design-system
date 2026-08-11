@@ -1,24 +1,11 @@
 import type { HTMLAttributes, ReactNode } from 'react';
-import {
-  createContext,
-  forwardRef,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { createContext, forwardRef, useContext } from 'react';
 
 import { cn } from '../../lib/cn';
+import type { ModalSurfaceContextValue } from './overlay/modalSurface';
+import { ModalClose, ModalSurface, ModalTrigger, useModalSurface } from './overlay/modalSurface';
 
-type DialogContextValue = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  titleId: string;
-  descriptionId: string;
-};
-
-const DialogContext = createContext<DialogContextValue | null>(null);
+const DialogContext = createContext<ModalSurfaceContextValue | null>(null);
 
 function useDialogContext() {
   const context = useContext(DialogContext);
@@ -35,103 +22,33 @@ export type DialogProps = {
   children: ReactNode;
 };
 
-export function Dialog({
-  open: controlledOpen,
-  defaultOpen = false,
-  onOpenChange,
-  children,
-}: DialogProps) {
-  const titleId = 'ds-dialog-title';
-  const descriptionId = 'ds-dialog-description';
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
-  const open = controlledOpen ?? uncontrolledOpen;
+export function Dialog({ open, defaultOpen = false, onOpenChange, children }: DialogProps) {
+  const context = useModalSurface({ open, defaultOpen, onOpenChange });
 
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (controlledOpen === undefined) {
-        setUncontrolledOpen(next);
-      }
-      onOpenChange?.(next);
-    },
-    [controlledOpen, onOpenChange],
-  );
-
-  return (
-    <DialogContext.Provider
-      value={{ open, onOpenChange: handleOpenChange, titleId, descriptionId }}
-    >
-      {children}
-    </DialogContext.Provider>
-  );
+  return <DialogContext.Provider value={context}>{children}</DialogContext.Provider>;
 }
 
 export type DialogTriggerProps = HTMLAttributes<HTMLButtonElement>;
 
-export function DialogTrigger({ className, onClick, children, ...props }: DialogTriggerProps) {
+export function DialogTrigger(props: DialogTriggerProps) {
   const { onOpenChange } = useDialogContext();
-
-  return (
-    <button
-      type="button"
-      className={className}
-      onClick={(event) => {
-        onClick?.(event);
-        onOpenChange(true);
-      }}
-      {...props}
-    >
-      {children}
-    </button>
-  );
+  return <ModalTrigger onOpenChange={onOpenChange} {...props} />;
 }
 
 export type DialogContentProps = HTMLAttributes<HTMLDialogElement>;
 
 export const DialogContent = forwardRef<HTMLDialogElement, DialogContentProps>(
-  function DialogContent({ className, children, ...props }, ref) {
-    const dialogRef = useRef<HTMLDialogElement>(null);
-    const { open, onOpenChange, titleId, descriptionId } = useDialogContext();
-
-    const setRefs = useCallback(
-      (node: HTMLDialogElement | null) => {
-        dialogRef.current = node;
-        if (typeof ref === 'function') {
-          ref(node);
-        } else if (ref) {
-          ref.current = node;
-        }
-      },
-      [ref],
-    );
-
-    useEffect(() => {
-      const dialog = dialogRef.current;
-      if (!dialog) {
-        return;
-      }
-      if (open && !dialog.open) {
-        dialog.showModal();
-      } else if (!open && dialog.open) {
-        dialog.close();
-      }
-    }, [open]);
+  function DialogContent({ className, ...props }, ref) {
+    const context = useDialogContext();
 
     return (
-      <dialog
-        ref={setRefs}
+      <ModalSurface
+        ref={ref}
+        context={context}
         className={cn('ds-dialog', className)}
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-        onClose={() => onOpenChange(false)}
-        onClick={(event) => {
-          if (event.target === dialogRef.current) {
-            onOpenChange(false);
-          }
-        }}
+        innerClassName="ds-dialog__inner"
         {...props}
-      >
-        <div className="ds-dialog__inner">{children}</div>
-      </dialog>
+      />
     );
   },
 );
@@ -164,20 +81,7 @@ export function DialogFooter({ className, ...props }: DialogFooterProps) {
 
 export type DialogCloseProps = HTMLAttributes<HTMLButtonElement>;
 
-export function DialogClose({ className, onClick, children, ...props }: DialogCloseProps) {
+export function DialogClose(props: DialogCloseProps) {
   const { onOpenChange } = useDialogContext();
-
-  return (
-    <button
-      type="button"
-      className={cn('ds-button ds-button--secondary', className)}
-      onClick={(event) => {
-        onClick?.(event);
-        onOpenChange(false);
-      }}
-      {...props}
-    >
-      {children ?? 'Close'}
-    </button>
-  );
+  return <ModalClose onOpenChange={onOpenChange} {...props} />;
 }

@@ -51,4 +51,39 @@ describe('Dialog', () => {
 
     expect(onOpenChange).toHaveBeenLastCalledWith(false);
   });
+
+  // The title and description ids used to be the constants 'ds-dialog-title'
+  // and 'ds-dialog-description'. Two dialogs on one page therefore emitted
+  // duplicate ids, and every aria-labelledby resolved to whichever rendered
+  // first -- so the second dialog announced the first one's title, with no
+  // visible symptom.
+  it('gives each mounted Dialog its own title and description ids', () => {
+    render(
+      <>
+        <Dialog defaultOpen>
+          <DialogContent>
+            <DialogTitle>Contact</DialogTitle>
+            <DialogDescription>Get in touch within 24 hours.</DialogDescription>
+          </DialogContent>
+        </Dialog>
+        <Dialog defaultOpen>
+          <DialogContent>
+            <DialogTitle>Delete account</DialogTitle>
+            <DialogDescription>This cannot be undone.</DialogDescription>
+          </DialogContent>
+        </Dialog>
+      </>,
+    );
+
+    const [first, second] = screen.getAllByRole('dialog');
+
+    expect(first.getAttribute('aria-labelledby')).not.toBe(second.getAttribute('aria-labelledby'));
+    expect(first.getAttribute('aria-describedby')).not.toBe(
+      second.getAttribute('aria-describedby'),
+    );
+
+    expect(first).toHaveAccessibleName('Contact');
+    expect(second).toHaveAccessibleName('Delete account');
+    expect(second).toHaveAccessibleDescription('This cannot be undone.');
+  });
 });
