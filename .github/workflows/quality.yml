@@ -56,17 +56,6 @@ jobs:
       # not source aliases, so on a clean checkout its type-only imports
       # don't resolve until the packages it depends on are built.
       - run: pnpm build
-      # `pnpm build` regenerates apps/docs/src/generated/component-manifest.json
-      # from packages/react/src. That committed file is what the ai-patterns
-      # pack step reads to produce the llms snapshot it ships — it never builds
-      # apps/docs. So a stale commit of it would silently ship a snapshot
-      # describing components that no longer look like that.
-      - name: Fail if the committed component manifest is stale
-        run: |
-          if ! git diff --exit-code -- apps/docs/src/generated/component-manifest.json; then
-            echo "::error::component-manifest.json is out of date. Run 'pnpm build' and commit the result."
-            exit 1
-          fi
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck

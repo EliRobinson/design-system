@@ -28,7 +28,8 @@
       "command": "pnpm run test",
       "options": {
         "cwd": "apps/docs"
-      }
+      },
+      "dependsOn": ["^build"]
     }
   },
   "implicitDependencies": ["react", "tokens"]

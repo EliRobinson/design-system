@@ -4,9 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "extract": "tsx scripts/extract-manifest.mts",
-    "dev": "pnpm run extract && next dev",
-    "build": "pnpm run extract && next build",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run"
@@ -26,9 +25,7 @@
     "@types/mdx": "^2.0.13",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "react-docgen-typescript": "^2.4.0",
     "shiki": "^4.4.2",
-    "tsx": "^4.21.0",
     "vitest": "^3.2.4"
   }
 }

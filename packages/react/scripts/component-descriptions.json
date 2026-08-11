@@ -1,5 +1,5 @@
 {
-  "$comment": "Curated one-line purposes merged into component-manifest.json by extract-manifest.mts. Used only when the source has no JSDoc description. Source of phrasing: README.md inventory tables, docs/agents/components.md, and the hook implementations.",
+  "$comment": "Fallback one-line purposes merged into dist/manifest.json by scripts/manifest.mjs, used only when the declaration carries no JSDoc description. Every entry here is debt — the description belongs on the declaration, where it cannot drift out of step with the code. Source of phrasing: README.md inventory tables, docs/agents/components.md, and the hook implementations.",
   "hooks": {
     "useAnchoredPosition": "Fixed-position layout for a floating panel relative to its trigger, above or below, kept inside the viewport.",
     "useClickOutside": "Calls back when a pointer-down lands outside the given refs — the dismissal half of every overlay.",

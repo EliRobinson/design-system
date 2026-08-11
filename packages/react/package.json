@@ -28,7 +28,10 @@
   "exports": {
     "./styles.css": "./src/styles.css",
     "./styles/*.css": "./src/components/*.css",
-    "./manifest": "./dist/manifest.json",
+    "./manifest": {
+      "types": "./dist/manifest.d.ts",
+      "default": "./dist/manifest.json"
+    },
     "./components/*": {
       "types": "./dist/components/*.d.ts",
       "import": "./dist/components/*.js"
@@ -50,6 +53,7 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "jsdom": "^26.1.0",
+    "react-docgen-typescript": "^2.4.0",
     "typescript": "^6.0.3",
     "vitest": "^3.2.4"
   }

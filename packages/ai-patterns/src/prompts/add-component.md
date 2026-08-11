@@ -49,8 +49,8 @@ never its styles and never a Tailwind dependency.
 - [ ] Tests cover the keyboard contract the component claims (arrows/Escape/Home/End as
       applicable) — the test file is the contract's source of truth.
 - [ ] A Storybook story exists in `apps/storybook` showing realistic usage.
-- [ ] The docs build (`pnpm nx run docs:build`) picks the component up in
-      `component-manifest.json` with no extraction gaps, and a docs page exists at
+- [ ] `pnpm build` picks the component up in `@elirobinson/react`'s `dist/manifest.json`
+      (generated, not committed) with no extraction gaps, and a docs page exists at
       `/components/<slug>` following the Button page's structure.
 - [ ] Every color pairing introduced passes WCAG AA (compute it — don't eyeball it).
 - [ ] Focus is visible on every interactive element; `prefers-reduced-motion` is not

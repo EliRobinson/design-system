@@ -6,6 +6,7 @@ import contracts from '@elirobinson/ai-patterns/contracts';
 import { describe, expect, it } from 'vitest';
 
 import { TIERS, components, getComponent, hooks } from './manifest';
+import { allPages } from './site-map';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const reactSrc = join(repoRoot, 'packages/react/src');
@@ -21,9 +22,14 @@ describe('component manifest', () => {
     expect(new Set(slugs).size).toBe(slugs.length);
   });
 
-  it('only uses known tiers', () => {
+  it('reports the tiers the package actually groups its components under', () => {
+    expect(TIERS).toEqual(['atoms', 'molecules', 'organisms']);
+  });
+
+  it('gives every component a page in the sidebar', () => {
+    const hrefs = new Set(allPages().map((page) => page.href));
     for (const c of components) {
-      expect(TIERS).toContain(c.tier);
+      expect([...hrefs], c.name).toContain(`/components/${c.slug}`);
     }
   });
 
@@ -53,7 +59,7 @@ describe('component manifest', () => {
   it('extracted a real component from every file', () => {
     for (const c of components) {
       expect(
-        c.extractionGaps.some((g) => g.includes('found no components')),
+        c.extractionGaps.some((g) => g.includes('found no component')),
         `${c.name}: ${c.extractionGaps.join('; ')}`,
       ).toBe(false);
     }

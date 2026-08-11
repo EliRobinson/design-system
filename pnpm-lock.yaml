@@ -130,15 +130,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.14)
-      react-docgen-typescript:
-        specifier: ^2.4.0
-        version: 2.4.0(typescript@6.0.3)
       shiki:
         specifier: ^4.4.2
         version: 4.4.2
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
       vitest:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jsdom@26.1.0(supports-color@7.2.0))(lightningcss@1.32.0)(supports-color@7.2.0)(tsx@4.21.0)(yaml@2.8.3)
@@ -149,6 +143,9 @@ importers:
         specifier: '>=1.40.0'
         version: 1.62.1
     devDependencies:
+      '@elirobinson/react':
+        specifier: workspace:*
+        version: link:../react
       '@elirobinson/tokens':
         specifier: workspace:*
         version: link:../tokens
@@ -206,6 +203,9 @@ importers:
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0(supports-color@7.2.0)
+      react-docgen-typescript:
+        specifier: ^2.4.0
+        version: 2.4.0(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
