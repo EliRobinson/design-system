@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useContext } from 'react';
 
 import { cn } from '../../lib/cn';
@@ -28,12 +28,14 @@ export function Dialog({ open, defaultOpen = false, onOpenChange, children }: Di
   return <DialogContext.Provider value={context}>{children}</DialogContext.Provider>;
 }
 
-export type DialogTriggerProps = HTMLAttributes<HTMLButtonElement>;
+export type DialogTriggerProps = ButtonHTMLAttributes<HTMLButtonElement>;
 
-export function DialogTrigger(props: DialogTriggerProps) {
-  const { onOpenChange } = useDialogContext();
-  return <ModalTrigger onOpenChange={onOpenChange} {...props} />;
-}
+export const DialogTrigger = forwardRef<HTMLButtonElement, DialogTriggerProps>(
+  function DialogTrigger(props, ref) {
+    const { onOpenChange } = useDialogContext();
+    return <ModalTrigger ref={ref} onOpenChange={onOpenChange} {...props} />;
+  },
+);
 
 export type DialogContentProps = HTMLAttributes<HTMLDialogElement>;
 
@@ -79,9 +81,11 @@ export function DialogFooter({ className, ...props }: DialogFooterProps) {
   return <div className={cn('ds-dialog__footer', className)} {...props} />;
 }
 
-export type DialogCloseProps = HTMLAttributes<HTMLButtonElement>;
+export type DialogCloseProps = ButtonHTMLAttributes<HTMLButtonElement>;
 
-export function DialogClose(props: DialogCloseProps) {
-  const { onOpenChange } = useDialogContext();
-  return <ModalClose onOpenChange={onOpenChange} {...props} />;
-}
+export const DialogClose = forwardRef<HTMLButtonElement, DialogCloseProps>(
+  function DialogClose(props, ref) {
+    const { onOpenChange } = useDialogContext();
+    return <ModalClose ref={ref} onOpenChange={onOpenChange} {...props} />;
+  },
+);
