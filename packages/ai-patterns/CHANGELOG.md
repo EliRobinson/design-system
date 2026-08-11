@@ -1,5 +1,143 @@
 # @elirobinson/ai-patterns
 
+## 0.6.0
+
+### Minor Changes
+
+- 2c3c5e7: One llms corpus generator, owned by `@elirobinson/ai-patterns`.
+
+  The generator that renders `llms.txt` and `llms-full.txt` existed twice, written
+  independently and producing the same format: once in `apps/docs` for the live
+  `/llms.txt` routes, once in this package for the snapshot that ships in the
+  tarball. `INTRO` and the import rules were duplicated character for character;
+  the prop tables, component sections, and index were reimplemented. Both files
+  opened with a comment asserting the other was its twin, which is not a mechanism
+  — they had already drifted.
+
+  There is now one implementation, published as `@elirobinson/ai-patterns/corpus`
+  (`llmsIndex`, `llmsFull`, `versionStamp`, `RESYNC_COMMAND`), with a hand-written
+  `llms.d.ts` and a drift test against it, matching how `./testing/playwright` is
+  published. It is parameterized by the four things that genuinely differ between
+  the two callers, each optional and absent by default:
+  - `versions` — stamps the output as a snapshot. The docs site passes none.
+  - `prose` — the Foundations and Patterns pages, as plain markdown.
+  - `componentAppendix` — extra blocks per component section; the docs site
+    appends the page prose and a `/r/<slug>.json` link.
+  - `alsoAvailable` — the "what else is here" bullets, which are URLs on a website
+    and filenames plus a CLI in a tarball.
+
+  The packed snapshot is byte-identical to what it produced before, and so is the
+  docs `/llms.txt`. Two docs outputs change, both deliberately:
+  - `/llms-full.txt` gains exactly one trailing newline, so neither a file nor a
+    `text/plain` body ends mid-line. Nothing else in it moves.
+  - `/r/<slug>.json` spreads the manifest record, so its `importPath` key is now
+    `importSpecifier` — the same rename described below, surfacing on the one
+    machine-readable route that isn't a corpus.
+
+  Two fixes that only became possible once there was one reader:
+  - Component order is driven off `manifest.tiers` rather than a hardcoded
+    `['atoms', 'molecules', 'organisms']` in each copy. A tier added to
+    `@elirobinson/react` used to drop every component in it out of the corpus
+    silently; it now appears, and a component the manifest gives no tier is
+    emitted after the tiers rather than discarded.
+  - `@elirobinson/react`'s manifest drops `importPath`, which was a byte-identical
+    alias of `importSpecifier` published only so the docs site and the `ds` CLI
+    could each keep their own name for it. `importSpecifier` is the one name.
+
+  Removing a published manifest field is breaking, so `@elirobinson/react` is
+  marked `major`. It is already taking a `major` in this batch, and the field
+  being removed was introduced in this same unreleased batch, so no released
+  reader ever saw it — but the manifest is a published contract and the bump
+  should say what happened to it rather than what it cost.
+
+- c6cfaa0: Make `tokens.css` the only place the token set is written down.
+
+  **`@elirobinson/tokens`**
+  - `tokens.json` is now generated from `tokens.css` at build time. The
+    hand-maintained file had drifted to 95 leaf values against 151 `:root` custom
+    properties — `--signal-200/300/400/600/800/900` and
+    `--anchor-200/300/400/600/800/900` were missing entirely, with nothing marking
+    the file as partial. All 151 are now present. The nested shape and every key
+    that existed before are unchanged, so `@elirobinson/tokens/tokens-data` and
+    `@elirobinson/tokens/tokens.json` keep working; 62 leaves were added.
+    Values are now copied verbatim out of the stylesheet, so a few that the
+    hand-written file had padded change spelling without changing meaning
+    (`oklch(86.0% …)` → `oklch(86% …)`).
+  - New export `@elirobinson/tokens/parse-tokens-css` — the one CSS token parser,
+    previously duplicated in three places across the monorepo.
+  - The package has tests for the first time, including one that fails if
+    `tokens.json` stops covering every `:root` custom property.
+
+  **`@elirobinson/ai-patterns`**
+  - The `colors_and_type.css` shipped into `.claude/skills/miltinson-design/` is
+    now the tokens package's own `tokens.css` rather than a hand-kept sibling of
+    it. The two had diverged: the copy consumers received was missing the `.dark`
+    compatibility selector and the dark-mode `--focus-ring` override, so every
+    `outline: 2px solid var(--focus-ring)` was black-on-black in dark mode — a
+    silent failure of the `focusVisibleRequired` contract.
+  - `ds tokens` now reads only `:root` and, when a token is declared twice, prints
+    the declaration CSS actually applies. `--status-success` and
+    `--status-warning` are re-pointed at brand colors after the base scale
+    declares them, so they previously printed the shadowed value.
+
+### Patch Changes
+
+- cc6dd9d: Add a drift test for the published `testing/playwright` type surface.
+
+  `src/testing/playwright.mjs` is plain JavaScript typed by a hand-written
+  `playwright.d.ts`, and `./testing/playwright` publishes both as `types` and
+  `import`. Nothing checked that the two agreed, so a rename or a new helper could
+  leave the declarations describing a module that no longer exists — invisible in
+  this repo, and surfacing only when a consumer's test suite compiles against the
+  lie.
+
+  `playwright.types.test.mjs` compares the module's real runtime exports against
+  the value declarations parsed out of the `.d.ts` in both directions, and names
+  the specific export that drifted in the failure message. No new dependencies.
+
+  Also updates the `no-barrel-imports` check text in `contracts.json`, which
+  enumerates the legal `@elirobinson/*` subpaths, to say `styles/*.css` rather
+  than `styles/*` — `@elirobinson/react` v2 narrows that export, and the shipped
+  contract must not advertise a pattern that no longer resolves.
+
+- 98839c4: Internal: `ds-resync` parses both commands' flags through one table-driven parser instead of two hand-rolled else-if chains, so a flag both commands should honour can no longer land on only one. No change to flag names, defaults, or error messages.
+- c476af3: Internal: `ds-resync` generates both commands' `Options:` help from the same flag table it parses with, and the argument handling moved out of `cli.mjs` into a sibling `args.mjs`. Adding a flag is now one edit rather than a table entry plus a matching usage block. The rendered help text is byte-identical, pinned by a test.
+- b393053: One component manifest, owned by `@elirobinson/react`.
+
+  `./manifest` now carries everything the two extractors used to produce
+  separately. Alongside the existing `name` / `tier` / `subpath` /
+  `importSpecifier` / `exports` / `types` / `propsType` / `variants`, every
+  component record gains `slug`, `description`, `props` (full prop tables with
+  types, defaults, required flags, and per-prop JSDoc), `subComponents`, `hooks`,
+  `inherits`, `stylesheetPaths`, `constraints`, and `extractionGaps`; hook records
+  gain `description`. `manifestVersion` is `2`. `./manifest` also gains a `types`
+  condition, so it is a typed import rather than an `any`.
+
+  `minor` rather than `major`: every v1 field keeps its name and its meaning, so a
+  v1 reader keeps working. Three things do change, none of them a v1 field:
+  - `inherits` now names bases the previous regex-based extractor gave up on
+    (`Table`, `VirtualList`, `VirtualTable`, `Accordion` said `null` and now name
+    the type they extend).
+  - `organisms/table/core`, which exports helpers `Table` and `VirtualTable`
+    share rather than a component of its own name, is no longer listed as a
+    component. It was never importable as one, and the types it exports
+    (`ColumnDef` and friends) are re-exported from `Table`.
+  - The docs-side record's `exportedTypes` is not carried over under that name —
+    `types`, which the manifest already published, is the same list derived from
+    the AST rather than a regex, and a superset of it.
+
+  Descriptions for components whose source carries no JSDoc still come from a
+  curated fallback list, which moved with the extractor to
+  `packages/react/scripts/component-descriptions.json`. It moved rather than being
+  replaced because removing it means writing JSDoc on 44 components in
+  `packages/react/src`, which this change deliberately does not touch; its header
+  now says out loud that every entry in it is debt.
+
+  `@elirobinson/ai-patterns` is a `patch`: its published output is unchanged, but
+  `build-artifacts.mjs` now reads `@elirobinson/react/manifest` instead of a
+  generated file inside `apps/docs`, so producing the tarball no longer depends on
+  a documentation app.
+
 ## 0.5.0
 
 ### Minor Changes
