@@ -18,6 +18,7 @@
   ],
   "exports": {
     "./tokens.css": "./src/tokens.css",
+    "./tailwind.css": "./src/tailwind.css",
     "./tokens.json": "./src/tokens.json",
     "./tokens-data": {
       "types": "./dist/tokens-data.d.ts",

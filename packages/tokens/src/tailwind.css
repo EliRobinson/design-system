@@ -1,0 +1,172 @@
+/* ==========================================================================
+   Miltinson Technologies — Tailwind v4 bridge
+   @elirobinson/tokens/tailwind.css
+   ==========================================================================
+   Maps Tailwind's theme namespaces onto this package's semantic tokens, so
+   `bg-background`, `text-muted-foreground`, `border-border`, `rounded-md` and
+   friends resolve to design system values instead of Tailwind's defaults —
+   or, worse, to nothing at all.
+
+   Usage (Tailwind v4 only), in your app's entry stylesheet:
+
+     @import 'tailwindcss';
+     @import '@elirobinson/tokens/tokens.css';
+     @import '@elirobinson/tokens/tailwind.css';
+
+   tokens.css must be loaded — this file aliases its variables, it does not
+   define them. Import it here as shown, or once in your app shell; either
+   works, as long as it is present.
+
+   Because every alias below is `@theme inline`, utilities compile to
+   `var(--token)` rather than to a snapshot of its value. That is what makes
+   `[data-theme="dark"]` flip Tailwind utilities at runtime, and what makes a
+   `@elirobinson/tokens` bump flow through without touching this file.
+
+   ---------------------------------------------------------------------------
+   Two collisions worth knowing about:
+
+   1. The shadcn/ui variable contract overlaps ours with different meanings.
+      shadcn's `--accent` is a subtle hover tint; ours is Miltinson Amber, a
+      brand signal. Aliasing `--accent: var(--accent)` in your own stylesheet
+      is circular and silently yields nothing. Don't — this file already maps
+      the Tailwind color namespace, which is what shadcn components consume.
+      For shadcn's "accent as hover tint" reach for `bg-surface-2`, `bg-muted`,
+      or `bg-accent-tint`.
+
+   2. Tailwind's non-color namespace keys (`--radius-*`, `--shadow-*`,
+      `--font-*`, `--ease-*`) are spelled exactly like our tokens. A direct
+      `--radius-md: var(--radius-md)` compiles to a self-referencing
+      declaration in Tailwind's theme layer. The `--ds-*` aliases below exist
+      only to break that cycle; they are an implementation detail of this file,
+      not part of the token vocabulary. Keep using `--radius-md` in your own
+      CSS.
+   ========================================================================== */
+
+:root {
+  /* Cycle-breaking aliases. See note 2 above. */
+  --ds-radius-none: var(--radius-none);
+  --ds-radius-xs: var(--radius-xs);
+  --ds-radius-sm: var(--radius-sm);
+  --ds-radius-md: var(--radius-md);
+  --ds-radius-lg: var(--radius-lg);
+  --ds-radius-xl: var(--radius-xl);
+  --ds-radius-pill: var(--radius-pill);
+
+  --ds-shadow-xs: var(--shadow-xs);
+  --ds-shadow-sm: var(--shadow-sm);
+  --ds-shadow-md: var(--shadow-md);
+  --ds-shadow-lg: var(--shadow-lg);
+  --ds-shadow-xl: var(--shadow-xl);
+
+  --ds-font-sans: var(--font-sans);
+  --ds-font-display: var(--font-display);
+  --ds-font-mono: var(--font-mono);
+
+  --ds-ease-out: var(--ease-out);
+  --ds-ease-in-out: var(--ease-in-out);
+  --ds-ease-spring: var(--ease-spring);
+
+  /* shadcn/ui components read --radius directly rather than through a utility
+     class. Point it at the card radius, which is what they assume. */
+  --radius: var(--radius-md);
+}
+
+@theme inline {
+  /* --- Surfaces ---------------------------------------------------------- */
+  --color-background: var(--bg);
+  --color-background-subtle: var(--bg-subtle);
+  --color-background-muted: var(--bg-muted);
+  --color-background-inverse: var(--bg-inverse);
+
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-foreground: var(--fg);
+
+  --color-card: var(--surface);
+  --color-card-foreground: var(--fg);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--fg);
+
+  /* --- Text -------------------------------------------------------------- */
+  --color-foreground: var(--fg);
+  --color-foreground-2: var(--fg-2);
+  --color-foreground-3: var(--fg-3);
+  --color-foreground-4: var(--fg-4);
+  --color-foreground-inverse: var(--fg-inverse);
+  --color-muted-foreground: var(--fg-3);
+
+  /* --- Intent ------------------------------------------------------------ */
+  /* shadcn's "primary" is the high-contrast action, which in this system is
+     ink-on-background — the same pairing Button's `primary` variant uses. */
+  --color-primary: var(--fg);
+  --color-primary-foreground: var(--bg);
+  --color-secondary: var(--bg-subtle);
+  --color-secondary-foreground: var(--fg);
+  --color-muted: var(--bg-muted);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-fg);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-press: var(--accent-press);
+  --color-accent-tint: var(--accent-tint);
+
+  --color-anchor: var(--anchor);
+  --color-anchor-foreground: var(--anchor-fg);
+  --color-anchor-hover: var(--anchor-hover);
+  --color-anchor-press: var(--anchor-press);
+  --color-anchor-tint: var(--anchor-tint);
+
+  /* --- Status ------------------------------------------------------------ */
+  --color-destructive: var(--status-danger);
+  --color-destructive-foreground: var(--fg-inverse);
+  --color-success: var(--status-success);
+  --color-success-foreground: var(--fg-inverse);
+  --color-warning: var(--status-warning);
+  --color-warning-foreground: var(--fg-on-signal);
+  --color-info: var(--status-info);
+  --color-info-foreground: var(--fg-inverse);
+
+  /* --- Lines and focus --------------------------------------------------- */
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-border-inverse: var(--border-inverse);
+  --color-input: var(--border);
+  --color-ring: var(--focus-ring);
+
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-link-visited: var(--link-visited);
+
+  /* --- Radius ------------------------------------------------------------ */
+  --radius-none: var(--ds-radius-none);
+  --radius-xs: var(--ds-radius-xs);
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius-md);
+  --radius-lg: var(--ds-radius-lg);
+  --radius-xl: var(--ds-radius-xl);
+  --radius-full: var(--ds-radius-pill);
+
+  /* --- Shadow ------------------------------------------------------------ */
+  --shadow-xs: var(--ds-shadow-xs);
+  --shadow-sm: var(--ds-shadow-sm);
+  --shadow-md: var(--ds-shadow-md);
+  --shadow-lg: var(--ds-shadow-lg);
+  --shadow-xl: var(--ds-shadow-xl);
+
+  /* --- Type families ----------------------------------------------------- */
+  /* Families only. The type *scale* stays Tailwind's: `.t-*` classes from
+     tokens.css are the system's typography, and remapping --text-* would put
+     two competing ramps in play. Same reasoning for spacing — Tailwind v4
+     derives its whole numeric scale from a single --spacing base, which cannot
+     express this system's non-linear --space-* ramp. Use gap-[var(--space-6)]
+     where a specific step matters. */
+  --font-sans: var(--ds-font-sans);
+  --font-display: var(--ds-font-display);
+  --font-mono: var(--ds-font-mono);
+
+  /* --- Motion ------------------------------------------------------------ */
+  --ease-out: var(--ds-ease-out);
+  --ease-in-out: var(--ds-ease-in-out);
+  --ease-spring: var(--ds-ease-spring);
+}

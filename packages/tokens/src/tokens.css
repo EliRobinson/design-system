@@ -239,9 +239,16 @@
 }
 
 /* ==========================================================================
-   Dark mode — opt-in via [data-theme="dark"] OR prefers-color-scheme
+   Dark mode — opt-in via [data-theme="dark"]
+   --------------------------------------------------------------------------
+   `.dark` is accepted as a compatibility alias because most theme switchers
+   default to a class strategy. next-themes in particular defaults to
+   `attribute="class"`, so wiring it up without `attribute="data-theme"` used
+   to leave dark mode silently doing nothing. Either convention works now;
+   `[data-theme="dark"]` remains the one the system documents.
    ========================================================================== */
-[data-theme='dark'] {
+[data-theme='dark'],
+.dark {
   --bg: var(--ink-1000);
   --bg-subtle: var(--ink-950);
   --bg-muted: var(--ink-900);
@@ -261,6 +268,12 @@
   --fg-3: var(--ink-400);
   --fg-4: var(--ink-500);
   --fg-inverse: var(--ink-1000);
+
+  /* The light theme's focus ring is ink-on-white. Left un-inverted here it
+     stays pure black against a pure black page, which makes every
+     `outline: 2px solid var(--focus-ring)` in the component library invisible
+     in dark mode — a silent failure of the focusVisibleRequired contract. */
+  --focus-ring: var(--ink-0);
 
   --link: var(--ink-0);
   --link-hover: var(--signal-400);

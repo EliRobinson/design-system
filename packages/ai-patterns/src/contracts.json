@@ -2,37 +2,63 @@
   "systemPromptStyle": {
     "voice": "practical, honest, warm",
     "forbidden": ["hype", "overclaiming", "jargon-first language"],
-    "required": ["clear next step", "plain-language explanation", "accessibility consideration"]
+    "required": ["clear next step", "plain-language explanation", "accessibility consideration"],
+    "verifiedBy": {
+      "voice": "not automated — reviewer judgement",
+      "forbidden": "not automated — reviewer judgement",
+      "required": "not automated — reviewer judgement"
+    }
   },
   "uiContracts": {
     "minimumTouchTarget": "44x44",
     "focusVisibleRequired": true,
-    "contrastLevel": "WCAG AA"
+    "contrastLevel": "WCAG AA",
+    "verifiedBy": {
+      "minimumTouchTarget": "@elirobinson/ai-patterns/testing/playwright → checkTouchTargets()",
+      "focusVisibleRequired": "@elirobinson/ai-patterns/testing/playwright → checkFocusVisible()",
+      "contrastLevel": "@elirobinson/ai-patterns/testing/playwright → checkContrast() (axe-core)"
+    }
   },
   "componentConstraints": {
     "no-barrel-imports": {
       "summary": "Import via package subpaths only — @elirobinson/react/components/<tier>/<Name>, @elirobinson/react/hooks/<name>, @elirobinson/tokens/tokens.css. There are no barrel files; a bare @elirobinson/react import does not resolve.",
-      "check": "Every import from an @elirobinson package names a subpath (components/*, hooks/*, styles/*, styles.css, tokens.css, tokens.json, tokens-data, patterns, contracts)."
+      "check": "Every import from an @elirobinson package names a subpath (components/*, hooks/*, styles/*, styles.css, tokens.css, tailwind.css, tokens.json, tokens-data, manifest, patterns, contracts, agents/*, testing/playwright).",
+      "verifiedBy": "@elirobinson/eslint-config → no-restricted-imports. Run `ds props <Name>` for the exact specifier."
+    },
+    "no-foreign-component-libraries": {
+      "summary": "@elirobinson/react is the component vocabulary. A second library (MUI, Chakra, Ant Design, Mantine, HeroUI, Headless UI, DaisyUI) forks the system's behaviour and accessibility guarantees. Radix is already wrapped by the system, so importing it directly does the same.",
+      "check": "No import resolves to a foreign component library, and no direct Radix import appears outside a repo's sanctioned gap-filler directory.",
+      "verifiedBy": "@elirobinson/eslint-config → no-restricted-imports"
+    },
+    "no-hardcoded-design-values": {
+      "summary": "Colour, radius, shadow and motion come from tokens — a mapped Tailwind utility, a .t-* class, or var(--token) in an arbitrary value. A literal cannot be re-pointed, so it silently stops responding to [data-theme=\"dark\"] and to any token change.",
+      "check": "No hex / rgb() / hsl() / oklch() literal, and no magic px or ms for radius, shadow or duration, appears in a className string, a style object, or a stylesheet that consumes values.",
+      "verifiedBy": "@elirobinson/eslint-config → @elirobinson/no-hardcoded-design-values (and its CSS counterpart via @elirobinson/eslint-config/css)"
     },
     "forward-ref": {
       "summary": "Every component that renders a focusable or interactive native element uses forwardRef, forwarding to the outermost interactive element the component owns.",
-      "check": "The component is wrapped in React.forwardRef and the forwarded ref resolves to the interactive DOM node (or a documented handle, e.g. VirtualListHandle)."
+      "check": "The component is wrapped in React.forwardRef and the forwarded ref resolves to the interactive DOM node (or a documented handle, e.g. VirtualListHandle).",
+      "verifiedBy": "not automated — review. Applies to contributions to @elirobinson/react itself."
     },
     "touch-target-primary": {
       "summary": "Primary interactive controls — buttons, pagination items, segmented-control options, nav items — have a minimum 44x44px touch target. Where visual density matters, keep the painted glyph small and expand the hit area with padding or a bounded overlay rather than inflating the visible control.",
-      "check": "The computed hit area of each primary control is at least 44x44px."
+      "check": "The computed hit area of each primary control is at least 44x44px.",
+      "verifiedBy": "@elirobinson/ai-patterns/testing/playwright → checkTouchTargets()"
     },
     "touch-target-dense": {
       "summary": "Dense inline affordances — a chip's remove glyph, a search field's clear button, rating stars, calendar day cells — follow shadcn/MUI-scale sizing rather than 44px. Reference: MUI Chip is 32px tall (24px small) with a 22px (16px small) delete icon; shadcn Badge is ~20px tall with 12px icons.",
-      "check": "Dense affordances match the shadcn/MUI reference scale instead of the 44px rule."
+      "check": "Dense affordances match the shadcn/MUI reference scale instead of the 44px rule.",
+      "verifiedBy": "@elirobinson/ai-patterns/testing/playwright → checkTouchTargets(), which exempts anything matching data-touch-target=\"dense\" or the system's dense affordance classes"
     },
     "hit-area-no-overlap": {
       "summary": "An expanded hit area must never overlap sibling content. Bound the hit area — for example stretch it to the container's height, not a symmetric negative inset — so a control's overlay cannot cover an adjacent label.",
-      "check": "No interactive hit area intersects a sibling element's painted or interactive area."
+      "check": "No interactive hit area intersects a sibling element's painted or interactive area.",
+      "verifiedBy": "@elirobinson/ai-patterns/testing/playwright → checkHitAreaOverlap()"
     },
     "tier-boundary": {
       "summary": "Components live under packages/react/src/components/<tier>/. If a component renders into a portal, traps focus, or manages open/closed state across multiple sub-elements, it is an organism. If it is assembled from 2+ atoms with no such orchestration, it is a molecule. Otherwise it is an atom.",
-      "check": "The component's directory (atoms | molecules | organisms) matches the boundary rule for its behavior."
+      "check": "The component's directory (atoms | molecules | organisms) matches the boundary rule for its behavior.",
+      "verifiedBy": "not automated — review. @elirobinson/react/manifest reports the tier each component currently sits in."
     }
   }
 }

@@ -1,0 +1,51 @@
+---
+description: Build all UI from the @elirobinson design system (components, tokens, patterns)
+globs: ['**/*.tsx', '**/*.jsx', '**/*.css']
+alwaysApply: false
+---
+
+# Design system first
+
+UI in this repo comes from **`@elirobinson/react`** (components, hooks), **`@elirobinson/tokens`** (color, type, space, radius, shadow, motion), and **`@elirobinson/ai-patterns`** (UI contracts and working patterns). No other component library. No hardcoded design values.
+
+Upstream: https://github.com/EliRobinson/design-system
+
+## Discover before you build
+
+Never rely on a remembered or documented component list — it goes stale on every design system release. Ask the installed packages:
+
+```bash
+pnpm ds                  # components (+ exports & variants), hooks, typography classes, token groups
+pnpm ds props <Name>     # props and variant unions; accepts `Card` or `molecules/Card`
+pnpm ds tokens [filter]  # tokens and values
+pnpm ds classes [filter] # CSS classes the design system ships
+pnpm ds contracts        # machine-checkable UI rules you must satisfy
+pnpm ds patterns         # working principles, including the definition of done
+pnpm ds prompts [name]   # prompt templates
+```
+
+`pnpm exec elirobinson-ds` is the same command if the `ds` script is not wired up. Deeper detail: `node_modules/@elirobinson/react/src/components/`, `node_modules/@elirobinson/tokens/src/tokens.css`, `node_modules/@elirobinson/react/dist/manifest.json`.
+
+## Rules
+
+- Import per component, full subpath — `pnpm ds props <Name>` prints the exact line. There is no barrel export and a bare package import does not resolve.
+- Satisfy `pnpm ds contracts`. Each constraint carries its own `check` and a `verifiedBy` naming what enforces it.
+- Use each component's `variant` / `size` props rather than overriding its look with utilities.
+- Utility classes are for layout (grid, flex, spacing); the design system owns appearance.
+- Colors, radii, shadows, durations, font sizes come from tokens — via mapped utilities, `.t-*` typography classes, or `var(--token)` in arbitrary values. Never a literal.
+- With Tailwind v4, `@import '@elirobinson/tokens/tailwind.css'` is what makes `bg-background`, `text-muted-foreground`, `border-border` and friends resolve to tokens.
+- Dark mode is `[data-theme="dark"]` (`.dark` also works). With `next-themes`, set `attribute="data-theme"`.
+- Stylesheets are imported once in the app shell; don't re-import per component.
+- Heroes, page headers, empty states, sidebars are compositions of primitives, not missing components.
+
+## Missing something?
+
+1. Compose from existing primitives.
+2. Pull in the repo's sanctioned gap-filler and restyle it with tokens.
+3. Hand-roll from tokens as a last resort, and flag it as a design system gap worth upstreaming.
+
+MUI, Chakra, Ant Design, Mantine, HeroUI, Headless UI, DaisyUI, direct Radix imports, and bare `@elirobinson/*` imports are blocked by `@elirobinson/eslint-config`. Don't work around it.
+
+## Done
+
+Run `pnpm ds patterns` and work the **Definition of Done for UI work** checklist. It lives in the package so it can't go stale here.

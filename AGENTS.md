@@ -1,6 +1,8 @@
 # AI Agent Rules
 
-Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobinson/react`, and `@elirobinson/ai-patterns`.
+Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobinson/react`, `@elirobinson/ai-patterns`, and `@elirobinson/eslint-config`.
+
+**Nothing we publish may require a consumer to update prose when this repo changes.** A consumer bumps a version and is current. Anything they would otherwise have to copy into their own docs — a component list, a token table, a Tailwind mapping, a lint rule — is a bug in what we publish. Ship it as a command, a manifest, a stylesheet, or a rule instead.
 
 > Edit this file only. `CLAUDE.md` is a symlink to `AGENTS.md`.
 
@@ -17,7 +19,8 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 - [Tokens](docs/agents/tokens.md)
 - [Components](docs/agents/components.md)
 - [Layout patterns](docs/agents/layout-patterns.md)
-- [AI patterns](docs/agents/ai-patterns.md)
+- [AI patterns](docs/agents/ai-patterns.md) — the `ds` discovery CLI, contracts, agent templates
+- [Consumer tooling](docs/agents/consumer-tooling.md) — what a consuming app installs, and why each piece lives here
 - [Publishing](docs/agents/publishing.md)
 - [Git workflow](docs/agents/git-workflow.md)
 
