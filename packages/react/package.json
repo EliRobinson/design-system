@@ -27,7 +27,7 @@
   },
   "exports": {
     "./styles.css": "./src/styles.css",
-    "./styles/*": "./src/components/*",
+    "./styles/*.css": "./src/components/*.css",
     "./manifest": "./dist/manifest.json",
     "./components/*": {
       "types": "./dist/components/*.d.ts",
