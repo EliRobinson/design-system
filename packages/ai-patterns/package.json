@@ -11,17 +11,26 @@
     "access": "restricted"
   },
   "type": "module",
+  "bin": {
+    "ds-resync": "./src/resync/cli.mjs"
+  },
   "files": [
-    "src"
+    "src",
+    "CHANGELOG.md"
   ],
   "exports": {
     "./patterns": "./src/patterns.md",
     "./contracts": "./src/contracts.json",
-    "./prompts/*": "./src/prompts/*"
+    "./prompts/*": "./src/prompts/*",
+    "./resync/skill": "./src/resync/SKILL.md"
   },
   "scripts": {
     "build": "echo 'No build step required for ai-patterns'",
     "lint": "echo 'No lint configured for ai-patterns'",
-    "test": "echo 'No tests configured for ai-patterns'"
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
   }
 }

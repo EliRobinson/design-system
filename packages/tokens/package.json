@@ -13,7 +13,8 @@
   "type": "module",
   "files": [
     "dist",
-    "src"
+    "src",
+    "CHANGELOG.md"
   ],
   "exports": {
     "./tokens.css": "./src/tokens.css",
