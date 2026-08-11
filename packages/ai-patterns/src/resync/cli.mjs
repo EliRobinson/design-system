@@ -59,33 +59,130 @@ Options:
   -h, --help            Show this message
 `;
 
-export function parseArtifactsArgs(argv) {
-  const args = {
-    write: false,
-    force: false,
-    json: false,
-    cwd: process.cwd(),
-    failOnDrift: false,
-    help: false,
-  };
+/**
+ * Every flag either command understands, declared once. A `boolean` flag sets
+ * its key to true; a `value` flag takes the next argv item — or the text after
+ * `=`, both spellings come free — and runs it through `parse`, substituting
+ * `whenValueAbsent` if the flag ends argv with nothing after it.
+ *
+ * `whenOmitted` supplies the key's value when the flag is not passed at all. It
+ * is a function rather than a value because `--cwd` has to read `process.cwd()`
+ * at parse time, not at module load; the other two follow the same shape so the
+ * field has one type rather than two.
+ *
+ * The point of the table is that a flag's parsing lives in exactly one place:
+ * teaching both commands a new flag is a line here and a line in each command's
+ * list below, with no second else-if chain to forget. The usage text above is
+ * still written by hand, so that much remains a separate edit.
+ */
+const FLAGS = {
+  write: { flag: '--write', key: 'write', type: 'boolean' },
+  force: { flag: '--force', key: 'force', type: 'boolean' },
+  json: { flag: '--json', key: 'json', type: 'boolean' },
+  failOnDrift: { flag: '--fail-on-drift', key: 'failOnDrift', type: 'boolean' },
+  failOnOutdated: { flag: '--fail-on-outdated', key: 'failOnOutdated', type: 'boolean' },
+  interactive: { flag: '--interactive', alias: '-i', key: 'interactive', type: 'boolean' },
+  help: { flag: '--help', alias: '-h', key: 'help', type: 'boolean' },
+  cwd: {
+    flag: '--cwd',
+    key: 'cwd',
+    type: 'value',
+    parse: (value) => resolvePath(value),
+    whenValueAbsent: '.',
+    whenOmitted: () => process.cwd(),
+  },
+  only: {
+    flag: '--only',
+    key: 'only',
+    type: 'value',
+    parse: parseOnly,
+    whenValueAbsent: '',
+    whenOmitted: () => null,
+  },
+  target: {
+    flag: '--target',
+    key: 'targetSpec',
+    type: 'value',
+    parse: parseTargetSpec,
+    whenValueAbsent: '',
+    whenOmitted: () => DEFAULT_TARGET_SPEC,
+  },
+};
+
+// The two lists are deliberately not the same set. A flag absent from a
+// command's list is an unknown option there, which is the behaviour worth
+// keeping: `--force` has nothing to overwrite during a version sync, and
+// `--target` has no version to aim at during an artifact copy.
+const ARTIFACTS_FLAGS = [
+  FLAGS.write,
+  FLAGS.force,
+  FLAGS.json,
+  FLAGS.failOnDrift,
+  FLAGS.cwd,
+  FLAGS.help,
+];
+
+const RESYNC_FLAGS = [
+  FLAGS.write,
+  FLAGS.json,
+  FLAGS.failOnOutdated,
+  FLAGS.interactive,
+  FLAGS.only,
+  FLAGS.target,
+  FLAGS.cwd,
+  FLAGS.help,
+];
+
+function parseFlags(argv, specs) {
+  const args = {};
+  const byName = new Map();
+
+  for (const spec of specs) {
+    args[spec.key] = spec.type === 'boolean' ? false : spec.whenOmitted();
+    byName.set(spec.flag, spec);
+    if (spec.alias) byName.set(spec.alias, spec);
+  }
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
+    const equalsIndex = argument.indexOf('=');
+    const spec = byName.get(equalsIndex === -1 ? argument : argument.slice(0, equalsIndex));
 
-    if (argument === '--write') args.write = true;
-    else if (argument === '--force') args.force = true;
-    else if (argument === '--json') args.json = true;
-    else if (argument === '--fail-on-drift') args.failOnDrift = true;
-    else if (argument === '--help' || argument === '-h') args.help = true;
-    else if (argument === '--cwd') {
-      index += 1;
-      args.cwd = resolvePath(argv[index] ?? '.');
-    } else if (argument.startsWith('--cwd=')) {
-      args.cwd = resolvePath(argument.slice('--cwd='.length));
-    } else {
+    // An `=` only means something to a flag that takes a value, so `--write=1`
+    // stays an unknown option rather than quietly reading as true.
+    if (!spec || (spec.type === 'boolean' && equalsIndex !== -1)) {
       throw new Error(`Unknown option: ${argument}`);
     }
+
+    if (spec.type === 'boolean') {
+      args[spec.key] = true;
+      continue;
+    }
+
+    let value;
+    if (equalsIndex === -1) {
+      index += 1;
+      value = argv[index];
+    } else {
+      value = argument.slice(equalsIndex + 1);
+    }
+
+    args[spec.key] = spec.parse(value ?? spec.whenValueAbsent);
   }
+
+  return args;
+}
+
+export function parseArtifactsArgs(argv) {
+  return parseFlags(argv, ARTIFACTS_FLAGS);
+}
+
+export function parseArgs(argv) {
+  const args = parseFlags(argv, RESYNC_FLAGS);
+
+  // Asking which packages to update and then not updating them is not a
+  // meaningful mode, so the interactive flag carries the write intent.
+  if (args.interactive) args.write = true;
 
   return args;
 }
@@ -117,53 +214,6 @@ async function artifactsCommand(argv) {
   );
 
   return args.failOnDrift && result.drift ? 2 : 0;
-}
-
-export function parseArgs(argv) {
-  const args = {
-    write: false,
-    json: false,
-    cwd: process.cwd(),
-    failOnOutdated: false,
-    help: false,
-    only: null,
-    targetSpec: DEFAULT_TARGET_SPEC,
-    interactive: false,
-  };
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-
-    if (argument === '--write') args.write = true;
-    else if (argument === '--json') args.json = true;
-    else if (argument === '--fail-on-outdated') args.failOnOutdated = true;
-    else if (argument === '--help' || argument === '-h') args.help = true;
-    else if (argument === '--interactive' || argument === '-i') args.interactive = true;
-    else if (argument === '--cwd') {
-      index += 1;
-      args.cwd = resolvePath(argv[index] ?? '.');
-    } else if (argument.startsWith('--cwd=')) {
-      args.cwd = resolvePath(argument.slice('--cwd='.length));
-    } else if (argument === '--only') {
-      index += 1;
-      args.only = parseOnly(argv[index] ?? '');
-    } else if (argument.startsWith('--only=')) {
-      args.only = parseOnly(argument.slice('--only='.length));
-    } else if (argument === '--target') {
-      index += 1;
-      args.targetSpec = parseTargetSpec(argv[index] ?? '');
-    } else if (argument.startsWith('--target=')) {
-      args.targetSpec = parseTargetSpec(argument.slice('--target='.length));
-    } else {
-      throw new Error(`Unknown option: ${argument}`);
-    }
-  }
-
-  // Asking which packages to update and then not updating them is not a
-  // meaningful mode, so the interactive flag carries the write intent.
-  if (args.interactive) args.write = true;
-
-  return args;
 }
 
 /**

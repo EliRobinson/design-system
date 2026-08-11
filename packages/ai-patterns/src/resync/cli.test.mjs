@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { formatReport, main, parseArgs, parseArtifactsArgs } from './cli.mjs';
@@ -287,6 +287,44 @@ describe('the artifacts subcommand', () => {
     }
 
     expect(chunks.join('')).toContain('ds-resync artifacts — sync');
+  });
+});
+
+describe('flags shared between the two commands', () => {
+  it('reads --cwd=<dir> identically to --cwd <dir>, on both commands', () => {
+    // One parser serves both commands, so the two spellings and the two
+    // commands have to agree — the prefix form used to be implemented twice.
+    const spaced = parseArgs(['--cwd', '/tmp/app']).cwd;
+    expect(parseArgs(['--cwd=/tmp/app']).cwd).toBe(spaced);
+    expect(parseArtifactsArgs(['--cwd', '/tmp/app']).cwd).toBe(spaced);
+    expect(parseArtifactsArgs(['--cwd=/tmp/app']).cwd).toBe(spaced);
+  });
+
+  it('resolves a relative --cwd against the process cwd in either form', () => {
+    expect(parseArgs(['--cwd=sub']).cwd).toBe(resolve('sub'));
+    expect(parseArtifactsArgs(['--cwd=sub']).cwd).toBe(resolve('sub'));
+  });
+
+  it('does not accept a value on a boolean flag', () => {
+    expect(() => parseArgs(['--write=yes'])).toThrow(/Unknown option: --write=yes/);
+    expect(() => parseArtifactsArgs(['--force=yes'])).toThrow(/Unknown option: --force=yes/);
+  });
+});
+
+describe('flags belonging to only one command', () => {
+  it('rejects an artifacts-only flag on the default run', () => {
+    expect(() => parseArgs(['--force'])).toThrow(/Unknown option: --force/);
+    expect(() => parseArgs(['--fail-on-drift'])).toThrow(/Unknown option: --fail-on-drift/);
+  });
+
+  it('rejects a default-run-only flag on artifacts, in both forms', () => {
+    expect(() => parseArtifactsArgs(['--only', 'react'])).toThrow(/Unknown option: --only/);
+    expect(() => parseArtifactsArgs(['--only=react'])).toThrow(/Unknown option: --only=react/);
+    expect(() => parseArtifactsArgs(['--interactive'])).toThrow(/Unknown option: --interactive/);
+    expect(() => parseArtifactsArgs(['-i'])).toThrow(/Unknown option: -i/);
+    expect(() => parseArtifactsArgs(['--fail-on-outdated'])).toThrow(
+      /Unknown option: --fail-on-outdated/,
+    );
   });
 });
 
