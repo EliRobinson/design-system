@@ -165,6 +165,8 @@ test('home page meets the design system contracts', async ({ page }) => {
 
 Covers 44×44 touch targets, visible focus, non-overlapping hit areas, and WCAG AA contrast. Needs `axe-core` alongside your Playwright install.
 
+A plain `.ts` spec is compiled to CommonJS by Playwright, so this import resolves through `require`, which needs Node 22.12 or newer. Below that, name the file `.spec.mts` — Playwright then treats it as ESM and the same import line works unchanged.
+
 ### 9. If you have a theme switcher, point it at `data-theme`
 
 ```tsx
