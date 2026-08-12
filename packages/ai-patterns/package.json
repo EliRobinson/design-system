@@ -37,8 +37,12 @@
     "./llms-full": "./dist/artifacts/skills/design-system-reference/llms-full.txt",
     "./testing/playwright": {
       "types": "./src/testing/playwright.d.ts",
-      "import": "./src/testing/playwright.mjs"
+      "import": "./src/testing/playwright.mjs",
+      "require": "./src/testing/playwright.mjs"
     }
+  },
+  "engines": {
+    "node": ">=22.12.0"
   },
   "peerDependencies": {
     "@playwright/test": ">=1.40.0",

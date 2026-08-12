@@ -6,12 +6,19 @@
 // violations; drop them into an existing E2E suite rather than standing up a
 // separate harness:
 //
+//   // e2e/design-system.spec.ts
 //   import { expectDesignSystemContracts } from '@elirobinson/ai-patterns/testing/playwright'
 //
 //   test('home page meets the design system contracts', async ({ page }) => {
 //     await page.goto('/')
 //     await expectDesignSystemContracts(page)
 //   })
+//
+// Playwright compiles a plain `.ts` spec to CommonJS, so that import resolves
+// through the export map's `require` condition, which points back at this file
+// and relies on Node's `require(esm)` — hence the package's `>=22.12.0` engines
+// floor, and hence no top-level await below. On an older runtime, name the spec
+// `.spec.mts` instead: Playwright treats it as ESM and the import is unchanged.
 //
 // Each helper can also be called on its own when a page needs a narrower scope
 // or a documented exception.
