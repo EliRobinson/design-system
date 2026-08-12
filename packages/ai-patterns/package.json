@@ -29,7 +29,8 @@
     "./resync/skill": "./src/resync/SKILL.md",
     "./corpus": {
       "types": "./src/artifacts/llms.d.ts",
-      "import": "./src/artifacts/llms.mjs"
+      "import": "./src/artifacts/llms.mjs",
+      "require": "./src/artifacts/llms.mjs"
     },
     "./artifacts": "./dist/artifacts/artifacts.json",
     "./artifacts/*": "./dist/artifacts/*",
@@ -39,6 +40,9 @@
       "types": "./src/testing/playwright.d.ts",
       "import": "./src/testing/playwright.mjs"
     }
+  },
+  "engines": {
+    "node": ">=22.12.0"
   },
   "peerDependencies": {
     "@playwright/test": ">=1.40.0",
