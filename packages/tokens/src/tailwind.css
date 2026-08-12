@@ -23,7 +23,8 @@
    `@elirobinson/tokens` bump flow through without touching this file.
 
    ---------------------------------------------------------------------------
-   Two collisions worth knowing about:
+   Three things worth knowing about — the first two are name collisions, the
+   third is how to re-point a font family:
 
    1. The shadcn/ui variable contract overlaps ours with different meanings.
       shadcn's `--accent` is a subtle hover tint; ours is Miltinson Amber, a
@@ -40,6 +41,24 @@
       only to break that cycle; they are an implementation detail of this file,
       not part of the token vocabulary. Keep using `--radius-md` in your own
       CSS.
+
+   3. Font families are supplied by the framework in some apps, and `next/font`
+      never exposes one under its real name — it generates a hashed family and
+      hands it over in a CSS variable, so tokens.css's literal 'Geist' matches
+      nothing it loaded and the page silently falls through to the system font.
+      tokens.css therefore reads an override first. Point it at the framework's
+      variable, in an *unlayered* `:root` block:
+
+        :root {
+          --ds-font-sans-override: var(--font-geist-sans);
+          --ds-font-mono-override: var(--font-geist-mono);
+        }
+
+      Define the framework's own variable at `:root` (`<html>`), not on
+      `<body>` — the tokens resolve at `:root`. Overriding `--font-sans`
+      directly instead is the trap: tokens.css is unlayered, so an override
+      inside `@layer base` loses to it. `--ds-font-*-override` is declared
+      nowhere, so it wins from any layer.
    ========================================================================== */
 
 :root {
@@ -58,6 +77,11 @@
   --ds-shadow-lg: var(--shadow-lg);
   --ds-shadow-xl: var(--shadow-xl);
 
+  /* Cycle-breaking aliases like the rest, *not* the override hook. To re-point
+     a family — a `next/font` app, where the framework owns the generated family
+     name — set `--ds-font-sans-override` (see note 3 above). Setting
+     `--ds-font-sans` here would move the Tailwind `font-sans` utility only and
+     leave `body` and every `.t-*` class on the old family. */
   --ds-font-sans: var(--font-sans);
   --ds-font-display: var(--font-display);
   --ds-font-mono: var(--font-mono);
@@ -160,7 +184,10 @@
      two competing ramps in play. Same reasoning for spacing — Tailwind v4
      derives its whole numeric scale from a single --spacing base, which cannot
      express this system's non-linear --space-* ramp. Use gap-[var(--space-6)]
-     where a specific step matters. */
+     where a specific step matters.
+
+     These carry whatever tokens.css resolved the family to, override included,
+     so `font-sans` and the `.t-*` classes never disagree about the typeface. */
   --font-sans: var(--ds-font-sans);
   --font-display: var(--ds-font-display);
   --font-mono: var(--ds-font-mono);

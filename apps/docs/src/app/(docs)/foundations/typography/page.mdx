@@ -17,6 +17,22 @@ Geist covers Latin, Latin-Extended, Cyrillic, and Greek. The package currently l
 families from Google Fonts via `@import` — the stylesheet's own comment flags this as a
 placeholder: if you have licensed `.woff2` files, self-host them and replace the import.
 
+Each family reads a `--ds-font-*-override` before its own stack, which is how an app whose
+framework loads the fonts re-points them. `next/font` in particular generates a hashed
+family name and exposes it only as a CSS variable, so the literal `'Geist'` above matches
+nothing it loaded:
+
+```css
+:root {
+  --ds-font-sans-override: var(--font-geist-sans);
+  --ds-font-mono-override: var(--font-geist-mono);
+}
+```
+
+Leave it unset and you get the stack shown above. See
+[Installation](/installation#override-a-token) for the cascade rule that applies to every
+other token.
+
 ## The scale
 
 A perfect-fourth-ish ramp on a 16px base. Body text never goes below `--fs-md` — the

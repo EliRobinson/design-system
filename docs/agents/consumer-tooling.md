@@ -44,12 +44,28 @@ system in an app**.
 | ------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
 | `elirobinson-ds` CLI                              | `ai-patterns` (`bin`)                  | A hand-written script that parses our directory layout and our `.d.ts` output |
 | `manifest.json`                                   | `react` (`./manifest`)                 | Regex-parsing `dist/**/*.d.ts` to find components and variants                |
-| `tailwind.css`                                    | `tokens`                               | A hand-maintained `@theme inline` block mapping ~30 colour aliases            |
+| `tailwind.css`                                    | `tokens`                               | A hand-maintained `@theme inline` block mapping ~30 colour aliases\*          |
 | Flat ESLint config + `no-hardcoded-design-values` | `eslint-config`                        | Hand-written lint rules, or more often no check at all                        |
 | Playwright contract helpers                       | `ai-patterns` (`./testing/playwright`) | Nothing — most consumers never check the runtime contracts                    |
 | Agent templates                                   | `ai-patterns` (`./agents/*`)           | Four near-identical instruction files per repo, each aging separately         |
 | `ds-resync` CLI                                   | `ai-patterns` (`bin`)                  | Noticing by hand that a repo is several releases behind                       |
 | `ds-resync artifacts`                             | `ai-patterns` (`bin`)                  | A copy of the brand skill and a hand-written component cheatsheet per repo    |
+
+\* **Except the two font lines.** A `next/font` app's `@theme inline` block usually carries
+`--font-sans: var(--font-geist-sans)` and its mono twin, and deleting the block on the
+strength of this row is what silently drops the typeface — the bridge maps the family from
+`tokens.css`, whose literal `'Geist'` never matches the hashed family `next/font` actually
+loaded. Those two lines move to the override hook rather than disappearing:
+
+```css
+:root {
+  --ds-font-sans-override: var(--font-geist-sans);
+  --ds-font-mono-override: var(--font-geist-mono);
+}
+```
+
+Unlayered, and with the font class on `<html>` so the variable is visible at `:root`. Colour
+and radius aliases have no such carve-out; those the bridge really does replace.
 
 ## Rules for changing any of it
 

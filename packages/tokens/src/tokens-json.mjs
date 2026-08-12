@@ -118,8 +118,12 @@ const DERIVED = [
   { path: ['typography', 'baseSize'], from: '--fs-md', read: (token) => token.value },
 ];
 
+/* The first entry of a font stack, unquoted. Read from `resolved`, not
+   `value` — the family tokens are declared as
+   `var(--ds-font-sans-override, 'Geist', …)` so a consumer can re-point them,
+   and the summary wants the family a reader gets by default, not the hook. */
 function primaryFamily(token) {
-  return token.value
+  return token.resolved
     .split(',')[0]
     .trim()
     .replace(/^['"]|['"]$/g, '');

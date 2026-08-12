@@ -35,6 +35,7 @@ pnpm ds prompts [name]   # prompt templates
 - Colors, radii, shadows, durations, font sizes come from tokens — via mapped utilities, `.t-*` typography classes, or `var(--token)` in arbitrary values. Never a literal.
 - With Tailwind v4, `@import '@elirobinson/tokens/tailwind.css'` is what makes `bg-background`, `text-muted-foreground`, `border-border` and friends resolve to tokens.
 - Dark mode is `[data-theme="dark"]` (`.dark` also works). With `next-themes`, set `attribute="data-theme"`.
+- Token overrides go in an **unlayered** `:root` block — `tokens.css` is unlayered, so an override inside `@layer base` silently loses to it. With `next/font`, re-point the families through `--ds-font-sans-override` / `--ds-font-mono-override` instead, with the font class on `<html>`.
 - Stylesheets are imported once in the app shell; don't re-import per component.
 - Heroes, page headers, empty states, sidebars are compositions of primitives, not missing components.
 
