@@ -122,10 +122,56 @@
 
   /* ======================================================================
      TYPE — families
+
+     Each family reads a `--ds-font-*-override` first and falls back to the
+     stack below, so a consumer can re-point a family without touching this
+     file and without reasoning about the cascade:
+
+       :root {
+         --ds-font-sans-override: var(--font-geist-sans);
+         --ds-font-mono-override: var(--font-geist-mono);
+       }
+
+     This exists because the family is sometimes the framework's to supply,
+     not ours. `next/font` never exposes a family under its real name — it
+     generates a hashed one (`__Geist_e8ce0c`) and hands it over through a CSS
+     variable — so the literal 'Geist' below matches nothing it loaded and the
+     page silently renders in ui-sans-serif.
+
+     The hook works from any cascade layer *because nothing here declares
+     these three properties*. This stylesheet is unlayered, and an unlayered
+     declaration beats a layered one at any origin, so a consumer overriding
+     --font-sans itself from inside `@layer base` silently loses. Overriding
+     --ds-font-sans-override has nothing to lose to. Keep it that way:
+     never declare a --ds-font-*-override in this file.
      ====================================================================== */
-  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-sans: var(
+    --ds-font-sans-override,
+    'Geist',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif
+  );
+  --font-display: var(
+    --ds-font-display-override,
+    'Geist',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    sans-serif
+  );
+  --font-mono: var(
+    --ds-font-mono-override,
+    'JetBrains Mono',
+    ui-monospace,
+    'SF Mono',
+    Menlo,
+    Consolas,
+    monospace
+  );
 
   /* Type scale — a perfect-fourth-ish ramp (1.25), tuned for tech UI */
   --fs-3xs: 10px;

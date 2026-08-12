@@ -11,6 +11,7 @@ All UI is built from **`@elirobinson/react`** (components, hooks), **`@elirobins
 - Colors, radii, shadows, durations, and font sizes come from tokens: mapped utilities (`bg-background`, `text-muted-foreground`, `border-border`, `text-accent`), `.t-*` typography classes, or `var(--token)` in arbitrary values. Never hardcode a literal — `@elirobinson/eslint-config` fails the build on these.
 - With Tailwind v4, `@import '@elirobinson/tokens/tailwind.css'` is what makes the token-backed utilities resolve.
 - Dark mode is `[data-theme="dark"]` (`.dark` also works). With `next-themes`, set `attribute="data-theme"` — the default `class` strategy silently does nothing.
+- Token overrides go in an **unlayered** `:root` block — `tokens.css` is unlayered, so an override inside `@layer base` silently loses to it. With `next/font`, re-point the families through `--ds-font-sans-override` / `--ds-font-mono-override` instead, with the font class on `<html>`.
 - Missing a piece? Compose it from primitives → then the repo's sanctioned gap-filler → then hand-roll from tokens and flag it as a design system gap.
 - Other component libraries (MUI, Chakra, Ant Design, Mantine, HeroUI, Headless UI, DaisyUI), direct Radix imports, and bare `@elirobinson/*` imports are blocked by ESLint.
 - Before calling UI work done, run `pnpm ds patterns` and work the **Definition of Done for UI work** checklist it prints.

@@ -67,6 +67,38 @@ its own:
 import '@elirobinson/react/styles/atoms/Button.css';
 ```
 
+## Override a token
+
+`tokens.css` is **unlayered**, on purpose. Unlayered declarations beat anything inside a
+cascade layer whatever the order, so an override written inside `@layer base` — the
+conventional place for base styles in a Next.js `globals.css` — will not apply, and
+nothing will warn you. Write it in a plain `:root` block outside any layer:
+
+```css
+:root {
+  --accent: oklch(72% 0.18 60);
+}
+```
+
+### Fonts, when the framework supplies them
+
+`next/font` never exposes a family under its real name — it generates a hashed one
+(`__Geist_e8ce0c`) and hands it over in a CSS variable, so the literal `'Geist'` in
+`tokens.css` matches nothing it loaded and the page silently renders in the system font.
+The three family tokens read an override first, so one line per family fixes it:
+
+```css
+:root {
+  --ds-font-sans-override: var(--font-geist-sans);
+  --ds-font-mono-override: var(--font-geist-mono);
+}
+```
+
+Put the font's class on `<html>`, not `<body>`: the tokens resolve at `:root`, so that is
+where the framework's variable has to be visible. These three hooks are the one thing you
+can set from inside a layer — nothing in `tokens.css` declares them, so there is nothing
+for your override to lose to.
+
 ## Import components
 
 There are no barrel files — every import names a subpath. A bare

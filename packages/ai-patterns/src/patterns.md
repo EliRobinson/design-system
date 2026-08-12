@@ -110,6 +110,37 @@ the brand signal colour — so the obvious `--accent: var(--accent)` alias is
 circular and yields nothing. `tailwind.css` already handles that, along with
 `--radius` for the shadcn components that read it directly.
 
+### Fonts: `next/font` needs the family override, in an unlayered `:root`
+
+`next/font` never exposes a family under its real name. It generates a hashed
+one (`__Geist_e8ce0c`) and hands it over in a CSS variable, so the literal
+`'Geist'` in `tokens.css` matches nothing it loaded and `body`, every `.t-*`
+class and the `font-sans` utility all fall through to the system font. Nothing
+errors. Point the families at the framework's variables instead:
+
+```css
+:root {
+  --ds-font-sans-override: var(--font-geist-sans);
+  --ds-font-mono-override: var(--font-geist-mono);
+}
+```
+
+Two details decide whether that works:
+
+- **Put the font's class on `<html>`, not `<body>`.** The tokens resolve at
+  `:root`; a `--font-geist-sans` defined on `<body>` is not visible there, and
+  the override resolves to nothing.
+- **Do not wrap the block in `@layer base`.** `tokens.css` is unlayered, and an
+  unlayered declaration beats a layered one regardless of order — so an
+  override of `--font-sans` itself inside `@layer base`, which is where a
+  Next.js `globals.css` conventionally puts base styles, silently loses. That
+  rule holds for every token. The `--ds-font-*-override` hooks are the
+  exception worth knowing: `tokens.css` declares them nowhere, so they apply
+  from any layer.
+
+Available since `@elirobinson/tokens@0.5.0`. Before it, the only working fix
+was an unlayered `:root { --font-sans: … }` after the import.
+
 ### Stylesheet order
 
 `@elirobinson/tokens/tokens.css` first, then `@elirobinson/react/styles.css`,

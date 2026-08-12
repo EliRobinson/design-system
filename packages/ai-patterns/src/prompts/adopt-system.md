@@ -48,9 +48,21 @@ Before migrating any screen, install the things that keep this from drifting bac
    after any upgrade; it refreshes what it wrote and leaves anything you edited alone.
 6. On Tailwind v4, add `@import '@elirobinson/tokens/tailwind.css'` after the tokens
    import. Without it, `bg-background` and friends resolve to nothing.
-7. If the app has a theme switcher, point it at `data-theme` (`next-themes`:
+7. If the framework supplies the fonts — `next/font` and friends — re-point the families
+   at its variables, or the app silently renders in the system font:
+
+   ```css
+   :root {
+     --ds-font-sans-override: var(--font-geist-sans);
+     --ds-font-mono-override: var(--font-geist-mono);
+   }
+   ```
+
+   The font's class goes on `<html>`, not `<body>`: the tokens resolve at `:root`.
+
+8. If the app has a theme switcher, point it at `data-theme` (`next-themes`:
    `attribute="data-theme"`).
-8. Drop `expectDesignSystemContracts` from `@elirobinson/ai-patterns/testing/playwright`
+9. Drop `expectDesignSystemContracts` from `@elirobinson/ai-patterns/testing/playwright`
    into the E2E suite for the routes in scope.
 
 ## Constraints
@@ -65,6 +77,10 @@ Before migrating any screen, install the things that keep this from drifting bac
   (double labels). `FormField` is for controls without their own wiring.
 - Reference semantic tokens (`--fg`, `--surface`, `--accent`) — never raw scale values
   (`--ink-500`) in app code.
+- Any token override goes in an **unlayered** `:root` block. `tokens.css` is unlayered, and
+  unlayered declarations beat layered ones whatever the order, so an override inside
+  `@layer base` — the conventional place in a Next.js `globals.css` — will not apply, and
+  nothing will say so.
 - Spacing values snap to the `--space-*` scale; radii to `--radius-*`; no magic numbers
   survive the pass.
 - Delete `outline: none` on focus wherever found — the token stylesheet's focus ring is

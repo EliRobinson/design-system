@@ -62,7 +62,7 @@ layout, so it stays correct across releases — including the 0.x flat layout an
 
 ## Adopt the design system in an app
 
-Starting a new project? `npx github:EliRobinson/design-system/packages/create-elirobinson-design-system my-app` scaffolds most of this for you — skip to step 6.
+Starting a new project? `npx github:EliRobinson/design-system/packages/create-elirobinson-design-system my-app` scaffolds most of this for you — skip to step 7.
 
 Adding the system to an existing app takes about ten minutes. Nothing below has to be revisited when this repo changes: bump a version and you are current.
 
@@ -118,7 +118,23 @@ This is what makes `bg-background`, `text-muted-foreground`, `border-border`, `r
 
 Not using Tailwind? Skip this. `var(--token)` and the `.t-*` typography classes work anywhere.
 
-### 5. Turn the contracts into build failures
+### 5. If the framework owns your fonts, point the families at it
+
+`next/font` never exposes a family under its real name — it generates a hashed one (`__Geist_e8ce0c`) and hands it over in a CSS variable. The literal `'Geist'` in `tokens.css` matches nothing it loaded, so without this the page silently renders in the system font. One line per family:
+
+```css
+/* app/globals.css — unlayered, see below */
+:root {
+  --ds-font-sans-override: var(--font-geist-sans);
+  --ds-font-mono-override: var(--font-geist-mono);
+}
+```
+
+Load the font with `variable:` set and put the class on `<html>`, not `<body>` — the tokens resolve at `:root`, so that is where the framework's variable has to be visible.
+
+**Overriding any other token: `tokens.css` is unlayered, by design.** An unlayered declaration beats anything inside a cascade layer no matter the order, so **an override written inside `@layer base` — the conventional place in a Next.js `globals.css` — will not apply.** Put it in a plain `:root` block outside any layer. The `--ds-font-*-override` hooks above are exempt: nothing in `tokens.css` declares them, so they win from anywhere.
+
+### 6. Turn the contracts into build failures
 
 ```js
 // eslint.config.mjs
@@ -132,7 +148,7 @@ export default [
 
 Catches bare `@elirobinson/*` imports (which never resolve), foreign component libraries, direct Radix imports, and hardcoded colours, radii, shadows and durations. Add `@elirobinson/eslint-config/css` for the same checks in stylesheets.
 
-### 6. Install the agent instructions
+### 7. Install the agent instructions
 
 ```bash
 pnpm ds init --agents
@@ -140,7 +156,7 @@ pnpm ds init --agents
 
 Writes a Claude Code skill, a Cursor rule, Copilot instructions, and an `AGENTS.md` block — so whichever tool a teammate drives reaches for the system first. None of them contains an inventory; they all point at `ds`. Re-running is safe: existing files are left alone unless you pass `--force`, and the `AGENTS.md` block updates in place between its markers.
 
-### 7. Sync the agent artifacts
+### 8. Sync the agent artifacts
 
 ```bash
 pnpm exec ds-resync artifacts --write
@@ -150,7 +166,7 @@ Writes three skills into `.claude/skills/`: the brand skill (voice, colour, type
 
 Re-run it after every upgrade. It refreshes the files it wrote, leaves anything you have edited alone and names them in the output, and warns loudly when the snapshot's `@elirobinson/react` version is not the one you have installed — a snapshot that quietly describes a different release is how an agent ends up with confidently wrong prop tables.
 
-### 8. Check the contracts a browser has to settle
+### 9. Check the contracts a browser has to settle
 
 ```ts
 // e2e/design-system.spec.ts
@@ -167,7 +183,7 @@ Covers 44×44 touch targets, visible focus, non-overlapping hit areas, and WCAG 
 
 A plain `.ts` spec is compiled to CommonJS by Playwright, so this import resolves through `require`, which needs Node 22.12 or newer. Below that, name the file `.spec.mts` — Playwright then treats it as ESM and the same import line works unchanged.
 
-### 9. If you have a theme switcher, point it at `data-theme`
+### 10. If you have a theme switcher, point it at `data-theme`
 
 ```tsx
 <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>

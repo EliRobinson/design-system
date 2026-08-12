@@ -44,6 +44,40 @@ describe('parseTokensCss', () => {
     expect(parseTokensCss(':root {\n  --a: var(--nope);\n}')[0].resolved).toBe('var(--nope)');
   });
 
+  it('falls back the way a browser does when the referenced property is undeclared', () => {
+    // How the --ds-font-*-override hook on the family tokens resolves for a
+    // consumer who has not set one.
+    const parsed = parseTokensCss(":root {\n  --a: var(--nope, 'Geist', sans-serif);\n}");
+    expect(parsed[0].resolved).toBe(`'Geist', sans-serif`);
+  });
+
+  it('prefers the declared value over the fallback, again as a browser would', () => {
+    const parsed = parseTokensCss(':root {\n  --set: #fff;\n  --a: var(--set, #000);\n}');
+    expect(parsed.at(-1).resolved).toBe('#fff');
+  });
+
+  it('reads a var() whose fallback contains commas and nested parens', () => {
+    const parsed = parseTokensCss(
+      ":root {\n  --b: 12px;\n  --a: var(--nope, var(--b), 'Segoe UI') solid;\n}",
+    );
+    expect(parsed.at(-1).resolved).toBe(`12px, 'Segoe UI' solid`);
+  });
+
+  it('puts a value Prettier wrapped across lines back on one line', () => {
+    const parsed = parseTokensCss(
+      ':root {\n  --a: var(\n    --nope,\n    Menlo,\n    monospace\n  );\n}',
+    );
+    expect(parsed[0].value).toBe('var(--nope, Menlo, monospace)');
+  });
+
+  it('reads a declaration written inside a comment as prose, not as a token', () => {
+    // tokens.css documents the override hook with a snippet in a comment.
+    const parsed = parseTokensCss(
+      ':root {\n  /* set --ds-font-sans-override: var(--font-geist-sans); to re-point it */\n  --a: 1px;\n}',
+    );
+    expect(parsed.map((token) => token.name)).toEqual(['--a']);
+  });
+
   it('gives up on a var() cycle instead of recursing forever', () => {
     const cyclic = parseTokensCss(':root {\n  --a: var(--b);\n  --b: var(--a);\n}');
     expect(cyclic.map((token) => token.name)).toEqual(['--a', '--b']);

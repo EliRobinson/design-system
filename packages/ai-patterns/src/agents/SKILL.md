@@ -39,6 +39,7 @@ import { Button } from '@elirobinson/react/components/atoms/Button';
 - Drive appearance with the component's own `variant` / `size` props, not by overriding with utilities.
 - Use utility classes for **layout** (grid, flex, spacing), the design system for **look**.
 - `@elirobinson/tokens/tokens.css` and `@elirobinson/react/styles.css` are imported once, in the app shell, in that order — never per component.
+- Token overrides go in an **unlayered** `:root` block — `tokens.css` is unlayered, so an override inside `@layer base` silently loses to it. With `next/font`, re-point the families through `--ds-font-sans-override` / `--ds-font-mono-override` instead, with the font class on `<html>`.
 - Patterns like heroes, page headers, empty states, and sidebars are **compositions** of primitives, not missing components.
 
 ## Step 3 — Use tokens, never literals

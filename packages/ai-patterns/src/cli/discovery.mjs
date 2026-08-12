@@ -203,9 +203,16 @@ export function cssVariables(css) {
   if (!css) return [];
 
   const root = css.match(/:root\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
+  /* Comments blanked first: tokens.css documents the font override hook with a
+     `--ds-font-sans-override: …;` snippet inside one, and prose is not a token.
+     Values are then put back on one line, since Prettier wraps the font stacks
+     across several. Both match parseTokensCss, which this must agree with. */
+  const declarations = root.replace(/\/\*[\s\S]*?\*\//g, (comment) =>
+    comment.replace(/[^\n]/g, ' '),
+  );
   const seen = new Map();
-  for (const [, name, value] of root.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)) {
-    seen.set(name, value.trim());
+  for (const [, name, value] of declarations.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)) {
+    seen.set(name, value.trim().replace(/\s+/g, ' ').replace(/\(\s/g, '(').replace(/\s\)/g, ')'));
   }
   return [...seen.entries()].map(([name, value]) => ({ name, value }));
 }
