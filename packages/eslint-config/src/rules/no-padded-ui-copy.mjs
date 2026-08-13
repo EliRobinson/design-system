@@ -139,15 +139,24 @@ export default {
       return chrome.has(segments.join('')) || segments.some((segment) => chrome.has(segment));
     }
 
+    // A conditional prop — title={ok ? 'Saved!' : 'Done!'} — reaches `check`
+    // once per branch on the same node. One node, one message.
+    const reported = new Set();
+
+    function report(node, messageId, phrase) {
+      const key = `${node.range?.[0]}:${node.range?.[1]}:${messageId}:${phrase ?? ''}`;
+      if (reported.has(key)) return;
+      reported.add(key);
+      context.report({ node, messageId, data: { phrase } });
+    }
+
     function check(node, text) {
       for (const { messageId, phrase } of paddingIn(text)) {
         if (allow.has(phrase)) continue;
-        context.report({ node, messageId, data: { phrase } });
+        report(node, messageId, phrase);
       }
 
-      if (flagExclamation && hasExclamation(text)) {
-        context.report({ node, messageId: 'exclamation' });
-      }
+      if (flagExclamation && hasExclamation(text)) report(node, 'exclamation');
     }
 
     return {

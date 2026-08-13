@@ -590,6 +590,17 @@ describe('no-padded-ui-copy', () => {
       ).toHaveLength(1);
     });
 
+    it('reports one message per node, not one per branch', () => {
+      expect(
+        copyOf(lint('export const A = () => (<Field title={ok ? "Saved!" : "Done!"} />)')),
+      ).toHaveLength(1);
+      expect(
+        copyOf(
+          lint('export const A = () => (<Field title={ok ? "Hang tight" : "Hang tight now"} />)'),
+        ),
+      ).toHaveLength(1);
+    });
+
     it('says nothing about a prop whose value it cannot see', () => {
       expect(copyOf(lint('export const A = () => (<Field title={t("errors.stripe")} />)'))).toEqual(
         [],
