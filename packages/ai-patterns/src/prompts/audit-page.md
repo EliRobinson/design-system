@@ -20,7 +20,7 @@ about severity, free of nitpicks dressed up as blockers.
 - `pnpm ds tokens` and `pnpm ds props <Name>` — token names/values and each component's
   documented accessibility contract, read from the installed package. For a bulk read,
   `.claude/skills/design-system-reference/llms-full.txt`, which
-  `pnpm dlx @elirobinson/ai-patterns ds-resync artifacts --write` writes and refreshes.
+  `pnpm --package=@elirobinson/ai-patterns dlx ds-resync artifacts --write` writes and refreshes.
 
 ## What to check
 

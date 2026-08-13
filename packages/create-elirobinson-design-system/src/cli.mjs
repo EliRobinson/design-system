@@ -3,6 +3,11 @@ import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// The invocation prefix is imported, not retyped: @elirobinson/ai-patterns
+// ships two bins, so `pnpm dlx <pkg> <bin>` cannot resolve one and dies before
+// it runs. See the note on DLX for why nothing can catch that at runtime.
+import { DLX } from '@elirobinson/ai-patterns/corpus';
+
 const [, , projectName] = process.argv;
 
 if (!projectName) {
@@ -48,6 +53,6 @@ console.log(
     '  pnpm install\n' +
     // AGENTS.md in the template points at these skills; without this step the
     // pointer dangles in a freshly scaffolded repo.
-    '  pnpm dlx @elirobinson/ai-patterns ds-resync artifacts --write\n' +
+    `  ${DLX} ds-resync artifacts --write\n` +
     '  pnpm dev',
 );

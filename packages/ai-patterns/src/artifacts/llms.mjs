@@ -35,7 +35,21 @@ const IMPORT_RULES = [
   "A bare import from '@elirobinson/react' does not resolve.",
 ].join('\n');
 
-export const RESYNC_COMMAND = 'pnpm dlx @elirobinson/ai-patterns ds-resync artifacts --write';
+/**
+ * The prefix every documented invocation of this package's binaries is built
+ * from. It names the package explicitly because it has to: `pnpm dlx <pkg>
+ * <bin>` reads the trailing word as an argument to an implied binary, and this
+ * package ships two (`ds-resync`, `elirobinson-ds`), so pnpm cannot guess and
+ * aborts with ERR_PNPM_DLX_MULTIPLE_BINS. That abort happens before the binary
+ * is spawned — there is no process of ours in which to catch it — so the only
+ * defence is that the broken form is never written down. Import this rather
+ * than retyping it. `dlx.test.mjs` runs the result and fails the build if the
+ * bare form reappears anywhere in the repo, which is what covers the markdown
+ * that cannot import anything.
+ */
+export const DLX = 'pnpm --package=@elirobinson/ai-patterns dlx';
+
+export const RESYNC_COMMAND = `${DLX} ds-resync artifacts --write`;
 
 /**
  * The stamp is the whole point of a snapshot existing rather than a live query:

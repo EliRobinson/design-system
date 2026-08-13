@@ -26,7 +26,7 @@ Those need `@elirobinson/ai-patterns` as a dev dependency and `"ds": "elirobinso
 ## Skills, and how to refresh them
 
 ```bash
-pnpm dlx @elirobinson/ai-patterns ds-resync artifacts --write
+pnpm --package=@elirobinson/ai-patterns dlx ds-resync artifacts --write
 ```
 
 That writes, and later refreshes, three skills under `.claude/skills/`:
@@ -41,8 +41,8 @@ Read them; do not copy their contents into this file. Re-running the command upd
 it wrote and leaves anything you edited alone, reporting each file it skipped.
 
 If `design-system-reference` warns that its snapshot is stale, the packages moved without
-the skills following. Run `pnpm dlx @elirobinson/ai-patterns ds-resync` first, then the
-artifacts command again.
+the skills following. Run `pnpm --package=@elirobinson/ai-patterns dlx ds-resync` first,
+then the artifacts command again.
 
 ## Non-negotiables
 

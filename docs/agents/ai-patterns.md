@@ -10,7 +10,7 @@ some Markdown, a JSON contract file, and test helpers.
 - Enforce practical tone and avoid hype language in generated copy.
 - Follow `packages/ai-patterns/src/contracts.json` for touch targets, focus-visible, and WCAG AA contrast.
 - `ds-resync` (`packages/ai-patterns/src/resync/`) brings a consuming repo's `@elirobinson/*`
-  deps up to date: `pnpm dlx @elirobinson/ai-patterns ds-resync` reports, `--write` applies.
+  deps up to date: `pnpm --package=@elirobinson/ai-patterns dlx ds-resync` reports, `--write` applies.
   `--only` and `--target` narrow which packages move and how far; `-i` picks interactively.
   The agent-facing instructions ship at `@elirobinson/ai-patterns/resync/skill`.
 - `ds-resync artifacts` syncs the agent _skills_ rather than the versions. See
@@ -30,10 +30,31 @@ touches the network — it only describes what is already in `node_modules`. A c
 `ds-resync` occasionally and `ds` constantly.
 
 Both work whether or not the package is installed in the project they are pointed at, so
-`pnpm dlx @elirobinson/ai-patterns <bin>` is always a valid entry point. That is why
-`loadEnvironment` takes a `selfDir`: when the binary runs from a dlx store it is absent
-from the project's `node_modules`, and without the fallback every command backed by this
-package's own data would report itself as not installed. `src/cli/cli.test.mjs` pins it.
+either can be run through `dlx`. Name the package explicitly when you do:
+
+```bash
+pnpm --package=@elirobinson/ai-patterns dlx <bin>
+```
+
+The bare `pnpm dlx <pkg> <bin>` form **does not work here** and never did. It only resolves
+for a single-bin package: the trailing word is parsed as an argument to the implied binary,
+not as a selector for which binary to run.
+With two bins pnpm has nothing to imply, so it aborts with `ERR_PNPM_DLX_MULTIPLE_BINS`
+before our code is ever spawned — which is also why `ds-resync` cannot report this failure
+the way `registry.mjs:describeNpmFailure` reports a 401. There is no process to report from.
+Because two bins are the whole point of this package, that form cannot be made to work;
+it can only be avoided.
+
+`DLX` in `src/artifacts/llms.mjs` is the one place the prefix is written down, and every
+`.mjs` caller imports it. Markdown can't import a constant, so `src/artifacts/dlx.test.mjs`
+covers it from the other side: it executes the documented command and asserts a zero exit,
+and it fails the build if the bare form reappears in any tracked file outside the
+changelogs and the dated plans under `docs/superpowers/`.
+
+Running through `dlx` is also why `loadEnvironment` takes a `selfDir`: when the binary runs
+from a dlx store it is absent from the project's `node_modules`, and without the fallback
+every command backed by this package's own data would report itself as not installed.
+`src/cli/cli.test.mjs` pins it.
 
 ## Discover, don't document
 

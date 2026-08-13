@@ -9,6 +9,9 @@
   "files": [
     "src"
   ],
+  "dependencies": {
+    "@elirobinson/ai-patterns": "workspace:*"
+  },
   "scripts": {
     "build": "echo 'No build step required for create package'",
     "lint": "echo 'No lint configured for create package'",

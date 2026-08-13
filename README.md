@@ -89,9 +89,9 @@ This is the single most useful line in the list. `pnpm ds` reads `node_modules` 
 Three ways to reach it, in order of how often you'll want them:
 
 ```bash
-pnpm ds                                          # with the script above
-pnpm exec elirobinson-ds                         # installed, no script
-pnpm dlx @elirobinson/ai-patterns elirobinson-ds # not installed at all
+pnpm ds                                                    # with the script above
+pnpm exec elirobinson-ds                                   # installed, no script
+pnpm --package=@elirobinson/ai-patterns dlx elirobinson-ds # not installed at all
 ```
 
 All three describe the _project you run them in_ — even the `dlx` form, which reads the local `@elirobinson/react` and `@elirobinson/tokens` and falls back to its own copy for contracts, patterns and prompts. Handy for inspecting a repo you haven't set up yet.
@@ -202,8 +202,8 @@ pnpm exec ds-resync artifacts --write  # then bring the agent skills along
 If the package isn't installed — a repo scaffolded before any of this existed, or a one-off check — run it straight from the registry instead:
 
 ```bash
-pnpm dlx @elirobinson/ai-patterns ds-resync
-pnpm dlx @elirobinson/ai-patterns ds-resync --write
+pnpm --package=@elirobinson/ai-patterns dlx ds-resync
+pnpm --package=@elirobinson/ai-patterns dlx ds-resync --write
 ```
 
 `ds-resync` ships in the same package and answers the other question: `ds` describes the version you have, `ds-resync` tells you whether you should have a newer one.

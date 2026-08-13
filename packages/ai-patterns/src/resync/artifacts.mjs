@@ -25,6 +25,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { DLX } from '../artifacts/llms.mjs';
 import { readInstalledVersion } from './detect.mjs';
 
 /** Where the record of what we wrote lives, relative to the consuming repo root. */
@@ -157,8 +158,8 @@ export function formatDriftWarning(drift) {
     '!!  props that do not exist at the installed version, and omit ones that do.',
     '!!',
     '!!  Fix it by bringing the two into line:',
-    '!!    pnpm dlx @elirobinson/ai-patterns ds-resync            # move the packages',
-    '!!    pnpm dlx @elirobinson/ai-patterns ds-resync artifacts --write   # or refresh these',
+    `!!    ${DLX} ds-resync                     # move the packages`,
+    `!!    ${DLX} ds-resync artifacts --write   # or refresh these`,
     '!!  Until then, trust `pnpm ds props <Name>` over anything in the snapshot.',
   ].join('\n');
 }

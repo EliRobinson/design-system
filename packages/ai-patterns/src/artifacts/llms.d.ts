@@ -112,6 +112,7 @@ export type FullInput<C extends ComponentRecord = ComponentRecord> = {
   componentAppendix?: (component: C) => string[];
 };
 
+export declare const DLX: string;
 export declare const RESYNC_COMMAND: string;
 export declare function versionStamp(versions: Versions): string;
 export declare function llmsIndex(input: IndexInput): string;
