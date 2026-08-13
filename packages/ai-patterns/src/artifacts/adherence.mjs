@@ -27,6 +27,42 @@
 /** JSX props that are React or DOM mechanics rather than component API. */
 const ALWAYS_ALLOWED = ['key', 'ref', 'className', 'style', 'children'];
 
+/* Every field of a manifest record this generator reads — the contract with
+   @elirobinson/react's build output, stated once here instead of implied by an
+   optional chain at each use site.
+
+   Why it is checked rather than coped with: a `dist/manifest.json` in this repo,
+   built before the extractor emitted `props`, carried only `name, tier, subpath,
+   importSpecifier, exports, types, propsType, variants`. It sailed past the
+   "describes no components" guard and died 60 lines later inside the allowlist
+   loop on `component.props.map`, with a TypeError naming neither the missing
+   field nor the one thing that fixes it. `variants` was tolerated as absent and
+   `props` was not, so the same staleness was fatal or silent depending on which
+   field had moved.
+
+   Both are required now. The extractor emits `[]` for a component with no
+   variants and no props, so an absent key is a stale build, never a component
+   that happens to have none. `inherits` is required as a *key* and may be null:
+   null is the closed prop surface that earns an allowlist, and an absent key
+   would read as closed and allowlist a component that spreads HTML attributes —
+   exactly the `<Button data-testid>` false positive this generator exists to
+   avoid. That is why the test is `undefined` and not nullish. */
+const REQUIRED_RECORD_FIELDS = ['name', 'exports', 'variants', 'props', 'inherits'];
+
+/** Fails on the first stale record, naming the field and the rebuild that fixes it. */
+function assertRecordShape(components) {
+  for (const [index, component] of components.entries()) {
+    const missing = REQUIRED_RECORD_FIELDS.filter((field) => component?.[field] === undefined);
+    if (missing.length === 0) continue;
+    // `name` is itself checkable, so fall back to the index to locate the record.
+    const label = component?.name ? `<${component.name}>` : `at index ${index}`;
+    throw new Error(
+      `buildAdherenceConfig: manifest record ${label} is missing ${missing.join(', ')}. ` +
+        'That manifest is stale — rebuild it with `pnpm nx build react`.',
+    );
+  }
+}
+
 /** Kinds the Design System pane understands. `@kind` in tokens.css overrides. */
 const KIND_BY_PREFIX = [
   ['--radius-', 'radius'],
@@ -103,6 +139,8 @@ export function buildAdherenceConfig({
   if (!manifest?.components?.length) {
     throw new Error('buildAdherenceConfig: manifest describes no components.');
   }
+  // A non-empty array is not a usable one — the records have to carry the fields.
+  assertRecordShape(manifest.components);
   if (!tokens?.length) {
     throw new Error('buildAdherenceConfig: no tokens supplied.');
   }
@@ -143,7 +181,7 @@ export function buildAdherenceConfig({
         JSXExpressionContainer, and `variant={'ghost'}` does the same for
         strings. A direct-child selector silently matches neither. */
   for (const component of manifest.components) {
-    for (const variant of component.variants ?? []) {
+    for (const variant of component.variants) {
       const numeric = variant.values.every((v) => typeof v === 'number');
       restrictedSyntax.push({
         selector:

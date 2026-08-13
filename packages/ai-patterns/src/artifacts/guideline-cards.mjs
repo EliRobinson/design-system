@@ -25,9 +25,23 @@ const byPrefix = (tokens, prefix) => tokens.filter((token) => token.name.startsW
 const numericRamp = (tokens, prefix) =>
   tokens.filter((token) => new RegExp(`^${prefix}\\d+$`).test(token.name));
 
-/** Named tokens, in the order given — for families that are a set, not a ramp. */
-const byName = (tokens, names) =>
-  names.map((name) => tokens.find((token) => token.name === name)).filter(Boolean);
+/* Named tokens, in the order given — for families that are a set, not a ramp.
+   The lists are invariants written into this file, so a name with no token is a
+   mistake in the generator or a rename in tokens.css, never a runtime condition.
+   Skipping it would reproduce the ink bug exactly: a card one swatch short and
+   nothing failing. Every missing name is reported at once, because a rename
+   usually moves a whole family and fixing them one error at a time is slower. */
+const byName = (tokens, names, path) => {
+  const found = names.map((name) => tokens.find((token) => token.name === name));
+  const missing = names.filter((_, index) => !found[index]);
+  if (missing.length > 0) {
+    throw new Error(
+      `buildGuidelineCards: ${path} names ${missing.join(', ')}, ` +
+        'which tokens.css does not define.',
+    );
+  }
+  return found;
+};
 
 /** `--ink-500` -> `500`, `--radius-sm` -> `sm`, `--shadow-xs` -> `xs`. */
 const step = (token, prefix) => token.name.slice(prefix.length);
@@ -109,8 +123,10 @@ export function buildGuidelineCards(tokens) {
   });
 
   /* -- Semantic sets ----------------------------------------------------- */
-  const named = (names, options) =>
-    byName(tokens, names).map((token) => swatch(token, token.name.replace(/^--/, ''), options));
+  const named = (path, names, options) =>
+    byName(tokens, names, path).map((token) =>
+      swatch(token, token.name.replace(/^--/, ''), options),
+    );
 
   cards.push({
     path: 'colors-status.html',
@@ -120,7 +136,12 @@ export function buildGuidelineCards(tokens) {
       name: 'Status',
       subtitle: 'Status colours — success maps to Forest, warning to deep Amber',
       body: row(
-        named(['--status-success', '--status-warning', '--status-danger', '--status-info']),
+        named('colors-status.html', [
+          '--status-success',
+          '--status-warning',
+          '--status-danger',
+          '--status-info',
+        ]),
       ),
     }),
   });
@@ -134,6 +155,7 @@ export function buildGuidelineCards(tokens) {
       subtitle: 'Semantic surfaces and borders — what components actually reference',
       body: row(
         named(
+          'colors-surfaces.html',
           [
             '--bg',
             '--bg-subtle',
@@ -159,7 +181,7 @@ export function buildGuidelineCards(tokens) {
       subtitle: 'Text ramp: fg, fg-2, fg-3, fg-4 and the amber link hover',
       body:
         '<div style="display:grid;gap:8px;font-size:16px">' +
-        byName(tokens, ['--fg', '--fg-2', '--fg-3', '--fg-4', '--link-hover'])
+        byName(tokens, ['--fg', '--fg-2', '--fg-3', '--fg-4', '--link-hover'], 'colors-text.html')
           .map(
             (token) =>
               `<span style="color:var(${token.name})">${token.name.replace(/^--/, '')} — ` +

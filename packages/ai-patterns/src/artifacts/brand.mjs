@@ -99,6 +99,30 @@ export function referencePointer(referenceSkill) {
 }
 
 /**
+ * The "making things" paragraph, which is the one piece of skill prose that has
+ * to name files — and the three surfaces that carry this skill spell those files
+ * differently. In the repo and the consumer tarball the tokens sheet is
+ * `colors_and_type.css` and the readme is `README.md`; in the Claude Design
+ * project they are `styles.css` and `readme.md`.
+ *
+ * Parameterised rather than find-and-replaced. The design-project build used to
+ * derive its copy by running `.replaceAll('README.md', 'readme.md')` over the
+ * whole finished document, which rewrites frontmatter and any future sentence
+ * that happens to contain the string, and is silent when it matches nothing.
+ * One definition with the names passed in cannot drift and cannot over-reach.
+ *
+ * @param {{ stylesheet: string, readme: string }} files
+ */
+export function visualArtifactsGuidance({ stylesheet, readme }) {
+  return [
+    'If creating visual artifacts (slides, mocks, throwaway prototypes, marketing pages, etc),',
+    `copy assets out and create static HTML files for the user to view — always link \`${stylesheet}\``,
+    `and use the wordmark from \`assets/\`. If working on production code, copy assets and read the`,
+    `rules in ${readme} to become an expert in designing with the Miltinson brand.`,
+  ].join('\n');
+}
+
+/**
  * @param {object} input
  * @param {string} input.readme source README.md
  * @param {string} input.skill source SKILL.md
@@ -118,6 +142,8 @@ export function transformBrandDocs({ readme, skill, referenceSkill }) {
         'Read `README.md` first, then explore the rest.',
         '',
         referencePointer(referenceSkill),
+        '',
+        visualArtifactsGuidance({ stylesheet: 'colors_and_type.css', readme: 'README.md' }),
       ].join('\n'),
       'design-system-docs/SKILL.md',
     ),

@@ -23,6 +23,10 @@ const cards = buildGuidelineCards(tokens);
 const cardAt = (path) => cards.find((entry) => entry.path === path).html;
 const swatchCount = (html, prefix) =>
   new Set(html.match(new RegExp(`var\\(${prefix}[\\w-]+\\)`, 'g')) ?? []).size;
+/* The named sets share no prefix, so counting the chips the swatch helper emits
+   is what catches a dropped name there. */
+const chipCount = (html) => (html.match(/width:56px;height:48px/g) ?? []).length;
+const without = (...names) => tokens.filter((token) => !names.includes(token.name));
 
 describe('completeness against tokens.css', () => {
   it('renders every ink step — the regression the hand-written card had', () => {
@@ -54,6 +58,36 @@ describe('completeness against tokens.css', () => {
       expect(html).not.toContain(`var(${alias})`);
     }
     expect(html).toContain('var(--anchor-500)');
+  });
+
+  it('renders all four status colours', () => {
+    const html = cardAt('colors-status.html');
+    expect(chipCount(html)).toBe(4);
+    for (const name of ['--status-success', '--status-warning', '--status-danger', '--status-info'])
+      expect(html).toContain(`var(${name})`);
+  });
+
+  it('renders every semantic surface and border', () => {
+    const html = cardAt('colors-surfaces.html');
+    expect(chipCount(html)).toBe(8);
+    expect(html).toContain('var(--surface-3)');
+    expect(html).toContain('var(--border-strong)');
+  });
+
+  it('renders every text colour, link hover included', () => {
+    const html = cardAt('colors-text.html');
+    expect((html.match(/<span style="color:var\(/g) ?? []).length).toBe(5);
+    expect(html).toContain('var(--link-hover)');
+  });
+
+  it('throws naming every missing token rather than rendering a short card', () => {
+    // Silently dropping is the ink bug; a rename must fail where it happens.
+    expect(() => buildGuidelineCards(without('--status-danger', '--status-info'))).toThrow(
+      /colors-status\.html names --status-danger, --status-info/,
+    );
+    expect(() => buildGuidelineCards(without('--link-hover'))).toThrow(
+      /colors-text\.html names --link-hover/,
+    );
   });
 
   it('renders every radius and weight', () => {

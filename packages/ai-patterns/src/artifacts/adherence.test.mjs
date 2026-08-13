@@ -199,3 +199,68 @@ describe('the emitted config', () => {
     expect(() => buildAdherenceConfig({ manifest, tokens: [] })).toThrow(/no tokens/);
   });
 });
+
+describe('a stale manifest', () => {
+  /* The record shape an older dist/manifest.json in this repo actually had,
+     before the extractor emitted `props` — note `propsType` but no `props`. */
+  const stale = {
+    package: '@elirobinson/react',
+    version: '0.9.0',
+    components: [
+      {
+        name: 'Button',
+        tier: 'atoms',
+        subpath: 'atoms/Button',
+        importSpecifier: '@elirobinson/react/components/atoms/Button',
+        exports: ['Button'],
+        types: ['ButtonProps'],
+        propsType: 'ButtonProps',
+        variants: [{ prop: 'variant', type: 'ButtonVariant', values: ['primary', 'ghost'] }],
+      },
+    ],
+  };
+
+  it('is rejected at entry, not by a TypeError deep in a loop', () => {
+    // It used to reach `component.props.map` and throw
+    // "Cannot read properties of undefined (reading 'map')".
+    expect(() => buildAdherenceConfig({ manifest: stale, tokens })).not.toThrow(TypeError);
+    expect(() => buildAdherenceConfig({ manifest: stale, tokens })).toThrow(
+      /missing props, inherits/,
+    );
+  });
+
+  it('names the record and the rebuild that fixes it', () => {
+    expect(() => buildAdherenceConfig({ manifest: stale, tokens })).toThrow(/<Button>/);
+    expect(() => buildAdherenceConfig({ manifest: stale, tokens })).toThrow(
+      /stale — rebuild it with `pnpm nx build react`/,
+    );
+  });
+
+  it('no longer tolerates a missing variants key either', () => {
+    // `variants` was the field with a `?? []`, so a manifest predating it failed
+    // silently — a config with no variant rules at all, and nothing to say so.
+    const noVariants = {
+      ...manifest,
+      components: manifest.components.map((component) => {
+        const record = { ...component };
+        delete record.variants;
+        return record;
+      }),
+    };
+    expect(() => buildAdherenceConfig({ manifest: noVariants, tokens })).toThrow(
+      /missing variants/,
+    );
+  });
+
+  it('locates an unnamed record by index', () => {
+    const nameless = { ...manifest, components: [{ exports: ['X'] }] };
+    expect(() => buildAdherenceConfig({ manifest: nameless, tokens })).toThrow(/at index 0/);
+  });
+
+  it('accepts inherits: null, which is a closed prop surface and not an absent field', () => {
+    // The fixture's <Tooltip> declares `inherits: null`; requiring the key to be
+    // non-null would reject the very records that earn a prop allowlist.
+    expect(() => build()).not.toThrow();
+    expect(ruleMatching("JSXOpeningElement[name.name='Tooltip'] > JSXAttribute >")).toBeDefined();
+  });
+});
