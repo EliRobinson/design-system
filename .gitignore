@@ -23,3 +23,5 @@ apps/docs/.next/
 .ds-sync/
 ds-bundle/
 packages/react/_ds-entry.mjs
+.vercel
+.env*
