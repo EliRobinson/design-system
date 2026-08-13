@@ -10,7 +10,7 @@
 import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
 import { describe, expect, it } from 'vitest';
 
-import { llmsFull, llmsIndex, versionStamp } from './llms.mjs';
+import { brandVoice, llmsFull, llmsIndex, versionStamp } from './llms.mjs';
 
 const versions = { aiPatterns: '0.5.0', react: '1.2.0', tokens: '0.3.0' };
 
@@ -267,6 +267,72 @@ describe('llmsFull', () => {
       expect(withProse).toContain('NOT importable components');
       expect(withProse.indexOf('## Foundations')).toBeLessThan(withProse.indexOf('## Components'));
       expect(withProse.indexOf('## Hooks')).toBeLessThan(withProse.indexOf('## Patterns'));
+    });
+  });
+
+  describe('the brand layer', () => {
+    const readme = [
+      '# Brand',
+      '',
+      '## CONTENT FUNDAMENTALS',
+      '',
+      '### Voice',
+      '',
+      '- Never the royal "we."',
+      '',
+      '---',
+      '',
+      '## VISUAL FOUNDATIONS',
+      '',
+      'Not voice.',
+    ].join('\n');
+
+    const withBrand = llmsFull({
+      manifest,
+      contracts,
+      tokens,
+      brand: {
+        readme,
+        note: 'The brand source lives here.',
+        artifacts: [
+          {
+            path: 'ui_kits/webapp/index.html',
+            title: 'Web App UI Kit',
+            ships: true,
+            components: ['Sidebar', 'TopBar'],
+          },
+          { path: 'guidelines/brand-voice.html', title: 'Brand voice', ships: false },
+        ],
+      },
+    });
+
+    it('omits the brand section entirely when the caller has no brand input', () => {
+      expect(text).not.toContain('## Brand');
+    });
+
+    it('carries the voice rules, the caller note, and the artifact inventory', () => {
+      expect(withBrand).toContain('## Brand');
+      expect(withBrand).toContain('Never the royal "we."');
+      expect(withBrand).toContain('The brand source lives here.');
+      expect(withBrand).toContain(
+        '- ui_kits/webapp/index.html — Web App UI Kit (components: Sidebar, TopBar)',
+      );
+    });
+
+    it('marks repo-only artifacts so an agent reading a tarball never chases them', () => {
+      expect(withBrand).toContain(
+        '- guidelines/brand-voice.html — Brand voice [repo-only — not in the published package]',
+      );
+      expect(withBrand).not.toContain('Web App UI Kit (components: Sidebar, TopBar) [repo-only');
+    });
+
+    it('does not leak the visual foundations section in as voice', () => {
+      expect(brandVoice(readme)).toContain('Never the royal');
+      expect(brandVoice(readme)).not.toContain('Not voice.');
+    });
+
+    it('throws rather than silently losing the voice rules', () => {
+      expect(() => brandVoice('# A readme with no fundamentals')).toThrow(/CONTENT FUNDAMENTALS/);
     });
   });
 });

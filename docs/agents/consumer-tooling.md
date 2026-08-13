@@ -8,7 +8,7 @@ from the packages independently and every new consumer rebuilds it by hand.
 
 ```bash
 pnpm add @elirobinson/react@latest @elirobinson/tokens@latest
-pnpm add -D @elirobinson/ai-patterns@latest @elirobinson/eslint-config@latest
+pnpm add -D @elirobinson/ai-patterns@latest @elirobinson/eslint-config@latest @elirobinson/design-system-mcp@latest
 ```
 
 ```jsonc
@@ -50,6 +50,14 @@ system in an app**.
 | Agent templates                                   | `ai-patterns` (`./agents/*`)           | Four near-identical instruction files per repo, each aging separately         |
 | `ds-resync` CLI                                   | `ai-patterns` (`bin`)                  | Noticing by hand that a repo is several releases behind                       |
 | `ds-resync artifacts`                             | `ai-patterns` (`bin`)                  | A copy of the brand skill and a hand-written component cheatsheet per repo    |
+| `design-system-mcp` server                        | `design-system-mcp` (`bin`)            | An agent guessing props from memory instead of querying the installed package |
+
+The MCP server is its own single-bin package, wired in `.mcp.json` as
+`node node_modules/@elirobinson/design-system-mcp/src/bin.mjs` — `node` directly, because
+pnpm's lifecycle output would corrupt the stdio JSON-RPC channel, and a single bin because
+`pnpm dlx <pkg> <bin>` cannot select between `ai-patterns`' two. It reads the project's
+installed `@elirobinson/*` packages at call time, so it inherits the CLI's core property:
+it cannot go stale. See `packages/design-system-mcp/README.md` for the consumer wiring.
 
 \* **Except the two font lines.** A `next/font` app's `@theme inline` block usually carries
 `--font-sans: var(--font-geist-sans)` and its mono twin, and deleting the block on the

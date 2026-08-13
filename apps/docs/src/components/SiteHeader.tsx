@@ -1,15 +1,11 @@
 import Link from 'next/link';
 
-import { allPages } from '../lib/site-map';
+import { allPages, firstPageOf } from '../lib/site-map';
 import { SiteSearch } from './SiteSearch';
 
-const NAV = [
-  { label: 'Foundations', href: '/foundations/color' },
-  { label: 'Components', href: '/components' },
-  { label: 'Patterns', href: '/patterns/header' },
-  { label: 'Guidelines', href: '/guidelines/voice' },
-  { label: 'Build with AI', href: '/build-with-ai' },
-];
+/* Which sections get a top-level entry is editorial; where each one points
+   derives from the section list, so the hrefs cannot drift from it. */
+const NAV_SECTIONS = ['Foundations', 'Components', 'Patterns', 'Guidelines', 'Build with AI'];
 
 export function SiteHeader() {
   return (
@@ -22,9 +18,9 @@ export function SiteHeader() {
           <span className="site-wordmark__suffix">Design system</span>
         </Link>
         <nav aria-label="Primary" className="site-header__nav">
-          {NAV.map((item) => (
-            <Link key={item.href} href={item.href} className="site-header__link">
-              {item.label}
+          {NAV_SECTIONS.map((title) => (
+            <Link key={title} href={firstPageOf(title).href} className="site-header__link">
+              {title}
             </Link>
           ))}
         </nav>

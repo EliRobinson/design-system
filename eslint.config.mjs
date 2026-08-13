@@ -1,4 +1,4 @@
-import designSystem from '@elirobinson/eslint-config';
+import designSystem, { mcpStdio } from '@elirobinson/eslint-config';
 import js from '@eslint/js';
 import prettierConfig from 'eslint-config-prettier';
 import globals from 'globals';
@@ -19,6 +19,8 @@ export default tseslint.config(
       'apps/storybook/storybook-static/**',
       'apps/docs/.next/**',
       'design-system-docs/**',
+      // Staged copies of the same brand material, served by the docs site.
+      'apps/docs/public/brand/**',
       '.nx/**',
       // design-sync (claude.ai/design) scratch: the staged converter, its
       // generated preview wrappers, the reference storybook build, and the
@@ -63,6 +65,9 @@ export default tseslint.config(
       'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },
+  // The MCP server's stdout is the JSON-RPC channel — one console.log drops
+  // the connection. Error severity, console.error only.
+  mcpStdio(['packages/design-system-mcp/**/*.mjs']),
   {
     // CLI entry points whose stdout *is* the product: the scaffolder's prompts,
     // and the repo scripts that report what they changed. Anywhere else a

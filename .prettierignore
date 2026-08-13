@@ -8,3 +8,4 @@ apps/docs/.next
 apps/docs/next-env.d.ts
 design-system-docs
 pnpm-lock.yaml
+apps/docs/public/brand

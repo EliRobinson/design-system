@@ -1,3 +1,5 @@
+import { components, hooks } from '@/lib/manifest';
+
 export const metadata = { title: 'Installation' };
 
 # Installation
@@ -44,7 +46,8 @@ pnpm add @elirobinson/tokens @elirobinson/react
 ```
 
 `@elirobinson/tokens` carries the design tokens as CSS custom properties and JSON.
-`@elirobinson/react` carries the 44 components and 6 interaction hooks. If you're building
+`@elirobinson/react` carries the {components.length} components and {hooks.length} interaction
+hooks. If you're building
 AI features, `@elirobinson/ai-patterns` adds prompt patterns and machine-checkable UX
 contracts.
 

@@ -1,0 +1,15 @@
+{
+  "name": "design-system-mcp",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/design-system-mcp/src",
+  "projectType": "library",
+  "targets": {
+    "test": {
+      "command": "pnpm run test",
+      "options": {
+        "cwd": "packages/design-system-mcp"
+      },
+      "dependsOn": ["^build"]
+    }
+  }
+}

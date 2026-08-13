@@ -24,6 +24,8 @@
   "exports": {
     "./patterns": "./src/patterns.md",
     "./contracts": "./src/contracts.json",
+    "./adherence": "./src/artifacts/adherence.mjs",
+    "./brand-readme": "./dist/artifacts/skills/miltinson-design/README.md",
     "./prompts/*": "./src/prompts/*",
     "./agents/*": "./src/agents/*",
     "./resync/skill": "./src/resync/SKILL.md",
@@ -34,6 +36,10 @@
     },
     "./artifacts": "./dist/artifacts/artifacts.json",
     "./artifacts/*": "./dist/artifacts/*",
+    "./brand-manifest": {
+      "types": "./dist/artifacts/brand-manifest.d.ts",
+      "default": "./dist/artifacts/brand-manifest.json"
+    },
     "./llms": "./dist/artifacts/skills/design-system-reference/llms.txt",
     "./llms-full": "./dist/artifacts/skills/design-system-reference/llms-full.txt",
     "./testing/playwright": {

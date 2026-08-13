@@ -1,6 +1,8 @@
 import Link from 'next/link';
 
 import { components, hooks } from '../lib/manifest';
+import { publishedPackages } from '../lib/published-packages';
+import { firstPageOf, pageByTitle } from '../lib/site-map';
 import { cssTokens } from '../lib/tokens-css';
 
 const PRINCIPLES = [
@@ -22,45 +24,48 @@ const PRINCIPLES = [
   },
 ];
 
-const SECTIONS = [
-  {
-    title: 'Foundations',
-    href: '/foundations/color',
-    body: 'Color, type, spacing, radii, motion — rendered live from the tokens package.',
-  },
-  {
-    title: 'Components',
-    href: '/components',
-    body: 'All 44 components with live demos, generated props tables, and keyboard contracts.',
-  },
-  {
-    title: 'Patterns',
-    href: '/patterns/header',
-    body: 'Header, hero, forms, data display — recipes composed from primitives.',
-  },
-  {
-    title: 'Guidelines',
-    href: '/guidelines/voice',
-    body: 'Voice, the accessibility standard, tier boundaries, and how to contribute.',
-  },
-  {
-    title: 'Build with AI',
-    href: '/build-with-ai',
-    body: 'llms.txt, per-component JSON, and prompt templates that ship with the packages.',
-  },
-  {
-    title: 'Installation',
-    href: '/installation',
-    body: 'GitHub Packages auth, two imports, and the starter generator.',
-  },
-];
-
 export default function HomePage() {
   const stats = [
     { value: components.length, label: 'components' },
     { value: hooks.length, label: 'interaction hooks' },
     { value: new Set(cssTokens().map((t) => t.name)).size, label: 'design tokens' },
-    { value: 3, label: 'published packages' },
+    { value: publishedPackages().length, label: 'published packages' },
+  ];
+
+  /* Card prose is editorial; every count and href derives from the manifest
+     and the site sections, so a moved or renamed section fails the build here
+     rather than 404ing. */
+  const sections = [
+    {
+      title: 'Foundations',
+      href: firstPageOf('Foundations').href,
+      body: 'Color, type, spacing, radii, motion — rendered live from the tokens package.',
+    },
+    {
+      title: 'Components',
+      href: firstPageOf('Components').href,
+      body: `All ${components.length} components with live demos, generated props tables, and keyboard contracts.`,
+    },
+    {
+      title: 'Patterns',
+      href: firstPageOf('Patterns').href,
+      body: 'Header, hero, forms, data display — recipes composed from primitives.',
+    },
+    {
+      title: 'Guidelines',
+      href: firstPageOf('Guidelines').href,
+      body: 'Voice, the accessibility standard, tier boundaries, and how to contribute.',
+    },
+    {
+      title: 'Build with AI',
+      href: firstPageOf('Build with AI').href,
+      body: 'llms.txt, per-component JSON, and prompt templates that ship with the packages.',
+    },
+    {
+      title: 'Installation',
+      href: pageByTitle('Installation').href,
+      body: 'GitHub Packages auth, two imports, and the starter generator.',
+    },
   ];
 
   return (
@@ -110,7 +115,7 @@ export default function HomePage() {
       <section className="home-section">
         <h2>Find your way in</h2>
         <div className="home-grid">
-          {SECTIONS.map((section) => (
+          {sections.map((section) => (
             <Link key={section.href} href={section.href} className="home-card home-card--link">
               <h3>{section.title}</h3>
               <p>{section.body}</p>

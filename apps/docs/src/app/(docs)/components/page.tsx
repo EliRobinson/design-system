@@ -1,25 +1,18 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { TIERS, componentsByTier, hooks } from '../../../lib/manifest';
+import { TIER_INTRO } from '../../../lib/editorial';
+import { TIERS, components, componentsByTier, hooks } from '../../../lib/manifest';
 
 export const metadata: Metadata = { title: 'Components' };
-
-const TIER_INTRO: Record<string, string> = {
-  atoms: 'Single-purpose primitives — not further divisible.',
-  molecules:
-    'A few atoms combined into one functional unit, with no portal or overlay orchestration.',
-  organisms:
-    'Compound components with internal state or overlay orchestration — portals, focus management, keyboard navigation.',
-};
 
 export default function ComponentsIndexPage() {
   return (
     <>
       <h1>Components</h1>
       <p className="lead">
-        All 44 components, grouped by atomic tier. Every page carries live demos, a generated props
-        table, the exact import subpath, and the keyboard contract you inherit. The{' '}
+        All {components.length} components, grouped by atomic tier. Every page carries live demos, a
+        generated props table, the exact import subpath, and the keyboard contract you inherit. The{' '}
         <Link href="/guidelines/tiers">tier boundary</Link> is a rule, not a vibe.
       </p>
       {TIERS.map((tier) => {

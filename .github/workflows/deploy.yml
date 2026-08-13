@@ -1,0 +1,66 @@
+# Production deploys are gated on Quality the same way publishing is: the
+# Vercel Git integration still creates per-PR preview deployments, but
+# `git.deploymentEnabled` in vercel.json turns its production deploys off for
+# `main`, and this workflow promotes a build only after Quality has passed —
+# mirroring the `workflow_run` pattern release.yml uses. Without this gate,
+# any push where `next build` succeeded would ship, including one where lint,
+# typecheck, or tests failed.
+#
+# Requires three repository secrets from the Vercel project:
+#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [Quality]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # Only after Quality has passed on main (or a manual dispatch), so a broken
+    # build or failing tests can never reach production.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+      # See quality.yml for why this is corepack rather than pnpm/action-setup.
+      - name: Set up pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+      - name: Locate the pnpm store
+        id: pnpm_store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+      # `vercel build` runs the install and build commands from vercel.json, so
+      # the site ships from exactly the recipe Quality verified — no second
+      # build definition in the dashboard.
+      - name: Pull Vercel project settings
+        run: pnpm dlx vercel@latest pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build
+        run: pnpm dlx vercel@latest build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy to production
+        run: pnpm dlx vercel@latest deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

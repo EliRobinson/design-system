@@ -1,0 +1,45 @@
+{
+  "name": "@elirobinson/design-system-mcp",
+  "version": "0.0.0",
+  "description": "MCP server over the installed Miltinson design system packages — component props, tokens, constraints, brand guidance, and adherence checks, read live from node_modules.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EliRobinson/design-system.git",
+    "directory": "packages/design-system-mcp"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "type": "module",
+  "bin": {
+    "design-system-mcp": "./src/bin.mjs"
+  },
+  "files": [
+    "src",
+    "CHANGELOG.md",
+    "!src/**/*.test.mjs"
+  ],
+  "exports": {
+    "./server": "./src/server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "eslint": "^9.39.4",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@elirobinson/ai-patterns": "workspace:*",
+    "@elirobinson/react": "workspace:*",
+    "@elirobinson/tokens": "workspace:*",
+    "@modelcontextprotocol/client": "^2.0.0",
+    "vitest": "^3.2.4"
+  }
+}

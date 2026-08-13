@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/stage-brand.mjs && next dev",
+    "build": "node scripts/stage-brand.mjs && next build && node scripts/assert-static-routes.mjs",
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run"

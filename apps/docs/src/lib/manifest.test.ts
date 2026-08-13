@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -6,10 +6,10 @@ import contracts from '@elirobinson/ai-patterns/contracts';
 import { describe, expect, it } from 'vitest';
 
 import { TIERS, components, getComponent, hooks } from './manifest';
-import { allPages } from './site-map';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const reactSrc = join(repoRoot, 'packages/react/src');
+const docsSrc = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('component manifest', () => {
   it('covers all 44 components and 7 hooks', () => {
@@ -26,10 +26,17 @@ describe('component manifest', () => {
     expect(TIERS).toEqual(['atoms', 'molecules', 'organisms']);
   });
 
-  it('gives every component a page in the sidebar', () => {
-    const hrefs = new Set(allPages().map((page) => page.href));
+  it('gives every component a page and at least one demo on disk', () => {
+    /* Checked against the filesystem, not the sidebar — the sidebar derives
+       from this same manifest, so comparing the two could never fail. */
     for (const c of components) {
-      expect([...hrefs], c.name).toContain(`/components/${c.slug}`);
+      expect(
+        existsSync(join(docsSrc, 'app/(docs)/components', c.slug, 'page.mdx')),
+        `${c.slug} has no page.mdx`,
+      ).toBe(true);
+      const demoDir = join(docsSrc, 'components/demos', c.slug);
+      const demos = existsSync(demoDir) ? readdirSync(demoDir) : [];
+      expect(demos.length, `${c.slug} has no demos`).toBeGreaterThan(0);
     }
   });
 

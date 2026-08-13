@@ -97,6 +97,30 @@ export type IndexInput = {
   alsoAvailable?: AlsoAvailable;
 };
 
+/**
+ * One brand artifact, structurally the records
+ * `@elirobinson/ai-patterns/brand-manifest` carries — only the fields the
+ * corpus renders.
+ */
+export type BrandArtifactEntry = {
+  path: string;
+  title: string;
+  ships: boolean;
+  components?: string[];
+};
+
+export type BrandInput = {
+  /** design-system-docs/README.md source; CONTENT FUNDAMENTALS is extracted. */
+  readme: string;
+  /**
+   * Pre-filtered by the caller: the packed snapshot passes only `ships: true`
+   * artifacts; the docs site may include repo-only ones, which are marked.
+   */
+  artifacts?: BrandArtifactEntry[];
+  /** One caller-specific line about where the brand source lives. */
+  note?: string;
+};
+
 /* Generic over the record type so a caller whose manifest carries more than the
    generator reads — `slug`, say — gets that richer record back in its
    `componentAppendix`, instead of having to cast it there. */
@@ -110,10 +134,13 @@ export type FullInput<C extends ComponentRecord = ComponentRecord> = {
   prose?: { foundations?: string[]; patterns?: string[] };
   /** Extra blocks to append to each component's section, in order. */
   componentAppendix?: (component: C) => string[];
+  /** The brand layer: voice rules plus the kit and asset inventory. */
+  brand?: BrandInput;
 };
 
 export declare const DLX: string;
 export declare const RESYNC_COMMAND: string;
 export declare function versionStamp(versions: Versions): string;
+export declare function brandVoice(readme: string): string;
 export declare function llmsIndex(input: IndexInput): string;
 export declare function llmsFull<C extends ComponentRecord>(input: FullInput<C>): string;

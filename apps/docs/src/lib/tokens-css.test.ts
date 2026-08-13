@@ -1,10 +1,24 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { cssTokens, getToken, tokensByPrefix } from './tokens-css';
 
 describe('tokens.css parsing', () => {
-  it('finds the full token surface (roughly 120 properties)', () => {
-    expect(cssTokens().length).toBeGreaterThan(110);
+  it('parses every custom property tokens.css declares', () => {
+    /* Compared against an independent count of the same thing the parser
+       reads — declarations in the first :root block, comments blanked so a
+       documented example is prose, not a token. The old floor of 110 against
+       an actual 153 let 42 tokens vanish silently. */
+    const raw = readFileSync(
+      join(process.cwd(), 'node_modules/@elirobinson/tokens/src/tokens.css'),
+      'utf8',
+    );
+    const root = raw.match(/:root\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
+    const declared = root.replace(/\/\*[\s\S]*?\*\//g, ' ').match(/--[\w-]+\s*:/g) ?? [];
+    expect(declared.length).toBeGreaterThan(0);
+    expect(cssTokens()).toHaveLength(declared.length);
   });
 
   it('captures the ink scale with its comments', () => {
