@@ -30,6 +30,13 @@ import {
    within 200ms of it even under that load. */
 const BROWSER_BUDGET = 60_000;
 
+/* 60s is a bigger number, not a different mechanism — a CI runner slow enough
+   could still blow it, and the same "all assertions passed, then the file
+   went red" failure would recur. The actual fix would be treating teardown
+   failure as non-fatal once every assertion has already run; Vitest has no
+   first-class way to say that, so this budget is the mitigation until either
+   that changes or this proves not to be enough. */
+
 let chromium;
 try {
   ({ chromium } = await import('playwright'));
