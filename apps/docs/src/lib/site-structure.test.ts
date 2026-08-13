@@ -14,11 +14,13 @@ import { allPages } from './site-map';
 const APP_DIR = join(process.cwd(), 'src/app');
 const DOCS_DIR = join(APP_DIR, '(docs)');
 
-/** Every route served by a page file under src/app/(docs). */
+/** Every route served by a page file under src/app/(docs). Dynamic segments
+    are skipped — their reachability is generateStaticParams' business, and
+    the build's static-routes assertion already fails an unprerendered one. */
 function pageRoutesOnDisk(dir = DOCS_DIR, route = ''): string[] {
   const routes: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isDirectory()) {
+    if (entry.isDirectory() && !entry.name.startsWith('[')) {
       routes.push(...pageRoutesOnDisk(join(dir, entry.name), `${route}/${entry.name}`));
     } else if (entry.name === 'page.mdx' || entry.name === 'page.tsx') {
       routes.push(route === '' ? '/' : route);
@@ -41,11 +43,32 @@ function pageFilesOnDisk(dir = APP_DIR): string[] {
 }
 
 function pageFileFor(href: string): string | null {
-  const candidates =
-    href === '/'
-      ? [join(APP_DIR, 'page.tsx')]
-      : [join(DOCS_DIR, href.slice(1), 'page.mdx'), join(DOCS_DIR, href.slice(1), 'page.tsx')];
-  return candidates.find((candidate) => existsSync(candidate)) ?? null;
+  if (href === '/') {
+    return existsSync(join(APP_DIR, 'page.tsx')) ? join(APP_DIR, 'page.tsx') : null;
+  }
+  /* Each path segment may be satisfied by a literal directory or by a dynamic
+     [param] directory — /brand/ui-kits/marketing is served by [kit]/. */
+  let dirs = [DOCS_DIR];
+  for (const segment of href.slice(1).split('/')) {
+    dirs = dirs.flatMap((dir) => {
+      const literal = join(dir, segment);
+      const next = existsSync(literal) ? [literal] : [];
+      const dynamic = existsSync(dir)
+        ? readdirSync(dir, { withFileTypes: true })
+            .filter((entry) => entry.isDirectory() && /^\[.+\]$/.test(entry.name))
+            .map((entry) => join(dir, entry.name))
+        : [];
+      return [...next, ...dynamic];
+    });
+  }
+  for (const dir of dirs) {
+    for (const page of ['page.mdx', 'page.tsx']) {
+      if (existsSync(join(dir, page))) {
+        return join(dir, page);
+      }
+    }
+  }
+  return null;
 }
 
 describe('site sections', () => {

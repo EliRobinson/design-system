@@ -19,6 +19,8 @@ export default tseslint.config(
       'apps/storybook/storybook-static/**',
       'apps/docs/.next/**',
       'design-system-docs/**',
+      // Staged copies of the same brand material, served by the docs site.
+      'apps/docs/public/brand/**',
       '.nx/**',
       // design-sync (claude.ai/design) scratch: the staged converter, its
       // generated preview wrappers, the reference storybook build, and the

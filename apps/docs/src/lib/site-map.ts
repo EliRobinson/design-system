@@ -8,6 +8,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { kitSlug, uiKits } from './brand';
 import { TIERS, components, type Tier } from './manifest';
 
 export type SitePage = {
@@ -107,6 +108,29 @@ export function siteSections(): SiteSection[] {
     },
     derivedSection('Patterns', join(APP_DIR, 'patterns'), '/patterns'),
     derivedSection('Guidelines', join(APP_DIR, 'guidelines'), '/guidelines'),
+    {
+      /* Rendered from the brand manifest — page.tsx routes, so listed here
+         rather than derived from page.mdx files. */
+      title: 'Brand',
+      pages: [
+        { title: 'Guidelines', href: '/brand/guidelines' },
+        { title: 'Assets', href: '/brand/assets' },
+      ],
+    },
+    {
+      title: 'UI Kits',
+      pages: uiKits().map((kit) => ({
+        title: kit.title.replace(/\s*UI Kit$/i, ''),
+        href: `/brand/ui-kits/${kitSlug(kit)}`,
+      })),
+    },
+    {
+      title: 'Resources',
+      pages: [
+        { title: 'Slides', href: '/brand/slides' },
+        { title: 'Patterns', href: '/brand/patterns' },
+      ],
+    },
     {
       title: 'Build with AI',
       pages: [{ title: 'Build with AI', href: '/build-with-ai' }],

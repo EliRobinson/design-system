@@ -76,6 +76,9 @@ describe('siteSections', () => {
       'Components',
       'Patterns',
       'Guidelines',
+      'Brand',
+      'UI Kits',
+      'Resources',
       'Build with AI',
     ]);
   });
