@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Sign in" description="Split auth page — form on white, ink brand panel, password plus magic link and SSO." -->
+<helmet><script src="./ds-base.js"></script></helmet>
+<div style="display:grid;grid-template-columns:1fr 1fr;min-height:100vh;font-family:var(--font-sans);color:var(--fg);background:var(--bg)">
+<div style="display:grid;place-items:center;padding:40px">
+<div style="width:100%;max-width:400px">
+<span style="font-weight:600;font-size:24px;letter-spacing:-0.025em">Miltinson<span style="color:var(--signal-500)">.</span></span>
+<h1 style="font-size:30px;font-weight:600;letter-spacing:-0.015em;line-height:1.2;margin:32px 0 8px">Sign in</h1>
+<p style="font-size:14px;line-height:1.65;color:var(--fg-2);margin:0 0 24px">Welcome back. No account? <a href="#">Create one</a>.</p>
+<form style="display:grid;gap:16px">
+<div style="display:grid;gap:8px">
+<label for="auth-email" style="font-size:14px;font-weight:500">Email</label>
+<input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:4px;color:var(--fg);font-family:var(--font-sans);font-size:14px;min-height:44px;padding:12px;width:100%">
+</div>
+<div style="display:grid;gap:8px">
+<label for="auth-password" style="font-size:14px;font-weight:500">Password</label>
+<input id="auth-password" type="password" autocomplete="current-password" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:4px;color:var(--fg);font-family:var(--font-sans);font-size:14px;min-height:44px;padding:12px;width:100%">
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between">
+<label style="display:flex;align-items:center;gap:12px;min-height:44px;font-size:14px"><input type="checkbox" checked style="width:18px;height:18px;accent-color:var(--ink-1000)">Keep me signed in</label>
+<a href="#" style="font-size:14px">Forgot password?</a>
+</div>
+<x-import component-from-global-scope="MiltinsonDesignSystem_e160cb.Button" size="lg" hint-size="100%,52px">Sign in</x-import>
+</form>
+<div style="display:flex;align-items:center;gap:12px;margin:24px 0">
+<span style="height:1px;flex:1;background:var(--border)"></span>
+<span style="font-size:12px;color:var(--fg-3)">or</span>
+<span style="height:1px;flex:1;background:var(--border)"></span>
+</div>
+<div style="display:grid;gap:10px">
+<x-import component-from-global-scope="MiltinsonDesignSystem_e160cb.Button" variant="secondary" size="lg" hint-size="100%,52px">Email me a sign-in link</x-import>
+<x-import component-from-global-scope="MiltinsonDesignSystem_e160cb.Button" variant="ghost" size="lg" hint-size="100%,52px">Continue with a work account</x-import>
+</div>
+<p style="font-size:12px;line-height:1.5;color:var(--fg-3);margin-top:24px">By signing in you agree to the <a href="#">terms</a> and <a href="#">privacy notice</a>.</p>
+</div>
+</div>
+<div style="background:var(--ink-1000);color:var(--ink-0);padding:48px;display:flex;flex-direction:column;justify-content:flex-end;background-image:url(../../assets/pattern-dotgrid.svg);background-size:20px 20px">
+<div style="max-width:460px">
+<p style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:oklch(100% 0 0 / 0.6);margin:0">Miltinson Technologies</p>
+<p style="font-size:34px;font-weight:600;letter-spacing:-0.025em;line-height:1.15;margin:16px 0 12px">Practical tech, honestly built.</p>
+<p style="color:oklch(100% 0 0 / 0.7);line-height:1.6;margin:0">One account across the guides store, the apps and the assistant.</p>
+</div>
+</div>
+</div>
+
+</x-dc>
+</body>
+</html>
