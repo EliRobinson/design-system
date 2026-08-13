@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
-import { BrandArtifactCard } from '@/components/brand/BrandArtifactCard';
-import { brandAssets } from '@/lib/brand';
+import { BrandArtifactCard } from '../../../../components/brand/BrandArtifactCard';
+import { brandAssets } from '../../../../lib/brand';
 
 export const metadata: Metadata = { title: 'Brand assets' };
 

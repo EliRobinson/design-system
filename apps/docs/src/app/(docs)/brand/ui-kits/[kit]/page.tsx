@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
-import { BrandArtifactCard } from '@/components/brand/BrandArtifactCard';
-import { getUiKit, kitSlug, uiKits } from '@/lib/brand';
+import { BrandArtifactCard } from '../../../../../components/brand/BrandArtifactCard';
+import { getUiKit, kitSlug, uiKits } from '../../../../../lib/brand';
 
 /* One page per kit in the manifest — a new kit gets a page (and a sidebar
    entry, via site-map.ts) by appearing there, with no edit here. */

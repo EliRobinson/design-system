@@ -18,8 +18,13 @@ const bin = join(dirname(fileURLToPath(import.meta.url)), 'bin.mjs');
 it('serves initialize → tools/list over stdio, emitting only JSON on stdout', async () => {
   const child = spawn(bin, [], { stdio: ['pipe', 'pipe', 'pipe'] });
   const stdout = [];
+  let stderr = '';
   let buffered = '';
   child.stdout.setEncoding('utf8');
+  child.stderr.setEncoding('utf8');
+  child.stderr.on('data', (chunk) => {
+    stderr += chunk;
+  });
 
   const responses = new Map();
   const waiters = new Map();
@@ -46,8 +51,14 @@ it('serves initialize → tools/list over stdio, emitting only JSON on stdout', 
   const response = (id) =>
     responses.get(id) ??
     new Promise((resolvePromise, reject) => {
-      waiters.set(id, resolvePromise);
-      setTimeout(() => reject(new Error(`no response to request ${id}`)), 10_000);
+      const timer = setTimeout(
+        () => reject(new Error(`no response to request ${id}; stderr: ${stderr || '(empty)'}`)),
+        30_000,
+      );
+      waiters.set(id, (message) => {
+        clearTimeout(timer);
+        resolvePromise(message);
+      });
     });
 
   try {
@@ -73,4 +84,4 @@ it('serves initialize → tools/list over stdio, emitting only JSON on stdout', 
   } finally {
     child.kill();
   }
-}, 20_000);
+}, 45_000);

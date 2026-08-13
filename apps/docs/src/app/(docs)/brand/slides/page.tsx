@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
-import { BrandArtifactCard } from '@/components/brand/BrandArtifactCard';
-import { slideArtifacts } from '@/lib/brand';
+import { BrandArtifactCard } from '../../../../components/brand/BrandArtifactCard';
+import { slideArtifacts } from '../../../../lib/brand';
 
 export const metadata: Metadata = { title: 'Slide templates' };
 
