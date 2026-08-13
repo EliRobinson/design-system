@@ -1,22 +1,10 @@
 import type { Metadata } from 'next';
 
 import { CodeSnippet } from '../../../../components/docs/CodeSnippet';
+import { HOOK_USED_BY } from '../../../../lib/editorial';
 import { hooks } from '../../../../lib/manifest';
 
 export const metadata: Metadata = { title: 'Interaction hooks' };
-
-/* Which components consume each hook — usage prose, sourced from
-   docs/agents/components.md and the component imports themselves. */
-const USED_BY: Record<string, string> = {
-  useActiveDescendant: 'Used by Combobox and CommandPalette.',
-  useRovingFocus: 'Used by Tabs and SegmentedControl.',
-  useClickOutside: 'Used by the anchored overlays — Popover, DropdownMenu, Combobox, DatePicker.',
-  useEscapeKey: 'Used by the anchored overlays alongside useClickOutside.',
-  useAnchoredPosition: 'Used by Popover, DropdownMenu, and Tooltip.',
-  useDisclosure: 'Used by Dialog, Sheet, Popover, and DropdownMenu.',
-  useHasMounted:
-    'Used by Toaster, PopoverContent, DropdownMenuContent, and TooltipContent to skip their portals during server rendering.',
-};
 
 export default function HooksPage() {
   return (
@@ -40,7 +28,7 @@ export default function HooksPage() {
             .map((paragraph) => (
               <p key={paragraph.slice(0, 24)}>{paragraph.replace(/\n/g, ' ')}</p>
             ))}
-          {USED_BY[hook.name] && <p>{USED_BY[hook.name]}</p>}
+          {HOOK_USED_BY[hook.name] && <p>{HOOK_USED_BY[hook.name]}</p>}
         </section>
       ))}
     </>

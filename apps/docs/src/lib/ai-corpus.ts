@@ -93,13 +93,28 @@ function pageProse(href: string): string | null {
   return stripMdx(readFileSync(path, 'utf8'));
 }
 
-/** Every page of a named site section that has prose, in sidebar order. */
-function sectionProse(title: string): string[] {
-  const section = siteSections().find((s) => s.title === title);
+/** Every page of a named site section, in sidebar order — loud, not lossy:
+    an unknown title or an unreadable page throws rather than silently
+    vanishing from the corpus. */
+export function sectionProse(title: string): string[] {
+  const sections = siteSections();
+  const section = sections.find((s) => s.title === title);
   if (!section) {
-    return [];
+    throw new Error(
+      `No site section titled "${title}" — its prose would silently drop out of the corpus. ` +
+        `Sections: ${sections.map((s) => s.title).join(', ')}.`,
+    );
   }
-  return section.pages.map((page) => pageProse(page.href)).filter((prose) => prose !== null);
+  return section.pages.map((page) => {
+    const prose = pageProse(page.href);
+    if (prose === null) {
+      throw new Error(
+        `Section "${title}" lists ${page.href}, but ${pagePath(page.href)} cannot be read — ` +
+          `its prose would silently drop out of the corpus.`,
+      );
+    }
+    return prose;
+  });
 }
 
 /* What the docs site has and a packed snapshot does not: the component's own

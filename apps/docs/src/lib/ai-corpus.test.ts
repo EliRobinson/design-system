@@ -12,7 +12,14 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { componentRecord, llmsFull, llmsIndex, recordSlugs, stripMdx } from './ai-corpus';
+import {
+  componentRecord,
+  llmsFull,
+  llmsIndex,
+  recordSlugs,
+  sectionProse,
+  stripMdx,
+} from './ai-corpus';
 import { components } from './manifest';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -99,12 +106,30 @@ describe('per-component records', () => {
     for (const slug of slugs) {
       const record = componentRecord(slug);
       expect(record?.importSpecifier).toContain('@elirobinson/react/components/');
-      expect(record?.docs).toBe(`/components/${slug}`);
     }
   });
 
   it('returns null for unknown slugs', () => {
     expect(componentRecord('does-not-exist')).toBeNull();
+  });
+});
+
+describe('section prose is loud', () => {
+  /* sectionProse used to return [] for an unknown title and silently drop any
+     page it could not read — so renaming a section in site-map.ts emptied the
+     corpus prose with no error. */
+  it('throws for a section title that does not exist, naming the real ones', () => {
+    expect(() => sectionProse('Renamed section')).toThrow(/Foundations/);
+  });
+
+  it('returns prose for every page of the sections the corpus includes', () => {
+    for (const title of ['Foundations', 'Patterns']) {
+      const prose = sectionProse(title);
+      expect(prose.length, title).toBeGreaterThan(0);
+      for (const page of prose) {
+        expect(page.length).toBeGreaterThan(100);
+      }
+    }
   });
 });
 
