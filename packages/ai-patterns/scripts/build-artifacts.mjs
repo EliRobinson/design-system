@@ -14,7 +14,7 @@
  *   being built and on nothing else. In particular it never builds `apps/docs`,
  *   which is a reader of the manifest exactly like this script is.
  * - `preview/` and `uploads/` are working material for this repo and never
- *   ship; `slides/` and `templates/` produce Miltinson marketing collateral,
+ *   ship; `slides/` and `patterns/` produce Miltinson marketing collateral,
  *   which a consuming product repo has no use for. See BRAND_SOURCES.
  */
 
@@ -34,7 +34,12 @@ import { fileURLToPath } from 'node:url';
 
 import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
 
-import { BRAND_INDEX, transformBrandDocs } from '../src/artifacts/brand.mjs';
+import { BRAND_INDEX, replaceManagedBlock, transformBrandDocs } from '../src/artifacts/brand.mjs';
+import {
+  BRAND_SOURCES,
+  buildBrandManifest,
+  renderRepoIndexTable,
+} from '../src/artifacts/brand-manifest.mjs';
 import { llmsFull, llmsIndex } from '../src/artifacts/llms.mjs';
 import { referenceSkillDoc, SKILL_DIRS } from '../src/artifacts/skills.mjs';
 
@@ -42,10 +47,6 @@ const packageDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(packageDir, '..', '..');
 const outDir = join(packageDir, 'dist', 'artifacts');
 const skillsDir = join(outDir, 'skills');
-
-/* Copied verbatim out of design-system-docs/. Anything not listed is
-   repo-internal. Keep in step with BRAND_INDEX — the check below enforces it. */
-const BRAND_SOURCES = ['colors_and_type.css', 'assets', 'ui_kits'];
 
 /* Where a reader of the packed llms.txt goes next. The docs site answers the
    same question with URLs; a consumer holding this tarball has files and a
@@ -128,9 +129,32 @@ function main() {
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(skillsDir, { recursive: true });
 
+  const brandSource = join(repoRoot, 'design-system-docs');
+
+  /* 0. Brand manifest — the spine the docs site, the corpus, and the MCP
+        server read — and the in-repo README index table generated from it.
+        Regenerated before the consumer transform below reads the README, so
+        both surfaces derive from the same walk. */
+  const brandManifest = buildBrandManifest({ root: brandSource, tokens });
+  writeFileSync(join(outDir, 'brand-manifest.json'), `${JSON.stringify(brandManifest, null, 2)}\n`);
+  cpSync(
+    join(packageDir, 'src/artifacts/brand-manifest-schema.d.ts'),
+    join(outDir, 'brand-manifest.d.ts'),
+  );
+  const repoReadmePath = join(brandSource, 'README.md');
+  const repoReadme = readFileSync(repoReadmePath, 'utf8');
+  const regenerated = replaceManagedBlock(
+    repoReadme,
+    renderRepoIndexTable(brandManifest),
+    'design-system-docs/README.md',
+    '<!-- Generated from the brand manifest by build-artifacts.mjs. Do not edit by hand. -->',
+  );
+  if (regenerated !== repoReadme) {
+    writeFileSync(repoReadmePath, regenerated);
+  }
+
   /* 1. Brand skill — a subset of design-system-docs/, with its two
         repo-specific passages regenerated for a consumer audience. */
-  const brandSource = join(repoRoot, 'design-system-docs');
   const brandOut = join(skillsDir, SKILL_DIRS.brand);
 
   for (const entry of BRAND_SOURCES) {

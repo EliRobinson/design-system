@@ -192,8 +192,8 @@ function main() {
     replaceManagedBlock(
       readFileSync(join(docsDir, 'SKILL.md'), 'utf8'),
       [
-        'Read `readme.md` first, then explore `guidelines/`, `ui_kits/`, `templates/`,',
-        '`patterns/`, `slides/` and `assets/`.',
+        'Read `readme.md` first, then explore `guidelines/`, `ui_kits/`, `patterns/`,',
+        '`slides/` and `assets/`.',
         '',
         '**The JSX under `components/` is not the component library.** Those files are',
         'cosmetic recreations for prototyping: they deliberately skip focus trapping,',

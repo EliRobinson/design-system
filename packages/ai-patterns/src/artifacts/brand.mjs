@@ -20,8 +20,14 @@ const GENERATED_NOTE =
  * @param {string} source
  * @param {string} replacement text to put between the markers
  * @param {string} label file name, for the error message
+ * @param {string} note provenance comment written just inside the block
  */
-export function replaceManagedBlock(source, replacement, label = 'document') {
+export function replaceManagedBlock(
+  source,
+  replacement,
+  label = 'document',
+  note = GENERATED_NOTE,
+) {
   const start = source.indexOf(BLOCK_BEGIN);
   const end = source.indexOf(BLOCK_END);
 
@@ -37,7 +43,7 @@ export function replaceManagedBlock(source, replacement, label = 'document') {
     source.slice(0, start),
     BLOCK_BEGIN,
     '\n',
-    GENERATED_NOTE,
+    note,
     '\n\n',
     replacement.trim(),
     '\n\n',

@@ -34,6 +34,10 @@
     },
     "./artifacts": "./dist/artifacts/artifacts.json",
     "./artifacts/*": "./dist/artifacts/*",
+    "./brand-manifest": {
+      "types": "./dist/artifacts/brand-manifest.d.ts",
+      "default": "./dist/artifacts/brand-manifest.json"
+    },
     "./llms": "./dist/artifacts/skills/design-system-reference/llms.txt",
     "./llms-full": "./dist/artifacts/skills/design-system-reference/llms-full.txt",
     "./testing/playwright": {

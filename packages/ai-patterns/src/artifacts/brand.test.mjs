@@ -78,7 +78,7 @@ describe('transformBrandDocs', () => {
   });
 
   it('does not advertise folders that were left out of the tarball', () => {
-    for (const excluded of ['preview/', 'uploads/', 'slides/', 'templates/']) {
+    for (const excluded of ['preview/', 'uploads/', 'slides/', 'patterns/']) {
       expect(BRAND_INDEX.some((entry) => entry.path === excluded)).toBe(false);
     }
     expect(readme).not.toContain('`preview/`');
