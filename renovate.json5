@@ -1,0 +1,95 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+
+  /* Why this file exists: `actions/cache@v4` sat two majors behind until a
+     Node 20 deprecation warning surfaced it in CI. Nothing was watching. This
+     is the thing that watches — same rule as the rest of the repo, ship a
+     mechanism rather than a note asking someone to remember.
+
+     JSON5 so the reasoning can live next to the rules. Renovate reads
+     renovate.json5 natively. */
+
+  extends: [
+    'config:recommended',
+    ':dependencyDashboard',
+    // This repo requires Conventional Commits, so Renovate's commits must be too.
+    ':semanticCommits',
+  ],
+
+  timezone: 'Etc/UTC',
+  schedule: ['before 6am on monday'],
+
+  // A design system's dependencies are a supply-chain surface: everything here
+  // is published to consumers. Let a release sit long enough that a compromised
+  // or immediately-yanked version is caught before we propose adopting it.
+  minimumReleaseAge: '3 days',
+
+  prConcurrentLimit: 3,
+  prHourlyLimit: 2,
+
+  lockFileMaintenance: {
+    enabled: true,
+    schedule: ['before 6am on the first day of the month'],
+  },
+
+  packageRules: [
+    /* Our own packages are published from this repo by changesets. Renovate
+       proposing a bump to them would be arguing with the release pipeline, and
+       it cannot resolve them anyway: the @elirobinson scope lives on GitHub
+       Packages (see .npmrc), which Renovate has no token for. Every internal
+       dep is on `workspace:*` and would be skipped regardless — except
+       templates/default-app, which is not a workspace member and carries real
+       `^0.1.0` specs. Those are placeholders the scaffolder overwrites with the
+       live versions at scaffold time, so they must not be "updated" either. */
+    {
+      matchPackageNames: ['@elirobinson/**'],
+      enabled: false,
+    },
+
+    /* All three actions in one PR, majors included. There are only a handful,
+       they are CI-only, and a breaking major shows up as a failing check on the
+       PR that proposes it — which is the correct place to find out. */
+    {
+      matchManagers: ['github-actions'],
+      groupName: 'GitHub Actions',
+      matchUpdateTypes: ['major', 'minor', 'patch', 'digest', 'pin'],
+      semanticCommitType: 'ci',
+    },
+
+    /* The split below is about one thing: `quality.yml` runs
+       `changeset status --since=origin/<base>` and fails a PR that changes a
+       publishable package without a changeset. A dependency bump alone trips
+       it — verified, not assumed.
+
+       So updates that need a changeset are kept in their own PR, and the PR
+       says so. Everything else merges without ceremony instead of being held up
+       behind that requirement. */
+    {
+      matchManagers: ['npm'],
+      matchFileNames: [
+        'packages/ai-patterns/package.json',
+        'packages/eslint-config/package.json',
+        'packages/react/package.json',
+        'packages/tokens/package.json',
+      ],
+      groupName: 'npm deps (published packages)',
+      prBodyNotes: [
+        '> [!IMPORTANT]',
+        '> This PR changes a **publishable** package, so CI will fail until it carries a changeset.',
+        '>',
+        '> - A dev-only bump (test runner, types) ships nothing to consumers — `pnpm changeset add --empty`.',
+        '> - Anything reaching consumers — a `dependency` or a `peerDependency` — wants a real `patch`.',
+      ],
+    },
+    {
+      matchManagers: ['npm'],
+      matchFileNames: [
+        'package.json',
+        'apps/docs/package.json',
+        'packages/create-elirobinson-design-system/package.json',
+        'templates/default-app/package.json',
+      ],
+      groupName: 'npm deps (private packages)',
+    },
+  ],
+}
