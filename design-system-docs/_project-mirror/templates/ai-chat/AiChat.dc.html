@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="AI chat" description="Assistant screen — thread list, streaming answer with citations, starter prompts and composer." -->
+<helmet><script src="./ds-base.js"></script></helmet>
+<div style="display:flex;height:100vh;overflow:hidden;font-family:var(--font-sans);color:var(--fg);background:var(--bg)">
+<aside style="width:260px;border-right:1px solid var(--border);background:var(--bg-subtle);display:flex;flex-direction:column">
+<div style="padding:16px;display:grid;gap:12px">
+<span style="font-weight:600;font-size:20px;letter-spacing:-0.025em">Miltinson<span style="color:var(--signal-500)">.</span></span>
+<x-import component-from-global-scope="MiltinsonDesignSystem_e160cb.Button" size="sm" hint-size="100%,36px">New chat</x-import>
+</div>
+<nav style="padding:8px;display:grid;gap:2px">
+<button type="button" style="text-align:left;border:none;border-radius:4px;background:var(--surface);padding:10px 12px;min-height:44px;cursor:pointer;display:grid;gap:2px">
+<span style="font-size:14px;color:var(--fg)">U10s session plan</span>
+<span style="font-size:12px;color:var(--fg-3)">2m ago</span>
+</button>
+<button type="button" style="text-align:left;border:none;border-radius:4px;background:transparent;padding:10px 12px;min-height:44px;cursor:pointer;display:grid;gap:2px">
+<span style="font-size:14px;color:var(--fg)">Store copy rewrite</span>
+<span style="font-size:12px;color:var(--fg-3)">Yesterday</span>
+</button>
+<button type="button" style="text-align:left;border:none;border-radius:4px;background:transparent;padding:10px 12px;min-height:44px;cursor:pointer;display:grid;gap:2px">
+<span style="font-size:14px;color:var(--fg)">Stripe payout question</span>
+<span style="font-size:12px;color:var(--fg-3)">Tue</span>
+</button>
+</nav>
+</aside>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+<div style="height:56px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 24px">
+<span style="font-weight:600;font-size:20px;letter-spacing:-0.015em">Assistant</span>
+<x-import component-from-global-scope="MiltinsonDesignSystem_e160cb.Badge" variant="signal" hint-size="60px,20px">Beta</x-import>
+</div>
+<div style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:24px">
+<div style="display:grid;grid-template-columns:28px 1fr;gap:12px;max-width:720px">
+<span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:4px;background:var(--ink-1000);color:var(--ink-0);font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.08em">you</span>
+<p style="font-size:16px;line-height:1.65;font-weight:500;margin:0">Can you draft a warm-up for an under-10s session?</p>
+</div>
+<div style="display:grid;grid-template-columns:28px 1fr;gap:12px;max-width:720px">
+<span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--fg-3);font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.08em">ai</span>
+<div>
+<p style="font-size:16px;line-height:1.65;margin:0">Ten minutes, three phases — jog and joints, then a two-touch rondo, then two short sprints. Keep it moving; kids lose the thread when a drill runs long.<a href="#" style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;margin-left:4px;border-radius:2px;background:var(--bg-muted);border:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--fg-2);vertical-align:2px;text-decoration:none">1</a></p>
+<div style="margin-top:8px;display:flex;align-items:center;gap:12px;font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--fg-3)">
+<button type="button" style="min-height:32px;padding:0 8px;border:none;background:transparent;border-radius:4px;color:var(--fg-3);font:inherit;cursor:pointer">Copy</button>
+<button type="button" style="min-height:32px;padding:0 8px;border:none;background:transparent;border-radius:4px;color:var(--fg-3);font:inherit;cursor:pointer">Retry</button>
+<button type="button" style="min-height:32px;padding:0 8px;border:none;background:transparent;border-radius:4px;color:var(--fg-3);font:inherit;cursor:pointer">Sources</button>
+</div>
+</div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;max-width:720px;margin-left:40px">
+<button type="button" style="min-height:44px;padding:0 16px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--fg);font-size:14px;cursor:pointer">Make it 15 minutes</button>
+<button type="button" style="min-height:44px;padding:0 16px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--fg);font-size:14px;cursor:pointer">Add a cool-down</button>
+<button type="button" style="min-height:44px;padding:0 16px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--fg);font-size:14px;cursor:pointer">Rewrite for a wet pitch</button>
+</div>
+</div>
+<div style="padding:16px 24px 24px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:flex-end;gap:12px;padding:12px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface)">
+<textarea rows="1" placeholder="Ask anything" aria-label="Ask anything" style="flex:1;border:none;outline:none;resize:none;background:transparent;color:var(--fg);font-family:var(--font-sans);font-size:16px;line-height:1.65"></textarea>
+<x-import component-from-global-scope="MiltinsonDesignSystem_e160cb.Button" size="sm" hint-size="70px,36px">Send</x-import>
+</div>
+<p style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--fg-3);margin:0">AI can be wrong — check anything that matters</p>
+</div>
+</div>
+</div>
+
+</x-dc>
+</body>
+</html>

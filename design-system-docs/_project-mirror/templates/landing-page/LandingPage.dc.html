@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Landing page" description="Miltinson marketing landing page — ink hero, feature cards, pricing and a contact band." -->
+<helmet><script src="./ds-base.js"></script></helmet>
+<div style="font-family:var(--font-sans);color:var(--fg);background:var(--bg)">
+<header style="position:sticky;top:0;z-index:100;background:oklch(100% 0 0 / 0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:14px max(20px,4vw);display:flex;align-items:center;justify-content:space-between">
+<span style="font-weight:600;font-size:22px;letter-spacing:-0.025em">Miltinson<span style="color:var(--signal-500)">.</span></span>
+<nav style="display:flex;align-items:center;gap:28px">
+<a href="#" style="font-size:14px;text-decoration:none;color:var(--fg-2)">Portfolio</a>
+<a href="#" style="font-size:14px;text-decoration:none;color:var(--fg-2)">Store</a>
+<a href="#" style="font-size:14px;text-decoration:none;color:var(--fg-2)">Services</a>
+<x-import component-from-global-scope="MiltinsonDesignSystem_e160cb.Button" size="sm" hint-size="110px,36px">Hire me</x-import>
+</nav>
+</header>
+<section style="padding:96px max(20px,4vw) 80px;border-bottom:1px solid var(--border)">
+<div style="max-width:1280px;margin:0 auto">
+<p style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--fg-2);margin:0">Miltinson Technologies</p>
+<h1 style="font-weight:600;font-size:clamp(56px,9vw,112px);line-height:1.02;letter-spacing:-0.03em;margin:20px 0 0;max-width:1100px">Builder. Consultant. <span style="background-image:linear-gradient(var(--signal-300),var(--signal-300));background-size:100% 0.24em;background-position:0 0.80em;background-repeat:no-repeat">Founder.</span></h1>
+<p style="font-size:22px;line-height:1.5;color:var(--fg-2);max-width:720px;margin:32px 0 0">I'm Eli Robinson — I build software, teach AI, and create resources for coaches.</p>
+<div style="display:flex;gap:12px;margin-top:40px">
+<x-import component-from-global-scope="MiltinsonDesignSystem_e160cb.Button" size="lg" hint-size="150px,52px">View my work</x-import>
+<x-import component-from-global-scope="MiltinsonDesignSystem_e160cb.Button" variant="secondary" size="lg" hint-size="150px,52px">Work with me</x-import>
+</div>
+</div>
+</section>
+<section style="padding:96px max(20px,4vw);border-bottom:1px solid var(--border)">
+<div style="max-width:1280px;margin:0 auto">
+<h2 style="font-weight:600;font-size:48px;letter-spacing:-0.025em;margin:0 0 40px">What I do</h2>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+<div style="border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:32px">
+<p style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--fg-2);margin:0">Software</p>
+<h3 style="font-weight:600;font-size:24px;letter-spacing:-0.02em;margin:16px 0 8px">Apps that earn their keep</h3>
+<p style="font-size:16px;line-height:1.65;color:var(--fg-2);margin:0">Small, sharp products built end to end — shipped, not pitched.</p>
+</div>
+<div style="border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:32px">
+<p style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--fg-2);margin:0">AI Consulting</p>
+<h3 style="font-weight:600;font-size:24px;letter-spacing:-0.02em;margin:16px 0 8px">AI help without the hype</h3>
+<p style="font-size:16px;line-height:1.65;color:var(--fg-2);margin:0">What's actually useful, what's hype, and how to fit it into your week.</p>
+</div>
+<div style="border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:32px">
+<p style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--fg-2);margin:0">Tech Support</p>
+<h3 style="font-weight:600;font-size:24px;letter-spacing:-0.02em;margin:16px 0 8px">A trusted hand</h3>
+<p style="font-size:16px;line-height:1.65;color:var(--fg-2);margin:0">Clear, patient help for individuals and small businesses. No jargon, no judgment.</p>
+</div>
+</div>
+</div>
+</section>
+<section style="padding:96px max(20px,4vw);background:var(--anchor-900);color:var(--ink-0)">
+<div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:7fr 5fr;gap:64px;align-items:center">
+<div>
+<p style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:oklch(100% 0 0 / 0.6);margin:0">Coaching Guides</p>
+<h2 style="font-weight:600;font-size:48px;line-height:1.05;letter-spacing:-0.025em;margin:20px 0 16px">Practical, no-fluff guides written for sports coaches.</h2>
+<p style="font-size:18px;line-height:1.6;color:oklch(100% 0 0 / 0.7);margin:0 0 32px;max-width:560px">Drills, session plans, and coaching frameworks. Read on any device, download the PDF, keep forever.</p>
+<x-import component-from-global-scope="MiltinsonDesignSystem_e160cb.Button" variant="accent" size="lg" hint-size="160px,52px">Browse guides</x-import>
+</div>
+<div style="display:flex;gap:16px;justify-content:flex-end">
+<div style="width:140px;height:200px;background:var(--ink-50);border-radius:4px;transform:rotate(-4deg);box-shadow:0 18px 40px -12px oklch(0% 0 0 / 0.5);padding:16px;display:flex;flex-direction:column;justify-content:space-between">
+<span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.16em;color:var(--anchor-700)">GUIDE · 01</span>
+<span style="font-weight:600;font-size:14px;color:var(--ink-1000);line-height:1.2">Session Plans for U10s</span>
+</div>
+<div style="width:140px;height:200px;background:var(--signal-100);border-radius:4px;transform:translateY(-8px);box-shadow:0 18px 40px -12px oklch(0% 0 0 / 0.5);padding:16px;display:flex;flex-direction:column;justify-content:space-between">
+<span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.16em;color:var(--anchor-700)">GUIDE · 02</span>
+<span style="font-weight:600;font-size:14px;color:var(--ink-1000);line-height:1.2">Practice Drills Vol. 1</span>
+</div>
+<div style="width:140px;height:200px;background:var(--ink-50);border-radius:4px;transform:rotate(4deg);box-shadow:0 18px 40px -12px oklch(0% 0 0 / 0.5);padding:16px;display:flex;flex-direction:column;justify-content:space-between">
+<span style="font-family:var(--font-mono);font-size:9px;letter-spacing:0.16em;color:var(--anchor-700)">GUIDE · 03</span>
+<span style="font-weight:600;font-size:14px;color:var(--ink-1000);line-height:1.2">Game-Day Frameworks</span>
+</div>
+</div>
+</div>
+</section>
+<section style="padding:96px max(20px,4vw)">
+<div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:32px">
+<div style="border:1px solid var(--border);border-radius:6px;padding:32px;background:var(--surface)">
+<p style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--fg-2);margin:0">AI Consulting</p>
+<p style="display:flex;align-items:baseline;gap:6px;font-family:var(--font-mono);margin:16px 0 20px"><span style="font-size:13px;color:var(--fg-3);letter-spacing:0.06em;text-transform:uppercase">From</span><span style="font-weight:500;font-size:38px;letter-spacing:-0.02em">$150</span><span style="font-size:14px;color:var(--fg-2)">/hr</span></p>
+<p style="font-size:16px;line-height:1.65;color:var(--fg-2);margin:0">Learn how to use AI tools effectively. I'll show you what's actually useful, what's hype, and how to integrate AI into your workflows.</p>
+</div>
+<div style="border:1px solid var(--border);border-radius:6px;padding:32px;background:var(--surface)">
+<p style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--fg-2);margin:0">Tech Support</p>
+<p style="display:flex;align-items:baseline;gap:6px;font-family:var(--font-mono);margin:16px 0 20px"><span style="font-size:13px;color:var(--fg-3);letter-spacing:0.06em;text-transform:uppercase">From</span><span style="font-weight:500;font-size:38px;letter-spacing:-0.02em">$75</span><span style="font-size:14px;color:var(--fg-2)">/hr</span></p>
+<p style="font-size:16px;line-height:1.65;color:var(--fg-2);margin:0">Clear, patient tech help for individuals and small businesses who need a trusted hand. No jargon, no judgment — just practical solutions.</p>
+</div>
+</div>
+</section>
+<footer style="background:var(--ink-1000);color:var(--ink-0);padding:40px max(20px,4vw) 32px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:32px;padding-bottom:28px;border-bottom:1px solid oklch(100% 0 0 / 0.18)">
+<div>
+<span style="font-weight:600;font-size:26px;letter-spacing:-0.025em">Miltinson<span style="color:var(--signal-500)">.</span></span>
+<p style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:oklch(100% 0 0 / 0.55);margin:12px 0 0">Builder · Consultant · Founder</p>
+</div>
+<nav style="display:flex;gap:24px">
+<a href="#" style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-0);text-decoration:none">Portfolio</a>
+<a href="#" style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-0);text-decoration:none">Store</a>
+<a href="#" style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-0);text-decoration:none">Services</a>
+</nav>
+</div>
+<div style="display:flex;justify-content:space-between;margin-top:18px;font-family:var(--font-mono);font-size:11px;color:oklch(100% 0 0 / 0.45)">
+<span>miltinsons.com</span>
+<span>© 2026 Miltinson Technologies. All rights reserved.</span>
+</div>
+</footer>
+</div>
+
+</x-dc>
+</body>
+</html>

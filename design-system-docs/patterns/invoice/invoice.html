@@ -1,0 +1,73 @@
+<!-- @dsCard group="Patterns" viewport="700x480" name="Invoice" subtitle="Printable A4/Letter invoice — mono figures, hairline rules, no colour" -->
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Invoice INV-0142 — Miltinson Technologies</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>doc-page:not(:defined){visibility:hidden}
+.inv-head{display:flex;justify-content:space-between;align-items:flex-start;gap:32px;padding-bottom:20px;border-bottom:1px solid var(--ink-1000)}
+.wm{font-weight:600;font-size:24px;letter-spacing:-0.025em}
+.meta{display:grid;grid-template-columns:auto auto;gap:4px 16px;font-family:var(--font-mono);font-size:11px;text-align:right}
+.meta dt{color:var(--fg-3);text-transform:uppercase;letter-spacing:.08em}
+.meta dd{margin:0}
+.parties{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin:28px 0 32px}
+.eb{font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg-3);margin:0 0 6px}
+table.lines{width:100%;border-collapse:collapse;font-size:13px}
+table.lines th{text-align:left;padding:8px 0;border-bottom:1px solid var(--ink-1000);font-weight:500;color:var(--fg-2);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-mono)}
+table.lines td{padding:12px 0;border-bottom:1px solid var(--border)}
+.num{font-family:var(--font-mono);text-align:right;white-space:nowrap}
+.totals{margin-left:auto;width:280px;margin-top:20px;font-size:13px}
+.totals div{display:flex;justify-content:space-between;padding:6px 0}
+.totals .grand{border-top:1px solid var(--ink-1000);margin-top:6px;padding-top:12px;font-size:16px;font-weight:600}
+.pay{margin-top:36px;padding-top:20px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:32px;font-size:13px}
+.foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;color:var(--fg-3);display:flex;justify-content:space-between}
+</style></head>
+<body>
+<doc-page margin="0.75in">
+<div class="inv-head">
+<div>
+<div class="wm">Miltinson<span style="color:var(--signal-500)">.</span></div>
+<p style="margin:6px 0 0;font-size:12px;color:var(--fg-2)">Miltinson Technologies · miltinsons.com</p>
+</div>
+<dl class="meta">
+<dt>Invoice</dt><dd>INV-0142</dd>
+<dt>Issued</dt><dd>1 Aug 2026</dd>
+<dt>Due</dt><dd>On receipt</dd>
+<dt>Status</dt><dd>Paid</dd>
+</dl>
+</div>
+<div class="parties">
+<div>
+<p class="eb">From</p>
+<p style="margin:0;font-size:13px;line-height:1.6">Miltinson Technologies<br>Eli Robinson<br>Leeds, United Kingdom<br>eli@miltinsons.com</p>
+</div>
+<div>
+<p class="eb">Billed to</p>
+<p style="margin:0;font-size:13px;line-height:1.6">Harrogate Junior FC<br>Attn: Sam Doyle<br>12 Kings Road, Harrogate HG1 5JW<br>sam@example.com</p>
+</div>
+</div>
+<table class="lines">
+<thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+<tbody>
+<tr><td>AI consulting — workshop and follow-up<br><span style="color:var(--fg-3);font-size:12px">3 July 2026, half day</span></td><td class="num">4</td><td class="num">$150.00</td><td class="num">$600.00</td></tr>
+<tr><td>Tech support — retainer<br><span style="color:var(--fg-3);font-size:12px">July 2026</span></td><td class="num">2</td><td class="num">$75.00</td><td class="num">$150.00</td></tr>
+<tr><td>Session Plans for U10s — club licence<br><span style="color:var(--fg-3);font-size:12px">Digital delivery</span></td><td class="num">10</td><td class="num">$12.00</td><td class="num">$120.00</td></tr>
+</tbody>
+</table>
+<div class="totals">
+<div><span>Subtotal</span><span class="num">$870.00</span></div>
+<div><span>VAT (20%)</span><span class="num">$174.00</span></div>
+<div><span style="color:var(--fg-2)">Paid 1 Aug 2026</span><span class="num" style="color:var(--fg-2)">−$1,044.00</span></div>
+<div class="grand"><span>Balance due</span><span class="num">$0.00</span></div>
+</div>
+<div class="pay">
+<div>
+<p class="eb">Payment</p>
+<p style="margin:0;line-height:1.6">Paid by card ending 4242 on 1 August 2026. Nothing further is due.</p>
+</div>
+<div>
+<p class="eb">Terms</p>
+<p style="margin:0;line-height:1.6">Payable on receipt. No contracts required — hours are booked as you need them.</p>
+</div>
+</div>
+<div class="foot"><span>INV-0142 · Miltinson Technologies</span><span>Questions? eli@miltinsons.com — I reply within 24 hours</span></div>
+</doc-page>
+<script src="./doc-page.js"></script>
+</body></html>
