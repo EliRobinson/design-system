@@ -12,6 +12,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import brandManifest from '@elirobinson/ai-patterns/brand-manifest';
 import contracts from '@elirobinson/ai-patterns/contracts';
 import { llmsFull as buildFull, llmsIndex as buildIndex } from '@elirobinson/ai-patterns/corpus';
 
@@ -21,6 +22,7 @@ import { siteSections } from './site-map';
 import { cssTokens } from './tokens-css';
 
 const APP_DIR = join(process.cwd(), 'src/app/(docs)');
+const BRAND_README = join(process.cwd(), '../../design-system-docs/README.md');
 
 /* What a reader of /llms.txt can fetch next. The packed snapshot answers the
    same question with filenames and the `ds` CLI; a website answers it with
@@ -140,6 +142,25 @@ export function llmsIndex(): string {
   return buildIndex({ manifest, alsoAvailable: MACHINE_READABLE_DOCS });
 }
 
+/* The site's corpus may carry repo-only brand artifacts — a reader of this
+   corpus is inside the repo — but never the mirrored ones (they render blank
+   until ported) or working material. Repo-only entries are marked by the
+   generator so a consumer skimming the same section in the tarball snapshot
+   is never pointed at a file it does not have. */
+function brandInput() {
+  return {
+    readme: readFileSync(BRAND_README, 'utf8'),
+    note: 'The brand source of truth is design-system-docs/ in this repo; consumers receive the shipped subset through @elirobinson/ai-patterns.',
+    artifacts: brandManifest.artifacts.filter(
+      (artifact) =>
+        artifact.origin !== 'mirrored' &&
+        artifact.category !== 'scratch' &&
+        artifact.category !== 'support-file' &&
+        artifact.category !== 'preview-card',
+    ),
+  };
+}
+
 export function llmsFull(): string {
   return buildFull({
     manifest,
@@ -147,6 +168,7 @@ export function llmsFull(): string {
     tokens: cssTokens(),
     prose: { foundations: sectionProse('Foundations'), patterns: sectionProse('Patterns') },
     componentAppendix,
+    brand: brandInput(),
   });
 }
 

@@ -97,6 +97,21 @@ describe('llms-full.txt corpus', () => {
     expect(full).not.toContain('<ComponentHeader');
     expect(full).not.toContain('export const metadata');
   });
+
+  it('carries the brand voice rules and the artifact inventory', () => {
+    /* An agent asked to build a Miltinson page used to get prop tables and
+       tokens and no voice guidance at all. */
+    expect(full).toContain('## Brand');
+    expect(full).toContain('Never the royal "we."');
+    expect(full).toContain('ui_kits/webapp/index.html');
+  });
+
+  it('marks repo-only brand artifacts and omits the mirrored and working ones', () => {
+    expect(full).toContain('[repo-only — not in the published package]');
+    expect(full).not.toContain('_project-mirror/');
+    expect(full).not.toContain('preview/');
+    expect(full).not.toContain('uploads/');
+  });
 });
 
 describe('per-component records', () => {

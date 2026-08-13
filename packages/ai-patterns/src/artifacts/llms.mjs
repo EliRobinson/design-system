@@ -76,6 +76,36 @@ export function versionStamp(versions) {
    @elirobinson/tokens — the one parser — which each caller runs before handing
    the result in. This module used to carry a copy of it. */
 
+/**
+ * The brand voice rules, extracted from design-system-docs/README.md's
+ * CONTENT FUNDAMENTALS section. Extracted here rather than by each caller so
+ * the packed snapshot and the docs site cannot cut the section differently —
+ * and loudly, because a corpus that silently lost its voice rules is exactly
+ * the state this section exists to end.
+ *
+ * @param {string} readme
+ */
+export function brandVoice(readme) {
+  const section = readme.match(/^## CONTENT FUNDAMENTALS\s*\n([\s\S]*?)(?=\n## )/m);
+  if (!section) {
+    throw new Error(
+      'brandVoice: no "## CONTENT FUNDAMENTALS" section in the brand README — ' +
+        'the corpus would silently lose the voice rules.',
+    );
+  }
+  return section[1].replace(/\n---\s*$/, '').trim();
+}
+
+/** One line per brand artifact; repo-only artifacts say so. */
+function brandArtifactLine(artifact) {
+  const components =
+    artifact.components && artifact.components.length > 0
+      ? ` (components: ${artifact.components.join(', ')})`
+      : '';
+  const repoOnly = artifact.ships ? '' : ' [repo-only — not in the published package]';
+  return `- ${artifact.path} — ${artifact.title}${components}${repoOnly}`;
+}
+
 function propsTable(props) {
   if (!props || props.length === 0) {
     return '(no props of its own beyond inherited HTML attributes)';
@@ -213,6 +243,7 @@ export function llmsFull({
   versions,
   prose = {},
   componentAppendix = () => [],
+  brand,
 }) {
   const constraintEntries = Object.entries(contracts.componentConstraints ?? {});
   const foundations = prose.foundations ?? [];
@@ -277,6 +308,23 @@ export function llmsFull({
     );
     for (const page of patterns) {
       parts.push('', page);
+    }
+  }
+
+  if (brand) {
+    parts.push(
+      '',
+      '## Brand',
+      '',
+      'How Miltinson surfaces are written and what brand material exists. Prop tables and',
+      'tokens make a page correct; these rules make it Miltinson.',
+    );
+    if (brand.note) {
+      parts.push('', brand.note);
+    }
+    parts.push('', brandVoice(brand.readme));
+    if (brand.artifacts && brand.artifacts.length > 0) {
+      parts.push('', '### Brand artifacts', '', ...brand.artifacts.map(brandArtifactLine));
     }
   }
 

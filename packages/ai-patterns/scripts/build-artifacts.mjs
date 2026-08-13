@@ -194,7 +194,21 @@ function main() {
   );
   write(
     join(SKILL_DIRS.reference, 'llms-full.txt'),
-    llmsFull({ manifest, contracts, tokens, versions }),
+    llmsFull({
+      manifest,
+      contracts,
+      tokens,
+      versions,
+      /* Only ships:true artifacts — this file travels in the tarball, and
+         advertising repo-only material to a consumer is a broken pointer. */
+      brand: {
+        readme: regenerated,
+        note:
+          'The full brand skill — tokens, assets, UI kits — ships alongside this one at ' +
+          `.claude/skills/${SKILL_DIRS.brand}/.`,
+        artifacts: brandManifest.artifacts.filter((artifact) => artifact.ships),
+      },
+    }),
   );
   write(
     join(SKILL_DIRS.reference, 'SKILL.md'),
