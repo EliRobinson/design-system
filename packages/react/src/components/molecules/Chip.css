@@ -10,7 +10,7 @@
   min-height: 32px;
   border-radius: var(--radius-pill);
   background: var(--bg-subtle);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control); /* control edge — SC 1.4.11 */
   font-size: var(--fs-xs);
   color: var(--fg);
 }

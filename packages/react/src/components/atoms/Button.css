@@ -1,5 +1,14 @@
 /* ==========================================================================
    Button
+   --------------------------------------------------------------------------
+   Every variant restates `color` in :hover and :active, which reads as
+   redundant and is not. `<a class="ds-button ds-button--accent">` is a real
+   and encouraged usage, and tokens.css's global `a:hover { color:
+   var(--link-hover) }` is (0,1,1) where `.ds-button--accent` is (0,1,0). A
+   variant whose :hover block only moves background-color therefore keeps its
+   fill and lets the element rule repaint the label — amber on amber, 2.31:1,
+   failing SC 1.4.3. The `:hover`/`:active` blocks below are (0,2,0), which
+   outranks it. Restate `color` in every state you add.
    ========================================================================== */
 
 .ds-button {
@@ -16,6 +25,8 @@
   line-height: 1;
   min-height: 44px;
   padding: var(--space-3) var(--space-4);
+  /* A control that happens to be an anchor is a control, not a link. */
+  text-decoration: none;
   transition:
     background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
@@ -38,40 +49,55 @@
   padding: var(--space-4) var(--space-5);
 }
 
+/* The high-contrast action is ink-on-background, which means it inverts with
+   the theme — the same pairing @elirobinson/tokens/tailwind.css already
+   documents as --color-primary/--color-primary-foreground. Fixed at
+   --ink-1000 it was a black button on a black page, its fill 1.00:1 against
+   the page and only the label betraying that a control was there. */
 .ds-button--primary {
-  background-color: var(--ink-1000);
-  color: var(--ink-0);
+  background-color: var(--fg);
+  color: var(--bg); /* 21:1 */
 }
 
 .ds-button--primary:hover {
-  background-color: var(--ink-800);
+  background-color: var(--fg-2);
+  color: var(--bg); /* 8.45:1 light, 13.73:1 dark */
 }
 .ds-button--primary:active {
-  background-color: var(--ink-900);
+  background-color: var(--fg);
+  color: var(--bg); /* 21:1 */
   transform: translateY(1px);
 }
 
 .ds-button--accent {
   background-color: var(--accent);
-  color: var(--accent-fg);
+  color: var(--accent-fg); /* 8.30:1 */
 }
 
 .ds-button--accent:hover {
   background-color: var(--accent-hover);
+  color: var(--accent-fg); /* 10.17:1 */
 }
 .ds-button--accent:active {
   background-color: var(--accent-press);
+  color: var(--accent-fg); /* 5.69:1 */
   transform: translateY(1px);
 }
 
 .ds-button--secondary {
   background-color: transparent;
-  border-color: var(--border-strong);
+  border-color: var(--border-control); /* 3.64:1 — SC 1.4.11 */
   color: var(--fg);
 }
 
 .ds-button--secondary:hover {
   background-color: var(--bg-subtle);
+  color: var(--fg); /* 20.06:1 */
+}
+.ds-button--secondary:active {
+  background-color: var(--bg-muted);
+  color: var(--fg);
+  transform: translateY(1px);
 }
 
 .ds-button--ghost {
@@ -81,18 +107,31 @@
 
 .ds-button--ghost:hover {
   background-color: var(--bg-subtle);
+  color: var(--fg); /* 20.06:1 */
+}
+.ds-button--ghost:active {
+  background-color: var(--bg-muted);
+  color: var(--fg);
+  transform: translateY(1px);
 }
 
+/* --bg-muted, not --ink-100: the fill has to follow the theme. Hard-coded,
+   it painted a near-white button on a black page in dark mode, and the
+   disabled label sat on it at 2.39:1. Now 4.34:1 light, 7.60:1 dark. */
 .ds-button--disabled,
 .ds-button:disabled {
-  background-color: var(--ink-100);
+  background-color: var(--bg-muted);
   border-color: transparent;
-  color: var(--fg-4);
+  color: var(--fg-disabled);
   cursor: not-allowed;
   transform: none;
 }
 
 .ds-button--disabled:hover,
-.ds-button:disabled:hover {
-  background-color: var(--ink-100);
+.ds-button:disabled:hover,
+.ds-button--disabled:active,
+.ds-button:disabled:active {
+  background-color: var(--bg-muted);
+  color: var(--fg-disabled);
+  transform: none;
 }

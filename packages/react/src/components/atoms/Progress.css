@@ -2,8 +2,11 @@
    Progress
    ========================================================================== */
 
+/* The track is how far there is to go, so it is part of the reading, not a
+   backdrop: at --ink-100 it was 1.12:1 against a light page and invisible.
+   3.64:1 light, 3.94:1 dark — and the bar stays 5.77:1 against it. */
 .ds-progress {
-  background: var(--ink-100);
+  background: var(--border-control);
   border-radius: var(--radius-pill);
   height: 8px;
   overflow: hidden;
@@ -11,7 +14,7 @@
 }
 
 .ds-progress__bar {
-  background: var(--ink-1000);
+  background: var(--fg); /* was --ink-1000: a black bar on a black page */
   border-radius: var(--radius-pill);
   height: 100%;
   transition: width var(--dur-normal) var(--ease-out);

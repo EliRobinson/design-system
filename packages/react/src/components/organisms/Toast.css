@@ -79,9 +79,11 @@
   outline-offset: 2px;
 }
 
+/* The action is a control; the toast's own edge and its status stripe stay
+   as they are — the stripe colours already clear 3:1 in both themes. */
 .ds-toast__action {
   background: transparent;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   color: var(--fg);
   cursor: pointer;

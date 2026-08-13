@@ -14,9 +14,11 @@
   text-transform: uppercase;
 }
 
+/* --bg-muted, not --ink-100: --fg-2 follows the theme and the fill did not,
+   so in dark mode this was ink-300 text on a near-white chip at 1.37:1. */
 .ds-badge--default {
-  background: var(--ink-100);
-  color: var(--fg-2);
+  background: var(--bg-muted);
+  color: var(--fg-2); /* 7.57:1 light, 13.27:1 dark */
 }
 
 .ds-badge--signal {
@@ -29,9 +31,11 @@
   color: var(--anchor-700);
 }
 
+/* The inverse pair, so a solid badge stays visible against either page —
+   a fixed black chip on a black page was 1.00:1. */
 .ds-badge--solid {
-  background: var(--ink-1000);
-  color: var(--ink-0);
+  background: var(--bg-inverse);
+  color: var(--fg-inverse);
 }
 
 .ds-badge--outline {

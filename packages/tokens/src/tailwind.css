@@ -117,6 +117,7 @@
   --color-foreground-2: var(--fg-2);
   --color-foreground-3: var(--fg-3);
   --color-foreground-4: var(--fg-4);
+  --color-foreground-disabled: var(--fg-disabled);
   --color-foreground-inverse: var(--fg-inverse);
   --color-muted-foreground: var(--fg-3);
 
@@ -134,6 +135,8 @@
   --color-accent-hover: var(--accent-hover);
   --color-accent-press: var(--accent-press);
   --color-accent-tint: var(--accent-tint);
+  /* `text-accent` would be the 2.53:1 fill. Amber you can read is this. */
+  --color-accent-ink: var(--accent-ink);
 
   --color-anchor: var(--anchor);
   --color-anchor-foreground: var(--anchor-fg);
@@ -142,25 +145,41 @@
   --color-anchor-tint: var(--anchor-tint);
 
   /* --- Status ------------------------------------------------------------ */
+  /* `-foreground` is shadcn's contract: the text drawn *on* the status fill.
+     `text-*-ink` is this system's addition: status-coloured text on the page
+     background, which the fill itself cannot do — --status-warning is 3.69:1
+     and --status-info 3.88:1, both under the 4.5:1 SC 1.4.3 asks of a label. */
   --color-destructive: var(--status-danger);
   --color-destructive-foreground: var(--fg-inverse);
+  --color-destructive-ink: var(--status-danger-fg);
+  --color-destructive-tint: var(--status-danger-tint);
   --color-success: var(--status-success);
   --color-success-foreground: var(--fg-inverse);
+  --color-success-ink: var(--status-success-fg);
+  --color-success-tint: var(--status-success-tint);
   --color-warning: var(--status-warning);
   --color-warning-foreground: var(--fg-on-signal);
+  --color-warning-ink: var(--status-warning-fg);
+  --color-warning-tint: var(--status-warning-tint);
   --color-info: var(--status-info);
   --color-info-foreground: var(--fg-inverse);
+  --color-info-ink: var(--status-info-fg);
+  --color-info-tint: var(--status-info-tint);
 
   /* --- Lines and focus --------------------------------------------------- */
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-border-inverse: var(--border-inverse);
-  --color-input: var(--border);
+  --color-border-control: var(--border-control);
+  /* Tailwind's `border-input` is the input's own edge, which is a control
+     boundary — 3:1 under SC 1.4.11, not the 1.24:1 decorative --border. */
+  --color-input: var(--border-control);
   --color-ring: var(--focus-ring);
 
   --color-link: var(--link);
   --color-link-hover: var(--link-hover);
   --color-link-visited: var(--link-visited);
+  --color-link-on-fill: var(--link-on-fill);
 
   /* --- Radius ------------------------------------------------------------ */
   --radius-none: var(--ds-radius-none);

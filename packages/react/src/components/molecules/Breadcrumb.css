@@ -35,6 +35,8 @@
 }
 
 .ds-breadcrumb__separator {
-  color: var(--fg-4);
+  /* The separator is the only visual cue for the trail's structure, so it is
+     a meaningful graphic, not decoration. --fg-4 was 2.67:1. */
+  color: var(--fg-3); /* 4.85:1 light, 7.87:1 dark */
   font-size: var(--fs-sm);
 }

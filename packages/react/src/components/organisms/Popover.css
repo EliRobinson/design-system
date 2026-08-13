@@ -2,10 +2,12 @@
    Popover
    ========================================================================== */
 
+/* The trigger is a control and takes --border-control; the floating panel
+   below is a surface edge over a shadow and stays decorative. */
 .ds-popover__trigger {
   align-items: center;
   background: transparent;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   color: var(--fg);
   cursor: pointer;

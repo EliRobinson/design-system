@@ -59,6 +59,26 @@ Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
   - **Primary interactive controls** — buttons, pagination items, segmented-control options, nav items, and other button-like controls — have a minimum 44x44 touch target. Where visual density matters, keep the painted glyph small and expand the hit area (padding, or a bounded overlay) rather than inflating the visible control.
   - **Dense inline affordances** — a chip's remove glyph, a search field's clear button, rating stars, calendar day cells — follow shadcn/MUI-scale sizing instead, not 44px. Reference values: MUI Chip is 32px tall (24px `small`) with a 22px (16px `small`) delete icon; shadcn Badge is ~20px tall with 12px icons and ships no remove affordance at all.
   - **In both cases**, an expanded hit area must never overlap sibling content. A 44x44 overlay on a chip once covered the chip's own label, so clicking the label's tail fired the remove handler — bound the hit area (e.g. stretch to the container's height, not a symmetric negative inset) so this can't recur.
+- **A filled variant restates `color` in every state.** If a rule sets `background-color`, the rule for each of its states (`:hover`, `:active`, `:focus`, `:disabled`) sets `color` too — even when the colour does not change.
+- **Never paint `--ink-*`, `--signal-*` or `--anchor-*`.** The scales are fixed and do not respond to `[data-theme="dark"]`; use the semantic token that flips. `component-css.test.mjs` enforces this.
+- **A background and the text on it come from the same world** — both themed, or both fixed. One of each inverts in dark mode.
+- Control edges use `--border-control`, not `--border`/`--border-strong`. See [Tokens](tokens.md) for which edges count.
+- Status text uses `--status-*-fg`, status panels `--status-*-tint`; `--status-*` is a fill and two of them cannot carry a label at all.
+- Brand amber that a user reads is `--accent-ink`, not `--accent` (2.53:1).
+- **Colour is never the only signal for a state.** Pair it with a glyph, shape, label or border — see SC 1.4.1 in [Tokens](tokens.md).
+
+#### Why a filled variant restates `color`
+
+It reads as redundant and is not — it is a specificity fact, not a style preference.
+
+`tokens.css` declares a global `a:hover { color: var(--link-hover) }`. That selector is **(0,1,1)**. A variant class like `.ds-button--accent` is **(0,1,0)**, so it loses. `<a class="ds-button ds-button--accent">` is a real and encouraged usage, and when the variant's own `:hover` rule moved only `background-color`, the fill stayed amber while the element rule repainted the label amber: **2.31:1**, failing SC 1.4.3. Nothing in the component library outranked it.
+
+Two layers fix it, and both are needed:
+
+1. `.ds-button--accent:hover` restating `color` is **(0,2,0)**, which wins. This is the component's job and applies to every filled variant.
+2. `tokens.css` scopes `--link-on-fill: currentColor` onto links inside filled surfaces (`.ds-button a`, `.ds-badge a`, `.ds-chip a`, `.ds-alert a`, `.ds-toast a`, `[data-on-fill] a`), so a link _nested inside_ a fill inherits that fill's foreground rather than a hue shift. Mark any new filled surface with `data-on-fill` or add its class there.
+
+Because the hover hue shift is gone on those surfaces, the hover affordance is carried by `text-decoration-thickness: 2px` instead. A control that is an anchor (`a.ds-button`, `a.ds-chip`) drops the underline entirely — it is a control, not a link.
 
 ### FormField vs Input
 

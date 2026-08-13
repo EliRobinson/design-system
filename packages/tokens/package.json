@@ -25,6 +25,10 @@
       "types": "./src/parse-tokens-css.d.mts",
       "default": "./src/parse-tokens-css.mjs"
     },
+    "./color": {
+      "types": "./src/color.d.mts",
+      "default": "./src/color.mjs"
+    },
     "./tokens-data": {
       "types": "./dist/tokens-data.d.ts",
       "import": "./dist/tokens-data.js"

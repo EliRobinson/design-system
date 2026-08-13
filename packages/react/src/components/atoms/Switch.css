@@ -11,7 +11,9 @@
 
 .ds-switch__input {
   appearance: none;
-  background: var(--ink-200);
+  /* The off state is the whole control: at --ink-200 the track was 1.24:1
+     against the page and effectively invisible. 3.64:1 — SC 1.4.11. */
+  background: var(--border-control);
   border-radius: var(--radius-pill);
   cursor: pointer;
   height: 24px;
@@ -20,8 +22,10 @@
   width: 44px;
 }
 
+/* The knob is --bg, not a fixed white: on a dark theme a white knob sat on a
+   white-ish off track at 1.00:1 and vanished. 3.64:1 off, 21:1 on. */
 .ds-switch__input::before {
-  background: var(--ink-0);
+  background: var(--bg);
   border-radius: var(--radius-pill);
   content: '';
   height: 18px;
@@ -32,8 +36,10 @@
   width: 18px;
 }
 
+/* Likewise the on state: --ink-1000 was a black track on a black page, so the
+   checked state was invisible in dark mode. */
 .ds-switch__input:checked {
-  background: var(--ink-1000);
+  background: var(--fg); /* 21:1 against --bg in both themes */
 }
 
 .ds-switch__input:checked::before {

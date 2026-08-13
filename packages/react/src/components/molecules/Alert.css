@@ -27,26 +27,30 @@
   color: var(--fg);
 }
 
+/* Each variant is a --status-*-tint fill with its --status-*-fg text. Both
+   members follow the theme, which is the point: these used fixed light tints,
+   so the moment the text token became themed the danger variant inverted into
+   light-red-on-pink at 2.40:1. Change one and you change the other. */
 .ds-alert--success {
-  background: var(--anchor-50);
-  border-color: var(--anchor-200);
-  color: var(--anchor-800);
+  background: var(--status-success-tint);
+  border-color: var(--status-success);
+  color: var(--status-success-fg); /* 10.23:1 light, 9.45:1 dark */
 }
 
 .ds-alert--warning {
-  background: var(--signal-50);
-  border-color: var(--signal-200);
-  color: var(--signal-800);
+  background: var(--status-warning-tint);
+  border-color: var(--status-warning);
+  color: var(--status-warning-fg); /* 8.96:1 light, 9.20:1 dark */
 }
 
 .ds-alert--danger {
-  background: oklch(97% 0.02 25);
-  border-color: oklch(88% 0.08 25);
-  color: var(--status-danger);
+  background: var(--status-danger-tint);
+  border-color: var(--status-danger);
+  color: var(--status-danger-fg); /* 6.83:1 light, 6.62:1 dark */
 }
 
 .ds-alert--info {
-  background: var(--bg-subtle);
-  border-color: var(--border-strong);
-  color: var(--fg-2);
+  background: var(--status-info-tint);
+  border-color: var(--status-info);
+  color: var(--status-info-fg); /* 6.44:1 light, 8.22:1 dark */
 }

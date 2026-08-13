@@ -14,7 +14,9 @@
 
 .ds-empty-state__icon {
   font-size: var(--fs-lg);
-  color: var(--fg-4);
+  /* The icon carries the state, so it is a meaningful graphic. --fg-4 was
+     2.67:1 against a light page. */
+  color: var(--fg-3); /* 4.85:1 light, 7.87:1 dark */
 }
 
 .ds-empty-state__title {

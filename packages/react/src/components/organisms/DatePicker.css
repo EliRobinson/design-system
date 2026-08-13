@@ -70,6 +70,7 @@
 
 .ds-date-picker__day:hover {
   background: var(--bg-subtle);
+  color: var(--fg); /* 20.06:1 */
 }
 
 .ds-date-picker__day:focus-visible {
@@ -87,8 +88,11 @@
   color: var(--accent-fg);
 }
 
+/* The same shape as the reported Button bug: an accent fill on hover with no
+   colour of its own, so anything outranking the variant repaints the label. */
 .ds-date-picker__day--selected:hover {
   background: var(--accent-hover);
+  color: var(--accent-fg); /* 10.17:1 */
 }
 
 .ds-date-picker__day--today.ds-date-picker__day--selected {

@@ -37,6 +37,7 @@
 .ds-command-palette__item:hover,
 .ds-command-palette__item--active {
   background: var(--bg-subtle);
+  color: var(--fg); /* 20.06:1 */
 }
 
 .ds-command-palette__shortcut {

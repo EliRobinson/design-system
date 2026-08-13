@@ -13,7 +13,7 @@
 }
 
 .ds-form-field__required {
-  color: var(--status-danger);
+  color: var(--status-danger-fg); /* 7.55:1 — the fill token is 4.79:1 */
 }
 
 .ds-form-field__message {
@@ -26,5 +26,5 @@
 }
 
 .ds-form-field__message--error {
-  color: var(--status-danger);
+  color: var(--status-danger-fg); /* 7.55:1 — the fill token is 4.79:1 */
 }
