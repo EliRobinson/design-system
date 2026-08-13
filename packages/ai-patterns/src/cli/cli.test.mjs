@@ -3,6 +3,7 @@
 // survive — tiered with a manifest, flat without one, nothing installed at all —
 // is exercised directly rather than assumed.
 
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -396,5 +397,106 @@ describe('argument handling', () => {
   it('reports the installed versions for --version', () => {
     const { text } = run(['--version'], at(tieredConsumer()));
     expect(text).toContain('@elirobinson/react@1.1.0');
+  });
+});
+
+// `ds` reads node_modules on purpose — introspecting installed code is what
+// keeps it from going stale. But when node_modules has drifted from the
+// lockfile, "what is installed" and "what this repo builds" are different
+// versions, and every answer here is about the former. Say so, on stderr, so
+// the caution reaches the place the wrong answer is actually consumed.
+describe('warning when node_modules disagrees with the lockfile', () => {
+  function driftedProject({ installed = '2.0.1', locked = '1.3.0' } = {}) {
+    const root = consumer({
+      '@elirobinson/react': {
+        'package.json': { name: '@elirobinson/react', version: installed },
+        'dist/manifest.json': BUTTON_MANIFEST,
+      },
+    });
+
+    write(root, 'package.json', {
+      name: 'consumer',
+      dependencies: { '@elirobinson/react': '^1.3.0' },
+    });
+    write(
+      root,
+      'pnpm-lock.yaml',
+      `importers:\n  .:\n    dependencies:\n      '@elirobinson/react':\n        specifier: ^1.3.0\n        version: ${locked}\n`,
+    );
+
+    return root;
+  }
+
+  it('names both versions', () => {
+    const { warning } = run(['props', 'Button'], at(driftedProject()));
+
+    expect(warning).toMatch(/lockfile/i);
+    expect(warning).toContain('@elirobinson/react');
+    expect(warning).toContain('2.0.1');
+    expect(warning).toContain('1.3.0');
+  });
+
+  it('keeps the warning out of the command output, which gets piped', () => {
+    const { text, exitCode } = run(['props', 'Button'], at(driftedProject()));
+
+    expect(text).not.toMatch(/lockfile/i);
+    expect(exitCode).toBe(0);
+  });
+
+  it('warns on --version too, where the numbers are the whole answer', () => {
+    expect(run(['--version'], at(driftedProject())).warning).toContain('2.0.1');
+  });
+
+  it('says nothing when the install matches the lockfile', () => {
+    const root = driftedProject({ installed: '1.3.0', locked: '1.3.0' });
+    expect(run(['props', 'Button'], at(root)).warning).toBeUndefined();
+  });
+
+  it('says nothing in a project with no lockfile to disagree with', () => {
+    expect(run([], at(tieredConsumer())).warning).toBeUndefined();
+  });
+
+  it('survives a directory with no package.json at all', () => {
+    const { exitCode, warning } = run([], {
+      origins: [consumer({})],
+      cwd: '/nowhere',
+      selfDir: patternsRoot,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(warning).toBeUndefined();
+  });
+});
+
+describe('the ds binary', () => {
+  it('writes the drift warning to stderr, leaving stdout clean for a pipe', () => {
+    const root = consumer({
+      '@elirobinson/react': {
+        'package.json': { name: '@elirobinson/react', version: '2.0.1' },
+        'dist/manifest.json': BUTTON_MANIFEST,
+      },
+    });
+    write(root, 'package.json', {
+      name: 'consumer',
+      dependencies: { '@elirobinson/react': '^1.3.0' },
+    });
+    write(
+      root,
+      'pnpm-lock.yaml',
+      `importers:\n  .:\n    dependencies:\n      '@elirobinson/react':\n        specifier: ^1.3.0\n        version: 1.3.0\n`,
+    );
+
+    const binary = join(patternsRoot, 'src', 'cli', 'cli.mjs');
+    const { status, stdout, stderr } = spawnSync(process.execPath, [binary, '--version'], {
+      cwd: root,
+      encoding: 'utf8',
+    });
+
+    expect(stderr).toContain('node_modules disagrees with the lockfile');
+    expect(stderr).toContain('1.3.0 locked');
+    expect(stdout).toContain('@elirobinson/react@2.0.1');
+    expect(stdout).not.toMatch(/lockfile/i);
+    // A caveat, not a failure — the command answered the question it was asked.
+    expect(status).toBe(0);
   });
 });

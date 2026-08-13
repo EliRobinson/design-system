@@ -15,11 +15,24 @@ registry. This skill brings them current and fixes what the upgrade breaks.
 pnpm --package=@elirobinson/ai-patterns dlx ds-resync --json
 ```
 
-This is read-only — it never modifies the repo. It prints one record per
-`@elirobinson/*` dependency:
+This is read-only — it never modifies the repo.
 
-- `installedVersion` / `targetVersion` / `latestVersion` — where the repo is, where this
-  run would take it, and the newest thing published
+**It compares the versions the lockfile resolved — what CI and a fresh clone
+install — against the registry, and separately reports when `node_modules`
+disagrees with that lockfile.** `node_modules` is never the baseline: an install
+that has drifted ahead of the committed manifests would otherwise make the repo
+look current while the version it actually builds is majors behind.
+
+It prints one record per `@elirobinson/*` dependency:
+
+- `currentVersion` / `targetVersion` / `latestVersion` — where the repo is, where
+  this run would take it, and the newest thing published
+- `currentSource` — where `currentVersion` came from: `lockfile` (normal),
+  `range` (no lockfile entry, so the declared range's floor is standing in — a
+  weaker claim), or `unresolved` (the range names no published version, e.g.
+  `workspace:*`, and the package was not compared at all)
+- `lockedVersion` / `installedVersion` — the lockfile's answer and
+  `node_modules`' answer, kept apart. Either can be `null`.
 - `target` — the distance requested for this package: `latest`, `minor`, or `patch`
 - `heldBack` — true when `targetVersion` is below `latestVersion` because of `target`.
   A held-back package is not "current"; a newer version is waiting.
@@ -30,7 +43,10 @@ This is read-only — it never modifies the repo. It prints one record per
   `version` and a `body`
 - `skipped` — set when the declared range was too complex to rewrite safely
 
-If nothing is outdated, say so and stop.
+Alongside the packages, a top-level `drift` array lists every package whose
+`node_modules` copy disagrees with the lockfile — see step 1b.
+
+If nothing is outdated and `drift` is empty, say so and stop.
 
 If the command fails with a 401, the repo's registry token is missing or
 expired. Report the fix it prints; do not try to work around it.
@@ -38,6 +54,29 @@ expired. Report the fix it prints; do not try to work around it.
 An empty `entries` array on an outdated package means that version was
 published before the packages started shipping `CHANGELOG.md`. Treat it as
 "notes unavailable", not "nothing changed" — a major jump still needs care.
+
+## 1b. If it reports NODE_MODULES OUT OF SYNC
+
+A non-empty `drift` means `node_modules` holds different versions from the
+lockfile. **Deal with this before anything else**, because while it holds, every
+tool that introspects installed code is answering for a version this repo does
+not build — including `pnpm ds` and `pnpm ds props <Name>`. Code written against
+those answers compiles locally and breaks in CI.
+
+The fix is an install, not an upgrade:
+
+```bash
+pnpm install
+```
+
+Then re-run step 1. Do not "fix" drift by upgrading `package.json` to match what
+happens to be installed — that changes what the repo ships in order to match a
+local accident.
+
+In CI, `--fail-on-out-of-sync` exits 2 on this condition. It is separate from
+`--fail-on-outdated`, which exits 2 when something is behind: different causes,
+different fixes. (Both are distinct from `ds-resync artifacts --fail-on-drift`,
+which is about the generated snapshot, not about `node_modules`.)
 
 ## 2. Read the changelog entries before upgrading
 

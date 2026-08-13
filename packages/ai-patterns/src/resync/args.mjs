@@ -56,6 +56,16 @@ const FLAGS = {
     type: 'boolean',
     description: 'Exit 2 when anything is behind (for CI)',
   },
+  // Deliberately shares no word with the artifacts command's `--fail-on-drift`,
+  // which is a different disagreement entirely: the generated snapshot versus
+  // the installed @elirobinson/react. A near-identical name would make a CI
+  // config read as though it checked one thing when it checked the other.
+  failOnOutOfSync: {
+    names: ['--fail-on-out-of-sync'],
+    key: 'failOnOutOfSync',
+    type: 'boolean',
+    description: 'Exit 2 when node_modules and the lockfile\ndisagree (for CI)',
+  },
   interactive: {
     names: ['--interactive', '-i'],
     key: 'interactive',
@@ -133,6 +143,7 @@ const RESYNC_FLAGS = [
   FLAGS.json,
   FLAGS.cwd,
   FLAGS.failOnOutdated,
+  FLAGS.failOnOutOfSync,
   FLAGS.help,
 ];
 
@@ -179,6 +190,10 @@ Usage: ds-resync [options]
 Commands:
   (default)             Report and optionally apply dependency upgrades
   artifacts             Sync the design system's agent skills into this repo
+
+Compares the versions your lockfile resolved — what CI and a fresh clone install
+— against the registry, and separately reports when node_modules disagrees with
+that lockfile.
 
 Options:
 ${renderOptions(RESYNC_FLAGS)}

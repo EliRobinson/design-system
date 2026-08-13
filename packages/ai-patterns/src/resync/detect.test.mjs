@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { detect, findScopedDependencies, readInstalledVersion } from './detect.mjs';
 
-function makeRepo(packageJson, installed = {}) {
+function makeRepo(packageJson, installed = {}, locked = null) {
   const dir = mkdtempSync(join(tmpdir(), 'ds-resync-'));
   writeFileSync(join(dir, 'package.json'), JSON.stringify(packageJson, null, 2));
 
@@ -12,6 +12,13 @@ function makeRepo(packageJson, installed = {}) {
     const packageDir = join(dir, 'node_modules', name);
     mkdirSync(packageDir, { recursive: true });
     writeFileSync(join(packageDir, 'package.json'), JSON.stringify({ name, version }));
+  }
+
+  if (locked) {
+    const body = Object.entries(locked)
+      .map(([name, version]) => `      '${name}':\n        version: ${version}`)
+      .join('\n');
+    writeFileSync(join(dir, 'pnpm-lock.yaml'), `importers:\n  .:\n    dependencies:\n${body}\n`);
   }
 
   return dir;
@@ -61,11 +68,12 @@ describe('readInstalledVersion', () => {
 });
 
 describe('detect', () => {
-  it('pairs declared ranges with installed versions', () => {
+  it('pairs declared ranges with installed and locked versions', () => {
     const dir = makeRepo(
       {
         dependencies: { '@elirobinson/react': '^1.0.0', '@elirobinson/tokens': '^0.2.0' },
       },
+      { '@elirobinson/react': '1.1.0' },
       { '@elirobinson/react': '1.1.0' },
     );
 
@@ -75,14 +83,42 @@ describe('detect', () => {
         declaredRange: '^1.0.0',
         field: 'dependencies',
         installedVersion: '1.1.0',
+        lockedVersion: '1.1.0',
       },
       {
         name: '@elirobinson/tokens',
         declaredRange: '^0.2.0',
         field: 'dependencies',
         installedVersion: null,
+        lockedVersion: null,
       },
     ]);
+  });
+
+  it('reports the locked version even when nothing is installed', () => {
+    const dir = makeRepo(
+      { dependencies: { '@elirobinson/react': '^1.3.0' } },
+      {},
+      { '@elirobinson/react': '1.3.0' },
+    );
+
+    expect(detect(dir).packages[0]).toMatchObject({
+      installedVersion: null,
+      lockedVersion: '1.3.0',
+    });
+  });
+
+  it('reports installed and locked separately when they disagree', () => {
+    const dir = makeRepo(
+      { dependencies: { '@elirobinson/react': '^1.3.0' } },
+      { '@elirobinson/react': '2.0.1' },
+      { '@elirobinson/react': '1.3.0' },
+    );
+
+    expect(detect(dir).packages[0]).toMatchObject({
+      installedVersion: '2.0.1',
+      lockedVersion: '1.3.0',
+    });
   });
 
   it('throws a directed error when there is no package.json', () => {

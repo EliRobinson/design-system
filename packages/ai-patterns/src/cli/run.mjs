@@ -1,8 +1,10 @@
-// Argument routing. Pure: takes argv, returns { text, exitCode }. The bin does
-// the writing and exiting.
+// Argument routing. Pure: takes argv, returns { text, exitCode, warning? }. The
+// bin does the writing and exiting — `text` to stdout, `warning` to stderr.
 
 import { join } from 'node:path';
 
+import { installCommand } from '../resync/apply.mjs';
+import { detect, findDrift } from '../resync/detect.mjs';
 import * as commands from './commands.mjs';
 import { loadEnvironment, PATTERNS_PKG, REACT_PKG, TOKENS_PKG, versionOf } from './discovery.mjs';
 import { installAgents } from './init.mjs';
@@ -28,13 +30,53 @@ function valueOf(argv, flag) {
 }
 
 /**
+ * Reading `node_modules` is this CLI's whole design — describing installed code
+ * is what keeps it from going stale, and that does not change here. What
+ * changes is honesty about which version it is describing: when the install has
+ * drifted from the lockfile, these answers are about code CI does not build,
+ * and an agent writing against them ships something that fails there.
+ *
+ * Returns undefined for anything short of a confirmed disagreement. This runs
+ * on every invocation, so a directory with no manifest, no lockfile or no
+ * install must cost nothing and say nothing.
+ */
+export function installWarning(cwd) {
+  let detected;
+  try {
+    detected = detect(cwd);
+  } catch {
+    return undefined;
+  }
+
+  const drift = findDrift(detected.packages);
+  if (drift.length === 0) return undefined;
+
+  const { command, args } = installCommand(detected.lock?.kind);
+  const versions = drift
+    .map((entry) => `${entry.name} ${entry.installed} installed, ${entry.locked} locked`)
+    .join('; ');
+
+  return [
+    `ds: node_modules disagrees with the lockfile — ${versions}.`,
+    `    This describes what is installed, not what CI builds. Run \`${command} ${args.join(' ')}\`, or \`ds-resync\` for the full report.`,
+  ].join('\n');
+}
+
+/**
  * @param {string[]} argv arguments after the executable and script
  * @param {object} [options]
  * @param {string[]} [options.origins] directories to search for node_modules
  * @param {string} [options.cwd] consumer repo root, for `init`
  * @param {string} [options.selfDir] this package's root, for shipped templates
  */
-export function run(argv, { origins, cwd = process.cwd(), selfDir } = {}) {
+export function run(argv, options = {}) {
+  const result = dispatch(argv, options);
+  const warning = installWarning(options.cwd ?? process.cwd());
+
+  return warning ? { ...result, warning } : result;
+}
+
+function dispatch(argv, { origins, cwd = process.cwd(), selfDir } = {}) {
   if (flagged(argv, '--version') || flagged(argv, '-v')) {
     const env = loadEnvironment(origins, selfDir);
     return {

@@ -23,11 +23,15 @@ export async function promptSelections(entries, { input, output }) {
 
   try {
     for (const entry of entries) {
-      const latest = selectTarget(entry.reference, entry.versions, 'latest');
-      // Nothing newer exists, so there is nothing to decide.
-      if (latest === null || latest === entry.reference) continue;
+      // No baseline to compare against — a `workspace:*` range and its `link:`
+      // lock give nothing to move from, so there is no question to ask.
+      if (!entry.currentVersion) continue;
 
-      const answer = await ask(`Update ${entry.name} ${entry.reference} → ${latest}? [y/N] `);
+      const latest = selectTarget(entry.currentVersion, entry.versions, 'latest');
+      // Nothing newer exists, so there is nothing to decide.
+      if (latest === null || latest === entry.currentVersion) continue;
+
+      const answer = await ask(`Update ${entry.name} ${entry.currentVersion} → ${latest}? [y/N] `);
       if (!/^y(es)?$/i.test(answer)) continue;
 
       let target = null;

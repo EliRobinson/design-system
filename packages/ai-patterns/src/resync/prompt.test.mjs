@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { promptSelections } from './prompt.mjs';
 
 const ENTRIES = [
-  { name: '@elirobinson/react', reference: '1.0.2', versions: ['1.0.2', '1.4.0', '2.0.0'] },
-  { name: '@elirobinson/tokens', reference: '0.2.0', versions: ['0.2.0', '0.3.0'] },
+  { name: '@elirobinson/react', currentVersion: '1.0.2', versions: ['1.0.2', '1.4.0', '2.0.0'] },
+  { name: '@elirobinson/tokens', currentVersion: '0.2.0', versions: ['0.2.0', '0.3.0'] },
 ];
 
 function channels(answers) {
@@ -66,8 +66,8 @@ describe('promptSelections', () => {
   it('skips a package with nothing newer', async () => {
     const { input, output } = channels(['n']);
     const entries = [
-      { name: '@elirobinson/react', reference: '2.0.0', versions: ['1.0.0', '2.0.0'] },
-      { name: '@elirobinson/tokens', reference: '0.2.0', versions: ['0.2.0', '0.3.0'] },
+      { name: '@elirobinson/react', currentVersion: '2.0.0', versions: ['1.0.0', '2.0.0'] },
+      { name: '@elirobinson/tokens', currentVersion: '0.2.0', versions: ['0.2.0', '0.3.0'] },
     ];
     const result = await promptSelections(entries, { input, output });
 
@@ -77,5 +77,20 @@ describe('promptSelections', () => {
   it('throws when the input ends partway through', async () => {
     const { input, output } = channels(['y']);
     await expect(promptSelections(ENTRIES, { input, output })).rejects.toThrow(/cancelled/);
+  });
+});
+
+describe('promptSelections — packages with no version to compare', () => {
+  it('skips a package whose range names no published version', async () => {
+    // `workspace:*` reaches here with a null currentVersion. Asking "update
+    // null → x?" is not a question, and comparing it would throw.
+    const { input, output } = channels(['n']);
+    const entries = [
+      { name: '@elirobinson/react', currentVersion: null, versions: ['1.0.0', '2.0.0'] },
+      { name: '@elirobinson/tokens', currentVersion: '0.2.0', versions: ['0.2.0', '0.3.0'] },
+    ];
+
+    const result = await promptSelections(entries, { input, output });
+    expect(result.only).toEqual([]);
   });
 });
