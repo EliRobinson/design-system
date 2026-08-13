@@ -40,17 +40,17 @@ system in an app**.
 
 ## The pieces, and why each is here
 
-| Piece                                             | Package                                | Replaces, in a consumer                                                       |
-| ------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
-| `elirobinson-ds` CLI                              | `ai-patterns` (`bin`)                  | A hand-written script that parses our directory layout and our `.d.ts` output |
-| `manifest.json`                                   | `react` (`./manifest`)                 | Regex-parsing `dist/**/*.d.ts` to find components and variants                |
-| `tailwind.css`                                    | `tokens`                               | A hand-maintained `@theme inline` block mapping ~30 colour aliases\*          |
-| Flat ESLint config + `no-hardcoded-design-values` | `eslint-config`                        | Hand-written lint rules, or more often no check at all                        |
-| Playwright contract helpers                       | `ai-patterns` (`./testing/playwright`) | Nothing — most consumers never check the runtime contracts                    |
-| Agent templates                                   | `ai-patterns` (`./agents/*`)           | Four near-identical instruction files per repo, each aging separately         |
-| `ds-resync` CLI                                   | `ai-patterns` (`bin`)                  | Noticing by hand that a repo is several releases behind                       |
-| `ds-resync artifacts`                             | `ai-patterns` (`bin`)                  | A copy of the brand skill and a hand-written component cheatsheet per repo    |
-| `design-system-mcp` server                        | `design-system-mcp` (`bin`)            | An agent guessing props from memory instead of querying the installed package |
+| Piece                                                                   | Package                                | Replaces, in a consumer                                                       |
+| ----------------------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
+| `elirobinson-ds` CLI                                                    | `ai-patterns` (`bin`)                  | A hand-written script that parses our directory layout and our `.d.ts` output |
+| `manifest.json`                                                         | `react` (`./manifest`)                 | Regex-parsing `dist/**/*.d.ts` to find components and variants                |
+| `tailwind.css`                                                          | `tokens`                               | A hand-maintained `@theme inline` block mapping ~30 colour aliases\*          |
+| Flat ESLint config + `no-hardcoded-design-values` + `no-padded-ui-copy` | `eslint-config`                        | Hand-written lint rules, or more often no check at all                        |
+| Playwright contract helpers                                             | `ai-patterns` (`./testing/playwright`) | Nothing — most consumers never check the runtime contracts                    |
+| Agent templates                                                         | `ai-patterns` (`./agents/*`)           | Four near-identical instruction files per repo, each aging separately         |
+| `ds-resync` CLI                                                         | `ai-patterns` (`bin`)                  | Noticing by hand that a repo is several releases behind                       |
+| `ds-resync artifacts`                                                   | `ai-patterns` (`bin`)                  | A copy of the brand skill and a hand-written component cheatsheet per repo    |
+| `design-system-mcp` server                                              | `design-system-mcp` (`bin`)            | An agent guessing props from memory instead of querying the installed package |
 
 The MCP server is its own single-bin package, wired in `.mcp.json` as
 `node node_modules/@elirobinson/design-system-mcp/src/bin.mjs` — `node` directly, because

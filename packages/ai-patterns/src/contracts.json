@@ -55,6 +55,11 @@
       "check": "No interactive hit area intersects a sibling element's painted or interactive area.",
       "verifiedBy": "@elirobinson/ai-patterns/testing/playwright → checkHitAreaOverlap()"
     },
+    "ui-copy": {
+      "summary": "Functional UI copy — errors, empty states, helper and hint text, toasts, labels, button text, tooltips, confirmations, validation — is chrome. It states the fact, then the consequence, then the action, and stops. No unverifiable frequency claims (\"almost always\"), blame attribution (\"on their side\", \"check your connection\"), filler pacing (\"in a moment\", \"hang tight\"), unprompted reassurance or apology (\"don't worry\", \"we'll sort it out\"), escalation paths nobody asked for, or enthusiasm and exclamation marks. Reassurance is allowed only where it answers a question the reader is actually asking, and only as a fact: \"You have not been charged.\" Past two short sentences, functional copy is explaining, reassuring or selling. This governs chrome only — a product's editorial voice in marketing prose, conversational surfaces and written deliverables is content, is a deliberate design decision, and is out of scope; where a surface mixes the two, the chrome follows this and the content is left alone.",
+      "check": "No banned phrase appears in a copy prop (title, description, label, placeholder, helperText, error, tooltip, aria-label and friends) or in the children of a chrome component (Alert, Toast, Tooltip, Callout, Banner, EmptyState, FormMessage, …). Editorial content is out of scope and is not checked.",
+      "verifiedBy": "@elirobinson/eslint-config → @elirobinson/no-padded-ui-copy, shipped as a warning so an upgrade cannot fail a consumer's build; raise it with designSystem({ copy: { severity: 'error' } }). The two-sentence limit and the content/chrome judgement are review, not lint."
+    },
     "tier-boundary": {
       "summary": "Components live under packages/react/src/components/<tier>/. If a component renders into a portal, traps focus, or manages open/closed state across multiple sub-elements, it is an organism. If it is assembled from 2+ atoms with no such orchestration, it is a molecule. Otherwise it is an atom.",
       "check": "The component's directory (atoms | molecules | organisms) matches the boundary rule for its behavior.",

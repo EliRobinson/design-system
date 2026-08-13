@@ -148,6 +148,12 @@ export default [
 
 Catches bare `@elirobinson/*` imports (which never resolve), foreign component libraries, direct Radix imports, and hardcoded colours, radii, shadows and durations. Add `@elirobinson/eslint-config/css` for the same checks in stylesheets.
 
+It also **warns** on padded functional UI copy — the frequency claims, blame, filler pacing, unprompted reassurance and enthusiasm that `pnpm ds patterns` bans under **UI Copy Is Chrome**. That one is a warning rather than an error on purpose: an existing app has copy written before the rule, and it should not fail to build the day it upgrades. Its scope is copy props and chrome components only, never your editorial content. Once the existing copy is clean:
+
+```js
+...designSystem({ copy: { severity: 'error' } });
+```
+
 ### 7. Install the agent instructions
 
 ```bash
@@ -212,12 +218,12 @@ pnpm --package=@elirobinson/ai-patterns dlx ds-resync --write
 
 See [docs/agents/consumer-tooling.md](docs/agents/consumer-tooling.md) for the reasoning behind each piece.
 
-| Package                      | What it gives a consumer                                                                                    |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `@elirobinson/react`         | Components, hooks, and `./manifest` — the machine-readable inventory                                        |
-| `@elirobinson/tokens`        | `tokens.css`, plus `tailwind.css` mapping Tailwind v4's theme namespaces onto the tokens                    |
-| `@elirobinson/ai-patterns`   | `ds` and `ds-resync`, contracts, prompt templates, agent instruction templates, Playwright contract helpers |
-| `@elirobinson/eslint-config` | The statically checkable contracts as a flat config, including `no-hardcoded-design-values`                 |
+| Package                      | What it gives a consumer                                                                                            |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `@elirobinson/react`         | Components, hooks, and `./manifest` — the machine-readable inventory                                                |
+| `@elirobinson/tokens`        | `tokens.css`, plus `tailwind.css` mapping Tailwind v4's theme namespaces onto the tokens                            |
+| `@elirobinson/ai-patterns`   | `ds` and `ds-resync`, contracts, prompt templates, agent instruction templates, Playwright contract helpers         |
+| `@elirobinson/eslint-config` | The statically checkable contracts as a flat config, including `no-hardcoded-design-values` and `no-padded-ui-copy` |
 
 ### Migrating an existing UI
 

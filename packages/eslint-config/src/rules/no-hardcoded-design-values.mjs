@@ -18,6 +18,7 @@ import {
   axisForJsProperty,
   isExempt,
 } from './value-patterns.mjs';
+import { propertyName, staticStrings } from './ast-strings.mjs';
 
 const DEFAULT_CLASS_NAME_FUNCTIONS = ['cn', 'clsx', 'classnames', 'classNames', 'cva', 'twMerge'];
 
@@ -130,42 +131,6 @@ export default {
       // brings its own test and message. A shadow carrying a colour is a shadow.
       const axis = axisForJsProperty(name);
       if (axis?.matches(value)) report(node, axis.messageId, axis.highlight(value));
-    }
-
-    /** Every static string inside an expression, template literals included. */
-    function staticStrings(node, out = []) {
-      if (!node) return out;
-
-      if (node.type === 'Literal' && typeof node.value === 'string') out.push(node.value);
-      else if (node.type === 'TemplateLiteral') {
-        for (const quasi of node.quasis) out.push(quasi.value.cooked ?? '');
-        for (const expression of node.expressions) staticStrings(expression, out);
-      } else if (node.type === 'JSXExpressionContainer') staticStrings(node.expression, out);
-      else if (node.type === 'ConditionalExpression') {
-        staticStrings(node.consequent, out);
-        staticStrings(node.alternate, out);
-      } else if (node.type === 'LogicalExpression' || node.type === 'BinaryExpression') {
-        staticStrings(node.left, out);
-        staticStrings(node.right, out);
-      } else if (node.type === 'ArrayExpression') {
-        for (const element of node.elements) staticStrings(element, out);
-      } else if (node.type === 'ObjectExpression') {
-        for (const property of node.properties) {
-          if (property.type === 'Property') staticStrings(property.value, out);
-        }
-      }
-
-      // Calls are deliberately not descended into. `className={cn(...)}` is
-      // reachable from both the attribute and the call; letting only the
-      // CallExpression visitor own it keeps each finding reported once.
-      return out;
-    }
-
-    function propertyName(property) {
-      if (property.type !== 'Property') return null;
-      if (property.key.type === 'Identifier' && !property.computed) return property.key.name;
-      if (property.key.type === 'Literal') return String(property.key.value);
-      return null;
     }
 
     function checkStyleObject(node) {

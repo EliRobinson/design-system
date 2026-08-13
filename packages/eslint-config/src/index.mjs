@@ -60,6 +60,12 @@ const SOURCE_FILES = ['**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'];
  * @param {string[]} [options.files] override which files the config applies to
  * @param {'error' | 'warn'} [options.severity]
  * @param {object} [options.hardcodedValues] options for no-hardcoded-design-values
+ * @param {object} [options.copy] options for no-padded-ui-copy, plus its own
+ *   `severity` — it ships as a warning, deliberately, and does not follow the
+ *   `severity` above. Every repo that upgrades into this rule has copy written
+ *   before it existed, and a rule that red-builds a consumer on upgrade gets
+ *   deleted rather than worked through. Raise it to `'error'` once the existing
+ *   copy is clean.
  * @returns {import('eslint').Linter.Config[]}
  */
 export function designSystem(options = {}) {
@@ -68,7 +74,10 @@ export function designSystem(options = {}) {
     files = SOURCE_FILES,
     severity = 'error',
     hardcodedValues = {},
+    copy = {},
   } = options;
+
+  const { severity: copySeverity = 'warn', ...copyOptions } = copy;
 
   const restrictedImports = (patterns) => [severity, { paths: BARREL_SPECIFIERS, patterns }];
 
@@ -80,6 +89,7 @@ export function designSystem(options = {}) {
       rules: {
         'no-restricted-imports': restrictedImports([FOREIGN_UI_LIBRARIES, DIRECT_PRIMITIVES]),
         '@elirobinson/no-hardcoded-design-values': [severity, hardcodedValues],
+        '@elirobinson/no-padded-ui-copy': [copySeverity, copyOptions],
       },
     },
   ];
