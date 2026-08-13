@@ -1,0 +1,32 @@
+<!-- @dsCard group="Patterns" viewport="700x480" name="Receipt" subtitle="Customer receipt — narrow, mono, printable and emailable" -->
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Receipt — Miltinson Technologies</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>doc-page:not(:defined){visibility:hidden}
+.wrap{max-width:420px;margin:0 auto}
+.eb{font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg-3);margin:0 0 6px}
+.line{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.num{font-family:var(--font-mono);white-space:nowrap}
+.grand{display:flex;justify-content:space-between;padding-top:12px;margin-top:6px;border-top:1px solid var(--ink-1000);font-size:16px;font-weight:600}
+</style></head>
+<body>
+<doc-page margin="0.75in">
+<div class="wrap">
+<div style="text-align:center;padding-bottom:20px;border-bottom:1px solid var(--ink-1000)">
+<div style="font-weight:600;font-size:22px;letter-spacing:-0.025em">Miltinson<span style="color:var(--signal-500)">.</span></div>
+<p style="margin:8px 0 0;font-size:13px;color:var(--fg-2)">Thanks — your guide is ready to download.</p>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0">
+<div><p class="eb">Receipt</p><p style="margin:0;font-family:var(--font-mono);font-size:13px">RCP-8841</p></div>
+<div style="text-align:right"><p class="eb">Date</p><p style="margin:0;font-family:var(--font-mono);font-size:13px">12 Aug 2026</p></div>
+</div>
+<div class="line"><span>Session Plans for U10s<br><span style="color:var(--fg-3);font-size:12px">PDF guide · instant download</span></span><span class="num">$12.00</span></div>
+<div class="line"><span>Practice Drills Vol. 1<br><span style="color:var(--fg-3);font-size:12px">PDF guide · instant download</span></span><span class="num">$9.00</span></div>
+<div class="line"><span style="color:var(--fg-2)">VAT (20%)</span><span class="num" style="color:var(--fg-2)">$4.20</span></div>
+<div class="grand"><span>Paid</span><span class="num">$25.20</span></div>
+<p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:var(--fg-2)">Paid by card ending 4242. Your downloads never expire — sign in any time to get them again.</p>
+<p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:var(--fg-2)">Something wrong with a guide? Reply to this receipt and I'll sort it — refunds within 30 days, no argument.</p>
+<p style="margin-top:32px;padding-top:16px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;color:var(--fg-3);text-align:center">MILTINSON TECHNOLOGIES · MILTINSONS.COM</p>
+</div>
+</doc-page>
+<script src="./doc-page.js"></script>
+</body></html>
