@@ -24,6 +24,8 @@
   "exports": {
     "./patterns": "./src/patterns.md",
     "./contracts": "./src/contracts.json",
+    "./adherence": "./src/artifacts/adherence.mjs",
+    "./brand-readme": "./dist/artifacts/skills/miltinson-design/README.md",
     "./prompts/*": "./src/prompts/*",
     "./agents/*": "./src/agents/*",
     "./resync/skill": "./src/resync/SKILL.md",

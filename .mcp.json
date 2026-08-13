@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "design-system": {
+      "command": "node",
+      "args": ["packages/design-system-mcp/src/bin.mjs"]
+    }
+  }
+}

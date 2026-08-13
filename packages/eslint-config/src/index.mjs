@@ -100,5 +100,25 @@ export function designSystem(options = {}) {
   return config;
 }
 
+/**
+ * For packages that serve MCP over stdio, where stdout is the JSON-RPC
+ * channel: a single `console.log` anywhere in the process emits a line the
+ * host cannot parse and the connection drops — silently and totally. Only
+ * `console.error` (stderr) is allowed; even `console.warn` is banned so a
+ * reader never has to remember which methods write where.
+ *
+ * @param {string[]} files globs of the stdio-serving package's sources
+ * @returns {import('eslint').Linter.Config}
+ */
+export function mcpStdio(files) {
+  return {
+    name: '@elirobinson/mcp-stdio',
+    files,
+    rules: {
+      'no-console': ['error', { allow: ['error'] }],
+    },
+  };
+}
+
 export { plugin };
 export default designSystem;

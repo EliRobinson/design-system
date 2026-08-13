@@ -1,6 +1,6 @@
 # AI Agent Rules
 
-Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobinson/react`, `@elirobinson/ai-patterns`, and `@elirobinson/eslint-config`.
+Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobinson/react`, `@elirobinson/ai-patterns`, `@elirobinson/eslint-config`, and `@elirobinson/design-system-mcp`.
 
 **Nothing we publish may require a consumer to update prose when this repo changes.** A consumer bumps a version and is current. Anything they would otherwise have to copy into their own docs — a component list, a token table, a Tailwind mapping, a lint rule — is a bug in what we publish. Ship it as a command, a manifest, a stylesheet, or a rule instead.
 
