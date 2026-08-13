@@ -106,19 +106,25 @@ describe('the documented invocation actually runs', () => {
     if (scratch) rmSync(scratch, { recursive: true, force: true });
   });
 
-  /* `DLX` names the package by its registry name. Swapping that for this
-     working copy keeps the invocation's shape under test — if DLX regressed to
-     the bare form, so would this — while resolving offline. */
-  const invocation = (suffix) => `${DLX.replace(PACKAGE_NAME, PACKAGE_DIR)} ${suffix}`;
+  /* Both forms are tokenised from the strings under test and run without a
+     shell, so PACKAGE_DIR stays one argv entry however the checkout is named —
+     under `shell: true` a repo path containing a space would split in two and
+     fail the test for a reason that has nothing to do with the bug. */
+  const argv = (prefix, ...rest) => [
+    ...prefix.split(' ').map((token) => token.replace(PACKAGE_NAME, PACKAGE_DIR)),
+    ...rest,
+  ];
 
-  const run = (command) =>
-    spawnSync(command, { cwd: scratch, shell: true, encoding: 'utf-8', timeout: 180_000 });
+  const run = ([command, ...args]) =>
+    spawnSync(command, args, { cwd: scratch, encoding: 'utf-8', timeout: 180_000 });
 
   it.each(BINS)(
     'resolves the %s bin and exits zero',
     (bin) => {
-      const args = bin === 'ds-resync' ? '--json' : '--help';
-      const result = run(invocation(`${bin} ${args}`));
+      // A bin that answers neither is a bin this test has not been taught yet,
+      // and should fail here rather than be waved through.
+      const flag = bin === 'ds-resync' ? '--json' : '--help';
+      const result = run(argv(DLX, bin, flag));
 
       expect(result.stderr).not.toContain('ERR_PNPM_DLX_MULTIPLE_BINS');
       expect({ status: result.status, stderr: result.stderr }).toMatchObject({ status: 0 });
@@ -130,7 +136,7 @@ describe('the documented invocation actually runs', () => {
   // own it does not prove the `--package=` form is what is doing the work.
   // This one fails if the bug it was written for ever stops being a bug.
   it('still fails on the bare form, which is why the guard above exists', () => {
-    const result = run(`${BARE_PREFIX.replace(PACKAGE_NAME, PACKAGE_DIR)} ds-resync --json`);
+    const result = run(argv(BARE_PREFIX, 'ds-resync', '--json'));
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('ERR_PNPM_DLX_MULTIPLE_BINS');
