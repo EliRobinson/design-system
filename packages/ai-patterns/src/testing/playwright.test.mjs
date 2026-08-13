@@ -18,6 +18,18 @@ import {
   PRIMARY_CONTROL_SELECTOR,
 } from './playwright.mjs';
 
+/* Starting, opening and closing Chromium are process-level operations that
+   share the machine with whatever else is running. Vitest's 10s hook budget is
+   sized for a unit test's setup, and `browser.close()` went past it whenever
+   this file ran alongside a build — failing a suite in which all 21 assertions
+   had already passed, which is the worst kind of red: it says nothing about the
+   code and everything about the machine. Measured here: launch 435ms, newPage
+   128ms, close 22ms idle; under a parallel monorepo build, close alone blew
+   through 10s in three runs out of four. The budget below is for the browser,
+   not for the assertions — those stay on the default, and none of them came
+   within 200ms of it even under that load. */
+const BROWSER_BUDGET = 60_000;
+
 let chromium;
 try {
   ({ chromium } = await import('playwright'));
@@ -30,15 +42,44 @@ let launchError;
 
 if (chromium) {
   try {
-    browser = await chromium.launch();
+    browser = await launchWithin(BROWSER_BUDGET);
   } catch (error) {
     launchError = error;
   }
 }
 
+/**
+ * Launch, or give up loudly.
+ *
+ * The launch runs during collection, where no timeout applies at all, so a
+ * browser that never comes up would hang the run rather than skip it. A
+ * late-arriving browser is closed instead of left parented to a worker that has
+ * already moved on.
+ */
+async function launchWithin(budget) {
+  const launch = chromium.launch();
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`chromium.launch() exceeded ${budget}ms`)), budget);
+  });
+
+  try {
+    const launched = await Promise.race([launch, deadline]);
+    clearTimeout(timer);
+    return launched;
+  } catch (error) {
+    clearTimeout(timer);
+    /* Still in flight, and now nobody is waiting for it. Close it if it lands
+       so the run does not leave an orphaned Chromium behind; the catch also
+       keeps a rejected launch from surfacing as an unhandled rejection. */
+    launch.then((late) => late.close()).catch(() => {});
+    throw error;
+  }
+}
+
 afterAll(async () => {
   await browser?.close();
-});
+}, BROWSER_BUDGET);
 
 const describeBrowser = browser ? describe : describe.skip;
 
@@ -65,7 +106,7 @@ describeBrowser('browser contract checks', () => {
 
   beforeAll(async () => {
     page = await browser.newPage();
-  });
+  }, BROWSER_BUDGET);
 
   async function render(body) {
     await page.setContent(`<!doctype html><html><head><style>
