@@ -166,12 +166,13 @@ const PAINTS = new RegExp(
     ')\\s*:',
 );
 
-/* Deliberate fixed pairs: both the fill and the text are scale values, so the
-   pair is self-consistent on any page. Each records its measured ratio, which
-   is the same evidence the token rules demand. */
+/* Selectors outside this rule. Badge's two brand chips used to be here as
+   deliberate fixed pairs — self-consistent at 8.05:1 and 11.84:1 on any page,
+   and still a 94%-light chip on a black one. They paint --accent-tint /
+   --anchor-tint now, which invert, so the exemption is gone rather than
+   re-justified: an exemption that outlives its reason is how a sweep goes
+   quiet. */
 const THEME_EXEMPT = {
-  '.ds-badge--signal': '--signal-800 on --signal-100, a fixed pair — 8.05:1 both themes',
-  '.ds-badge--anchor': '--anchor-700 on --anchor-100, a fixed pair — 11.84:1 both themes',
   '.ds-switch__input:checked::before': 'geometry only, no colour',
 };
 

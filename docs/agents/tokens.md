@@ -17,7 +17,9 @@ Thresholds are WCAG 2.2 AA: **4.5:1** for text (SC 1.4.3), **3:1** for a control
 
 `--status-*` is the **fill** — a stripe, a dot, a border. It only has to clear 3:1, and two of them have no headroom to be anything else (`--status-warning` is 3.69:1, `--status-info` 3.88:1). `--status-*-fg` is the **text**, at 4.5:1 or better against `--bg`. `--status-*-tint` is the **panel background** the `-fg` is drawn on. They are not interchangeable; painting a label in a fill token is the mistake the split exists to prevent.
 
-The same split applies to the brand amber: `--accent` is a fill at 2.53:1, and `--accent-ink` (9.69:1 light, 10.17:1 dark) is the amber for anything a user reads — a filled rating star, a slider thumb, a label.
+The same split applies to both brand colours: `--accent` is a fill at 2.53:1 and `--anchor` is 8.13:1 on white but 2.58:1 on black, so anything a user _reads_ in either colour uses `--accent-ink` (9.69:1 light, 10.17:1 dark) or `--anchor-ink` (11.41:1 / 11.07:1) — a filled rating star, a slider thumb, a label.
+
+`--accent-tint` / `--anchor-tint` are the brand counterpart to `--status-*-tint`: the soft chip or inset panel each ink is drawn on, measured as a pair in both themes (8.96:1 / 8.43:1 amber, 10.23:1 / 9.45:1 forest). Like the status tints they carry dark overrides — a tint that stays put while its ink inverts is the pair this whole section exists to prevent.
 
 ### A fill and the text on it move together, or neither does
 
@@ -29,7 +31,7 @@ The rule: if a rule sets both `background` and `color`, both come from tokens th
 
 `--ink-*`, `--signal-*` and `--anchor-*` are fixed — they do not respond to `[data-theme="dark"]`. A component that paints one is claiming the colour is right on a white page _and_ a black one. That claim was wrong seven times over: a black tab underline and switch track at 1.00:1, a black tooltip on a black page, a near-white badge fill under themed text at 1.37:1.
 
-Reach for the semantic token that flips: `--fg`/`--bg`, `--bg-inverse`/`--fg-inverse` for a surface that must stay visible against either page, `--bg-muted` for an inset fill, `--border-control` for a control edge, `--accent-ink`, `--status-*-tint`. `component-css.test.mjs` fails the build on a base-scale paint, with a named exemption list for the deliberate fixed pairs (`Badge--signal`, `Badge--anchor`).
+Reach for the semantic token that flips: `--fg`/`--bg`, `--bg-inverse`/`--fg-inverse` for a surface that must stay visible against either page, `--bg-muted` for an inset fill, `--border-control` for a control edge, `--accent-ink`, `--accent-tint`/`--anchor-tint`, `--status-*-tint`. `component-css.test.mjs` fails the build on a base-scale paint. Its exemption list is down to one geometry-only selector: `Badge`'s two brand chips were on it as deliberate fixed pairs until the brand tints gained dark values, and an exemption whose reason has expired is how a sweep goes quiet.
 
 ### Colour is never the only channel
 

@@ -78,6 +78,9 @@ describe('foreground/fill pairs', () => {
     ['--accent-fg', '--accent-hover', 4.5],
     ['--accent-fg', '--accent-press', 4.5],
     ['--anchor-fg', '--anchor', 4.5],
+    // The brand tints, which only hold if the fill and its ink move together.
+    ['--accent-ink', '--accent-tint', 4.5],
+    ['--anchor-ink', '--anchor-tint', 4.5],
     ['--fg-inverse', '--bg-inverse', 4.5],
     ['--fg-on-signal', '--accent', 4.5],
     // Every surface the body text is drawn on.

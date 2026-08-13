@@ -21,14 +21,17 @@
   color: var(--fg-2); /* 7.57:1 light, 13.27:1 dark */
 }
 
+/* The brand tints, which now invert instead of being a fixed pair. They were
+   self-consistent on any page — 8.05:1 and 11.84:1 — and still wrong in dark
+   mode: a 94%-light chip beside a `default` badge that had inverted. */
 .ds-badge--signal {
-  background: var(--signal-100);
-  color: var(--signal-800);
+  background: var(--accent-tint);
+  color: var(--accent-ink); /* 8.96:1 light, 8.43:1 dark */
 }
 
 .ds-badge--anchor {
-  background: var(--anchor-100);
-  color: var(--anchor-700);
+  background: var(--anchor-tint);
+  color: var(--anchor-ink); /* 10.23:1 light, 9.45:1 dark */
 }
 
 /* The inverse pair, so a solid badge stays visible against either page —

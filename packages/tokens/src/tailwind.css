@@ -143,6 +143,9 @@
   --color-anchor-hover: var(--anchor-hover);
   --color-anchor-press: var(--anchor-press);
   --color-anchor-tint: var(--anchor-tint);
+  /* As with `text-accent-ink`: `text-anchor` is the 8.13:1 fill, which is
+     2.58:1 on a dark page. Forest you can read on either is this. */
+  --color-anchor-ink: var(--anchor-ink);
 
   /* --- Status ------------------------------------------------------------ */
   /* `-foreground` is shadcn's contract: the text drawn *on* the status fill.

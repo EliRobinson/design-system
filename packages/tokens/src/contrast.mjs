@@ -85,7 +85,7 @@ export const CONTRAST_RULES = [
     label: 'text',
     threshold: 4.5,
     criterion: 'SC 1.4.3',
-    match: /^--(fg|link|accent-ink$|status-(success|warning|danger|info)-fg$)/,
+    match: /^--(fg|link|accent-ink$|anchor-ink$|status-(success|warning|danger|info)-fg$)/,
     except: {
       /* Decorative greys. They are not exempt from AA because they are hard to
          fix — they are exempt because nothing they paint carries information:
