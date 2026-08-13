@@ -38,13 +38,20 @@ about severity, free of nitpicks dressed up as blockers.
    return on overlay close, no `outline: none`.
 6. **Semantics** — labels on every control (`aria-label` on icon-only buttons), one `h1`,
    sane heading order, `alt` on images, live regions only where the system provides them.
+7. **Functional copy** (`ui-copy`) — errors, empty states, helper and hint text, toasts,
+   labels, button text, tooltips, confirmations, validation: fact, then consequence, then
+   action, then stop. Flag frequency claims, blame attribution, filler pacing, unprompted
+   reassurance or apology, unasked escalation, and exclamation marks. **Editorial content
+   is out of scope** — marketing prose, conversational surfaces, and written deliverables
+   carry the product's deliberate voice; do not report them.
 
 ## Constraints
 
 - **Fix directly:** token substitutions with identical rendered results, missing
   `aria-label`s, `outline: none` deletions.
 - **Report, don't fix:** layout changes, color changes that alter the design, component
-  swaps, anything touching behavior.
+  swaps, anything touching behavior, and every wording change — quote the padded copy and
+  the replacement, and let the author take the call on which side of the line it sits.
 - Every finding cites the file/line, the constraint id, and the concrete fix.
 - No hype, no padding — if the page is clean, say it's clean.
 

@@ -92,5 +92,17 @@ export default tseslint.config(
         entry.rules['@elirobinson/no-hardcoded-design-values'],
     },
   })),
+  // Same bargain for the copy rule, and it reaches the docs site too: the
+  // component library ships default strings, and the docs app renders chrome
+  // around its editorial prose. We publish this at `warn` so an upgrade cannot
+  // break a consumer's build; here it is an error, because there is no
+  // pre-existing copy to work through.
+  ...designSystem({ gapFiller: [], copy: { severity: 'error' } }).map((entry) => ({
+    ...entry,
+    files: ['packages/react/src/**/*.{ts,tsx}', 'apps/docs/src/**/*.{ts,tsx}'],
+    rules: {
+      '@elirobinson/no-padded-ui-copy': entry.rules['@elirobinson/no-padded-ui-copy'],
+    },
+  })),
   prettierConfig,
 );

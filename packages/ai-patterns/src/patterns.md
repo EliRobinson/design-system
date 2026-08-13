@@ -45,7 +45,66 @@ CLI exists.
 The same rule applies to this file. When something here can be derived from the
 packages, derive it.
 
-## 6) Definition of Done for UI Work
+## 6) UI Copy Is Chrome
+
+Functional copy tells the reader what a thing is, what just happened, or what to
+do next. That is errors, empty states, helper and hint text, toasts, labels,
+button text, tooltips, confirmations, and validation messages. It is chrome, and
+it is written plainly: **state the fact, then the consequence, then the action —
+and stop.**
+
+The failure mode is padding a true message with reassurance until it reads like
+marketing. Never write:
+
+- **Unverifiable frequency claims** — "this is almost always a passing blip",
+  "this rarely happens", "most users find". You do not have that data.
+- **Blame attribution** — "on their side", "check your connection". Say what is
+  true and observable, not whose fault it might be.
+- **Filler pacing** — "in a moment", "just a sec", "hang tight", "sit tight".
+- **Unprompted reassurance or apology** — "don't worry", "no need to panic",
+  "sorry about that", "we'll sort it out".
+- **Escalation paths nobody asked for** — "if it keeps happening, reply to…"
+  belongs in a support surface, not in a control's description.
+- **Enthusiasm** — "Great news!", "You're all set!", exclamation marks.
+
+Reassurance is allowed only when it answers a question the reader is actually
+asking at that moment, and then it is a fact, not a mood: "You have not been
+charged."
+
+```
+❌ You have not been charged. This is almost always a passing blip on their
+   side, so try again in a moment. If it keeps happening, reply to your
+   receipt email and we'll sort it out.
+
+✅ You have not been charged. Try again.
+```
+
+Both say the same true thing. The second respects the reader.
+
+**What this rule does not touch: a product's editorial voice.** Marketing prose,
+conversational surfaces, and written deliverables are the product, and their
+voice is a deliberate design decision — this rule has nothing to say about them.
+The line is whether the text is _content_ (voice applies) or _chrome_ (this rule
+applies). Where a surface mixes the two, the chrome still follows this rule and
+the content is left alone. Read as an instruction to flatten a product's voice,
+this rule does more harm than the padding it removes.
+
+Length is the tell. If a piece of functional copy runs past two short sentences,
+it is explaining, reassuring, or selling — cut it back to the fact and the
+action.
+
+`@elirobinson/eslint-config` warns on the literal phrases above, scoped the same
+way: copy props (`title`, `description`, `label`, `placeholder`, and friends)
+and the children of chrome components (`Alert`, `Toast`, `EmptyState`, …). It
+never reads ordinary prose. It ships as a **warning**, not an error, because
+every repo that upgrades into it has copy written before it existed. Tighten it
+to `error` once that copy is clean:
+
+```js
+designSystem({ copy: { severity: 'error' } });
+```
+
+## 7) Definition of Done for UI Work
 
 Work through this before calling any UI change finished. Each line is a contract
 you can actually check, not a sentiment.
@@ -69,6 +128,13 @@ you can actually check, not a sentiment.
       `@elirobinson/ai-patterns/testing/playwright` check all of it.
 - [ ] **Renders correctly under `data-theme="dark"`.** Token-driven UI inverts for
       free; anything that does not is a literal that escaped the rule above.
+- [ ] **Functional copy states the fact, the consequence, the action, then
+      stops.** No frequency claims, blame, filler pacing, unprompted
+      reassurance, unasked escalation, or exclamation marks in errors, empty
+      states, helper text, toasts, labels, tooltips, confirmations, or
+      validation — see **UI Copy Is Chrome** above. The product's editorial
+      voice is content, not chrome, and is not covered by this.
+      `@elirobinson/eslint-config` warns on the literal phrases.
 - [ ] **Any gap in the system is called out** explicitly, as a candidate for
       upstreaming rather than a local fork.
 

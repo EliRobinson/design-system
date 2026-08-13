@@ -460,6 +460,213 @@ describe('the JS and CSS rules agree about which axis a property belongs to', ()
   });
 });
 
+describe('no-padded-ui-copy', () => {
+  const copyOf = (results) => results.filter((r) => r.ruleId === '@elirobinson/no-padded-ui-copy');
+
+  describe('chrome: JSX text inside a chrome component', () => {
+    it.each([
+      [
+        'unverifiable frequency',
+        '<Alert>This almost always clears on its own.</Alert>',
+        'frequency',
+      ],
+      ['blame attribution', '<Alert>Something failed on their side.</Alert>', 'blame'],
+      ['filler pacing', '<Toast>Saved. Your export lands in a moment.</Toast>', 'pacing'],
+      [
+        'unprompted reassurance',
+        "<Alert>Upload failed. Don't worry, retry.</Alert>",
+        'reassurance',
+      ],
+      ['apology', '<Alert>Sorry about that. Try again.</Alert>', 'reassurance'],
+      [
+        'unasked escalation',
+        '<Callout>Import failed. If it keeps happening, contact support.</Callout>',
+        'escalation',
+      ],
+      ['enthusiasm', '<Banner>Great news, your plan is active.</Banner>', 'enthusiasm'],
+    ])('flags %s', (_what, jsx) => {
+      const results = copyOf(lint(`export const A = () => (${jsx})`));
+
+      expect(results.length).toBeGreaterThanOrEqual(1);
+      expect(results[0].message).toContain('Functional UI copy');
+    });
+
+    it('flags the phrase even when JSX wraps it across lines', () => {
+      const results = copyOf(
+        lint(`export const A = () => (
+          <Alert>
+            You have not been charged. This is almost always a passing blip on
+            their side, so try again in a moment.
+          </Alert>
+        )`),
+      );
+
+      expect(results.map((r) => r.messageId).sort()).toEqual(['blame', 'frequency', 'pacing']);
+    });
+
+    it('reads a curly apostrophe as an apostrophe', () => {
+      expect(copyOf(lint('export const A = () => (<Alert>Don’t worry.</Alert>)'))).toHaveLength(1);
+    });
+
+    it('flags an exclamation mark', () => {
+      const results = copyOf(lint('export const A = () => (<Toast>Saved!</Toast>)'));
+
+      expect(results).toHaveLength(1);
+      expect(results[0].messageId).toBe('exclamation');
+    });
+
+    it('collects text through nested markup', () => {
+      const results = copyOf(
+        lint('export const A = () => (<Alert>Failed. <strong>Hang tight</strong>.</Alert>)'),
+      );
+
+      expect(results).toHaveLength(1);
+    });
+
+    it('reports a nested chrome component once, not once per level', () => {
+      const results = copyOf(
+        lint(
+          'export const A = () => (<Alert><AlertDescription>Hang tight.</AlertDescription></Alert>)',
+        ),
+      );
+
+      expect(results).toHaveLength(1);
+    });
+
+    it('resolves a namespaced chrome component', () => {
+      expect(
+        copyOf(lint('export const A = () => (<Toast.Description>Hang tight.</Toast.Description>)')),
+      ).toHaveLength(1);
+    });
+
+    it('leaves chrome that states the fact and the action alone', () => {
+      expect(
+        copyOf(
+          lint('export const A = () => (<Alert>You have not been charged. Try again.</Alert>)'),
+        ),
+      ).toEqual([]);
+      expect(
+        copyOf(
+          lint('export const A = () => (<Alert>No invoices yet. Create one to start.</Alert>)'),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe('content: everything that is not chrome', () => {
+    // The carve-out. A product's editorial voice is not this rule's business,
+    // and a rule that flattened it would do more harm than the padding does.
+    it.each([
+      '<p>Don’t worry about the weather — we’ll sort it out when you arrive.</p>',
+      '<section><h1>Great news!</h1><p>This rarely happens to a house this size.</p></section>',
+      '<article>Hang tight, the best cabins go in a moment.</article>',
+    ])('leaves prose alone: %s', (jsx) => {
+      expect(copyOf(lint(`export const A = () => (${jsx})`))).toEqual([]);
+    });
+
+    it('leaves a non-copy prop alone', () => {
+      expect(copyOf(lint('export const A = () => (<Card slug="dont-worry-its-fine" />)'))).toEqual(
+        [],
+      );
+    });
+  });
+
+  describe('copy props, on any component', () => {
+    it.each(['title', 'description', 'label', 'placeholder', 'helperText', 'aria-label'])(
+      'flags %s',
+      (prop) => {
+        const results = copyOf(lint(`export const A = () => (<Field ${prop}="Hang tight" />)`));
+
+        expect(results).toHaveLength(1);
+        expect(results[0].messageId).toBe('pacing');
+      },
+    );
+
+    it('reads through an expression container', () => {
+      expect(
+        copyOf(
+          lint('export const A = () => (<Field title={ok ? "Saved" : "Sorry about that"} />)'),
+        ),
+      ).toHaveLength(1);
+    });
+
+    it('reports one message per node, not one per branch', () => {
+      expect(
+        copyOf(lint('export const A = () => (<Field title={ok ? "Saved!" : "Done!"} />)')),
+      ).toHaveLength(1);
+      expect(
+        copyOf(
+          lint('export const A = () => (<Field title={ok ? "Hang tight" : "Hang tight now"} />)'),
+        ),
+      ).toHaveLength(1);
+    });
+
+    it('says nothing about a prop whose value it cannot see', () => {
+      expect(copyOf(lint('export const A = () => (<Field title={t("errors.stripe")} />)'))).toEqual(
+        [],
+      );
+    });
+  });
+
+  describe('rollout', () => {
+    it('warns rather than errors, even where the rest of the config is an error', () => {
+      const results = copyOf(lint('export const A = () => (<Alert>Hang tight.</Alert>)'));
+
+      expect(results[0].severity).toBe(1);
+    });
+
+    it('takes an error severity when a repo asks for one', () => {
+      const results = copyOf(
+        lint('export const A = () => (<Alert>Hang tight.</Alert>)', {
+          options: { copy: { severity: 'error' } },
+        }),
+      );
+
+      expect(results[0].severity).toBe(2);
+    });
+
+    it('switches off entirely', () => {
+      expect(
+        copyOf(
+          lint('export const A = () => (<Alert>Hang tight.</Alert>)', {
+            options: { copy: { severity: 'off' } },
+          }),
+        ),
+      ).toEqual([]);
+    });
+
+    it('takes an allow list for a phrase a repo has decided to keep', () => {
+      expect(
+        copyOf(
+          lint('export const A = () => (<Alert>Hang tight.</Alert>)', {
+            options: { copy: { allow: ['hang tight'] } },
+          }),
+        ),
+      ).toEqual([]);
+    });
+
+    it('takes extra chrome components', () => {
+      expect(
+        copyOf(
+          lint('export const A = () => (<Snackbar>Hang tight.</Snackbar>)', {
+            options: { copy: { components: ['Snackbar'] } },
+          }),
+        ),
+      ).toHaveLength(1);
+    });
+
+    it('takes extra copy props', () => {
+      expect(
+        copyOf(
+          lint('export const A = () => (<Field blurb="Hang tight" />)', {
+            options: { copy: { props: ['blurb'] } },
+          }),
+        ),
+      ).toHaveLength(1);
+    });
+  });
+});
+
 describe('isExempt', () => {
   it.each([
     ['var(--fg)', true],
