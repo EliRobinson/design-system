@@ -10,7 +10,12 @@
 }
 
 .ds-checkbox__input {
-  accent-color: var(--ink-1000);
+  /* --fg, not --ink-1000: accent-color paints the checked box itself, so a
+     fixed black fill left a checked checkbox at 1.00:1 against a dark page —
+     the same class as the tab underline and the switch track, missed only
+     because `accent-color` is not spelled like the properties the sweep in
+     scripts/component-css.test.mjs was reading. 21:1 in both themes now. */
+  accent-color: var(--fg);
   cursor: pointer;
   height: 18px;
   width: 18px;

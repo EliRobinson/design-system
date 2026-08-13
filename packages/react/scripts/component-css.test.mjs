@@ -144,8 +144,27 @@ describe('a rule that paints a background in a state also states its color', () 
    switch track at 1.00:1, a black tooltip on a black page, a near-white badge
    fill carrying themed text at 1.37:1. Semantic tokens flip; scales do not. */
 const BASE_SCALE = /var\((--(?:ink|signal|anchor)-\d+)\)/;
-const PAINTS =
-  /(?:^|[;\s])(color|background(?:-color)?|border(?:-[a-z]+)?-color|border(?:-[a-z]+)?)\s*:/;
+/* Every property that puts colour on screen, not just the ones spelled
+   `color` and `background`. `accent-color` is why this list is explicit: it
+   paints the checked box of a native checkbox, it was set to --ink-1000, and
+   the earlier pattern read the `-color` suffix as part of a border property
+   and matched nothing — so a checked checkbox sat at 1.00:1 on a dark page
+   while this file reported the sweep clean. */
+const PAINTS = new RegExp(
+  '(?:^|[;\\s])(' +
+    [
+      'color',
+      'background(?:-color)?',
+      'border(?:-[a-z]+)?(?:-color)?',
+      'outline(?:-color)?',
+      'accent-color',
+      'caret-color',
+      'text-decoration-color',
+      'fill',
+      'stroke',
+    ].join('|') +
+    ')\\s*:',
+);
 
 /* Deliberate fixed pairs: both the fill and the text are scale values, so the
    pair is self-consistent on any page. Each records its measured ratio, which
