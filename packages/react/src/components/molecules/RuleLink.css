@@ -4,7 +4,9 @@
 
 .ds-rule-link {
   align-items: center;
-  border-bottom: 1px solid var(--ink-1000);
+  /* The rule under the label is the component's whole identity — fixed at
+     --ink-1000 it was a black line on a black page. */
+  border-bottom: 1px solid var(--fg);
   color: var(--fg);
   display: inline-flex;
   font-family: var(--font-sans);

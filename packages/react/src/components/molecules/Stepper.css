@@ -33,7 +33,9 @@
   width: 24px;
   height: 24px;
   border-radius: 9999px;
-  border: 1px solid var(--border-strong);
+  /* The ring is the step marker — an upcoming step is nothing but its ring.
+     3.64:1 under SC 1.4.11, not the 1.53:1 hairline. */
+  border: 1px solid var(--border-control);
   font-size: var(--fs-xs);
   flex-shrink: 0;
 }

@@ -4,7 +4,7 @@
 
 .ds-skeleton {
   animation: ds-skeleton-pulse 1.5s ease-in-out infinite;
-  background: var(--ink-100);
+  background: var(--bg-muted); /* a near-white block on a dark page otherwise */
   border-radius: var(--radius-sm);
   min-height: 16px;
 }

@@ -6,10 +6,14 @@
   display: inline-flex;
 }
 
+/* A tooltip has no border and no shadow, so its fill is the only thing
+   separating it from the page. Fixed at --ink-1000 that was a black panel on
+   a black page — 1.00:1, and the tooltip simply disappeared in dark mode.
+   The inverse pair flips with the theme: 21:1 against the page, 21:1 text. */
 .ds-tooltip__content {
-  background: var(--ink-1000);
+  background: var(--bg-inverse);
   border-radius: var(--radius-sm);
-  color: var(--ink-0);
+  color: var(--fg-inverse);
   font-family: var(--font-sans);
   font-size: var(--fs-xs);
   max-width: 240px;

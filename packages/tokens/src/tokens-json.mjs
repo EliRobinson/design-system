@@ -9,10 +9,11 @@
  *
  * Why a table and not a naming convention
  * ---------------------------------------
- * Most of the nesting *is* mechanical, but three groups are not, and no honest
+ * Most of the nesting *is* mechanical, but four groups are not, and no honest
  * heuristic recovers them:
  *
  *   --fg-2 / --fg-3 / --fg-4  ->  fgSecondary / fgTertiary / fgDisabled
+ *   --fg-disabled             ->  fgDisabledText (fgDisabled is --fg-4's)
  *   --status-success          ->  color.semantic.success (prefix dropped)
  *   --anchor-500 vs --anchor-hover — same prefix, different groups
  *
@@ -57,9 +58,21 @@ const GROUPS = [
     match: /^--status-(success|warning|danger|info)$/,
     path: (name) => semantic(suffix(name, 'status')),
   },
+  // The paired text and tint colors: --status-danger-fg -> semantic.dangerFg,
+  // --status-danger-tint -> semantic.dangerTint. Same dropped `status` prefix
+  // as the fills above, so the three members of a set read together.
+  {
+    match: /^--status-(success|warning|danger|info)-(fg|tint)$/,
+    path: (name) => semantic(camel(`--${suffix(name, 'status')}`)),
+  },
   { match: /^--fg-2$/, path: () => semantic('fgSecondary') },
   { match: /^--fg-3$/, path: () => semantic('fgTertiary') },
   { match: /^--fg-4$/, path: () => semantic('fgDisabled') },
+  /* --fg-4 claimed `fgDisabled` before --fg-disabled existed, and that key is
+     published API. --fg-4 is documented decorative-only now and --fg-disabled
+     is the accessible disabled-control text, so the new token takes its own
+     leaf rather than displacing a key consumers already import. */
+  { match: /^--fg-disabled$/, path: () => semantic('fgDisabledText') },
   {
     match: /^--(bg|surface|border|fg|accent|anchor|link|focus-ring)(-[\w-]+)?$/,
     path: (name) => semantic(camel(name)),

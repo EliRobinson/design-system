@@ -8,12 +8,16 @@
 }
 
 .ds-rating__star {
-  color: var(--border-strong);
+  /* An empty star still has to be countable — it carries the rating as much
+     as a filled one does. 3.64:1 under SC 1.4.11, not the 1.53:1 hairline. */
+  color: var(--border-control);
   font-size: var(--fs-lg);
 }
 
 .ds-rating__star--filled {
-  color: var(--signal-800);
+  /* --accent is 2.53:1 against --bg and --signal-800 is 2.17:1 against a dark
+     one. A filled star is a mark a user reads, so it takes --accent-ink. */
+  color: var(--accent-ink);
 }
 
 .ds-rating__button {
@@ -24,13 +28,17 @@
   height: 32px;
   border: none;
   background: transparent;
-  color: var(--border-strong);
+  /* An empty star still has to be countable — it carries the rating as much
+     as a filled one does. 3.64:1 under SC 1.4.11, not the 1.53:1 hairline. */
+  color: var(--border-control);
   font-size: var(--fs-lg);
   cursor: pointer;
 }
 
 .ds-rating__button.ds-rating__star--filled {
-  color: var(--signal-800);
+  /* --accent is 2.53:1 against --bg and --signal-800 is 2.17:1 against a dark
+     one. A filled star is a mark a user reads, so it takes --accent-ink. */
+  color: var(--accent-ink);
 }
 
 .ds-rating__button:focus-visible {

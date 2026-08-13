@@ -3,6 +3,15 @@ import { forwardRef } from 'react';
 
 import { cn } from '../../lib/cn';
 
+/* Filled and empty stars are different glyphs, not one glyph in two colours.
+   Both states used ★ and were told apart by colour alone, which is SC 1.4.1
+   (Use of Color) — and it put the two states 2.66:1 apart, under the 3:1
+   SC 1.4.11 asks between adjacent meaningful graphics. Shape carries the
+   value now, so the colour difference is reinforcement rather than the
+   only channel. */
+const FILLED_STAR = '★';
+const EMPTY_STAR = '☆';
+
 export type RatingProps = Omit<HTMLAttributes<HTMLDivElement>, 'role'> & {
   value: number;
   max?: number;
@@ -32,7 +41,7 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
             aria-hidden="true"
             className={cn('ds-rating__star', star <= clampedValue && 'ds-rating__star--filled')}
           >
-            ★
+            {star <= clampedValue ? FILLED_STAR : EMPTY_STAR}
           </span>
         ))}
       </div>
@@ -50,7 +59,7 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
           className={cn('ds-rating__button', star <= clampedValue && 'ds-rating__star--filled')}
           onClick={() => onValueChange?.(star)}
         >
-          <span aria-hidden="true">★</span>
+          <span aria-hidden="true">{star <= clampedValue ? FILLED_STAR : EMPTY_STAR}</span>
         </button>
       ))}
     </div>

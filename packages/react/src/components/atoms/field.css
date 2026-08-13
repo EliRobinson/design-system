@@ -21,12 +21,14 @@
 }
 
 .ds-hint--error {
-  color: var(--status-danger);
+  color: var(--status-danger-fg); /* 7.55:1 — the fill token is 4.79:1 */
 }
 
 .ds-input {
   background: var(--surface);
-  border: 1px solid var(--border-strong);
+  /* The input's edge is the only thing telling a user where the field is:
+     a control boundary at 3:1 under SC 1.4.11, not a decorative hairline. */
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   color: var(--fg);
   font-family: var(--font-sans);
@@ -37,7 +39,7 @@
 }
 
 .ds-input:focus-visible {
-  border-color: var(--ink-1000);
+  border-color: var(--fg); /* was --ink-1000: black-on-black when focused in dark */
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }

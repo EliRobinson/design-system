@@ -4,7 +4,7 @@
 
 .ds-avatar {
   align-items: center;
-  background: var(--ink-100);
+  background: var(--bg-muted); /* the initials fallback has to follow the theme */
   border-radius: var(--radius-pill);
   display: inline-flex;
   justify-content: center;

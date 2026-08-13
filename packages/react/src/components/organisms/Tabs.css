@@ -37,8 +37,10 @@
   outline-offset: 2px;
 }
 
+/* The underline is the only thing marking the active tab, so it has to follow
+   the theme: --ink-1000 was a black rule on a black page, 1.00:1. */
 .ds-tabs__trigger--active {
-  border-bottom-color: var(--ink-1000);
+  border-bottom-color: var(--fg); /* 21:1 both themes */
   color: var(--fg);
 }
 

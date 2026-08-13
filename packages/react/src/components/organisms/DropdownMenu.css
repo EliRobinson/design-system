@@ -2,10 +2,12 @@
    Dropdown Menu
    ========================================================================== */
 
+/* The trigger is a control and takes --border-control; the floating panel
+   below is a surface edge over a shadow and stays decorative. */
 .ds-dropdown__trigger {
   align-items: center;
   background: transparent;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   color: var(--fg);
   cursor: pointer;
@@ -51,9 +53,12 @@
   width: 100%;
 }
 
+/* A menu item is often an <a>. Restating the colour keeps the global
+   `a:hover` hue shift off it — see docs/agents/components.md. */
 .ds-dropdown__item:hover,
 .ds-dropdown__item:focus-visible {
   background: var(--bg-subtle);
+  color: var(--fg); /* 20.06:1 */
   outline: none;
 }
 

@@ -68,11 +68,13 @@
   --anchor-800: oklch(19% 0.035 156);
   --anchor-900: oklch(13% 0.025 156);
 
-  /* Semantic status colors (kept neutral-leaning) */
+  /* Semantic status colors (kept neutral-leaning). These are FILLS — stripes,
+     dots, borders. Text uses the --status-*-fg pair in the semantic section
+     below; --status-warning in particular is 3.69:1 and cannot carry a label. */
   --status-success: oklch(62% 0.16 155);
   --status-warning: oklch(78% 0.16 85);
-  --status-danger: oklch(58% 0.22 25);
-  --status-info: oklch(60% 0.13 240);
+  --status-danger: oklch(58% 0.22 25); /* fill — 4.79:1 light, 4.38:1 dark */
+  --status-info: oklch(60% 0.13 240); /* fill — 3.88:1, fill-only */
 
   /* ======================================================================
      COLOR — semantic (what components reference)
@@ -86,23 +88,35 @@
   --surface-2: var(--ink-50); /* nested cards */
   --surface-3: var(--ink-100); /* deeper inset */
 
-  --border: var(--ink-200); /* default hairline */
-  --border-strong: var(--ink-300); /* emphasized */
+  /* Decorative edges. 1.24:1 and 1.53:1 against --bg — below the 3:1 that
+     SC 1.4.11 asks of a control boundary, on purpose. These separate surfaces
+     from each other (card seams, table rules, dividers, floating-panel edges),
+     where nothing depends on seeing the line. The moment an edge is the only
+     thing telling a user where an input or a toggle is, it is a control
+     boundary and wants --border-control instead. */
+  --border: var(--ink-200); /* decorative hairline — 1.24:1 */
+  --border-strong: var(--ink-300); /* decorative, emphasized — 1.53:1 */
   --border-inverse: oklch(100% 0 0 / 0.12); /* on dark */
+  --border-control: oklch(62% 0.008 247); /* 3.64:1 on --bg — control edges, SC 1.4.11 */
 
   --fg: var(--ink-1000); /* primary text */
   --fg-1: var(--ink-1000); /* alias */
   --fg-2: var(--ink-600); /* secondary text */
   --fg-3: var(--ink-500); /* tertiary / meta */
-  --fg-4: var(--ink-400); /* disabled */
+  --fg-4: var(--ink-400); /* decorative / non-informational grey — 2.67:1 */
+  --fg-disabled: var(--ink-500); /* 4.85:1 — disabled control text */
   --fg-inverse: var(--ink-0); /* on dark */
   --fg-on-signal: var(--ink-1000); /* text on lime */
 
-  --accent: var(--signal-500); /* Miltinson Amber */
+  --accent: var(--signal-500); /* Miltinson Amber — fill, 2.53:1, fill-only */
   --accent-hover: var(--signal-400);
   --accent-press: var(--signal-600);
   --accent-fg: var(--ink-1000);
   --accent-tint: var(--signal-50); /* very-light amber backgrounds */
+  /* Brand amber at legible weight. --accent is a fill: at 2.53:1 against --bg
+     it cannot be a glyph, a mark, or a label. Anything amber that a user has
+     to *read* — a filled rating star, a slider thumb — uses this. */
+  --accent-ink: var(--signal-800); /* 9.69:1 */
 
   --anchor: var(--anchor-500); /* Miltinson Forest */
   --anchor-hover: var(--anchor-400);
@@ -113,12 +127,33 @@
   --focus-ring: var(--ink-1000); /* high-contrast focus, ink-on-bg */
 
   --link: var(--ink-1000);
-  --link-hover: var(--signal-700);
+  --link-hover: var(--signal-800); /* 9.69:1 — was --signal-700 at 5.86:1 */
   --link-visited: var(--ink-700);
+  /* A link sitting on a filled surface keeps the fill's own foreground. See
+     the `.ds-button a` block below for why this is not just a nicety. */
+  --link-on-fill: currentColor;
 
-  /* Status uses signal/anchor where appropriate */
-  --status-success: var(--anchor-500);
-  --status-warning: var(--signal-600);
+  /* Status — two tokens per state, and they are not interchangeable.
+     --status-* is the FILL: a stripe, a dot, a border. It only has to clear
+     3:1 as a non-text graphic, and --status-warning (3.69:1) and
+     --status-info (3.88:1) do not have the headroom to be text.
+     --status-*-fg is the TEXT, measured against --bg at 4.5:1 or better. */
+  --status-success: var(--anchor-500); /* fill — 8.13:1 */
+  --status-warning: var(--signal-600); /* fill — 3.69:1, fill-only */
+  --status-success-fg: var(--anchor-600); /* 11.41:1 */
+  --status-warning-fg: var(--signal-800); /* 9.69:1 */
+  --status-danger-fg: oklch(47% 0.19 25); /* 7.55:1 */
+  --status-info-fg: oklch(45% 0.12 240); /* 7.21:1 */
+
+  /* Tints — the third member of each status set, and the reason the other two
+     can both be themed. A tinted panel whose fill is fixed while its text
+     follows the theme inverts in dark mode: Alert's danger variant paired a
+     fixed pink with --status-danger-fg and landed at 2.40:1. Fill and text
+     move together or neither does. Each pairs with its --status-*-fg above. */
+  --status-success-tint: var(--anchor-50); /* with -fg: 10.23:1 */
+  --status-warning-tint: var(--signal-50); /* with -fg: 8.96:1 */
+  --status-danger-tint: oklch(97% 0.02 25); /* with -fg: 6.83:1 */
+  --status-info-tint: oklch(96% 0.02 240); /* with -fg: 6.44:1 */
 
   /* ======================================================================
      TYPE — families
@@ -312,12 +347,14 @@
   --border: oklch(100% 0 0 / 0.1);
   --border-strong: oklch(100% 0 0 / 0.18);
   --border-inverse: var(--ink-200);
+  --border-control: oklch(100% 0 0 / 0.42); /* 3.95:1 over --bg */
 
   --fg: var(--ink-0);
   --fg-1: var(--ink-0);
   --fg-2: var(--ink-300);
   --fg-3: var(--ink-400);
   --fg-4: var(--ink-500);
+  --fg-disabled: var(--ink-400); /* 7.87:1 */
   --fg-inverse: var(--ink-1000);
 
   /* The light theme's focus ring is ink-on-white. Left un-inverted here it
@@ -327,8 +364,28 @@
   --focus-ring: var(--ink-0);
 
   --link: var(--ink-0);
-  --link-hover: var(--signal-400);
+  --link-hover: var(--signal-400); /* 10.17:1 — already clears AA, left as-is */
   --link-visited: var(--ink-200);
+
+  /* --status-success is forest green, which is a dark-on-light color: left
+     un-inverted it sits at 2.58:1 against a black page, under the 3:1 SC 1.4.11
+     asks of the Toast stripe and Stepper ring it paints. The other three fills
+     clear 3:1 unchanged (warning 5.69, danger 4.38, info 5.41). */
+  --status-success: var(--anchor-300); /* fill — 8.13:1 */
+
+  --status-success-fg: oklch(78% 0.13 160); /* 11.07:1 */
+  --status-warning-fg: oklch(80% 0.14 80); /* 11.09:1 */
+  --status-danger-fg: oklch(72% 0.16 25); /* 7.90:1 */
+  --status-info-fg: oklch(75% 0.11 240); /* 9.58:1 */
+
+  --status-success-tint: oklch(20% 0.04 160); /* with -fg: 9.45:1 */
+  --status-warning-tint: oklch(22% 0.05 70); /* with -fg: 9.20:1 */
+  --status-danger-tint: oklch(22% 0.06 25); /* with -fg: 6.62:1 */
+  --status-info-tint: oklch(20% 0.05 240); /* with -fg: 8.22:1 */
+
+  /* --accent is the same amber in both themes and stays a fill. --accent-ink
+     has to invert: --signal-800 is 9.69:1 on white and 2.17:1 on black. */
+  --accent-ink: var(--signal-400); /* 10.17:1 */
 }
 
 /* ==========================================================================
@@ -479,6 +536,48 @@ a {
 }
 a:hover {
   color: var(--link-hover);
+}
+
+/* Anything that paints its own background owns its text colour. A global
+   a:hover hue shift over a filled surface is the amber-on-amber bug:
+   `a:hover` is (0,1,1) and `.ds-button--accent` is (0,1,0), so an
+   `<a class="ds-button ds-button--accent">` kept its amber fill and had its
+   label repainted --link-hover on hover — amber on amber, 2.31:1, failing
+   SC 1.4.3. The variant's own :hover only set background-color, so nothing
+   in the component library outranked the element rule. These selectors are
+   (0,2,1) and (0,2,2), which does. */
+.ds-button a,
+.ds-badge a,
+.ds-chip a,
+.ds-alert a,
+.ds-toast a,
+.ds-pagination__item--active a,
+[data-on-fill] a,
+[data-on-fill] a:visited {
+  color: var(--link-on-fill);
+}
+.ds-button a:hover,
+.ds-badge a:hover,
+.ds-chip a:hover,
+.ds-alert a:hover,
+.ds-toast a:hover,
+.ds-pagination__item--active a:hover,
+[data-on-fill] a:hover {
+  color: var(--link-on-fill);
+  /* The hover affordance has to survive losing the hue shift. */
+  text-decoration-thickness: 2px;
+}
+/* A control that happens to be an anchor is a control, not a link. */
+a.ds-button,
+a.ds-button:hover,
+a.ds-button:visited,
+a.ds-chip,
+a.ds-chip:hover,
+a.ds-badge,
+a.ds-badge:hover,
+a.ds-pagination__item,
+a.ds-pagination__item:hover {
+  text-decoration: none;
 }
 
 :focus-visible {
