@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
 
 import { buildAdherenceConfig } from '../src/artifacts/adherence.mjs';
+import { replaceManagedBlock } from '../src/artifacts/brand.mjs';
 import { buildGuidelineCards } from '../src/artifacts/guideline-cards.mjs';
 
 const packageDir = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -52,8 +53,12 @@ const PROJECT_OWNED_COMPONENTS = ['ChatComposer', 'ChatMessage', 'ChatThread', '
 const TARGET = {
   projectId: 'e160cbb7-83c8-4cf0-81d3-a358e70bc838',
   name: 'Miltinson Design System',
+  repo: 'EliRobinson/design-system',
+  branch: 'main',
   writes: [
     '_adherence.oxlintrc.json',
+    'SKILL.md',
+    'github.md',
     'tokens/tokens.css',
     'components/atoms/*.css',
     'components/molecules/*.css',
@@ -169,7 +174,102 @@ function main() {
     write(join('guidelines', path), html);
   }
 
-  /* 6. The push plan. Emitted rather than remembered, so the target project and
+  /* 6. SKILL.md — the project's copy of the brand skill.
+        The project's hand-written copy had lost every brand rule that makes the
+        skill worth invoking: "Eli speaks as 'I' — never 'we'", the tagline, the
+        Kids Recipes emoji exception, the accessibility floors. Generated from
+        design-system-docs/SKILL.md through the same managed-block mechanism the
+        consumer skill uses, so the brand rules below the block are carried
+        verbatim and only the repo-specific paragraph is swapped. */
+  const skillSource = readFileSync(join(repoRoot, 'design-system-docs', 'SKILL.md'), 'utf8');
+
+  /* The prose below the managed block names files by their repo path, and two of
+     them are spelled differently in the project: the tokens stylesheet is
+     `styles.css` there (`colors_and_type.css` is the repo's symlink), and the
+     readme is lowercase. Fixed here rather than by widening the managed block,
+     because that block's current text is correct for the repo and for the
+     consumer skill — the project is the only surface that needs the rename. */
+  const forProject = (text) =>
+    text.replaceAll('`colors_and_type.css`', '`styles.css`').replaceAll('README.md', 'readme.md');
+
+  write(
+    'SKILL.md',
+    forProject(
+      replaceManagedBlock(
+        skillSource,
+        [
+          'Read `readme.md` first, then explore `guidelines/`, `ui_kits/`, `templates/`,',
+          '`patterns/`, `slides/` and `assets/`.',
+          '',
+          '**The JSX under `components/` is not the component library.** Those files are',
+          'cosmetic recreations for prototyping: they deliberately skip focus trapping,',
+          'virtualization and table logic, and their prop surface is flat where the real one',
+          'is compound. For production code install `@elirobinson/react` and',
+          '`@elirobinson/tokens` from the source repo, and check a prop against',
+          '`_adherence.oxlintrc.json` (generated from the published component manifest) rather',
+          'than against the JSX here.',
+        ].join('\n'),
+        'design-system-docs/SKILL.md',
+      ),
+    ),
+  );
+
+  /* 7. github.md — the project's record of where it came from. The hand-written
+        copy claimed five ui kits while the project carried thirteen, so the
+        project's own account of itself was wrong. Counted, not asserted. */
+  const kitCount = readdirSync(join(repoRoot, 'design-system-docs', '_project-mirror', 'ui_kits'), {
+    withFileTypes: true,
+  }).filter((entry) => entry.isDirectory()).length;
+  const originalKits = readdirSync(join(repoRoot, 'design-system-docs', 'ui_kits'), {
+    withFileTypes: true,
+  }).filter((entry) => entry.isDirectory() && !entry.name.startsWith('_')).length;
+
+  write(
+    'github.md',
+    [
+      `repo: ${TARGET.repo}`,
+      `branch: ${TARGET.branch}`,
+      '',
+      '## Ownership',
+      '',
+      'Split by content type, one direction per file. Nothing here is edited by hand on',
+      'both sides.',
+      '',
+      '| Owned by the repo (pushed here) | Owned by this project (pulled to the repo) |',
+      '| --- | --- |',
+      '| `tokens/tokens.css` | `guidelines/` editorial cards |',
+      '| `components/**/*.css` | `ui_kits/`, `templates/`, `patterns/`, `slides/` |',
+      '| `_adherence.oxlintrc.json` | `components/**/*.jsx` prototyping recreations |',
+      '| `guidelines/` token cards | |',
+      '| `SKILL.md`, `github.md` | |',
+      '',
+      '## Generated, not written',
+      '',
+      `- \`_adherence.oxlintrc.json\` — from \`${manifest.package}@${manifest.version}\`'s component`,
+      '  manifest. Every rule, including the roster of exported component names.',
+      '- `guidelines/` token cards — from `tokens.css`. A swatch card is a restatement of',
+      '  the token scale, and a hand-written one drifts: the copy these replaced rendered',
+      '  10 of the 13 ink steps.',
+      '- `tokens/tokens.css` and every component stylesheet — copied verbatim from source.',
+      '- `SKILL.md` and this file.',
+      '',
+      'Regenerate and push with `pnpm -F @elirobinson/ai-patterns build:design-project`,',
+      'then write the paths named in `.push-plan.json`.',
+      '',
+      '## Counts',
+      '',
+      `- ${manifest.components.length} components in the published library`,
+      `- ${sheets.length} component stylesheets, mirrored 1:1`,
+      `- ${tokens.length} design tokens`,
+      `- ${cards.length} generated foundation cards`,
+      `- ${kitCount + originalKits} ui kits in this project — ${originalKits} that also ship from the`,
+      `  repo's \`ui_kits/\`, and ${kitCount} that exist only here (mirrored into the repo under`,
+      '  `design-system-docs/_project-mirror/`, which does not ship)',
+      '',
+    ].join('\n'),
+  );
+
+  /* 8. The push plan. Emitted rather than remembered, so the target project and
         the write boundary travel with the bundle. */
   write(
     '.push-plan.json',
