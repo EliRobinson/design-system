@@ -33,7 +33,7 @@ describe('formatReport', () => {
       {
         name: '@elirobinson/react',
         declaredRange: '^1.0.0',
-        installedVersion: '1.0.2',
+        currentVersion: '1.0.2',
         targetVersion: '2.0.0',
         latestVersion: '2.0.0',
         jump: 'major',
@@ -43,7 +43,7 @@ describe('formatReport', () => {
       {
         name: '@elirobinson/tokens',
         declaredRange: '^0.2.0',
-        installedVersion: '0.2.0',
+        currentVersion: '0.2.0',
         targetVersion: '0.2.0',
         latestVersion: '0.2.0',
         jump: 'none',
@@ -51,6 +51,7 @@ describe('formatReport', () => {
         entries: [],
       },
     ],
+    lockfileKind: 'pnpm',
     wrote: false,
   };
 
@@ -73,7 +74,7 @@ describe('formatReport', () => {
         {
           name: '@elirobinson/tokens',
           declaredRange: '^0.2.0',
-          installedVersion: '0.2.0',
+          currentVersion: '0.2.0',
           targetVersion: '0.2.0',
           latestVersion: '0.2.0',
           jump: 'none',
@@ -81,6 +82,7 @@ describe('formatReport', () => {
           entries: [],
         },
       ],
+      lockfileKind: 'pnpm',
       wrote: false,
     });
     expect(text).toMatch(/up to date/i);
@@ -97,7 +99,7 @@ describe('formatReport', () => {
         {
           name: '@elirobinson/react',
           declaredRange: '^1.0.0',
-          installedVersion: '1.0.2',
+          currentVersion: '1.0.2',
           targetVersion: '1.1.0',
           latestVersion: '1.1.0',
           jump: 'minor',
@@ -105,6 +107,7 @@ describe('formatReport', () => {
           entries: [],
         },
       ],
+      lockfileKind: 'pnpm',
       wrote: true,
       installError: '`pnpm install` exited 1',
     });
@@ -121,7 +124,7 @@ describe('formatReport', () => {
         {
           name: '@elirobinson/react',
           declaredRange: '^1.0.0 || ^2.0.0',
-          installedVersion: '1.0.2',
+          currentVersion: '1.0.2',
           targetVersion: '2.0.0',
           latestVersion: '2.0.0',
           jump: 'major',
@@ -130,6 +133,7 @@ describe('formatReport', () => {
           skipped: true,
         },
       ],
+      lockfileKind: 'pnpm',
       wrote: true,
     });
     expect(text).toMatch(/left unchanged/i);
@@ -141,7 +145,7 @@ describe('formatReport — held back', () => {
     return {
       name: '@elirobinson/react',
       declaredRange: '^1.0.0',
-      installedVersion: '1.0.2',
+      currentVersion: '1.0.2',
       targetVersion: '1.4.0',
       latestVersion: '2.0.0',
       target: 'minor',
@@ -168,6 +172,7 @@ describe('formatReport — held back', () => {
   it('omits the held-back line when the target is the latest', () => {
     const text = formatReport({
       packages: [entry({ targetVersion: '2.0.0', heldBack: false, jump: 'major' })],
+      lockfileKind: 'pnpm',
       wrote: false,
     });
     expect(text).not.toContain('is available, held back');
@@ -176,6 +181,7 @@ describe('formatReport — held back', () => {
   it('still notes a held-back version on an otherwise current package', () => {
     const text = formatReport({
       packages: [entry({ targetVersion: '1.0.2', outdated: false, heldBack: true, jump: 'none' })],
+      lockfileKind: 'pnpm',
       wrote: false,
     });
     expect(text).toMatch(/up to date/i);
@@ -204,6 +210,10 @@ Commands:
   (default)             Report and optionally apply dependency upgrades
   artifacts             Sync the design system's agent skills into this repo
 
+Compares the versions your lockfile resolved — what CI and a fresh clone install
+— against the registry, and separately reports when node_modules disagrees with
+that lockfile.
+
 Options:
   --write               Apply the upgrades and install (default is read-only)
   --only <names>        Restrict to these packages (comma-separated, scope optional)
@@ -213,6 +223,8 @@ Options:
   --json                Emit the report as JSON
   --cwd <dir>           Target a directory other than the current one
   --fail-on-outdated    Exit 2 when anything is behind (for CI)
+  --fail-on-out-of-sync Exit 2 when node_modules and the lockfile
+                        disagree (for CI)
   -h, --help            Show this message
 
 Run \`ds-resync artifacts --help\` for that command's options.

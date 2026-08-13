@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { lockedVersionFor, readLockfile } from './lockfile.mjs';
 
 export const SCOPE = '@elirobinson/';
 
@@ -37,6 +38,43 @@ export function readInstalledVersion(cwd, name) {
   return manifest?.version ?? null;
 }
 
+/**
+ * Packages whose `node_modules` copy disagrees with the lockfile.
+ *
+ * Both versions have to be known for the comparison to mean anything. A
+ * missing install is a fresh clone, not drift; a missing lockfile entry leaves
+ * nothing to compare against, and that case is indistinguishable from a
+ * workspace whose `node_modules` is hoisted somewhere above this directory —
+ * warning there would be a false positive, so it stays silent instead.
+ *
+ * Lives here rather than with either command because both need it: `ds-resync`
+ * reports it, and `elirobinson-ds` warns that its own answers are about the
+ * installed column.
+ */
+export function findDrift(entries) {
+  return entries
+    .filter(
+      (entry) =>
+        entry.installedVersion &&
+        entry.lockedVersion &&
+        entry.installedVersion !== entry.lockedVersion,
+    )
+    .map((entry) => ({
+      name: entry.name,
+      locked: entry.lockedVersion,
+      installed: entry.installedVersion,
+    }));
+}
+
+/**
+ * Three readings of "the version of this dependency", kept apart on purpose:
+ *
+ * - `declaredRange` — what package.json asks for
+ * - `lockedVersion` — what the lockfile resolved, i.e. what CI and a fresh
+ *   clone install, and so what staleness is measured against
+ * - `installedVersion` — what is in `node_modules` right now, which can have
+ *   drifted ahead of both and is reported as its own finding when it has
+ */
 export function detect(cwd) {
   const packageJsonPath = join(cwd, 'package.json');
   const packageJson = readJson(packageJsonPath);
@@ -45,12 +83,16 @@ export function detect(cwd) {
     throw new Error(`No package.json found at ${packageJsonPath}`);
   }
 
+  const lock = readLockfile(cwd);
+
   return {
     packageJsonPath,
     packageJson,
+    lock,
     packages: findScopedDependencies(packageJson).map((entry) => ({
       ...entry,
       installedVersion: readInstalledVersion(cwd, entry.name),
+      lockedVersion: lockedVersionFor(lock, entry.name, entry.declaredRange),
     })),
   };
 }

@@ -13,6 +13,8 @@ Upstream source of truth: https://github.com/EliRobinson/design-system
 
 Run these **before** writing UI. They read `node_modules` at run time, so they match the installed versions exactly — including the component directory layout, which is discovered rather than assumed:
 
+> If `ds` prints `node_modules disagrees with the lockfile` on stderr, stop and run your package manager's install first. It is describing versions that are installed here but are not what CI builds, so code written against them will fail there. `ds-resync` reports the full picture.
+
 ```bash
 pnpm ds                  # components (+ exports & variants), hooks, typography classes, token groups
 pnpm ds props <Name>     # props and variant unions; accepts `Card` or `molecules/Card`

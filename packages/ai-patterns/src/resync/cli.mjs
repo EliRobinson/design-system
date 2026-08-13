@@ -6,10 +6,10 @@ import { bumpRange, detectPackageManager, installCommand, writeVersions } from '
 import { ARTIFACTS_USAGE, parseArgs, parseArtifactsArgs, USAGE } from './args.mjs';
 import { formatArtifactsReport, runArtifacts } from './artifacts.mjs';
 import { isBreaking, sliceChangelog } from './changelog.mjs';
-import { detect } from './detect.mjs';
+import { detect, findDrift } from './detect.mjs';
 import { promptSelections } from './prompt.mjs';
 import { fetchAllVersions, fetchChangelog, RegistryError } from './registry.mjs';
-import { compareVersions, jumpClass, selectTarget } from './semver.mjs';
+import { compareVersions, jumpClass, parseVersion, selectTarget } from './semver.mjs';
 import { resolveTarget } from './targets.mjs';
 
 async function artifactsCommand(argv) {
@@ -42,13 +42,42 @@ async function artifactsCommand(argv) {
 }
 
 /**
+ * The version to measure staleness from, and where it came from.
+ *
+ * The lockfile first, because that is what CI and a fresh clone install — the
+ * state the repo actually ships. `node_modules` is deliberately not consulted:
+ * an install that has drifted ahead of the committed manifests would otherwise
+ * report the repo as nearly current while the version being built is majors
+ * behind. That drift is a finding of its own, reported by `findDrift` below.
+ *
+ * With no lockfile entry the declared range is all there is. Stripping its
+ * operator yields the range's floor, which is not necessarily what the range
+ * would resolve to, so the source is carried alongside and the report says
+ * plainly that it is comparing against a declared range.
+ *
+ * Some ranges hold no version at either end — `workspace:*` is the common one,
+ * and it locks to `link:…` rather than to a published version. There is nothing
+ * to measure those against, so they are marked unresolved and reported as such
+ * rather than compared against a version that was never there.
+ */
+function currentVersionOf(entry) {
+  if (entry.lockedVersion)
+    return { currentVersion: entry.lockedVersion, currentSource: 'lockfile' };
+
+  const floor = entry.declaredRange.replace(/^[^\d]*/, '');
+  if (!parseVersion(floor)) return { currentVersion: null, currentSource: 'unresolved' };
+
+  return { currentVersion: floor, currentSource: 'range' };
+}
+
+/**
  * Everything that can be learned before knowing how far the caller wants to
  * jump: which packages are here, what is installed, and what exists upstream.
  * Deliberately does not fetch changelogs — interactive mode runs between this
  * and resolve(), and downloading notes for a package you then decline is waste.
  */
 export function survey(cwd, only) {
-  const { packageJsonPath, packages } = detect(cwd);
+  const { packageJsonPath, packages, lock } = detect(cwd);
 
   if (only) {
     const known = new Set(packages.map((item) => item.name));
@@ -64,11 +93,10 @@ export function survey(cwd, only) {
 
   return {
     packageJsonPath,
+    lockfileKind: lock?.kind ?? null,
     entries: selected.map((entry) => ({
       ...entry,
-      // Without an install, the declared range is the only reference point we
-      // have; strip its operator so it can be compared.
-      reference: entry.installedVersion ?? entry.declaredRange.replace(/^[^\d]*/, ''),
+      ...currentVersionOf(entry),
       versions: fetchAllVersions(entry.name, { cwd }),
     })),
   };
@@ -76,36 +104,93 @@ export function survey(cwd, only) {
 
 export function resolve(surveyed, targetSpec, cwd) {
   const packages = surveyed.entries.map((entry) => {
+    const from = entry.currentVersion;
     const target = resolveTarget(targetSpec, entry.name);
-    const targetVersion = selectTarget(entry.reference, entry.versions, target) ?? entry.reference;
-    const latestVersion =
-      selectTarget(entry.reference, entry.versions, 'latest') ?? entry.reference;
 
-    const outdated = compareVersions(entry.reference, targetVersion) < 0;
+    // Nothing to compare and nothing to upgrade to. Kept in the report rather
+    // than dropped, so a package that silently stops being checked is visible.
+    if (from === null) {
+      return {
+        name: entry.name,
+        declaredRange: entry.declaredRange,
+        field: entry.field,
+        currentVersion: null,
+        currentSource: entry.currentSource,
+        lockedVersion: entry.lockedVersion,
+        installedVersion: entry.installedVersion,
+        targetVersion: null,
+        latestVersion: null,
+        target,
+        jump: 'none',
+        outdated: false,
+        heldBack: false,
+        entries: [],
+      };
+    }
+
+    const targetVersion = selectTarget(from, entry.versions, target) ?? from;
+    const latestVersion = selectTarget(from, entry.versions, 'latest') ?? from;
+
+    const outdated = compareVersions(from, targetVersion) < 0;
     const heldBack = compareVersions(targetVersion, latestVersion) < 0;
 
     let entries = [];
     if (outdated) {
       const changelog = fetchChangelog(entry.name, targetVersion, { cwd });
-      if (changelog) entries = sliceChangelog(changelog, entry.reference, targetVersion);
+      if (changelog) entries = sliceChangelog(changelog, from, targetVersion);
     }
 
     return {
       name: entry.name,
       declaredRange: entry.declaredRange,
       field: entry.field,
-      installedVersion: entry.reference,
+      currentVersion: from,
+      currentSource: entry.currentSource,
+      lockedVersion: entry.lockedVersion,
+      installedVersion: entry.installedVersion,
       targetVersion,
       latestVersion,
       target,
-      jump: jumpClass(entry.reference, targetVersion),
+      jump: jumpClass(from, targetVersion),
       outdated,
       heldBack,
       entries,
     };
   });
 
-  return { packageJsonPath: surveyed.packageJsonPath, packages, wrote: false };
+  const { command, args } = installCommand(detectPackageManager(cwd));
+
+  return {
+    packageJsonPath: surveyed.packageJsonPath,
+    lockfileKind: surveyed.lockfileKind,
+    packages,
+    drift: findDrift(surveyed.entries),
+    installHint: `${command} ${args.join(' ')}`,
+    wrote: false,
+  };
+}
+
+/**
+ * The loud half of the report. `node_modules` disagreeing with the lockfile is
+ * a different condition from being behind — a different cause and a different
+ * fix — so it is named separately, and first: while it holds, every tool that
+ * introspects installed code is answering for a version this repo does not
+ * build. The `!!` gutter matches the stale-snapshot warning in `artifacts`.
+ */
+export function formatInstallDrift(drift, installHint = 'pnpm install') {
+  return [
+    '!!  NODE_MODULES OUT OF SYNC',
+    '!!  The versions installed in node_modules do not match the lockfile:',
+    ...drift.map(
+      (entry) => `!!    ${entry.name}  lockfile ${entry.locked}, node_modules ${entry.installed}`,
+    ),
+    '!!',
+    '!!  The lockfile is what CI and a fresh clone install, so everything below is',
+    '!!  measured against it. Tools that read installed code — `elirobinson-ds` and',
+    '!!  any agent following it — are describing versions this repo does not build.',
+    '!!',
+    `!!  Fix it with \`${installHint}\`. This is an install, not an upgrade.`,
+  ].join('\n');
 }
 
 export function formatReport(result) {
@@ -118,12 +203,27 @@ export function formatReport(result) {
   const outdated = result.packages.filter((entry) => entry.outdated);
 
   for (const entry of result.packages) {
+    if (entry.currentSource === 'unresolved') {
+      lines.push(
+        `  ${entry.name}  not compared — "${entry.declaredRange}" names no published version`,
+      );
+      continue;
+    }
+
     const heldBackNote = entry.heldBack
       ? `    ${entry.latestVersion} is available, held back by --target ${entry.target}`
       : null;
 
+    // A package missing from an otherwise present lockfile is worth calling out
+    // per package, since the whole-report note above does not cover it.
+    const baselineNote =
+      result.lockfileKind && entry.currentSource === 'range'
+        ? `    not in the lockfile — compared against the range "${entry.declaredRange}"`
+        : null;
+
     if (!entry.outdated) {
-      lines.push(`  ${entry.name}  ${entry.installedVersion}  (up to date)`);
+      lines.push(`  ${entry.name}  ${entry.currentVersion}  (up to date)`);
+      if (baselineNote) lines.push(baselineNote);
       if (heldBackNote) lines.push(heldBackNote);
       continue;
     }
@@ -131,9 +231,10 @@ export function formatReport(result) {
     const breaking = entry.jump === 'major' || entry.entries.some(isBreaking);
     const label = breaking ? '  [breaking]' : '';
     lines.push(
-      `  ${entry.name}  ${entry.installedVersion} → ${entry.targetVersion}  (${entry.jump})${label}`,
+      `  ${entry.name}  ${entry.currentVersion} → ${entry.targetVersion}  (${entry.jump})${label}`,
     );
 
+    if (baselineNote) lines.push(baselineNote);
     if (heldBackNote) lines.push(heldBackNote);
 
     if (entry.skipped) {
@@ -154,12 +255,32 @@ export function formatReport(result) {
     lines.push('');
   }
 
+  // Both preambles sit above the count so the loudest fact is the first one
+  // read, and so the reader knows which baseline the numbers below are against.
+  const preamble = [];
+
+  if (result.drift?.length) {
+    preamble.push(formatInstallDrift(result.drift, result.installHint), '');
+  }
+
+  if (result.lockfileKind === null) {
+    preamble.push(
+      'No lockfile here, so these are compared against the ranges declared in package.json,',
+      'not against resolved versions.',
+      '',
+    );
+  }
+
   if (outdated.length === 0) {
-    lines.unshift('Everything is up to date.', '');
+    lines.unshift(...preamble, 'Everything is up to date.', '');
     return lines.join('\n');
   }
 
-  lines.unshift(`${outdated.length} package${outdated.length === 1 ? '' : 's'} behind:`, '');
+  lines.unshift(
+    ...preamble,
+    `${outdated.length} package${outdated.length === 1 ? '' : 's'} behind:`,
+    '',
+  );
 
   if (!result.wrote) {
     lines.push('Run `ds-resync --write` to apply these upgrades.');
@@ -269,8 +390,15 @@ export async function main(argv) {
 
   if (result.installError) return 1;
 
+  // Two findings, two flags. Being behind and having an out-of-sync install
+  // have different causes and different fixes, so a pipeline that cares about
+  // one should not be failed by the other; a run that writes has already dealt
+  // with both. They share exit code 2 — the report says which one tripped.
   const anyOutdated = result.packages.some((entry) => entry.outdated);
-  return args.failOnOutdated && anyOutdated && !result.wrote ? 2 : 0;
+  if (args.failOnOutdated && anyOutdated && !result.wrote) return 2;
+  if (args.failOnOutOfSync && result.drift.length > 0 && !result.wrote) return 2;
+
+  return 0;
 }
 
 /**
