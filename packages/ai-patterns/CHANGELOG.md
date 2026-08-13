@@ -1,5 +1,13 @@
 # @elirobinson/ai-patterns
 
+## 0.11.0
+
+### Minor Changes
+
+- 242fbe0: The llms corpus gains a brand layer: `llmsFull` accepts an optional `brand` input and renders the voice rules from the brand README (extracted loudly — a missing CONTENT FUNDAMENTALS section throws) plus the kit and asset inventory. The packed snapshot carries only `ships: true` artifacts; a corpus that includes repo-only artifacts gets them marked as such. An agent asked to build a Miltinson page previously got prop tables and tokens and no voice guidance at all.
+- 242fbe0: Add `@elirobinson/ai-patterns/brand-manifest`: one record per artifact in `design-system-docs/`, with category, origin (generated cards are identified by importing `buildGuidelineCards`, never a hardcoded list), ships/shipReason derived from `BRAND_SOURCES`, per-artifact render facts (dependencies as written, external origins through the stylesheet chain, viewports), and member roles. The in-repo `design-system-docs/README.md` index table is now generated from it between the managed markers — fixing the phantom `templates/` row, the fifth slide template that never existed, and the auth surface the webapp kit does not export, and adding the six top-level entries the hand-kept table omitted.
+- 242fbe0: Two additive surfaces for the MCP server: `@elirobinson/ai-patterns` exports `./adherence` (the generated adherence-config builder) and `./brand-readme` (the packed brand README the voice rules are extracted from), and `@elirobinson/eslint-config` exports `mcpStdio(files)` — a flat-config block for packages that serve MCP over stdio, where a single `console.log` corrupts the JSON-RPC channel: `no-console` at error severity, `console.error` only.
+
 ## 0.10.0
 
 ### Minor Changes

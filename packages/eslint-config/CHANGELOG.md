@@ -1,5 +1,11 @@
 # @elirobinson/eslint-config
 
+## 0.4.0
+
+### Minor Changes
+
+- 242fbe0: Two additive surfaces for the MCP server: `@elirobinson/ai-patterns` exports `./adherence` (the generated adherence-config builder) and `./brand-readme` (the packed brand README the voice rules are extracted from), and `@elirobinson/eslint-config` exports `mcpStdio(files)` — a flat-config block for packages that serve MCP over stdio, where a single `console.log` corrupts the JSON-RPC channel: `no-console` at error severity, `console.error` only.
+
 ## 0.3.0
 
 ### Minor Changes

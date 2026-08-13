@@ -1,6 +1,6 @@
 {
   "name": "@elirobinson/design-system-mcp",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "MCP server over the installed Miltinson design system packages — component props, tokens, constraints, brand guidance, and adherence checks, read live from node_modules.",
   "repository": {
     "type": "git",
