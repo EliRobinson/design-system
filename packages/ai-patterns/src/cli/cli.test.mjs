@@ -144,9 +144,11 @@ describe('package resolution', () => {
     expect(findPackageDir('@elirobinson/react', [consumer({})])).toBeNull();
   });
 
-  // `pnpm dlx @elirobinson/ai-patterns elirobinson-ds` runs the binary from a
-  // throwaway store, so this package is absent from the project it is
-  // describing. Its own data must still be readable.
+  // `pnpm --package=@elirobinson/ai-patterns dlx elirobinson-ds` runs the
+  // binary from a throwaway store, so this package is absent from the project
+  // it is describing. Its own data must still be readable. (The package must be
+  // named explicitly: it ships two bins, so the bare `pnpm dlx <pkg> <bin>`
+  // form cannot resolve one — see `DLX` in `../artifacts/llms.mjs`.)
   describe('run from outside the project (pnpm dlx)', () => {
     const project = () =>
       consumer({

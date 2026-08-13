@@ -12,7 +12,7 @@ registry. This skill brings them current and fixes what the upgrade breaks.
 ## 1. See what's behind
 
 ```bash
-pnpm dlx @elirobinson/ai-patterns ds-resync --json
+pnpm --package=@elirobinson/ai-patterns dlx ds-resync --json
 ```
 
 This is read-only — it never modifies the repo. It prints one record per
@@ -54,7 +54,7 @@ what jump, and how many call sites are affected.
 Once the user agrees:
 
 ```bash
-pnpm dlx @elirobinson/ai-patterns ds-resync --write
+pnpm --package=@elirobinson/ai-patterns dlx ds-resync --write
 ```
 
 This rewrites the ranges in `package.json` (preserving `^`, `~`, or a pin) and
@@ -70,7 +70,7 @@ If a package has a breaking major the user is not ready for, they do not have to
 skip the upgrade entirely. Take everything below it:
 
 ```bash
-pnpm dlx @elirobinson/ai-patterns ds-resync --write --target react=minor
+pnpm --package=@elirobinson/ai-patterns dlx ds-resync --write --target react=minor
 ```
 
 `--only react,tokens` restricts the run to named packages; the scope is optional.
@@ -103,7 +103,7 @@ The upgrade moved the packages; the skills in `.claude/skills/` still describe t
 old ones. Bring them along:
 
 ```bash
-pnpm dlx @elirobinson/ai-patterns ds-resync artifacts --write
+pnpm --package=@elirobinson/ai-patterns dlx ds-resync artifacts --write
 ```
 
 This rewrites the brand skill, the version-stamped component reference
