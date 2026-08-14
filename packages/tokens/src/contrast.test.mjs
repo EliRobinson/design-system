@@ -90,6 +90,24 @@ describe('foreground/fill pairs', () => {
     ['--fg', '--surface-2', 4.5],
     ['--fg', '--surface-3', 4.5],
     ['--fg-2', '--surface', 4.5],
+    /* Status text goes everywhere body text goes — a status cell in a zebra
+       table, a nested card, an inset well — so it is measured everywhere body
+       text is. Clearing 4.5:1 against --bg says nothing about --surface-3,
+       and "the tint took it under AA" is the intuitive, wrong diagnosis for
+       any status-color failure. These rows are what makes the claim in
+       tokens.css ("clears 4.5:1 on every neutral surface") checkable. */
+    ...[
+      '--status-success-fg',
+      '--status-warning-fg',
+      '--status-danger-fg',
+      '--status-info-fg',
+    ].flatMap((fg) => [
+      [fg, '--surface', 4.5],
+      [fg, '--surface-2', 4.5],
+      [fg, '--surface-3', 4.5],
+      [fg, '--bg-subtle', 4.5],
+      [fg, '--bg-muted', 4.5],
+    ]),
   ];
 
   for (const theme of THEMES) {

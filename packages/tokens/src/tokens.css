@@ -146,13 +146,19 @@
      --status-* is the FILL: a stripe, a dot, a border. It only has to clear
      3:1 as a non-text graphic, and --status-warning (3.69:1) and
      --status-info (3.88:1) do not have the headroom to be text.
-     --status-*-fg is the TEXT, measured against --bg at 4.5:1 or better. */
+     --status-*-fg is the TEXT, measured against --bg at 4.5:1 or better.
+     It also clears 4.5:1 on every neutral surface, in both themes. The worst
+     case is --surface-3, where success/warning/danger/info sit at
+     10.22 / 8.68 / 6.76 / 6.46 in light and 9.54 / 9.55 / 6.80 / 8.25 in dark
+     — at most 1.54 below the --bg figure. A tint is never what takes status
+     text under AA; contrast.test.mjs measures all five neutral surfaces in
+     both themes so that stays true. */
   --status-success: var(--anchor-500); /* fill — 8.13:1 */
   --status-warning: var(--signal-600); /* fill — 3.69:1, fill-only */
-  --status-success-fg: var(--anchor-600); /* 11.41:1 */
-  --status-warning-fg: var(--signal-800); /* 9.69:1 */
-  --status-danger-fg: oklch(47% 0.19 25); /* 7.55:1 */
-  --status-info-fg: oklch(45% 0.12 240); /* 7.21:1 */
+  --status-success-fg: var(--anchor-600); /* 11.41:1 on --bg */
+  --status-warning-fg: var(--signal-800); /* 9.69:1 on --bg */
+  --status-danger-fg: oklch(47% 0.19 25); /* 7.55:1 on --bg */
+  --status-info-fg: oklch(45% 0.12 240); /* 7.21:1 on --bg */
 
   /* Tints — the third member of each status set, and the reason the other two
      can both be themed. A tinted panel whose fill is fixed while its text
@@ -382,10 +388,10 @@
      clear 3:1 unchanged (warning 5.69, danger 4.38, info 5.41). */
   --status-success: var(--anchor-300); /* fill — 8.13:1 */
 
-  --status-success-fg: oklch(78% 0.13 160); /* 11.07:1 */
-  --status-warning-fg: oklch(80% 0.14 80); /* 11.09:1 */
-  --status-danger-fg: oklch(72% 0.16 25); /* 7.90:1 */
-  --status-info-fg: oklch(75% 0.11 240); /* 9.58:1 */
+  --status-success-fg: oklch(78% 0.13 160); /* 11.07:1 on --bg */
+  --status-warning-fg: oklch(80% 0.14 80); /* 11.09:1 on --bg */
+  --status-danger-fg: oklch(72% 0.16 25); /* 7.90:1 on --bg */
+  --status-info-fg: oklch(75% 0.11 240); /* 9.58:1 on --bg */
 
   --status-success-tint: oklch(20% 0.04 160); /* with -fg: 9.45:1 */
   --status-warning-tint: oklch(22% 0.05 70); /* with -fg: 9.20:1 */
