@@ -10,8 +10,14 @@ export { expect } from '@playwright/test';
 
    `today` inside DatePicker.tsx is a bare `new Date()`, so without this the
    component's highlighted cell moves daily and its baseline rots overnight.
-   The stories should pin their own seed date as well — a story that is only
-   deterministic under Playwright is still nondeterministic to review. */
+   The stories pin their own seed date as well — a story that is only
+   deterministic under Playwright is still nondeterministic to review.
+
+   Kept in the same month as SEED_DATE in DatePicker.stories.tsx on purpose.
+   The picker's view follows the selected date, so a fixed time in any other
+   month puts `today` outside the rendered grid and the `--today` style stops
+   appearing in the baseline at all — a coverage loss that nothing would
+   report, since the snapshot would still be perfectly stable. */
 export const FIXED_TIME = new Date('2026-01-15T12:00:00.000Z');
 
 export const test = base.extend({
