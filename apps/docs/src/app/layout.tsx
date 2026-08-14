@@ -7,6 +7,7 @@ import './site.css';
 
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
+import { THEME_BOOTSTRAP } from '../lib/theme';
 
 export const metadata: Metadata = {
   title: {
@@ -19,7 +20,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    /* suppressHydrationWarning covers exactly one attribute: the bootstrap
+       below sets data-theme on this element before React hydrates, so the DOM
+       deliberately differs from the prerendered HTML. It does not extend to
+       children. */
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
       <body>
         <SiteHeader />
         {children}

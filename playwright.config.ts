@@ -1,5 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
+import { DOCS_APP_DIR, DOCS_PORT, DOCS_URL } from './tests/visual/docs/routes';
 import { STORYBOOK_DIR, STORYBOOK_PORT, STORYBOOK_URL } from './tests/visual/storybook/stories';
 import { NARROW_VIEWPORT, WIDE_VIEWPORT } from './tests/visual/viewports';
 
@@ -31,14 +32,33 @@ if (updatingSnapshots && !process.env.DS_VISUAL_CONTAINER) {
 export default defineConfig({
   testDir: './tests/visual',
 
+  /* A subdirectory of test-results, not test-results itself. Playwright wipes
+     and recreates its output directory on startup; when that directory is a
+     bind mount, recreating it detaches it from the mount and every artifact
+     lands in the container's own layer instead of on the host. Which is why a
+     failing container run left no diff images to look at, twice. Cleaning a
+     child of the mount works. */
+  outputDir: './test-results/output',
+
   /* The Storybook build is served, not rebuilt per test. It has to exist before
      the specs are collected, because they enumerate stories from its index.json
      — which is why the build runs in `pretest:visual` rather than here. */
-  webServer: {
-    command: `node scripts/serve-static.mjs ${STORYBOOK_DIR} ${STORYBOOK_PORT}`,
-    url: STORYBOOK_URL,
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: `node scripts/serve-static.mjs ${STORYBOOK_DIR} ${STORYBOOK_PORT}`,
+      url: STORYBOOK_URL,
+      reuseExistingServer: !process.env.CI,
+    },
+    /* `next start`, not a static file server: every docs route is prerendered
+       (assert-static-routes.mjs enforces it), but serving the output still needs
+       Next's routing to map a URL onto the right prerendered document. */
+    {
+      command: `pnpm exec next start -p ${DOCS_PORT}`,
+      cwd: DOCS_APP_DIR,
+      url: DOCS_URL,
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
 
   /* Viewport is a project rather than a per-test setting, so a story's wide and
      narrow baselines live in separate directories and can't collide on name. */
@@ -54,6 +74,20 @@ export default defineConfig({
     {
       name: 'storybook-narrow',
       testMatch: /storybook\.spec\.ts$/,
+      use: { viewport: NARROW_VIEWPORT },
+    },
+    {
+      name: 'docs-wide',
+      testMatch: /docs\.spec\.ts$/,
+      use: { viewport: WIDE_VIEWPORT },
+    },
+    /* Only the pages whose subject is responsive layout. They tag themselves
+       @responsive, so the set is decided once, next to the routes it describes,
+       rather than by a second list here that could disagree with it. */
+    {
+      name: 'docs-narrow',
+      testMatch: /docs\.spec\.ts$/,
+      grep: /@responsive/,
       use: { viewport: NARROW_VIEWPORT },
     },
   ],
@@ -72,6 +106,11 @@ export default defineConfig({
      An explicit --update-snapshots still wins over this, which is how the
      container generates them; the guard above is what stops that on a host. */
   updateSnapshots: process.env.DS_VISUAL_CONTAINER ? undefined : 'none',
+
+  /* Playwright's 30s default is comfortable for a story and not for a docs
+     page: a full-page capture of a long one takes seconds under emulation, and
+     settling it needs at least two. */
+  timeout: 180_000,
 
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
@@ -109,6 +148,22 @@ export default defineConfig({
   },
 
   expect: {
+    /* toHaveScreenshot does its own "two consecutive stable screenshots" check
+       before comparing, and that check has its own 5s budget by default. A
+       full-page capture of a long docs page takes over 2.5s under emulation, so
+       two of them cannot fit — three component pages failed with "Failed to
+       take two consecutive stable screenshots" on pages that are entirely
+       stable. The page was fine; the stopwatch was too short.
+
+       20s, not 60s. This budget also governs how long a *failing* comparison
+       keeps retrying, and at 60s one flaky test spent a full minute
+       re-capturing a long page — saturating an emulated VM shared by three
+       workers and destabilising whatever ran beside it. The flake rate roughly
+       quadrupled, which is the fix causing the problem it was meant to solve.
+       Two full-page captures take about 6s here; 20s leaves margin without
+       letting a failure monopolise the machine. */
+    timeout: 20_000,
+
     toHaveScreenshot: {
       /* Fast-forwards finite animations to their end state and cancels
          infinite ones to their first frame. The second half is what matters:
