@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { stabilise } from '../capture';
+import { assertContracts } from '../contracts';
 import { expect, test } from '../fixtures';
 import { THEMES, applyTheme } from '../theme';
 import { stories, storyUrl } from './stories';
@@ -41,6 +42,13 @@ for (const story of stories()) {
          A story taller than the viewport is cropped by this. None in the
          proving set are; step 5 will say whether any of the other 70 are. */
       await expect(page).toHaveScreenshot(`${story.id}-${theme}.png`);
+
+      /* After the screenshot, deliberately: the contracts focus controls to
+         see whether focusing changes anything, so running them first would
+         bake a focus ring into the baseline. Reusing this page load rather
+         than taking a second one keeps the whole suite roughly its current
+         length. */
+      await assertContracts(page);
     });
   }
 }
