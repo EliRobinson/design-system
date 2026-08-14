@@ -9,6 +9,7 @@ import cssModule from '@eslint/css';
 
 import { designSystem } from './index.mjs';
 import { designSystemCss } from './css.mjs';
+import { readsAsControl } from './rules/no-underlined-control-label.mjs';
 import {
   DESIGN_PROPERTIES,
   axisForCssProperty,
@@ -664,6 +665,105 @@ describe('no-padded-ui-copy', () => {
         ),
       ).toHaveLength(1);
     });
+  });
+});
+
+// The reported pattern in #62: an orange fill, a black label, and a black
+// underline under it. The colours measured fine (--accent-fg on --accent is
+// 8.30:1); the underline is the defect, because it is the one signal a
+// hyperlink owns. Every flagged case here has a neighbour that must stay
+// silent — a link that underlines, and a control that does not fill.
+describe('no-underlined-control-label', () => {
+  const messagesFor = (css) =>
+    lintCss(css)
+      .filter((result) => result.ruleId?.endsWith('no-underlined-control-label'))
+      .map((result) => result.message);
+
+  it.each([
+    ['the reported button', '.btn { background: var(--accent); text-decoration: underline; }'],
+    [
+      'the longhand spelling',
+      '.cta-primary { background-color: var(--accent); text-decoration-line: underline; }',
+    ],
+    [
+      'a state rule',
+      'button:hover { background-color: var(--accent-hover); text-decoration: underline; }',
+    ],
+    ['a bare button element', 'button { background: var(--accent); text-decoration: underline; }'],
+    [
+      'an anchor wearing a button class',
+      'a.btn { background: var(--accent); text-decoration: underline; }',
+    ],
+    [
+      'a role attribute instead of a class',
+      '[role="button"] { background: var(--accent); text-decoration: underline; }',
+    ],
+    [
+      'underline alongside other decoration keywords',
+      '.chip { background: var(--accent-tint); text-decoration: underline dotted; }',
+    ],
+  ])('flags %s', (_what, css) => {
+    const messages = messagesFor(css);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('reads as a hyperlink wearing a button');
+  });
+
+  it.each([
+    ['a link, which is what an underline is for', 'a { background: var(--accent-tint); }'],
+    [
+      'a link that underlines on a fill — still a link',
+      '.footnote-link { background: var(--accent-tint); text-decoration: underline; }',
+    ],
+    [
+      'a link-style button on no fill, a deliberate pattern',
+      '.btn--link { background: transparent; text-decoration: underline; }',
+    ],
+    ['a control that omits the background entirely', '.btn--ghost { text-decoration: underline; }'],
+    ['a control that drops the underline', '.btn { background: var(--accent); }'],
+    ['the shipped declaration', '.ds-button { background: var(--accent); text-decoration: none; }'],
+    [
+      'a hover affordance that thickens a line it did not draw',
+      '.ds-button a:hover { text-decoration-thickness: 2px; }',
+    ],
+    ['a word that merely contains a control word', '.data-table { text-decoration: underline; }'],
+    [
+      'a table cell, which is not a tab',
+      '.data-table__cell { background: var(--bg-subtle); text-decoration: underline; }',
+    ],
+  ])('stays silent on %s', (_what, css) => {
+    expect(messagesFor(css)).toEqual([]);
+  });
+
+  it('names the two declarations that produced the pattern', () => {
+    const [message] = messagesFor(
+      '.btn--accent { background: var(--accent); color: var(--accent-fg); text-decoration: underline; }',
+    );
+
+    expect(message).toContain('.btn--accent');
+    expect(message).toContain('background: var(--accent)');
+    expect(message).toContain('text-decoration: underline');
+  });
+});
+
+describe('readsAsControl', () => {
+  it.each([
+    ['button', true],
+    ['a.btn', true],
+    ['.card > button:hover', true],
+    ['[type="submit"]', true],
+    ['[role="tab"]', true],
+    ['.toolbarActions', true],
+    ['.ds-pagination__item', true],
+    ['a', false],
+    ['.card', false],
+    ['.data-table', false],
+    // A substring match would read "tab" out of this and "badge" out of the
+    // next; whole words are what keep the rule from firing on prose.
+    ['.timetable-row', false],
+    ['.badger-den', false],
+    ['.buttonish', false],
+  ])('%j is %s', (selector, expected) => {
+    expect(readsAsControl(selector)).toBe(expected);
   });
 });
 

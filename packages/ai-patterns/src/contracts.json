@@ -35,6 +35,11 @@
       "check": "No hex / rgb() / hsl() / oklch() literal, and no magic px or ms for radius, shadow or duration, appears in a className string, a style object, or a stylesheet that consumes values.",
       "verifiedBy": "@elirobinson/eslint-config → @elirobinson/no-hardcoded-design-values (and its CSS counterpart via @elirobinson/eslint-config/css)"
     },
+    "no-underlined-control-label": {
+      "summary": "A control does not underline its own label. An underline is the one visual signal a hyperlink owns; drawn under a button, chip, tab or pagination item it stops telling a reader whether the thing navigates or acts, and on a filled surface it reads as a link wearing a button. Emphasis on a control comes from the fill, the label weight, or a border. A link-styled button on no fill is a different, legitimate pattern and is out of scope.",
+      "check": "No rule that paints a control's own filled surface also declares text-decoration: underline (or its longhand) on that control.",
+      "verifiedBy": "@elirobinson/eslint-config/css → @elirobinson-css/no-underlined-control-label, for a consumer's own stylesheets. Inside @elirobinson/react the same property is pinned twice: component-css.test.mjs sweeps every component stylesheet for an underline, and control-affordance.test.mjs resolves the real cascade over tokens.css + the component sheets and asserts the winning declaration is not one."
+    },
     "forward-ref": {
       "summary": "Every component that renders a focusable or interactive native element uses forwardRef, forwarding to the outermost interactive element the component owns.",
       "check": "The component is wrapped in React.forwardRef and the forwarded ref resolves to the interactive DOM node (or a documented handle, e.g. VirtualListHandle).",

@@ -80,6 +80,8 @@ Two layers fix it, and both are needed:
 
 Because the hover hue shift is gone on those surfaces, the hover affordance is carried by `text-decoration-thickness: 2px` instead. A control that is an anchor (`a.ds-button`, `a.ds-chip`) drops the underline entirely — it is a control, not a link.
 
+That last sentence is a check, not advice. `component-css.test.mjs` sweeps every component stylesheet for a `text-decoration: underline`, and `control-affordance.test.mjs` resolves the real cascade over `tokens.css` plus the component sheets and asserts the declaration that _wins_ is not one — a `text-decoration: none` that loses to a more specific rule satisfies the first and not the second. Consumers get the same constraint as `@elirobinson-css/no-underlined-control-label` from `@elirobinson/eslint-config/css`.
+
 ### FormField vs Input
 
 - **`Input`** (`atoms/Input`) is the batteries-included labelled control: it requires a

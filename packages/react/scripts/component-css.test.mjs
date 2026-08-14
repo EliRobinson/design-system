@@ -3,12 +3,13 @@
  * That file proves the *tokens* clear their thresholds. It cannot see a
  * component reaching for the wrong one — a decorative `--border` painted as an
  * input's edge measures 1.24:1 no matter how correct the token itself is. This
- * file reads every component stylesheet and asserts the three rules that a
+ * file reads every component stylesheet and asserts the four rules that a
  * correct token set can still be undone by:
  *
  *   1. a control's edge uses --border-control, not --border/--border-strong
  *   2. a rule that paints a background restates `color` in each of its states
  *   3. a painted colour is a semantic token, never a fixed base-scale value
+ *   4. a control's own label is not underlined
  *
  * Rule 2 is the amber-on-amber bug: tokens.css's global `a:hover` is (0,1,1)
  * and `.ds-button--accent` is (0,1,0), so a variant whose :hover moved only
@@ -18,6 +19,13 @@
  * black in both themes, so a tab underline, a switch track and a tooltip fill
  * were each 1.00:1 against a black page while every token they used was
  * individually correct.
+ *
+ * Rule 4 is not about contrast at all. An underline is the one signal a
+ * hyperlink owns, and a control that draws one under its own label stops
+ * telling a reader whether it navigates or acts. Whether the declaration that
+ * wins is an underline is a cascade question, settled in
+ * control-affordance.test.mjs; this is the flat sweep that says no component
+ * stylesheet contains such a declaration in the first place.
  *
  * Both lists carry named exemptions rather than clever heuristics. An entry is
  * a claim about a specific selector, which is reviewable; a heuristic that
@@ -202,6 +210,53 @@ describe('components paint semantic tokens, not fixed base-scale values', () => 
   it('still has scale tokens available to catch — the regex has not gone stale', () => {
     expect(BASE_SCALE.test('background: var(--ink-1000);')).toBe(true);
     expect(BASE_SCALE.test('color: var(--fg);')).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------------------------ *
+ * 4. A control's label is not underlined
+ * ------------------------------------------------------------------------ */
+
+/* `text-decoration: underline` and its longhand. The other longhands are not
+   a line — --thickness, --offset and --color only change one that is already
+   there, and tokens.css uses -thickness deliberately to keep a hover
+   affordance on a link that has lost its hue shift. */
+const UNDERLINE = /(?:^|[;\s])text-decoration(?:-line)?\s*:\s*([^;]*underline[^;]*)/;
+
+/* Selectors allowed to underline, each with the reason. Empty on purpose: no
+   component in this system draws its own underline. Links get theirs from
+   tokens.css's global `a` rule, which is where the signal belongs — an
+   underline anywhere else is a control borrowing a hyperlink's one visual
+   signal, which is the pattern reported in #62 (an orange button with a black
+   underlined label). An entry here is a claim that a specific selector is
+   genuinely a link. */
+const UNDERLINE_EXEMPT = {};
+
+describe('no component underlines its own label', () => {
+  for (const { file, css } of SHEETS) {
+    for (const { selector, body } of rules(css)) {
+      if (selector in UNDERLINE_EXEMPT) continue;
+      const underline = body.match(UNDERLINE);
+      if (!underline) continue;
+
+      it(`${file}: ${selector} does not underline`, () => {
+        expect.fail(
+          `${selector} in ${file} declares "${underline[1].trim()}". An underline is the ` +
+            "one visual signal a hyperlink owns; drawn under a control's own label it " +
+            'stops telling a reader whether the thing navigates or acts, and reads as a ' +
+            'link wearing a button. Use weight, a fill, or a border for emphasis, or add ' +
+            'the selector to UNDERLINE_EXEMPT with the reason it is genuinely a link.',
+        );
+      });
+    }
+  }
+
+  it('still catches an underline — the pattern has not gone stale', () => {
+    expect(UNDERLINE.test('text-decoration: underline;')).toBe(true);
+    expect(UNDERLINE.test('  text-decoration-line: underline dotted;')).toBe(true);
+    expect(UNDERLINE.test('text-decoration: none;')).toBe(false);
+    expect(UNDERLINE.test('text-decoration-thickness: 2px;')).toBe(false);
+    expect(UNDERLINE.test('text-underline-offset: 0.2em;')).toBe(false);
   });
 });
 
