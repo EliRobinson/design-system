@@ -25,3 +25,10 @@ ds-bundle/
 packages/react/_ds-entry.mjs
 .vercel
 .env*
+
+# design-system-docs/uploads is scratch space for pasted chat material — it
+# never ships (BRAND_SOURCES does not list it) and the brand manifest
+# categorises anything under it origin: "incidental". Keep the directory
+# itself so the manifest generator has somewhere to look.
+design-system-docs/uploads/*
+!design-system-docs/uploads/.gitkeep
