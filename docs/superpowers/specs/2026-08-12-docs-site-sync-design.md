@@ -368,9 +368,14 @@ These are real and worth tracking; none block this work, and I have not folded t
   nothing, and the two files are byte-identical apart from a leading newline — the "dark"
   variant is not white-text as `README.md` claims. These two ship to consumers, and
   `SKILL.md` instructs every agent to use them. This is the most serious defect found.
-- **`patterns/invoice/invoice.html` renders blank.** It declares
-  `doc-page:not(:defined) { visibility: hidden }` but never loads `doc-page.js`. Its README
-  claims the pair render standalone.
+- ~~`patterns/invoice/invoice.html` renders blank.~~ **Did not reproduce (#57).** Line 72
+  is `<script src="./doc-page.js"></script>` — the file does load it. Verified over HTTP
+  (docs site `/brand/patterns`) and standalone over `file://` (real Chromium, both
+  `invoice.html` and `receipt.html`): `customElements.get('doc-page')` is defined,
+  `<doc-page>` computes `visibility: visible`, content renders, no console or page errors.
+  `doc-page.js` is a plain script with no `type="module"`, so `file://`'s module-CORS block
+  never applies. The README's "the pair render standalone" claim holds. Either the file was
+  fixed after this audit or the audit misread it.
 - **`ui_kits/_shared/Primitives.jsx` ships undocumented.** The packer's consistency check
   compares only first path segments, so `_shared/` is invisible to it.
 - **`uploads/pasted-1777227214382-0.png` is a stray chat screenshot**, not brand material.
