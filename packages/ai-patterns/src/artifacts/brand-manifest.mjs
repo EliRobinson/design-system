@@ -15,10 +15,11 @@
  * - Three stylesheet conventions coexist (`../styles.css`, a sibling
  *   `_card.css`, `colors_and_type.css` at varying depths). Each artifact's
  *   dependencies are recorded as written, never normalised.
- * - Two paths escape the folder: `colors_and_type.css` is a symlink into
- *   `packages/tokens` (which `find -type f` misses — the walker uses
- *   dirents and records the target), and the generated `styles.css`
- *   `@import`s the real component stylesheets from `packages/react`.
+ * - Some paths escape the folder: `colors_and_type.css`, `fonts.css`, and
+ *   everything under `fonts/` are symlinks into `packages/tokens` (which
+ *   `find -type f` misses — the walker uses dirents and records the target),
+ *   and the generated `styles.css` `@import`s the real component stylesheets
+ *   from `packages/react`.
  *
  * Every file the walker finds must be claimed by some artifact's members;
  * an unclaimed file is a hard error, so a new folder cannot be silently
@@ -32,8 +33,11 @@ import { dirname, join, resolve as resolvePath, sep } from 'node:path';
 import { buildGuidelineCards } from './guideline-cards.mjs';
 
 /* Copied verbatim into the consumer tarball by build-artifacts.mjs. Anything
-   not listed is repo-internal — that allow-list is the entire ships rule. */
-export const BRAND_SOURCES = ['colors_and_type.css', 'assets', 'ui_kits'];
+   not listed is repo-internal — that allow-list is the entire ships rule.
+   fonts.css and fonts/ travel with colors_and_type.css: it @imports
+   './fonts.css', so shipping the stylesheet without the faces would leave a
+   dangling import in every consumer's skill. */
+export const BRAND_SOURCES = ['colors_and_type.css', 'fonts.css', 'fonts', 'assets', 'ui_kits'];
 
 const GUIDELINE_CARDS_MODULE = 'packages/ai-patterns/src/artifacts/guideline-cards.mjs';
 const STYLES_GENERATOR = 'packages/ai-patterns/scripts/build-design-project.mjs';
@@ -111,10 +115,11 @@ function hostOf(url) {
 
 /**
  * External origins reachable from an entry file: what the file itself names,
- * plus what its relative stylesheet chain names (`styles.css` reaches Google
- * Fonts through `colors_and_type.css`, and a card that links it inherits
- * that dependency). Local @imports are followed; the scan is cached because
- * `styles.css` imports every component stylesheet.
+ * plus what its relative stylesheet chain names — a card that links a
+ * stylesheet inherits its network dependencies. Local @imports are followed;
+ * the scan is cached because `styles.css` imports every component stylesheet.
+ * (The fonts used to make every chain name fonts.googleapis.com; they are
+ * self-hosted now, so a first-party chain reports no origins at all.)
  */
 function originScanner() {
   const cssCache = new Map();
@@ -302,6 +307,28 @@ export function buildBrandManifest({ root, tokens }) {
     generatedBy: STYLES_GENERATOR,
     members: [{ path: 'styles.css', role: 'entry' }],
   });
+
+  /* -- Self-hosted webfonts — mirrored from packages/tokens the same way
+        colors_and_type.css is, one symlink per file. --------------------- */
+  add({
+    id: 'fonts',
+    entry: 'fonts.css',
+    category: 'support-file',
+    title: 'Self-hosted webfonts',
+    origin: 'mirrored',
+    members: [{ path: 'fonts.css', role: 'entry' }],
+  });
+  for (const file of under('fonts')) {
+    add({
+      id: file.path.replace(/\.[a-z0-9]+$/, ''),
+      entry: file.path,
+      category: 'asset',
+      title: file.path.split('/').pop(),
+      group: 'fonts',
+      origin: 'mirrored',
+      members: [{ path: file.path, role: 'entry' }],
+    });
+  }
 
   /* -- Assets ------------------------------------------------------------ */
   for (const file of under('assets')) {
@@ -603,6 +630,10 @@ export function renderRepoIndexTable(manifest) {
   const tokensNote = tokensArtifact.symlinkTarget
     ? ` Symlink to \`${tokensArtifact.symlinkTarget.replace(/^(\.\.\/)+/, '')}\`.`
     : '';
+  const fontsArtifact = kit('fonts');
+  const fontsNote = fontsArtifact.symlinkTarget
+    ? ` Symlink to \`${fontsArtifact.symlinkTarget.replace(/^(\.\.\/)+/, '')}\`.`
+    : '';
 
   const rows = [
     {
@@ -614,6 +645,18 @@ export function renderRepoIndexTable(manifest) {
       description:
         'Generated aggregate the guideline cards link — @imports the real component ' +
         'stylesheets from packages/react. Rebuilt by `pnpm -F @elirobinson/ai-patterns build:design-project`.',
+    },
+    {
+      path: 'fonts.css',
+      description:
+        '@font-face for Geist and JetBrains Mono, self-hosted — colors_and_type.css ' +
+        `@imports it.${fontsNote}`,
+    },
+    {
+      path: 'fonts/',
+      description:
+        'The woff2 files fonts.css loads, with their SIL OFL licenses. ' +
+        'Symlinks into `packages/tokens/src/fonts/`.',
     },
     {
       path: 'assets/',

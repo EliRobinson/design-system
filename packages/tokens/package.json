@@ -36,12 +36,15 @@
   },
   "scripts": {
     "prepublishOnly": "pnpm run build",
-    "build": "node scripts/build-tokens-json.mjs && rm -rf dist && tsc -p ./tsconfig.json",
+    "build": "node scripts/build-fonts.mjs && node scripts/build-tokens-json.mjs && rm -rf dist && tsc -p ./tsconfig.json",
     "lint": "echo 'No lint configured for tokens'",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "prettier": "^3.8.3",
     "vitest": "^3.2.4"
   }
 }

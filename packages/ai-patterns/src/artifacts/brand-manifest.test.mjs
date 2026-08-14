@@ -96,12 +96,13 @@ describe('guideline cards', () => {
     expect(ink.render.viewport).toEqual({ width: 700, height: 140 });
   });
 
-  it('records dependencies as written and follows them to external origins', () => {
+  it('records dependencies as written and keeps the stylesheet chain first-party', () => {
     const focus = byId('guidelines/focus');
     expect(focus.render.stylesheets).toEqual(['../styles.css']);
-    /* Google Fonts is reached through styles.css → colors_and_type.css — the
-       chain, not the card, names it. */
-    expect(focus.render.externalOrigins).toContain('fonts.googleapis.com');
+    /* The fonts ride the same chain — styles.css → colors_and_type.css →
+       fonts.css — but from the package now, not Google Fonts, so the chain
+       names no external origin at all. */
+    expect(focus.render.externalOrigins).toEqual([]);
   });
 });
 

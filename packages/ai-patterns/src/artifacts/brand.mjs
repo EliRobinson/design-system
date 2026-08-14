@@ -74,6 +74,15 @@ export const BRAND_INDEX = [
     description:
       'All brand design tokens — colors, type, spacing, radii, shadow, motion. Import this anywhere.',
   },
+  {
+    path: 'fonts.css',
+    description:
+      'Self-hosted @font-face for Geist and JetBrains Mono — colors_and_type.css @imports it, so keep them siblings.',
+  },
+  {
+    path: 'fonts/',
+    description: 'The woff2 files fonts.css loads, with their SIL OFL licenses.',
+  },
   { path: 'assets/', description: 'Wordmark, monogram, lockup, dot-grid pattern. SVG-first.' },
   {
     path: 'ui_kits/marketing/',
