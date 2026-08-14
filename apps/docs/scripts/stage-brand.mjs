@@ -65,6 +65,10 @@ for (const dir of STAGED_DIRS) {
 }
 /* copyFileSync follows the symlink, so the copy is the dereferenced file. */
 copyFileSync(join(source, 'colors_and_type.css'), join(out, 'colors_and_type.css'));
+/* The self-hosted faces colors_and_type.css @imports — fonts.css resolves
+   `./fonts/` against its own URL, so both stage at the top level beside it. */
+copyFileSync(join(source, 'fonts.css'), join(out, 'fonts.css'));
+cpSync(join(source, 'fonts'), join(out, 'fonts'), { recursive: true, dereference: true });
 writeFileSync(join(out, 'styles.css'), flattenCss(join(source, 'styles.css')));
 
 process.stdout.write(`Brand artifacts staged in public/brand from ${source}\n`);
