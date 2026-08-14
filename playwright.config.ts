@@ -2,6 +2,25 @@ import { defineConfig } from '@playwright/test';
 
 import { WIDE_VIEWPORT } from './tests/visual/viewports';
 
+/* Baselines are only meaningful when they come from the pinned container
+   (issue #65, decision 1). Reading the flag off argv is crude, but the
+   alternative is a rule that lives only in a comment: `playwright test -u` on
+   a laptop writes macOS font rendering into the baselines, every one of them
+   then fails in CI, and the natural next move is to loosen `threshold` until
+   they pass — which quietly discards the whole guarantee.
+
+   Set by scripts/visual-container.mjs; there is no reason to set it by hand. */
+const updatingSnapshots = process.argv.some(
+  (arg) => arg === '-u' || arg.startsWith('--update-snapshots'),
+);
+
+if (updatingSnapshots && !process.env.DS_VISUAL_CONTAINER) {
+  throw new Error(
+    'Refusing to update baselines outside the pinned container.\n' +
+      'Run `pnpm test:visual:update` instead — it does this in the container CI uses.',
+  );
+}
+
 /* Visual regression config. See issue #65 for the decisions encoded here.
 
    Only the smoke project so far — the Storybook and docs sweeps land in later

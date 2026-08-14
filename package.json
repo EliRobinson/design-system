@@ -18,6 +18,8 @@
     "prepare": "husky",
     "lint:fix": "eslint . --fix",
     "test:visual": "playwright test",
+    "test:visual:container": "node scripts/visual-container.mjs",
+    "test:visual:update": "node scripts/visual-container.mjs --update-snapshots",
     "pretypecheck": "nx run-many -t build",
     "typecheck": "tsc --noEmit -p ./tsconfig.typecheck.json",
     "format:check": "prettier --check .",
