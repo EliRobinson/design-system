@@ -12,9 +12,9 @@
  * (0,1,0), and the label came out amber on amber at 2.31:1.
  *
  * Selectors are parsed and matched by jsdom's own CSSOM and selector engine.
- * Specificity is computed here — there is no DOM API that exposes it — so the
- * two specificities the bug turned on are pinned as their own assertions
- * below, where the arithmetic is checkable rather than assumed.
+ * Specificity comes from ./specificity.mjs — there is no DOM API that exposes
+ * it — so the two specificities the bug turned on are pinned as their own
+ * assertions below, where the arithmetic is checkable rather than assumed.
  */
 
 import { readFileSync } from 'node:fs';
@@ -24,37 +24,13 @@ import { fileURLToPath } from 'node:url';
 import { contrastRatio } from '@elirobinson/tokens/color';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { compareSpecificity as compare, specificity } from './specificity.mjs';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (...parts) => readFileSync(join(here, '..', ...parts), 'utf8');
 
 const TOKENS_CSS = readFileSync(join(here, '..', '..', 'tokens', 'src', 'tokens.css'), 'utf8');
 const BUTTON_CSS = read('src', 'components', 'atoms', 'Button.css');
-
-/**
- * CSS specificity as [id, class, element].
- *
- * Pseudo-elements count as elements and pseudo-classes as classes, per
- * https://www.w3.org/TR/selectors-4/#specificity-rules. `:not()`/`:is()` take
- * the specificity of their most specific argument; neither appears in the
- * selectors this file resolves, so they are not handled.
- */
-export function specificity(selector) {
-  let rest = selector;
-  const take = (pattern) => {
-    const found = rest.match(pattern) ?? [];
-    rest = rest.replace(pattern, ' ');
-    return found.length;
-  };
-  const ids = take(/#[\w-]+/g);
-  const pseudoElements = take(/::[\w-]+/g);
-  const attributes = take(/\[[^\]]*\]/g);
-  const pseudoClasses = take(/:[\w-]+(\([^)]*\))?/g);
-  const classes = take(/\.[\w-]+/g);
-  const elements = (rest.match(/(^|[\s>+~])[a-z][\w-]*/gi) ?? []).length;
-  return [ids, classes + attributes + pseudoClasses, elements + pseudoElements];
-}
-
-const compare = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
 
 /**
  * The `color` an element renders in a given pseudo-state, resolved over every

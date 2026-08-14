@@ -146,7 +146,7 @@ export default [
 ];
 ```
 
-Catches bare `@elirobinson/*` imports (which never resolve), foreign component libraries, direct Radix imports, and hardcoded colours, radii, shadows and durations. Add `@elirobinson/eslint-config/css` for the same checks in stylesheets.
+Catches bare `@elirobinson/*` imports (which never resolve), foreign component libraries, direct Radix imports, and hardcoded colours, radii, shadows and durations. Add `@elirobinson/eslint-config/css` for the same checks in stylesheets, plus the one constraint only a stylesheet can settle: a control that underlines its own label on a filled surface reads as a hyperlink wearing a button. `pnpm ds contracts` prints the current list either way.
 
 It also **warns** on padded functional UI copy — the frequency claims, blame, filler pacing, unprompted reassurance and enthusiasm that `pnpm ds patterns` bans under **UI Copy Is Chrome**. That one is a warning rather than an error on purpose: an existing app has copy written before the rule, and it should not fail to build the day it upgrades. Its scope is copy props and chrome components only, never your editorial content. Once the existing copy is clean:
 
