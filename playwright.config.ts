@@ -99,6 +99,13 @@ export default defineConfig({
        boundary. */
     locale: 'en-US',
     timezoneId: 'UTC',
+
+    /* From Playwright's component-testing guidance, which applies to any suite
+       that navigates to a gallery page: a service worker left over from a
+       previous build can serve stale assets, so a baseline would be compared
+       against code that is no longer there. Nothing here registers one today —
+       this keeps that true. */
+    serviceWorkers: 'block',
   },
 
   expect: {

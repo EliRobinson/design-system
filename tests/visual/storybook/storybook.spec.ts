@@ -4,15 +4,6 @@ import { expect, test } from '../fixtures';
 import { THEMES, applyTheme } from '../theme';
 import { stories, storyUrl } from './stories';
 
-/* STEP 4 ONLY — delete this and the `.filter` below in step 5.
-
-   Three components chosen for where the risk actually is: Button has the most
-   variants, Badge is where #60 surfaced (signal/anchor paint the token ramp),
-   and Popover is portalled and positioned at runtime. Generating baselines for
-   all 83 stories before the loop is known to be stable would mean reviewing
-   hundreds of images to find out the harness was wrong. */
-const PROVING_SUBSET = /^components-(button|badge|popover)--/;
-
 /** Resolves once the story has actually rendered. */
 async function waitForStory(page: Page): Promise<void> {
   await page.waitForFunction(() => {
@@ -23,6 +14,21 @@ async function waitForStory(page: Page): Promise<void> {
   /* Fonts resolve from the system stack rather than the network, but a capture
      taken before they are applied still measures different text metrics. */
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
+
+  /* A text caret blinks roughly twice a second, and it is not a CSS animation,
+     so `animations: 'disabled'` does not touch it. Any story that focuses an
+     input renders a bar that is present in some frames and absent in others —
+     CommandPalette focuses its search field on open, and its baseline passed
+     generation and then failed the very next run.
+
+     settle() cannot save this either: two consecutive captures can agree
+     purely because both happened to land in the same blink phase, which fixes
+     that phase into the baseline and leaves every later run a coin flip.
+     Injected into the page rather than passed to toHaveScreenshot, so the
+     settle captures and the asserted one see exactly the same document. */
+  await page.addStyleTag({
+    content: '*, *::before, *::after { caret-color: transparent !important; }',
+  });
 
   await settle(page);
 }
@@ -57,7 +63,7 @@ async function settle(page: Page): Promise<void> {
     .toBe(true);
 }
 
-for (const story of stories().filter(({ id }) => PROVING_SUBSET.test(id))) {
+for (const story of stories()) {
   for (const theme of THEMES) {
     test(`${story.id} · ${theme}`, async ({ page }) => {
       await applyTheme(page, theme);
