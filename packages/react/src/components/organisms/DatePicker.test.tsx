@@ -4,7 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DatePicker } from './DatePicker';
+import { DatePicker } from './DatePicker.js';
 
 describe('DatePicker', () => {
   it('opens the calendar when the input is clicked', async () => {

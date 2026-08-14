@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { ColumnDef } from './Table';
-import { VirtualTable } from './VirtualTable';
-import { stubViewportLayout } from '../../test/viewport';
+import type { ColumnDef } from './Table.js';
+import { VirtualTable } from './VirtualTable.js';
+import { stubViewportLayout } from '../../test/viewport.js';
 
 type Row = { id: number; name: string };
 

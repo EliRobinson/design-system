@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { FormField } from './FormField';
+import { FormField } from './FormField.js';
 
 describe('FormField', () => {
   it('associates the label with the child input via htmlFor/id', () => {

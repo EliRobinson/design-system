@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Chip } from './Chip';
+import { Chip } from './Chip.js';
 
 describe('Chip', () => {
   it('renders its label', () => {

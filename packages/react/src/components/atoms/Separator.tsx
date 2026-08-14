@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from 'react';
 import { forwardRef } from 'react';
 
-import { cn } from '../../lib/cn';
+import { cn } from '../../lib/cn.js';
 
 export type SeparatorProps = HTMLAttributes<HTMLDivElement> & {
   orientation?: 'horizontal' | 'vertical';

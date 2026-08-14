@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { RefObject } from 'react';
 
-import { useLatest } from '../lib/useLatest';
+import { useLatest } from '../lib/useLatest.js';
 
 export function useClickOutside(
   refs: RefObject<HTMLElement | null>[],

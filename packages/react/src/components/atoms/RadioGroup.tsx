@@ -1,7 +1,7 @@
 import type { HTMLAttributes, InputHTMLAttributes } from 'react';
 import { createContext, forwardRef, useContext, useId, useState } from 'react';
 
-import { cn } from '../../lib/cn';
+import { cn } from '../../lib/cn.js';
 
 type RadioGroupContextValue = {
   name: string;

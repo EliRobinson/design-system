@@ -2,8 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
-import { stubViewportLayout } from '../../test/viewport';
-import { Popover, PopoverContent, PopoverTrigger } from './Popover';
+import { stubViewportLayout } from '../../test/viewport.js';
+import { Popover, PopoverContent, PopoverTrigger } from './Popover.js';
 
 describe('Popover', () => {
   it('opens when the trigger is clicked', async () => {

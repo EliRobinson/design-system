@@ -1,13 +1,13 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useContext } from 'react';
 
-import { cn } from '../../lib/cn';
-import type { AnchoredOverlayContextValue } from './overlay/anchoredOverlay';
+import { cn } from '../../lib/cn.js';
+import type { AnchoredOverlayContextValue } from './overlay/anchoredOverlay.js';
 import {
   AnchoredOverlayContent,
   AnchoredOverlayTrigger,
   useAnchoredOverlay,
-} from './overlay/anchoredOverlay';
+} from './overlay/anchoredOverlay.js';
 
 const PopoverContext = createContext<AnchoredOverlayContextValue | null>(null);
 

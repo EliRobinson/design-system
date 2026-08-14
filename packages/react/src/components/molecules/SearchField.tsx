@@ -1,7 +1,7 @@
 import type { InputHTMLAttributes } from 'react';
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 
-import { cn } from '../../lib/cn';
+import { cn } from '../../lib/cn.js';
 
 export type SearchFieldProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,

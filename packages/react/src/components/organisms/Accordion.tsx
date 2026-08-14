@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, MouseEventHandler } from 'react';
 import { createContext, forwardRef, useContext, useId, useState } from 'react';
 
-import { cn } from '../../lib/cn';
+import { cn } from '../../lib/cn.js';
 
 export type AccordionHeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 

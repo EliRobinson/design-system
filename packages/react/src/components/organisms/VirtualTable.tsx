@@ -3,9 +3,9 @@ import { forwardRef } from 'react';
 import type { RowData } from '@tanstack/react-table';
 import { flexRender } from '@tanstack/react-table';
 
-import { cn } from '../../lib/cn';
-import { EmptyState } from '../molecules/EmptyState';
-import { VirtualList } from './VirtualList';
+import { cn } from '../../lib/cn.js';
+import { EmptyState } from '../molecules/EmptyState.js';
+import { VirtualList } from './VirtualList.js';
 import {
   DEFAULT_ROW_HEIGHT,
   DEFAULT_VIRTUALIZE_HEIGHT,
@@ -13,10 +13,10 @@ import {
   ariaSortFor,
   renderHeaderCell,
   useTableInstance,
-} from './table/core';
-import type { TableBaseProps, TableElementProps } from './table/core';
+} from './table/core.js';
+import type { TableBaseProps, TableElementProps } from './table/core.js';
 
-export type { ColumnDef } from './table/core';
+export type { ColumnDef } from './table/core.js';
 
 export type VirtualTableProps<T extends RowData> = TableElementProps &
   TableBaseProps<T> & {

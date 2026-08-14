@@ -1,8 +1,8 @@
 import type { HTMLAttributes } from 'react';
 import { forwardRef, useCallback, useRef } from 'react';
 
-import { cn } from '../../lib/cn';
-import { useRovingFocus } from '../../hooks/useRovingFocus';
+import { cn } from '../../lib/cn.js';
+import { useRovingFocus } from '../../hooks/useRovingFocus.js';
 
 export type SegmentedControlOption = {
   label: string;

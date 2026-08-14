@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
-import { NavigationMenu, type NavigationMenuItem } from './NavigationMenu';
+import { NavigationMenu, type NavigationMenuItem } from './NavigationMenu.js';
 
 const items: NavigationMenuItem[] = [
   { label: 'Dashboard', href: '/' },

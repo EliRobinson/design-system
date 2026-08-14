@@ -3,19 +3,19 @@ import { forwardRef, useEffect } from 'react';
 import type { RowData } from '@tanstack/react-table';
 import { flexRender } from '@tanstack/react-table';
 
-import { cn } from '../../lib/cn';
-import { EmptyState } from '../molecules/EmptyState';
-import { Pagination } from '../molecules/Pagination';
+import { cn } from '../../lib/cn.js';
+import { EmptyState } from '../molecules/EmptyState.js';
+import { Pagination } from '../molecules/Pagination.js';
 import {
   TableFilterInput,
   ariaSortFor,
   renderHeaderCell,
   useClampedPageIndex,
   useTableInstance,
-} from './table/core';
-import type { TableBaseProps, TableElementProps } from './table/core';
+} from './table/core.js';
+import type { TableBaseProps, TableElementProps } from './table/core.js';
 
-export type { ColumnDef } from './table/core';
+export type { ColumnDef } from './table/core.js';
 
 export type TableProps<T extends RowData> = TableElementProps &
   TableBaseProps<T> & {

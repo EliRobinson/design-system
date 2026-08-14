@@ -2,10 +2,10 @@ import type { HTMLAttributes, ReactNode, RefObject } from 'react';
 import { createContext, forwardRef, useContext, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useAnchoredPosition } from '../../hooks/useAnchoredPosition';
-import { useHasMounted } from '../../hooks/useHasMounted';
-import { cn } from '../../lib/cn';
-import { useMergedRef } from '../../lib/useMergedRef';
+import { useAnchoredPosition } from '../../hooks/useAnchoredPosition.js';
+import { useHasMounted } from '../../hooks/useHasMounted.js';
+import { cn } from '../../lib/cn.js';
+import { useMergedRef } from '../../lib/useMergedRef.js';
 
 type TooltipContextValue = {
   open: boolean;

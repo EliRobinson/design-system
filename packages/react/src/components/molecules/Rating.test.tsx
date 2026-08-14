@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Rating } from './Rating';
+import { Rating } from './Rating.js';
 
 describe('Rating', () => {
   it('renders as a static value with no buttons when onValueChange is omitted', () => {

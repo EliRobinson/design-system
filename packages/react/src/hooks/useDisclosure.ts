@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { useLatest } from '../lib/useLatest';
+import { useLatest } from '../lib/useLatest.js';
 
 export type UseDisclosureOptions = {
   /** Controlled open state. Passing it hands ownership of the value to the caller. */

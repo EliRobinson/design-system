@@ -1,9 +1,9 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useContext } from 'react';
 
-import { cn } from '../../lib/cn';
-import type { ModalSurfaceContextValue } from './overlay/modalSurface';
-import { ModalClose, ModalSurface, ModalTrigger, useModalSurface } from './overlay/modalSurface';
+import { cn } from '../../lib/cn.js';
+import type { ModalSurfaceContextValue } from './overlay/modalSurface.js';
+import { ModalClose, ModalSurface, ModalTrigger, useModalSurface } from './overlay/modalSurface.js';
 
 type SheetSide = 'left' | 'right' | 'top' | 'bottom';
 
