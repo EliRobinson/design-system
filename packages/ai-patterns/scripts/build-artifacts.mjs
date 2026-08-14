@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 
 import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
 
-import { BRAND_INDEX, replaceManagedBlock, transformBrandDocs } from '../src/artifacts/brand.mjs';
+import { replaceManagedBlock, transformBrandDocs } from '../src/artifacts/brand.mjs';
 import {
   BRAND_SOURCES,
   buildBrandManifest,
@@ -164,25 +164,22 @@ function main() {
     cpSync(from, join(brandOut, entry), { recursive: true, dereference: true });
   }
 
+  /* The inventory the consumer reads is derived from the files that just landed
+     in the tarball — every one of them, at full depth — plus the two documents
+     written below. Comparing BRAND_SOURCES against a hand-kept list instead
+     compared first path segments, so `ui_kits/_shared/` shipped undescribed
+     under cover of the four `ui_kits/<kit>/` rows. transformBrandDocs throws on
+     a file no row covers, and on a row no file backs. */
+  const shipped = [...walk(brandOut), 'README.md', 'SKILL.md'];
+
   const { readme, skill } = transformBrandDocs({
     readme: readFileSync(join(brandSource, 'README.md'), 'utf8'),
     skill: readFileSync(join(brandSource, 'SKILL.md'), 'utf8'),
     referenceSkill: SKILL_DIRS.reference,
+    shipped,
   });
   write(join(SKILL_DIRS.brand, 'README.md'), readme);
   write(join(SKILL_DIRS.brand, 'SKILL.md'), skill);
-
-  const documented = new Set(
-    BRAND_INDEX.map((entry) => entry.path.replace(/\/$/, '').split('/')[0]),
-  );
-  for (const entry of [...BRAND_SOURCES, 'README.md', 'SKILL.md']) {
-    if (!documented.has(entry)) {
-      throw new Error(
-        `BRAND_SOURCES ships "${entry}" but BRAND_INDEX in src/artifacts/brand.mjs does not ` +
-          'describe it, so the generated inventory would omit it.',
-      );
-    }
-  }
 
   /* 2. Component reference — generated from the published manifest by the same
         builder apps/docs serves /llms.txt from. Passing `versions` is what
