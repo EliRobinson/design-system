@@ -17,6 +17,7 @@
     "changeset": "changeset",
     "prepare": "husky",
     "lint:fix": "eslint . --fix",
+    "pretest:visual": "nx build storybook",
     "test:visual": "playwright test",
     "test:visual:container": "node scripts/visual-container.mjs",
     "test:visual:update": "node scripts/visual-container.mjs --update-snapshots",

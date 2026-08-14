@@ -50,6 +50,12 @@ const CACHE_VOLUME = 'ds-visual-cache';
 const SCREENSHOTS = 'tests/visual/__screenshots__';
 const REPORT = 'playwright-report';
 
+/* Where Playwright writes the -actual/-expected/-diff images for a failed
+   comparison. Mounted out because a failure that leaves no artifact on the host
+   is a failure you can only theorise about — which is exactly how the first
+   round of debugging here was wasted. */
+const RESULTS = 'test-results';
+
 /* Rebuilds the working copy from the read-only source mount, then installs and
    runs. The tar pair is a copy with excludes — node_modules is the important
    one, since a macOS arm64 tree is useless to a linux amd64 container.
@@ -77,6 +83,13 @@ corepack enable
 corepack prepare --activate
 
 pnpm install --frozen-lockfile --store-dir /pnpm-store
+
+# Two commands rather than one 'pnpm run test:visual', which swallows the
+# flags: pnpm does not forward "$@" through to the underlying binary
+# reliably, so --workers and --update-snapshots were silently dropped.
+# Calling the build script by name keeps it defined in one place, and the
+# test binary is invoked directly so its arguments arrive intact.
+pnpm run pretest:visual
 
 exec pnpm exec playwright test "$@"
 `;
@@ -139,7 +152,7 @@ if (fresh) {
 }
 
 /* Created here rather than by Docker, which would make them root-owned. */
-for (const path of [SCREENSHOTS, REPORT]) {
+for (const path of [SCREENSHOTS, REPORT, RESULTS]) {
   mkdirSync(join(root, path), { recursive: true });
 }
 
@@ -177,6 +190,11 @@ const result = run('docker', [
      a missing repo, in a container that has no use for hooks anyway. */
   '-e',
   'HUSKY=0',
+  /* The Storybook build phones home otherwise. This container should reach the
+     network for nothing but the image itself — a telemetry call is latency and
+     one more way for a baseline run to fail, for no benefit here. */
+  '-e',
+  'STORYBOOK_DISABLE_TELEMETRY=1',
   ...(process.env.CI ? ['-e', 'CI'] : []),
   IMAGE,
   'bash',

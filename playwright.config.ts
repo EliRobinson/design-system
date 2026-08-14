@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
-import { WIDE_VIEWPORT } from './tests/visual/viewports';
+import { STORYBOOK_DIR, STORYBOOK_PORT, STORYBOOK_URL } from './tests/visual/storybook/stories';
+import { NARROW_VIEWPORT, WIDE_VIEWPORT } from './tests/visual/viewports';
 
 /* Baselines are only meaningful when they come from the pinned container
    (issue #65, decision 1). Reading the flag off argv is crude, but the
@@ -30,16 +31,47 @@ if (updatingSnapshots && !process.env.DS_VISUAL_CONTAINER) {
 export default defineConfig({
   testDir: './tests/visual',
 
+  /* The Storybook build is served, not rebuilt per test. It has to exist before
+     the specs are collected, because they enumerate stories from its index.json
+     — which is why the build runs in `pretest:visual` rather than here. */
+  webServer: {
+    command: `node scripts/serve-static.mjs ${STORYBOOK_DIR} ${STORYBOOK_PORT}`,
+    url: STORYBOOK_URL,
+    reuseExistingServer: !process.env.CI,
+  },
+
+  /* Viewport is a project rather than a per-test setting, so a story's wide and
+     narrow baselines live in separate directories and can't collide on name. */
   projects: [
     /* Asserts that the settings below do what they claim. Takes no baselines
        and needs no server, so it stays runnable on a bare checkout. */
     { name: 'smoke', testMatch: /\.smoke\.spec\.ts$/ },
+    {
+      name: 'storybook-wide',
+      testMatch: /storybook\.spec\.ts$/,
+      use: { viewport: WIDE_VIEWPORT },
+    },
+    {
+      name: 'storybook-narrow',
+      testMatch: /storybook\.spec\.ts$/,
+      use: { viewport: NARROW_VIEWPORT },
+    },
   ],
 
   /* Baselines are grouped by project so the Storybook and docs sweeps never
      collide on a shared name, and so deleting a project's baselines is one
      directory removal. */
   snapshotPathTemplate: '{testDir}/__screenshots__/{projectName}/{testFilePath}/{arg}{ext}',
+
+  /* Playwright defaults this to 'missing', which silently *writes* any baseline
+     that doesn't exist yet and reports it as a failure. On a laptop that bakes
+     macOS font rendering into every new snapshot without anyone passing a flag
+     — the argv guard above never fires, because no flag was used. Outside the
+     container a missing baseline is an error to report, never one to fill in.
+
+     An explicit --update-snapshots still wins over this, which is how the
+     container generates them; the guard above is what stops that on a host. */
+  updateSnapshots: process.env.DS_VISUAL_CONTAINER ? undefined : 'none',
 
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
