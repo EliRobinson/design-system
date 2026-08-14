@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './Accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './Accordion.js';
 
 function Example({ type }: { type?: 'single' | 'multiple' }) {
   return (

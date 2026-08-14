@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { ColumnDef } from './Table';
-import { Table } from './Table';
+import type { ColumnDef } from './Table.js';
+import { Table } from './Table.js';
 
 type Row = { id: number; name: string };
 

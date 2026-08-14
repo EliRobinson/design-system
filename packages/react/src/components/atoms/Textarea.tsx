@@ -1,7 +1,7 @@
 import type { TextareaHTMLAttributes } from 'react';
 import { forwardRef, useId } from 'react';
 
-import { cn } from '../../lib/cn';
+import { cn } from '../../lib/cn.js';
 
 export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label: string;

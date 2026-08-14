@@ -43,7 +43,7 @@
   },
   "scripts": {
     "prepublishOnly": "pnpm run build",
-    "build": "rm -rf dist && tsc -p ./tsconfig.json && node ./scripts/generate-manifest.mjs",
+    "build": "rm -rf dist && tsc -p ./tsconfig.json && node ./scripts/generate-manifest.mjs && node ./scripts/smoke-dist.mjs",
     "lint": "echo 'No lint configured for react package'",
     "test": "vitest run",
     "test:watch": "vitest"

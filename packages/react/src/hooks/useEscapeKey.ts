@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { useLatest } from '../lib/useLatest';
+import { useLatest } from '../lib/useLatest.js';
 
 export function useEscapeKey(onEscape: () => void, enabled = true) {
   // Callers write this callback inline, so keeping it out of the listener

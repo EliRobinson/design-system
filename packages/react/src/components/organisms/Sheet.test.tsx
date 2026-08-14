@@ -10,7 +10,7 @@ import {
   SheetDescription,
   SheetTitle,
   SheetTrigger,
-} from './Sheet';
+} from './Sheet.js';
 
 describe('Sheet', () => {
   it('opens from its trigger and closes from its close button', async () => {

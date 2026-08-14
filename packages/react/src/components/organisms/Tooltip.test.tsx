@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { stubViewportLayout } from '../../test/viewport';
-import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
+import { stubViewportLayout } from '../../test/viewport.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip.js';
 
 function renderTooltip() {
   return render(

@@ -9,8 +9,8 @@ import {
   useState,
 } from 'react';
 
-import { cn } from '../../lib/cn';
-import { useRovingFocus } from '../../hooks/useRovingFocus';
+import { cn } from '../../lib/cn.js';
+import { useRovingFocus } from '../../hooks/useRovingFocus.js';
 
 type TabsContextValue = {
   activeTab: string;

@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { VirtualList } from './VirtualList';
+import { VirtualList } from './VirtualList.js';
 
-import { stubViewportLayout } from '../../test/viewport';
+import { stubViewportLayout } from '../../test/viewport.js';
 
 describe('VirtualList', () => {
   stubViewportLayout();

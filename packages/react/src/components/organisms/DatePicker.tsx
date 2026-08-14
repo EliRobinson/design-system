@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useRef, useState } from 'react';
 
-import { useClickOutside } from '../../hooks/useClickOutside';
-import { cn } from '../../lib/cn';
+import { useClickOutside } from '../../hooks/useClickOutside.js';
+import { cn } from '../../lib/cn.js';
 
 export type DatePickerProps = {
   /** Accessible label for the trigger input (also its accessible name). */

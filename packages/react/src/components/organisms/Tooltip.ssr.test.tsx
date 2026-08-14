@@ -5,7 +5,7 @@
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip.js';
 
 describe('Tooltip server rendering', () => {
   it('renders without a document', () => {

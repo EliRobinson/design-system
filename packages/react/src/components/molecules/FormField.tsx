@@ -1,8 +1,8 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 import { forwardRef, useId } from 'react';
 
-import { cn } from '../../lib/cn';
-import { Label } from '../atoms/Label';
+import { cn } from '../../lib/cn.js';
+import { Label } from '../atoms/Label.js';
 
 export type FormFieldRenderProps = {
   'aria-describedby': string | undefined;

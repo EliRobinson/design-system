@@ -1,12 +1,12 @@
 import type { KeyboardEvent } from 'react';
 import { forwardRef, useCallback, useEffect, useId, useRef, useState } from 'react';
 
-import { cn } from '../../lib/cn';
-import { useActiveDescendant } from '../../hooks/useActiveDescendant';
-import { useClickOutside } from '../../hooks/useClickOutside';
-import { SearchField } from '../molecules/SearchField';
-import { VirtualList } from './VirtualList';
-import type { VirtualListHandle } from './VirtualList';
+import { cn } from '../../lib/cn.js';
+import { useActiveDescendant } from '../../hooks/useActiveDescendant.js';
+import { useClickOutside } from '../../hooks/useClickOutside.js';
+import { SearchField } from '../molecules/SearchField.js';
+import { VirtualList } from './VirtualList.js';
+import type { VirtualListHandle } from './VirtualList.js';
 
 export type ComboboxOption = {
   label: string;

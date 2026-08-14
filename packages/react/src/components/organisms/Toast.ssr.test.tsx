@@ -7,7 +7,7 @@
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { Toaster } from './Toast';
+import { Toaster } from './Toast.js';
 
 describe('Toast server rendering', () => {
   it('renders the Toaster provider without a document', () => {

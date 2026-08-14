@@ -1,12 +1,12 @@
 import type { KeyboardEvent } from 'react';
 import { forwardRef, useCallback, useEffect, useId, useRef, useState } from 'react';
 
-import { cn } from '../../lib/cn';
-import { useMergedRef } from '../../lib/useMergedRef';
-import { useActiveDescendant } from '../../hooks/useActiveDescendant';
-import { Kbd } from '../atoms/Kbd';
-import { SearchField } from '../molecules/SearchField';
-import { Dialog, DialogContent, DialogTitle } from './Dialog';
+import { cn } from '../../lib/cn.js';
+import { useMergedRef } from '../../lib/useMergedRef.js';
+import { useActiveDescendant } from '../../hooks/useActiveDescendant.js';
+import { Kbd } from '../atoms/Kbd.js';
+import { SearchField } from '../molecules/SearchField.js';
+import { Dialog, DialogContent, DialogTitle } from './Dialog.js';
 
 export type CommandPaletteCommand = {
   id: string;

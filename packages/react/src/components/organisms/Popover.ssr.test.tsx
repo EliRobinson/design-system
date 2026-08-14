@@ -5,7 +5,7 @@
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { Popover, PopoverContent, PopoverTrigger } from './Popover';
+import { Popover, PopoverContent, PopoverTrigger } from './Popover.js';
 
 function openPopover() {
   return (

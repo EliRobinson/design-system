@@ -2,13 +2,13 @@ import type { ButtonHTMLAttributes, HTMLAttributes, RefObject } from 'react';
 import { forwardRef, useId, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useAnchoredPosition } from '../../../hooks/useAnchoredPosition';
-import { useClickOutside } from '../../../hooks/useClickOutside';
-import type { UseDisclosureOptions } from '../../../hooks/useDisclosure';
-import { useDisclosure } from '../../../hooks/useDisclosure';
-import { useEscapeKey } from '../../../hooks/useEscapeKey';
-import { useHasMounted } from '../../../hooks/useHasMounted';
-import { useMergedRef } from '../../../lib/useMergedRef';
+import { useAnchoredPosition } from '../../../hooks/useAnchoredPosition.js';
+import { useClickOutside } from '../../../hooks/useClickOutside.js';
+import type { UseDisclosureOptions } from '../../../hooks/useDisclosure.js';
+import { useDisclosure } from '../../../hooks/useDisclosure.js';
+import { useEscapeKey } from '../../../hooks/useEscapeKey.js';
+import { useHasMounted } from '../../../hooks/useHasMounted.js';
+import { useMergedRef } from '../../../lib/useMergedRef.js';
 
 /* Internal. The parts `Popover` and `DropdownMenu` are both made of.
  *

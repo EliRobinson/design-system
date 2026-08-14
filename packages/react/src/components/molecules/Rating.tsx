@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from 'react';
 import { forwardRef } from 'react';
 
-import { cn } from '../../lib/cn';
+import { cn } from '../../lib/cn.js';
 
 /* Filled and empty stars are different glyphs, not one glyph in two colours.
    Both states used ★ and were told apart by colour alone, which is SC 1.4.1

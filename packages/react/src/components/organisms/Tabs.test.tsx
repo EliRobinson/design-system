@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './Tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './Tabs.js';
 
 describe('Tabs', () => {
   it('shows the default tab panel', () => {

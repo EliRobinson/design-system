@@ -1,7 +1,7 @@
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
 import { forwardRef } from 'react';
 
-import { cn } from '../../lib/cn';
+import { cn } from '../../lib/cn.js';
 
 export type RuleLinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   children: ReactNode;

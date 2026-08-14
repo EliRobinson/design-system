@@ -3,7 +3,7 @@ import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { Virtualizer } from '@tanstack/react-virtual';
 
-import { cn } from '../../lib/cn';
+import { cn } from '../../lib/cn.js';
 
 /**
  * What a consumer can drive from outside. Deliberately not the scroll

@@ -4,9 +4,9 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Combobox } from './Combobox';
+import { Combobox } from './Combobox.js';
 
-import { stubViewportLayout } from '../../test/viewport';
+import { stubViewportLayout } from '../../test/viewport.js';
 
 const options = [
   { label: 'Apple', value: 'apple' },

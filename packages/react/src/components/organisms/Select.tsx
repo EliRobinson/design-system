@@ -1,7 +1,7 @@
 import type { SelectHTMLAttributes } from 'react';
 import { forwardRef, useId } from 'react';
 
-import { cn } from '../../lib/cn';
+import { cn } from '../../lib/cn.js';
 
 export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
   label: string;

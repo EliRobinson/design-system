@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './DropdownMenu';
+} from './DropdownMenu.js';
 
 describe('DropdownMenu', () => {
   it('opens when the trigger is clicked', async () => {

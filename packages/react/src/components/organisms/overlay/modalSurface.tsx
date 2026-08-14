@@ -1,10 +1,10 @@
 import type { ButtonHTMLAttributes, HTMLAttributes } from 'react';
 import { forwardRef, useEffect, useId, useMemo, useRef } from 'react';
 
-import type { UseDisclosureOptions } from '../../../hooks/useDisclosure';
-import { useDisclosure } from '../../../hooks/useDisclosure';
-import { cn } from '../../../lib/cn';
-import { useMergedRef } from '../../../lib/useMergedRef';
+import type { UseDisclosureOptions } from '../../../hooks/useDisclosure.js';
+import { useDisclosure } from '../../../hooks/useDisclosure.js';
+import { cn } from '../../../lib/cn.js';
+import { useMergedRef } from '../../../lib/useMergedRef.js';
 
 /* Internal. The parts `Dialog` and `Sheet` are both made of.
  *

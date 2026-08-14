@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogTitle,
   DialogTrigger,
-} from './Dialog';
+} from './Dialog.js';
 
 describe('Dialog', () => {
   it('opens when the trigger is clicked', async () => {

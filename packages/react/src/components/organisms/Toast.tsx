@@ -2,8 +2,8 @@ import type { HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useCallback, useContext, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useHasMounted } from '../../hooks/useHasMounted';
-import { cn } from '../../lib/cn';
+import { useHasMounted } from '../../hooks/useHasMounted.js';
+import { cn } from '../../lib/cn.js';
 
 export type ToastVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
 

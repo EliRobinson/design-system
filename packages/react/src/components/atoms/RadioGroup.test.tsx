@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { RadioGroup, RadioGroupItem } from './RadioGroup';
+import { RadioGroup, RadioGroupItem } from './RadioGroup.js';
 
 describe('RadioGroup', () => {
   it('selects the item marked as the default value', () => {

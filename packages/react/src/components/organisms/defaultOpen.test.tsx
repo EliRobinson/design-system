@@ -2,15 +2,15 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from './Dialog';
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from './Dialog.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './DropdownMenu';
-import { Popover, PopoverContent, PopoverTrigger } from './Popover';
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from './Sheet';
+} from './DropdownMenu.js';
+import { Popover, PopoverContent, PopoverTrigger } from './Popover.js';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from './Sheet.js';
 
 // `defaultOpen` is the uncontrolled counterpart of `open`: it seeds the initial
 // state and then stops mattering, so the component still opens and closes on
