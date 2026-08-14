@@ -171,7 +171,15 @@ describe('working material', () => {
         expect(artifact.shipReason).toContain(`does not list "${top}"`);
       }
     }
-    expect(byId('uploads/pasted-1777227214382-0').origin).toBe('incidental');
+    /* uploads/ is scratch space for pasted chat material (issue #56) — kept
+       empty on disk apart from a .gitkeep, so anything that lands there next
+       is still manifested as incidental rather than silently shipping. */
+    const uploads = artifacts.filter((artifact) => artifact.path.startsWith('uploads/'));
+    expect(uploads.length).toBeGreaterThan(0);
+    for (const artifact of uploads) {
+      expect(artifact.category, artifact.id).toBe('scratch');
+      expect(artifact.origin, artifact.id).toBe('incidental');
+    }
   });
 
   it('records the preview width the cards inherit from _card.css', () => {
