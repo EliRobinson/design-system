@@ -1,35 +1,18 @@
 import { test as base } from '@playwright/test';
 
+import { applyFixedClock } from '@elirobinson/ai-patterns/testing/visual-config';
+
 export { expect } from '@playwright/test';
 
-/* The instant every visual run pretends it is.
-
-   Mid-month and mid-day on purpose: a month boundary would make DatePicker's
-   grid shift under a timezone slip, and a day boundary would do the same to
-   any rendered date. Noon on the 15th is the furthest point from both.
-
-   `today` inside DatePicker.tsx is a bare `new Date()`, so without this the
-   component's highlighted cell moves daily and its baseline rots overnight.
-   The stories pin their own seed date as well — a story that is only
-   deterministic under Playwright is still nondeterministic to review.
-
-   Kept in the same month as SEED_DATE in DatePicker.stories.tsx on purpose.
-   The picker's view follows the selected date, so a fixed time in any other
-   month puts `today` outside the rendered grid and the `--today` style stops
-   appearing in the baseline at all — a coverage loss that nothing would
-   report, since the snapshot would still be perfectly stable. */
-export const FIXED_TIME = new Date('2026-01-15T12:00:00.000Z');
-
+/* Freezes the clock for every test in this suite. The sweeps in
+   `@elirobinson/ai-patterns/testing/visual-sweep` also apply it per test, so a
+   consumer needs no fixture at all; this covers the specs written by hand here,
+   and setting the same fixed instant twice changes nothing. */
 export const test = base.extend({
-  page: async ({ page }, use) => {
-    /* setFixedTime, not clock.install: install replaces the timer queue
-       wholesale, which stalls React's scheduler and anything driven by
-       setTimeout (Toast's auto-dismiss, transition cleanup). We want a frozen
-       Date.now() with timers still running normally.
-
-       Installed before the test navigates so the very first script the page
+  page: async ({ page }, run) => {
+    /* Installed before the test navigates so the very first script the page
        runs already sees the fixed time. */
-    await page.clock.setFixedTime(FIXED_TIME);
-    await use(page);
+    await applyFixedClock(page);
+    await run(page);
   },
 });

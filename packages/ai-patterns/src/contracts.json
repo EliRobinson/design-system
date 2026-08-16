@@ -22,7 +22,7 @@
   "componentConstraints": {
     "no-barrel-imports": {
       "summary": "Import via package subpaths only — @elirobinson/react/components/<tier>/<Name>, @elirobinson/react/hooks/<name>, @elirobinson/tokens/tokens.css. There are no barrel files; a bare @elirobinson/react import does not resolve.",
-      "check": "Every import from an @elirobinson package names a subpath (components/*, hooks/*, styles/*.css, styles.css, tokens.css, tailwind.css, tokens.json, tokens-data, manifest, patterns, contracts, agents/*, testing/playwright).",
+      "check": "Every import from an @elirobinson package names a subpath (components/*, hooks/*, styles/*.css, styles.css, tokens.css, tailwind.css, tokens.json, tokens-data, manifest, patterns, contracts, agents/*, testing/*).",
       "verifiedBy": "@elirobinson/eslint-config → no-restricted-imports. Run `ds props <Name>` for the exact specifier."
     },
     "no-foreign-component-libraries": {

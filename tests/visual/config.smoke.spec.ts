@@ -1,8 +1,16 @@
-import { FIXED_TIME, expect, test } from './fixtures';
+import {
+  FIXED_TIME,
+  assertContainedBaselineUpdate,
+  defineVisualConfig,
+} from '@elirobinson/ai-patterns/testing/visual-config';
 
-/* Proves the two determinism settings in playwright.config.ts actually bite,
-   before any real baseline depends on them. Needs no server and commits no
-   screenshots: every assertion compares captures taken within the test.
+import playwrightConfig from '../../playwright.config';
+import { expect, test } from './fixtures';
+
+/* Proves the determinism settings actually bite, before any real baseline
+   depends on them. Needs no server and commits no screenshots: every assertion
+   compares captures taken within the test, or reads the config this repo
+   actually ships.
 
    A silent failure here would be expensive later — animations that are not
    really disabled produce baselines that pass on the machine that generated
@@ -86,4 +94,77 @@ test('control: the same capture without the option is not reproducible', async (
   const second = await subject.screenshot();
 
   expect(first.equals(second)).toBe(false);
+});
+
+/* The settings above are only worth proving if the config this repo ships
+   still carries them. It gets them from the published preset now, so these read
+   the real exported config rather than restating its values — a preset that
+   quietly dropped `threshold: 0` would otherwise be invisible until a colour
+   regression sailed through. */
+test('the shipped config compares screenshots exactly', () => {
+  const screenshot = playwrightConfig.expect?.toHaveScreenshot;
+
+  expect(screenshot?.threshold).toBe(0);
+  expect(screenshot?.maxDiffPixels).toBe(0);
+  expect(screenshot?.maxDiffPixelRatio).toBe(0);
+  expect(screenshot?.animations).toBe('disabled');
+});
+
+test('the shipped config pins everything a render can vary by', () => {
+  expect(playwrightConfig.use?.locale).toBe('en-US');
+  expect(playwrightConfig.use?.timezoneId).toBe('UTC');
+  expect(playwrightConfig.use?.deviceScaleFactor).toBe(1);
+  expect(playwrightConfig.use?.serviceWorkers).toBe('block');
+
+  /* Retrying a screenshot comparison turns a nondeterminism bug into an
+     intermittent pass, which is the one failure mode this suite exists to
+     prevent. */
+  expect(playwrightConfig.retries).toBe(0);
+});
+
+test('the shipped config never writes a missing baseline by itself', () => {
+  /* Playwright's default is 'missing', which silently writes any baseline that
+     does not exist yet. Outside the container that bakes this machine's font
+     rendering in without anyone passing a flag. */
+  expect(playwrightConfig.updateSnapshots).toBe(
+    process.env.DS_VISUAL_CONTAINER ? undefined : 'none',
+  );
+});
+
+test('the preset refuses to update baselines outside the container', () => {
+  const outsideContainer = { argv: ['node', 'playwright', 'test', '-u'], env: {} };
+
+  expect(() => assertContainedBaselineUpdate(outsideContainer)).toThrow(
+    /Refusing to update baselines/,
+  );
+  expect(() =>
+    assertContainedBaselineUpdate({ ...outsideContainer, argv: ['node', 'playwright', 'test'] }),
+  ).not.toThrow();
+  expect(() =>
+    assertContainedBaselineUpdate({ ...outsideContainer, env: { DS_VISUAL_CONTAINER: '1' } }),
+  ).not.toThrow();
+
+  /* The long form has to be caught too — `--update-snapshots=all` is the one a
+     CI script is most likely to write. */
+  expect(() =>
+    assertContainedBaselineUpdate({
+      ...outsideContainer,
+      argv: ['node', 'playwright', 'test', '--update-snapshots=all'],
+    }),
+  ).toThrow(/Refusing to update baselines/);
+});
+
+test('the preset merges overrides without dropping the contract', () => {
+  const merged = defineVisualConfig(
+    { testDir: './elsewhere', expect: { timeout: 1_000 } },
+    { argv: [], env: {} },
+  );
+
+  expect(merged.testDir).toBe('./elsewhere');
+  expect(merged.expect.timeout).toBe(1_000);
+
+  /* The failure mode a spread-based preset has: adding one option under
+     `expect` silently discards the exact-comparison settings under it. */
+  expect(merged.expect.toHaveScreenshot.threshold).toBe(0);
+  expect(merged.expect.toHaveScreenshot.animations).toBe('disabled');
 });

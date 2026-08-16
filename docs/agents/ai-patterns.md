@@ -130,9 +130,18 @@ enforces it, so a reader can tell which constraints are automated:
 
 - Statically checkable ones → `@elirobinson/eslint-config`.
 - Ones only a browser can settle → `src/testing/playwright.mjs`.
+- Ones only a pixel comparison can settle → `src/testing/visual-config.mjs` and
+  `src/testing/visual-sweep.mjs`.
 - The rest say "not automated — review", which is the honest answer.
 
 Adding a constraint means either shipping its check or saying plainly that there isn't one.
+
+The visual modules follow the same rule the rest of this package does: nothing they ship
+contains a list of what to cover. `sweepStorybook` and `sweepPages` register their tests
+from a build's own `index.json` and prerender manifest, so this repo's suite and a
+consumer's are the same code pointed at different builds. Repo-specific values — ports,
+build directories, which routes this docs site cannot hold still — stay in
+`tests/visual/`, and they are the only thing that differs.
 
 ## Agent templates
 
