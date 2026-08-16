@@ -47,7 +47,7 @@
     },
     "touch-target-primary": {
       "summary": "Primary interactive controls — buttons, pagination items, segmented-control options, nav items — have a minimum 44x44px touch target. Where visual density matters, keep the painted glyph small and expand the hit area with padding or a bounded overlay rather than inflating the visible control.",
-      "check": "The computed hit area of each primary control is at least 44x44px.",
+      "check": "The computed hit area of each primary control is at least 44x44px, measured on whichever single surface receives the interaction — the control itself, or a <label> that activates it. A label counts only if it is 44x44 on its own; a control and its label are not added together across the gap between them. Controls nothing routes to (anything behind an open modal dialog) are not measured rather than being reported as 1x1.",
       "verifiedBy": "@elirobinson/ai-patterns/testing/playwright → checkTouchTargets()"
     },
     "touch-target-dense": {

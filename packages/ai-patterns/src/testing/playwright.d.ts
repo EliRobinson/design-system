@@ -20,8 +20,16 @@ export interface Violation {
 export interface TouchTargetViolation extends Violation {
   width: number;
   height: number;
+  /** The control's own hit area, including padding and any bounded overlay. */
   effectiveWidth: number;
   effectiveHeight: number;
+  /**
+   * The roomiest `<label>` that activates this control, when it has one. A
+   * control passes on either its own hit area or a single label's, so these are
+   * only present on a violation — meaning both surfaces were too small.
+   */
+  labelWidth?: number;
+  labelHeight?: number;
 }
 
 export interface HitAreaViolation extends Violation {

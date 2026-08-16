@@ -197,8 +197,16 @@ export function renderHeaderCell<T extends RowData>(header: TableHeader<T>) {
   }
   const direction = header.column.getIsSorted();
   return (
+    /* Dense by the contract's own definition: a sort toggle is grid chrome
+       inside a header cell, the same family as the chip remove and the
+       calendar day, and it is held to the shadcn/MUI scale rather than 44px.
+       Its hit area is 24px tall — the WCAG 2.2 AA floor — and taking it to 44
+       would mean a 44px-tall header row on every table in the system. Declared
+       on the element rather than added to DENSE_AFFORDANCE_SELECTOR, which is
+       what that list's own documentation asks for. */
     <button
       type="button"
+      data-touch-target="dense"
       className="ds-table__sort"
       onClick={header.column.getToggleSortingHandler()}
     >

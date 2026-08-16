@@ -14,8 +14,13 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
   const generatedId = useId();
   const checkboxId = id ?? generatedId;
 
+  /* The row is the label, not a div wrapping one. The input is 18x18 and the
+     text beside it was 23px tall, so the only thing a finger could aim at was
+     the box itself — the 44px row around it forwarded nothing, because a div
+     is not an activator. Labelling the whole row makes the 44px it already
+     occupies the actual hit area. Same markup box, same painted pixels. */
   return (
-    <div className="ds-checkbox">
+    <label className="ds-checkbox" htmlFor={checkboxId}>
       <input
         ref={ref}
         type="checkbox"
@@ -23,9 +28,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
         className={cn('ds-checkbox__input', className)}
         {...props}
       />
-      <label htmlFor={checkboxId} className="ds-checkbox__label">
-        {label}
-      </label>
-    </div>
+      <span className="ds-checkbox__label">{label}</span>
+    </label>
   );
 });

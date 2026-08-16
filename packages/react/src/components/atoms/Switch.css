@@ -4,6 +4,8 @@
 
 .ds-switch {
   align-items: center;
+  /* The row is the label now, so the whole of it is clickable. */
+  cursor: pointer;
   display: flex;
   gap: var(--space-3);
   min-height: 44px;

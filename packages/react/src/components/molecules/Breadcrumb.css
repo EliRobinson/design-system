@@ -22,7 +22,29 @@
   color: var(--fg-2);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
+  position: relative;
   text-decoration: none;
+}
+
+/* Breadcrumb links are nav items, so the 44px rule applies to them rather than
+   the dense scale — but they were 34-38px wide and 23px tall. Padding would
+   space the trail out and change every baseline it appears in; a bounded
+   overlay gives the same 44x44 a finger needs and moves nothing.
+
+   Bounded is the operative word: it grows to at most 44px, so it overhangs a
+   34px crumb by 5px a side, against an 8px gap to the separator. It cannot
+   reach a neighbour's centre, which is the constraint the hit-area contract
+   actually states. The current-page crumb is a <span>, not a control, so it is
+   deliberately left out. */
+a.ds-breadcrumb__link::after {
+  content: '';
+  height: 44px;
+  left: 50%;
+  min-width: 44px;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
 }
 
 .ds-breadcrumb__link:hover {
