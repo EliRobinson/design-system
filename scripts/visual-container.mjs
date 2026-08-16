@@ -12,7 +12,7 @@
 */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
@@ -21,13 +21,36 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 
-/* Read from the installed package rather than written down, so the image can
-   never drift from the Playwright that produced the baselines. Bumping
-   @playwright/test is therefore a baseline-invalidating change by
-   construction — which it genuinely is, since browser builds move. */
-const { version } = require('@playwright/test/package.json');
+/* Derived, never written down, so the image cannot drift from the Playwright
+   that produced the baselines. Bumping @playwright/test is therefore a
+   baseline-invalidating change by construction — which it genuinely is, since
+   browser builds move. */
+function playwrightVersion() {
+  try {
+    return require('@playwright/test/package.json').version;
+  } catch {
+    /* CI has to know the image before it can install anything: a job's
+       `container:` is resolved before any step runs. The lockfile pins the
+       same exact version the install would produce, so --print-image works on
+       a bare checkout and the workflow never needs its own copy of this. */
+    const lockfile = readFileSync(join(root, 'pnpm-lock.yaml'), 'utf8');
+    const versions = new Set(
+      [...lockfile.matchAll(/^\s*'?@playwright\/test@([^':\s]+)'?:/gm)].map(([, found]) => found),
+    );
 
-const IMAGE = `mcr.microsoft.com/playwright:v${version}-noble`;
+    if (versions.size !== 1) {
+      throw new Error(
+        `Expected exactly one @playwright/test version in pnpm-lock.yaml, found ${
+          versions.size === 0 ? 'none' : [...versions].join(', ')
+        }. The container image has to pin one renderer; resolve the duplicate first.`,
+      );
+    }
+
+    return [...versions][0];
+  }
+}
+
+const IMAGE = `mcr.microsoft.com/playwright:v${playwrightVersion()}-noble`;
 
 /* Pinned, not inferred from the host.
 
