@@ -89,8 +89,15 @@ export const ModalSurface = forwardRef<HTMLDialogElement, ModalSurfaceProps>(fun
       aria-describedby={descriptionId}
       onClose={() => onOpenChange(false)}
       onClick={(event) => {
-        // The <dialog> box fills the viewport; a click that lands on the
-        // element itself rather than on its inner panel is a backdrop click.
+        // A click anywhere over the ::backdrop targets the <dialog> itself,
+        // because the backdrop is the dialog's own pseudo-element. The box
+        // does NOT fill the viewport -- `.ds-dialog` is a centred panel capped
+        // at 480px -- so "target === the element rather than its inner panel"
+        // is the whole test; there is no geometry to compare.
+        //
+        // The same top-layer hit-testing is why a control *behind* an open
+        // modal is unreachable: elementFromPoint over the backdrop returns
+        // this <dialog>, never the occluded control.
         if (event.target === dialogRef.current) {
           onOpenChange(false);
         }
