@@ -42,7 +42,19 @@ gh run rerun <run-id>
 
 Skipping this is the single most expensive mistake available here. In #65 the failing set changed between runs that also had different code _and_ different baselines, so "the set reshuffles" was an inference, and it was read backwards twice — once as a stale-baseline problem, once as a systematic cross-architecture difference. One rerun of an unchanged commit settled it in eight minutes: 7 failures, then 3, with **zero overlap**.
 
-It is also the only honest way to confirm a fix. After the fix, the same commit run twice gave **identical sets, 91 and 91, zero difference**. Two runs before, two after; that is the whole experiment.
+### The trap: this comparison only works on fresh baselines
+
+**Comparing failure sets tells you nothing about pages that were going to fail anyway.** If a page's baseline is stale — you changed a colour, a radius, a length — it fails on every run regardless of whether the flake also hit it. Set membership cannot move, so the comparison comes back identical and looks like proof.
+
+#65 fell in exactly this hole. A token change was made, the same commit was run twice against the _old_ baselines, both runs failed the same 91 pages, and that was written up as the fix confirmed. It confirmed nothing: those 91 were failing on the deterministic delta between old baselines and new colours, and a 1-pixel flake on top of a guaranteed failure is invisible. The flake was still there, and showed up the moment the baselines were regenerated.
+
+So the order is not optional:
+
+1. **Regenerate the baselines of the pages you are testing** — scoped, with `--grep`, not the whole sweep.
+2. **Then** run the same commit twice and compare.
+3. Read _only_ the pages with fresh baselines. Everything else is noise by construction, however deterministic it looks.
+
+A page that fails in both runs at a stable pixel count is not flaking — see step 6.
 
 ---
 
@@ -68,35 +80,60 @@ Check `getBoundingClientRect()`, `borderRadius`, `borderColor` and `backgroundCo
 
 ## 4. Check whether the two themes disagree
 
-Record the failures by theme. A lopsided split is a strong signal, and it points at colour rather than timing or load. In #65 it was **23 failures across four runs, every one light, not one dark** — which ruled out the load-related explanations that local investigation kept producing.
+Record the failures by theme. A lopsided split is a strong signal: it rules out timing and machine load, which hit both themes equally. In #65 it was **23 failures across four runs, every one light, not one dark** — which killed the load-related explanations local investigation kept producing.
 
-When one theme flakes and the other does not, measure the gap between the two colours meeting at the antialiased edge:
+What the asymmetry tells you is **where the instability is visible, not what causes it.** Measure the gap between the two colours meeting at the antialiased edge:
 
 |       | border                     | background         | gap           |
 | ----- | -------------------------- | ------------------ | ------------- |
 | light | `rgb(229,231,234)`         | `rgb(241,243,244)` | **12 levels** |
 | dark  | `rgb(245,255,255)` @ α 0.1 | `rgb(4,6,8)`       | 241 levels    |
 
-A narrow gap is the tell. The corner blends across that band, so the blended byte is decided in the last bit, and two builds of Skia that agree to a float epsilon still round it differently.
+A narrow gap is the tell — but read it correctly. The edge blends across that band, so the blended byte is decided in its last bit and a hair of difference flips it. Widen the gap and the same instability is still there; it just lands inside a step and stops being visible.
+
+This distinction cost #65 a full cycle. The narrow gap was read as _the cause_, the two colours were pinned to exact sRGB to remove the `oklch` → `lab` conversion at paint time, and it changed nothing: the flake came back at the same coordinates the moment the baselines were regenerated. Colour told us which theme shows the problem. It did not tell us what the problem was.
 
 ---
 
 ## 5. Identify what the value is computed _from_
 
-Both root causes found so far are the same shape: **a value the rasteriser derives at paint time from something that is not already an exact device unit.**
+| symptom                                                        | cause                                                                           | fix                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------ |
+| page height differs by a pixel or two; everything below shifts | a length in `vw`/`%` landing on a fraction — `4vw` at 1280px is 51.2px          | quantise it: `round(4vw, 4px)` |
+| 1–2 px on the corners of one element, one theme only           | `overflow` and `border-radius` on the same element, forcing a rounded clip mask | separate the two (see below)   |
 
-| symptom                                                        | cause                                                                                                     | fix                                       |
-| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| page height differs by a pixel or two; everything below shifts | a length in `vw`/`%` landing on a fraction — `4vw` at 1280px is 51.2px                                    | quantise it: `round(4vw, 4px)`            |
-| 1–2 px on antialiased edges, one theme only                    | a colour in `oklch()`, converted through `lab()` to sRGB at paint time — cube roots and a matrix multiply | pin it to the sRGB it already resolves to |
+The geometry case is the one #65 spent longest on, so it is worth stating what actually identified it. The differing pixels were always the corners of `pre.shiki`, and squaring those corners cleared 11 of 11 previously-flaky pages across two consecutive runs. Masking them cleared the same 11. Two independent interventions at the same place, same result.
 
-For the colour case, compute the target analytically and confirm it against the browser's resolved value before pinning, so the change is provably byte-identical for solid fills:
+The distinguishing feature of that element was not its radius — cards, buttons, inputs and the search field all have one and none of them flake. It was that the code block **also scrolled**. `overflow-x: auto` with `border-radius` on one element makes the renderer build a rounded clip mask, which is a different and more expensive path than filling a plain rounded rect. So the fix is to stop asking for both on one element: the wrapper takes the fill, border and radius, and the inner element keeps only the scrolling.
 
-```js
-// oklch(96.2% 0.003 247) -> rgb(240.791, 242.572, 244.299) -> #f1f3f4
+```css
+/* the painted box */
+.code-block__body {
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+/* the scrolling box — no radius, nothing to clip against */
+.code-block__body pre {
+  overflow-x: auto;
+}
 ```
 
-Pin the specific tokens involved, not the whole ramp. Leaving the rest untouched gives the next CI run a control group.
+Whatever you try, change one thing and give the rest a control group. Squaring the corner while leaving every other rounded element alone is what made "the arc" a finding rather than a guess.
+
+---
+
+## 6. Rule out the second bug class before blaming the code
+
+Not every CI-only failure is a flake. There is a second, quieter class:
+
+**A page that fails CI at a stable pixel count on every run, and regenerates byte-identical in the local container.** That is not nondeterminism. It is the local container and the runner rendering the page differently — an amd64 image emulated on an arm64 Mac against the same image running natively.
+
+No CSS change touches these. In #65, `/components/date-picker · light` failed identically under three separate configurations — squared corners, masked, and the overflow split — because none of them had anything to do with it. `/patterns/sidebar · light` and two Storybook stories behave the same way.
+
+The tell is stability. Flake moves between runs; this does not.
+
+The fix is not in the page, it is in where the baseline came from: regenerate on the runner via the **Visual update** workflow (`.github/workflows/visual-update.yml`), which dispatches manually and takes the same `--grep`. Chasing one of these locally is unbounded work, because the machine you would be fixing it on is the one causing it.
 
 ---
 
@@ -109,6 +146,8 @@ Each of these was tried on #65 and made things worse or hid the problem:
 - **Do not add workers to speed up diagnosis.** Serial → 3 workers took a run from 1 failure to 18. Contention is the largest single amplifier.
 - **Do not regenerate repeatedly and hope.** If the cause is nondeterminism, regenerating produces baselines that pass where they were made and fail where they are checked. #65 burned three ~30-minute cycles this way.
 - **Do not trust a local pass as a prediction of CI.** Baselines generated on an emulated arm64 host can be systematically wrong for a native amd64 runner — two Storybook stories failed CI by identical deltas on every run while regenerating byte-identical locally.
+- **Do not declare a fix confirmed from a comparison that could not have failed.** See the trap in step 2. If the pages you are reading were going to fail anyway, an identical result across two runs is arithmetic, not evidence. Ask what result would have falsified the claim; if there isn't one, the test is worthless.
+- **Do not regenerate the full sweep to test a hypothesis.** `--grep` a handful of the failing pages instead: ~5 minutes against ~30, and CI reads the same either way. Regenerate everything once the fix is proven, not while you are still guessing.
 
 ---
 
