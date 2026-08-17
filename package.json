@@ -21,6 +21,7 @@
     "test:visual": "playwright test",
     "test:visual:container": "node scripts/visual-container.mjs",
     "test:visual:update": "node scripts/visual-container.mjs --update-snapshots",
+    "visual:diff": "node scripts/visual-diff-pixels.mjs",
     "pretypecheck": "nx run-many -t build",
     "typecheck": "tsc --noEmit -p ./tsconfig.typecheck.json",
     "format:check": "prettier --check .",
