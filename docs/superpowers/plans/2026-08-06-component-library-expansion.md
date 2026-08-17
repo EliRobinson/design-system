@@ -1,6 +1,39 @@
 # Component Library Expansion Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **STATUS: COMPLETE — shipped in `@elirobinson/react` 1.0.0 (changeset `af5497d`).**
+> Do not execute this plan. All 22 tasks were implemented and merged; the
+> checkboxes below were ticked retroactively on 2026-08-17, which is why the file
+> read as pending long after the work landed. Task 1's `git mv` commands would now
+> fail outright (no flat component files remain), and re-running Tasks 2–21 would
+> overwrite the follow-up work described under "Divergences" below.
+>
+> **Where the work landed:** `refactor(react): reorganize components into atomic
+tiers` (`16cd9b4`) through `feat(react): add CommandPalette organism` (`f1fb3f3`),
+> with per-component feat commits in between. The breaking import-path migration
+> note is in `packages/react/CHANGELOG.md` under 1.0.0.
+>
+> **Divergences from this plan, all deliberate and merged later:**
+>
+> - **Task 15 (`useDsForm`) was reverted.** It shipped in `5d99e9c`, then the hook
+>   and the `@tanstack/react-form` dependency were removed in `1a94a60` before
+>   1.0.0. Its steps are ticked because they were executed, not because the code
+>   survives. Do not reinstate it from this document.
+> - **Styles moved out of the monolith.** Every "append to `styles.css`" step is
+>   stale — component CSS is now co-located as `components/<tier>/<Name>.css`
+>   (`73b43ed`), with `styles.css` reduced to an aggregate of `@import`s.
+> - **Task 19's `Table` was split.** `Table` (paginated) and `VirtualTable`
+>   (windowed) are now separate organisms (`8c4a27e`), sharing logic in
+>   `organisms/table/core`, and migrated to `@tanstack/react-table` v9 (`37334d4`).
+> - **Task 20's premise was wrong.** `docs/agents/layout-patterns.md` contains no
+>   "nav-item-list primitive" reference for `NavigationMenu` to slot into; see the
+>   note under "New components" in `docs/agents/components.md`.
+> - **Hardening landed on top** of these components after the fact — overlay
+>   primitive extraction (`073be2b`), roving focus (`d0acc3d`), SSR-safe portals
+>   (`4b507a2`), and a WCAG 2.2 AA pass (`84aef19`). The code in this document is
+>   the first draft of each component, not the current shape.
+>
+> The sections below are kept verbatim as the historical record of what was
+> planned.
 
 **Goal:** Reorganize `@elirobinson/react` into atomic-design tiers (atoms/molecules/organisms) and add 19 new components plus TanStack-backed infrastructure so the library covers the common Material 3 / Apple HIG pattern surface for general-purpose site building.
 
@@ -53,13 +86,13 @@ Each `.tsx` file keeps one component (plus its tightly-coupled compound subcompo
 
 - Produces: the tier folder layout and import path convention (`@design-system/react/components/<tier>/<Name>`) every later task in this plan depends on.
 
-- [ ] **Step 1: Create the tier directories**
+- [x] **Step 1: Create the tier directories**
 
 ```bash
 mkdir -p packages/react/src/components/atoms packages/react/src/components/molecules packages/react/src/components/organisms
 ```
 
-- [ ] **Step 2: Move atoms**
+- [x] **Step 2: Move atoms**
 
 ```bash
 cd packages/react/src/components
@@ -79,7 +112,7 @@ git mv Switch.test.tsx atoms/Switch.test.tsx
 git mv Textarea.tsx atoms/Textarea.tsx
 ```
 
-- [ ] **Step 3: Move molecules**
+- [x] **Step 3: Move molecules**
 
 ```bash
 git mv Alert.tsx molecules/Alert.tsx
@@ -88,7 +121,7 @@ git mv Card.tsx molecules/Card.tsx
 git mv RuleLink.tsx molecules/RuleLink.tsx
 ```
 
-- [ ] **Step 4: Move organisms**
+- [x] **Step 4: Move organisms**
 
 ```bash
 git mv Dialog.tsx organisms/Dialog.tsx
@@ -104,12 +137,12 @@ git mv Tooltip.tsx organisms/Tooltip.tsx
 cd ../../../../..
 ```
 
-- [ ] **Step 5: Verify no file was left behind**
+- [x] **Step 5: Verify no file was left behind**
 
 Run: `find packages/react/src/components -maxdepth 1 -type f`
 Expected: empty output (only the three tier directories remain).
 
-- [ ] **Step 6: Update every Storybook story import**
+- [x] **Step 6: Update every Storybook story import**
 
 For each file in `apps/storybook/src/stories/*.stories.tsx`, change the import line from:
 
@@ -131,7 +164,7 @@ Use this mapping (component → tier):
 
 `MarketingPattern.stories.tsx` composes multiple components — update every import in that file too.
 
-- [ ] **Step 7: Update `docs/agents/components.md`**
+- [x] **Step 7: Update `docs/agents/components.md`**
 
 Add this section right after "## shadcn component adoption":
 
@@ -151,7 +184,7 @@ Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
 
 Update the shadcn mapping table's first column header from `shadcn component` — leave the table as-is otherwise (tier info now lives in the section above, no need to duplicate per-row).
 
-- [ ] **Step 8: Run the full verification suite**
+- [x] **Step 8: Run the full verification suite**
 
 Run: `pnpm build && pnpm test && pnpm lint && pnpm typecheck`
 Expected: all four pass with no errors (existing warnings unrelated to this move are fine).
@@ -159,7 +192,7 @@ Expected: all four pass with no errors (existing warnings unrelated to this move
 Run: `pnpm --filter @design-system/storybook build` (or the repo's storybook build script — check `apps/storybook/package.json` `scripts` if the filter name differs)
 Expected: builds with no missing-module errors.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add -A
@@ -181,7 +214,7 @@ git commit -m "refactor(react): reorganize components into atomic tiers"
 
 - Produces: `RadioGroup` (context provider), `RadioGroupItem` (compound child) — same context-provider compound pattern as `Tabs` (`organisms/Tabs.tsx`), reused conceptually by `SegmentedControl` (Task 11) and `Accordion` (Task 16).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // packages/react/src/components/atoms/RadioGroup.test.tsx
@@ -223,12 +256,12 @@ describe('RadioGroup', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- RadioGroup`
 Expected: FAIL — `./RadioGroup` module not found.
 
-- [ ] **Step 3: Implement RadioGroup**
+- [x] **Step 3: Implement RadioGroup**
 
 ```tsx
 // packages/react/src/components/atoms/RadioGroup.tsx
@@ -321,7 +354,7 @@ export function RadioGroupItem({ className, value, label, id, ...props }: RadioG
 }
 ```
 
-- [ ] **Step 4: Add styles**
+- [x] **Step 4: Add styles**
 
 Append to `packages/react/src/styles.css`:
 
@@ -356,12 +389,12 @@ Append to `packages/react/src/styles.css`:
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- RadioGroup`
 Expected: PASS (2 tests).
 
-- [ ] **Step 6: Add Storybook story**
+- [x] **Step 6: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/RadioGroup.stories.tsx
@@ -387,7 +420,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/react/src/components/atoms/RadioGroup.tsx packages/react/src/components/atoms/RadioGroup.test.tsx packages/react/src/styles.css apps/storybook/src/stories/RadioGroup.stories.tsx
@@ -408,7 +441,7 @@ git commit -m "feat(react): add RadioGroup atom"
 
 - Produces: `Spinner` — indeterminate loading atom, consumed by `Table` (Task 19) and `Combobox` (Task 18) for async/loading states.
 
-- [ ] **Step 1: Implement Spinner**
+- [x] **Step 1: Implement Spinner**
 
 ```tsx
 // packages/react/src/components/atoms/Spinner.tsx
@@ -440,7 +473,7 @@ export const Spinner = forwardRef<HTMLSpanElement, SpinnerProps>(function Spinne
 });
 ```
 
-- [ ] **Step 2: Add styles**
+- [x] **Step 2: Add styles**
 
 ```css
 .ds-spinner {
@@ -474,12 +507,12 @@ export const Spinner = forwardRef<HTMLSpanElement, SpinnerProps>(function Spinne
 }
 ```
 
-- [ ] **Step 3: Verify visually**
+- [x] **Step 3: Verify visually**
 
 Run: `pnpm --filter @elirobinson/react build`
 Expected: builds with no TypeScript errors.
 
-- [ ] **Step 4: Add Storybook story**
+- [x] **Step 4: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/Spinner.stories.tsx
@@ -505,7 +538,7 @@ export const Sizes: Story = {
 };
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/react/src/components/atoms/Spinner.tsx packages/react/src/styles.css apps/storybook/src/stories/Spinner.stories.tsx
@@ -526,7 +559,7 @@ git commit -m "feat(react): add Spinner atom"
 
 - Produces: `Slider` — wraps native `<input type="range">`, forwardRef to the input element.
 
-- [ ] **Step 1: Implement Slider**
+- [x] **Step 1: Implement Slider**
 
 ```tsx
 // packages/react/src/components/atoms/Slider.tsx
@@ -565,7 +598,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(function Slider(
 });
 ```
 
-- [ ] **Step 2: Add styles**
+- [x] **Step 2: Add styles**
 
 ```css
 .ds-slider {
@@ -612,12 +645,12 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(function Slider(
 }
 ```
 
-- [ ] **Step 3: Verify build**
+- [x] **Step 3: Verify build**
 
 Run: `pnpm --filter @elirobinson/react build`
 Expected: builds with no TypeScript errors.
 
-- [ ] **Step 4: Add Storybook story**
+- [x] **Step 4: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/Slider.stories.tsx
@@ -637,7 +670,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/react/src/components/atoms/Slider.tsx packages/react/src/styles.css apps/storybook/src/stories/Slider.stories.tsx
@@ -658,7 +691,7 @@ git commit -m "feat(react): add Slider atom"
 
 - Produces: `Kbd` — consumed by `CommandPalette` (Task 21) to render shortcut hints.
 
-- [ ] **Step 1: Implement Kbd**
+- [x] **Step 1: Implement Kbd**
 
 ```tsx
 // packages/react/src/components/atoms/Kbd.tsx
@@ -674,7 +707,7 @@ export const Kbd = forwardRef<HTMLElement, KbdProps>(function Kbd({ className, .
 });
 ```
 
-- [ ] **Step 2: Add styles**
+- [x] **Step 2: Add styles**
 
 ```css
 .ds-kbd {
@@ -693,7 +726,7 @@ export const Kbd = forwardRef<HTMLElement, KbdProps>(function Kbd({ className, .
 }
 ```
 
-- [ ] **Step 3: Add Storybook story**
+- [x] **Step 3: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/Kbd.stories.tsx
@@ -718,7 +751,7 @@ export const ShortcutHint: Story = {
 };
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add packages/react/src/components/atoms/Kbd.tsx packages/react/src/styles.css apps/storybook/src/stories/Kbd.stories.tsx
@@ -741,7 +774,7 @@ git commit -m "feat(react): add Kbd atom"
 - Consumes: none.
 - Produces: `Chip` — used as the option-render pattern reference for `Combobox` multi-select (Task 18).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // packages/react/src/components/molecules/Chip.test.tsx
@@ -774,12 +807,12 @@ describe('Chip', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- Chip`
 Expected: FAIL — `./Chip` module not found.
 
-- [ ] **Step 3: Implement Chip**
+- [x] **Step 3: Implement Chip**
 
 ```tsx
 // packages/react/src/components/molecules/Chip.tsx
@@ -814,7 +847,7 @@ export const Chip = forwardRef<HTMLSpanElement, ChipProps>(function Chip(
 });
 ```
 
-- [ ] **Step 4: Add styles**
+- [x] **Step 4: Add styles**
 
 ```css
 .ds-chip {
@@ -855,12 +888,12 @@ export const Chip = forwardRef<HTMLSpanElement, ChipProps>(function Chip(
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- Chip`
 Expected: PASS (3 tests).
 
-- [ ] **Step 6: Add Storybook story**
+- [x] **Step 6: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/Chip.stories.tsx
@@ -884,7 +917,7 @@ export const Static: Story = {
 };
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/react/src/components/molecules/Chip.tsx packages/react/src/components/molecules/Chip.test.tsx packages/react/src/styles.css apps/storybook/src/stories/Chip.stories.tsx
@@ -907,7 +940,7 @@ git commit -m "feat(react): add Chip molecule"
 - Consumes: `Label` (`../atoms/Label`).
 - Produces: `FormField` — wraps a single form control with label/hint/error, exposes `describedById` via render prop so any input (including `SearchField`, Task 8, and consumer-supplied `Input`/`Select`) can wire `aria-describedby` itself.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // packages/react/src/components/molecules/FormField.test.tsx
@@ -952,12 +985,12 @@ describe('FormField', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- FormField`
 Expected: FAIL — `./FormField` module not found.
 
-- [ ] **Step 3: Implement FormField**
+- [x] **Step 3: Implement FormField**
 
 ```tsx
 // packages/react/src/components/molecules/FormField.tsx
@@ -1020,7 +1053,7 @@ Note: consumers pass `aria-invalid` themselves via the render-prop child when `e
 
 (Adjust the Step 1 test code above to pass `aria-invalid="true"` explicitly on the child input in the error test case before running Step 2.)
 
-- [ ] **Step 4: Add styles**
+- [x] **Step 4: Add styles**
 
 ```css
 .ds-form-field {
@@ -1051,12 +1084,12 @@ Note: consumers pass `aria-invalid` themselves via the render-prop child when `e
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- FormField`
 Expected: PASS (3 tests).
 
-- [ ] **Step 6: Add Storybook story**
+- [x] **Step 6: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/FormField.stories.tsx
@@ -1091,7 +1124,7 @@ export const WithError: Story = {
 };
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/react/src/components/molecules/FormField.tsx packages/react/src/components/molecules/FormField.test.tsx packages/react/src/styles.css apps/storybook/src/stories/FormField.stories.tsx
@@ -1114,7 +1147,7 @@ git commit -m "feat(react): add FormField molecule"
 - Consumes: `Input` (`../atoms/Input`).
 - Produces: `SearchField` — reused by `Combobox` (Task 18) as its filter input.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // packages/react/src/components/molecules/SearchField.test.tsx
@@ -1149,12 +1182,12 @@ describe('SearchField', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- SearchField`
 Expected: FAIL — `./SearchField` module not found.
 
-- [ ] **Step 3: Implement SearchField**
+- [x] **Step 3: Implement SearchField**
 
 ```tsx
 // packages/react/src/components/molecules/SearchField.tsx
@@ -1200,7 +1233,7 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
 });
 ```
 
-- [ ] **Step 4: Add styles**
+- [x] **Step 4: Add styles**
 
 ```css
 .ds-search-field {
@@ -1254,12 +1287,12 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- SearchField`
 Expected: PASS (3 tests).
 
-- [ ] **Step 6: Add Storybook story**
+- [x] **Step 6: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/SearchField.stories.tsx
@@ -1283,7 +1316,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/react/src/components/molecules/SearchField.tsx packages/react/src/components/molecules/SearchField.test.tsx packages/react/src/styles.css apps/storybook/src/stories/SearchField.stories.tsx
@@ -1305,7 +1338,7 @@ git commit -m "feat(react): add SearchField molecule"
 
 - Produces: `Pagination` — `{ page: number; pageCount: number; onPageChange: (page: number) => void }`. Consumed by `Table` (Task 19) as its footer control.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // packages/react/src/components/molecules/Pagination.test.tsx
@@ -1344,12 +1377,12 @@ describe('Pagination', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- Pagination`
 Expected: FAIL — `./Pagination` module not found.
 
-- [ ] **Step 3: Implement Pagination**
+- [x] **Step 3: Implement Pagination**
 
 ```tsx
 // packages/react/src/components/molecules/Pagination.tsx
@@ -1415,7 +1448,7 @@ export function Pagination({
 }
 ```
 
-- [ ] **Step 4: Add styles**
+- [x] **Step 4: Add styles**
 
 ```css
 .ds-pagination {
@@ -1465,12 +1498,12 @@ export function Pagination({
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- Pagination`
 Expected: PASS (3 tests).
 
-- [ ] **Step 6: Add Storybook story**
+- [x] **Step 6: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/Pagination.stories.tsx
@@ -1494,7 +1527,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/react/src/components/molecules/Pagination.tsx packages/react/src/components/molecules/Pagination.test.tsx packages/react/src/styles.css apps/storybook/src/stories/Pagination.stories.tsx
@@ -1515,7 +1548,7 @@ git commit -m "feat(react): add Pagination molecule"
 
 - Produces: `Stepper` — `{ steps: { label: string }[]; activeStep: number }`, presentational (no test file, consistent with the repo's convention for presentational-only components like `Breadcrumb`).
 
-- [ ] **Step 1: Implement Stepper**
+- [x] **Step 1: Implement Stepper**
 
 ```tsx
 // packages/react/src/components/molecules/Stepper.tsx
@@ -1560,7 +1593,7 @@ export function Stepper({ className, steps, activeStep, ...props }: StepperProps
 }
 ```
 
-- [ ] **Step 2: Add styles**
+- [x] **Step 2: Add styles**
 
 ```css
 .ds-stepper {
@@ -1617,12 +1650,12 @@ export function Stepper({ className, steps, activeStep, ...props }: StepperProps
 }
 ```
 
-- [ ] **Step 3: Verify build**
+- [x] **Step 3: Verify build**
 
 Run: `pnpm --filter @elirobinson/react build`
 Expected: builds with no TypeScript errors.
 
-- [ ] **Step 4: Add Storybook story**
+- [x] **Step 4: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/Stepper.stories.tsx
@@ -1645,7 +1678,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/react/src/components/molecules/Stepper.tsx packages/react/src/styles.css apps/storybook/src/stories/Stepper.stories.tsx
@@ -1667,7 +1700,7 @@ git commit -m "feat(react): add Stepper molecule"
 
 - Produces: `SegmentedControl` — `{ options: { label: string; value: string }[]; value: string; onValueChange: (value: string) => void }`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // packages/react/src/components/molecules/SegmentedControl.test.tsx
@@ -1702,12 +1735,12 @@ describe('SegmentedControl', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- SegmentedControl`
 Expected: FAIL — `./SegmentedControl` module not found.
 
-- [ ] **Step 3: Implement SegmentedControl**
+- [x] **Step 3: Implement SegmentedControl**
 
 ```tsx
 // packages/react/src/components/molecules/SegmentedControl.tsx
@@ -1758,7 +1791,7 @@ export function SegmentedControl({
 }
 ```
 
-- [ ] **Step 4: Add styles**
+- [x] **Step 4: Add styles**
 
 ```css
 .ds-segmented-control {
@@ -1793,12 +1826,12 @@ export function SegmentedControl({
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- SegmentedControl`
 Expected: PASS (2 tests).
 
-- [ ] **Step 6: Add Storybook story**
+- [x] **Step 6: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/SegmentedControl.stories.tsx
@@ -1832,7 +1865,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/react/src/components/molecules/SegmentedControl.tsx packages/react/src/components/molecules/SegmentedControl.test.tsx packages/react/src/styles.css apps/storybook/src/stories/SegmentedControl.stories.tsx
@@ -1853,7 +1886,7 @@ git commit -m "feat(react): add SegmentedControl molecule"
 
 - Produces: `EmptyState` — presentational, consumed by `Table` (Task 19) for the zero-rows case.
 
-- [ ] **Step 1: Implement EmptyState**
+- [x] **Step 1: Implement EmptyState**
 
 ```tsx
 // packages/react/src/components/molecules/EmptyState.tsx
@@ -1887,7 +1920,7 @@ export function EmptyState({
 }
 ```
 
-- [ ] **Step 2: Add styles**
+- [x] **Step 2: Add styles**
 
 ```css
 .ds-empty-state {
@@ -1922,12 +1955,12 @@ export function EmptyState({
 }
 ```
 
-- [ ] **Step 3: Verify build**
+- [x] **Step 3: Verify build**
 
 Run: `pnpm --filter @elirobinson/react build`
 Expected: builds with no TypeScript errors.
 
-- [ ] **Step 4: Add Storybook story**
+- [x] **Step 4: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/EmptyState.stories.tsx
@@ -1950,7 +1983,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/react/src/components/molecules/EmptyState.tsx packages/react/src/styles.css apps/storybook/src/stories/EmptyState.stories.tsx
@@ -1972,7 +2005,7 @@ git commit -m "feat(react): add EmptyState molecule"
 
 - Produces: `Rating` — `{ value: number; max?: number; onValueChange?: (value: number) => void }`. Read-only when `onValueChange` is omitted.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // packages/react/src/components/molecules/Rating.test.tsx
@@ -2001,12 +2034,12 @@ describe('Rating', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- Rating`
 Expected: FAIL — `./Rating` module not found.
 
-- [ ] **Step 3: Implement Rating**
+- [x] **Step 3: Implement Rating**
 
 ```tsx
 // packages/react/src/components/molecules/Rating.tsx
@@ -2063,7 +2096,7 @@ export function Rating({ className, value, max = 5, onValueChange, ...props }: R
 }
 ```
 
-- [ ] **Step 4: Add styles**
+- [x] **Step 4: Add styles**
 
 ```css
 .ds-rating {
@@ -2103,12 +2136,12 @@ export function Rating({ className, value, max = 5, onValueChange, ...props }: R
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- Rating`
 Expected: PASS (2 tests).
 
-- [ ] **Step 6: Add Storybook story**
+- [x] **Step 6: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/Rating.stories.tsx
@@ -2136,7 +2169,7 @@ export const Interactive: Story = {
 };
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/react/src/components/molecules/Rating.tsx packages/react/src/components/molecules/Rating.test.tsx packages/react/src/styles.css apps/storybook/src/stories/Rating.stories.tsx
@@ -2159,7 +2192,7 @@ git commit -m "feat(react): add Rating molecule"
 
 - Produces: `VirtualList<T>` — `{ items: T[]; estimateSize: (index: number) => number; renderItem: (item: T, index: number) => ReactNode; height: number }`. Consumed by `Combobox` (Task 18) for long option lists and `Table` (Task 19) for large row sets.
 
-- [ ] **Step 1: Install `@tanstack/react-virtual`**
+- [x] **Step 1: Install `@tanstack/react-virtual`**
 
 ```bash
 pnpm --filter @elirobinson/react add @tanstack/react-virtual
@@ -2168,7 +2201,7 @@ pnpm --filter @elirobinson/react add @tanstack/react-virtual
 Run: `pnpm sync:deps`
 Expected: lockfile stays in sync, no errors.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```tsx
 // packages/react/src/components/organisms/VirtualList.test.tsx
@@ -2195,12 +2228,12 @@ describe('VirtualList', () => {
 });
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- VirtualList`
 Expected: FAIL — `./VirtualList` module not found.
 
-- [ ] **Step 4: Implement VirtualList**
+- [x] **Step 4: Implement VirtualList**
 
 ```tsx
 // packages/react/src/components/organisms/VirtualList.tsx
@@ -2262,7 +2295,7 @@ export function VirtualList<T>({
 }
 ```
 
-- [ ] **Step 5: Add styles**
+- [x] **Step 5: Add styles**
 
 ```css
 .ds-virtual-list {
@@ -2279,12 +2312,12 @@ export function VirtualList<T>({
 }
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- VirtualList`
 Expected: PASS (1 test). Note: `@tanstack/react-virtual` requires a real scroll-container size; if jsdom returns 0 for the container height in the test environment, the virtualizer still renders at least the overscan items — if this test fails because nothing renders, add `Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, value: 300 })` at the top of the test file as a jsdom workaround.
 
-- [ ] **Step 7: Add Storybook story**
+- [x] **Step 7: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/VirtualList.stories.tsx
@@ -2313,7 +2346,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/react/package.json pnpm-lock.yaml packages/react/src/components/organisms/VirtualList.tsx packages/react/src/components/organisms/VirtualList.test.tsx packages/react/src/styles.css apps/storybook/src/stories/VirtualList.stories.tsx
@@ -2334,7 +2367,7 @@ git commit -m "feat(react): add VirtualList organism backed by @tanstack/react-v
 
 - Produces: `useDsForm<T>(options)` — thin re-export/wrapper around `@tanstack/react-form`'s `useForm`, giving consumers a single import path (`@elirobinson/react/hooks/useDsForm`) instead of depending on TanStack directly. `FormField` (Task 7) remains usable standalone without this hook.
 
-- [ ] **Step 1: Install `@tanstack/react-form`**
+- [x] **Step 1: Install `@tanstack/react-form`**
 
 ```bash
 pnpm --filter @elirobinson/react add @tanstack/react-form
@@ -2343,7 +2376,7 @@ pnpm --filter @elirobinson/react add @tanstack/react-form
 Run: `pnpm sync:deps`
 Expected: lockfile stays in sync, no errors.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```tsx
 // packages/react/src/hooks/useDsForm.test.tsx
@@ -2397,12 +2430,12 @@ describe('useDsForm', () => {
 
 Add `import { vi } from 'vitest';` alongside the other vitest imports at the top of the file.
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- useDsForm`
 Expected: FAIL — `./useDsForm` module not found.
 
-- [ ] **Step 4: Implement useDsForm**
+- [x] **Step 4: Implement useDsForm**
 
 ```ts
 // packages/react/src/hooks/useDsForm.ts
@@ -2411,12 +2444,12 @@ import { useForm } from '@tanstack/react-form';
 export const useDsForm = useForm;
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- useDsForm`
 Expected: PASS (1 test).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/react/package.json pnpm-lock.yaml packages/react/src/hooks/useDsForm.ts packages/react/src/hooks/useDsForm.test.tsx
@@ -2438,7 +2471,7 @@ git commit -m "feat(react): add useDsForm hook backed by @tanstack/react-form"
 
 - Produces: `Accordion`, `AccordionItem`, `AccordionTrigger`, `AccordionContent` — same context-provider compound pattern as `Tabs` (`organisms/Tabs.tsx`). `type="single" | "multiple"` controls whether opening one item closes the others.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // packages/react/src/components/organisms/Accordion.test.tsx
@@ -2491,12 +2524,12 @@ describe('Accordion', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- Accordion`
 Expected: FAIL — `./Accordion` module not found.
 
-- [ ] **Step 3: Implement Accordion**
+- [x] **Step 3: Implement Accordion**
 
 ```tsx
 // packages/react/src/components/organisms/Accordion.tsx
@@ -2619,7 +2652,7 @@ export function AccordionContent({ className, children, ...props }: AccordionCon
 }
 ```
 
-- [ ] **Step 4: Add styles**
+- [x] **Step 4: Add styles**
 
 ```css
 .ds-accordion {
@@ -2667,12 +2700,12 @@ export function AccordionContent({ className, children, ...props }: AccordionCon
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- Accordion`
 Expected: PASS (3 tests).
 
-- [ ] **Step 6: Add Storybook story**
+- [x] **Step 6: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/Accordion.stories.tsx
@@ -2708,7 +2741,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/react/src/components/organisms/Accordion.tsx packages/react/src/components/organisms/Accordion.test.tsx packages/react/src/styles.css apps/storybook/src/stories/Accordion.stories.tsx
@@ -2731,7 +2764,7 @@ git commit -m "feat(react): add Accordion organism"
 - Consumes: `Popover` (`./Popover`), `useAnchoredPosition`/`useClickOutside` pattern already used by `Popover`/`Select`, `Input` (`../atoms/Input`).
 - Produces: `DatePicker` — `{ value?: Date; onValueChange: (date: Date) => void; label: string }`. Uses native `Date` only, no date library.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // packages/react/src/components/organisms/DatePicker.test.tsx
@@ -2767,12 +2800,12 @@ describe('DatePicker', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- DatePicker`
 Expected: FAIL — `./DatePicker` module not found.
 
-- [ ] **Step 3: Implement DatePicker**
+- [x] **Step 3: Implement DatePicker**
 
 ```tsx
 // packages/react/src/components/organisms/DatePicker.tsx
@@ -2865,7 +2898,7 @@ export function DatePicker({ label, value, onValueChange, className }: DatePicke
 }
 ```
 
-- [ ] **Step 4: Add styles**
+- [x] **Step 4: Add styles**
 
 ```css
 .ds-date-picker {
@@ -2931,12 +2964,12 @@ export function DatePicker({ label, value, onValueChange, className }: DatePicke
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- DatePicker`
 Expected: PASS (2 tests).
 
-- [ ] **Step 6: Add Storybook story**
+- [x] **Step 6: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/DatePicker.stories.tsx
@@ -2960,7 +2993,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/react/src/components/organisms/DatePicker.tsx packages/react/src/components/organisms/DatePicker.test.tsx packages/react/src/styles.css apps/storybook/src/stories/DatePicker.stories.tsx
@@ -2983,7 +3016,7 @@ git commit -m "feat(react): add DatePicker organism"
 - Consumes: `SearchField` (`../molecules/SearchField`), `useClickOutside` (`../../hooks/useClickOutside`).
 - Produces: `Combobox` — `{ options: { label: string; value: string }[]; value?: string; onValueChange: (value: string) => void; label: string }`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // packages/react/src/components/organisms/Combobox.test.tsx
@@ -3024,12 +3057,12 @@ describe('Combobox', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- Combobox`
 Expected: FAIL — `./Combobox` module not found.
 
-- [ ] **Step 3: Implement Combobox**
+- [x] **Step 3: Implement Combobox**
 
 ```tsx
 // packages/react/src/components/organisms/Combobox.tsx
@@ -3104,7 +3137,7 @@ export function Combobox({ label, options, value, onValueChange, className }: Co
 }
 ```
 
-- [ ] **Step 4: Add styles**
+- [x] **Step 4: Add styles**
 
 ```css
 .ds-combobox {
@@ -3152,12 +3185,12 @@ export function Combobox({ label, options, value, onValueChange, className }: Co
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- Combobox`
 Expected: PASS (2 tests).
 
-- [ ] **Step 6: Add Storybook story**
+- [x] **Step 6: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/Combobox.stories.tsx
@@ -3192,7 +3225,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/react/src/components/organisms/Combobox.tsx packages/react/src/components/organisms/Combobox.test.tsx packages/react/src/styles.css apps/storybook/src/stories/Combobox.stories.tsx
@@ -3215,7 +3248,7 @@ git commit -m "feat(react): add Combobox organism"
 - Consumes: `@tanstack/react-table`'s `useReactTable`/`getCoreRowModel`, `Pagination` (`../molecules/Pagination`), `EmptyState` (`../molecules/EmptyState`).
 - Produces: `Table<T>` — `{ data: T[]; columns: ColumnDef<T>[]; pageSize?: number; emptyMessage?: string }`.
 
-- [ ] **Step 1: Install `@tanstack/react-table`**
+- [x] **Step 1: Install `@tanstack/react-table`**
 
 ```bash
 pnpm --filter @elirobinson/react add @tanstack/react-table
@@ -3224,7 +3257,7 @@ pnpm --filter @elirobinson/react add @tanstack/react-table
 Run: `pnpm sync:deps`
 Expected: lockfile stays in sync, no errors.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```tsx
 // packages/react/src/components/organisms/Table.test.tsx
@@ -3257,12 +3290,12 @@ describe('Table', () => {
 });
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- Table`
 Expected: FAIL — `./Table` module not found.
 
-- [ ] **Step 4: Implement Table**
+- [x] **Step 4: Implement Table**
 
 ```tsx
 // packages/react/src/components/organisms/Table.tsx
@@ -3340,7 +3373,7 @@ export function Table<T>({
 }
 ```
 
-- [ ] **Step 5: Add styles**
+- [x] **Step 5: Add styles**
 
 ```css
 .ds-table-wrapper {
@@ -3377,12 +3410,12 @@ export function Table<T>({
 }
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- Table`
 Expected: PASS (2 tests).
 
-- [ ] **Step 7: Add Storybook story**
+- [x] **Step 7: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/Table.stories.tsx
@@ -3421,7 +3454,7 @@ export const Empty: Story = {
 };
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/react/package.json pnpm-lock.yaml packages/react/src/components/organisms/Table.tsx packages/react/src/components/organisms/Table.test.tsx packages/react/src/styles.css apps/storybook/src/stories/Table.stories.tsx
@@ -3442,7 +3475,7 @@ git commit -m "feat(react): add Table organism backed by @tanstack/react-table"
 
 - Produces: `NavigationMenu` — `{ items: NavigationMenuItem[]; currentPath?: string }`, `NavigationMenuItem = { label: string; href: string; items?: NavigationMenuItem[] }`. This is the nav-item-list primitive referenced in `docs/agents/layout-patterns.md` — the app-specific `Header`/`Sidebar` layout compositions render this internally rather than duplicating nav-list markup. No test file (presentational, recursion is straightforward — consistent with `Breadcrumb`).
 
-- [ ] **Step 1: Implement NavigationMenu**
+- [x] **Step 1: Implement NavigationMenu**
 
 ```tsx
 // packages/react/src/components/organisms/NavigationMenu.tsx
@@ -3503,7 +3536,7 @@ export function NavigationMenu({ className, items, currentPath, ...props }: Navi
 }
 ```
 
-- [ ] **Step 2: Add styles**
+- [x] **Step 2: Add styles**
 
 ```css
 .ds-navigation-menu__list {
@@ -3546,12 +3579,12 @@ export function NavigationMenu({ className, items, currentPath, ...props }: Navi
 }
 ```
 
-- [ ] **Step 3: Verify build**
+- [x] **Step 3: Verify build**
 
 Run: `pnpm --filter @elirobinson/react build`
 Expected: builds with no TypeScript errors.
 
-- [ ] **Step 4: Add Storybook story**
+- [x] **Step 4: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/NavigationMenu.stories.tsx
@@ -3584,7 +3617,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/react/src/components/organisms/NavigationMenu.tsx packages/react/src/styles.css apps/storybook/src/stories/NavigationMenu.stories.tsx
@@ -3607,7 +3640,7 @@ git commit -m "feat(react): add NavigationMenu organism"
 - Consumes: `Dialog` (`./Dialog`), `SearchField` (`../molecules/SearchField`), `Kbd` (`../atoms/Kbd`).
 - Produces: `CommandPalette` — `{ isOpen: boolean; onOpenChange: (open: boolean) => void; commands: { id: string; label: string; shortcut?: string[]; onSelect: () => void }[] }`. Consumers wire their own global `Cmd+K` listener and pass `isOpen`/`onOpenChange`; this component only renders the palette itself.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 // packages/react/src/components/organisms/CommandPalette.test.tsx
@@ -3653,12 +3686,12 @@ describe('CommandPalette', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @elirobinson/react test -- CommandPalette`
 Expected: FAIL — `./CommandPalette` module not found.
 
-- [ ] **Step 3: Implement CommandPalette**
+- [x] **Step 3: Implement CommandPalette**
 
 Check `organisms/Dialog.tsx`'s exact exported prop names (`open`/`onOpenChange` vs. similar) before writing this file — mirror whatever it already uses rather than guessing, since `Dialog` is being reused here as-is.
 
@@ -3739,7 +3772,7 @@ export function CommandPalette({ isOpen, onOpenChange, commands, className }: Co
 
 **Note for the implementer:** if `Dialog`'s actual prop names differ from `open`/`onOpenChange` (e.g. it's uncontrolled, or uses `isOpen`), adjust the two call sites above (the `<Dialog ...>` JSX and nothing else) to match — everything else in this component is independent of that choice.
 
-- [ ] **Step 4: Add styles**
+- [x] **Step 4: Add styles**
 
 ```css
 .ds-command-palette {
@@ -3790,12 +3823,12 @@ export function CommandPalette({ isOpen, onOpenChange, commands, className }: Co
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @elirobinson/react test -- CommandPalette`
 Expected: PASS (3 tests). If `Dialog` renders via a portal that Testing Library can't find with `getByRole('dialog')`, check `Dialog.test.tsx` (moved to `organisms/Dialog.test.tsx` in Task 1) for the query pattern it already uses and match it.
 
-- [ ] **Step 6: Add Storybook story**
+- [x] **Step 6: Add Storybook story**
 
 ```tsx
 // apps/storybook/src/stories/CommandPalette.stories.tsx
@@ -3829,7 +3862,7 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/react/src/components/organisms/CommandPalette.tsx packages/react/src/components/organisms/CommandPalette.test.tsx packages/react/src/styles.css apps/storybook/src/stories/CommandPalette.stories.tsx
@@ -3847,25 +3880,25 @@ git commit -m "feat(react): add CommandPalette organism"
 
 **Interfaces:** none — documentation and release bookkeeping only.
 
-- [ ] **Step 1: Update the shadcn mapping table**
+- [x] **Step 1: Update the shadcn mapping table**
 
 In `docs/agents/components.md`, extend the "shadcn → Miltinson mapping reference" table (or add a new "New components" table below it) documenting the 19 additions from this plan with a one-line description each, mirroring the existing table's format.
 
-- [ ] **Step 2: Add a changeset**
+- [x] **Step 2: Add a changeset**
 
 Run: `pnpm changeset`
 Select `@elirobinson/react`, choose `minor` (net-new components, no breaking changes to existing exports besides the import-path move — see Step 3), and write a summary describing the atomic reorg + 19 new components.
 
-- [ ] **Step 3: Note the breaking import-path change**
+- [x] **Step 3: Note the breaking import-path change**
 
 Because Task 1 changes every existing import path (`components/Button` → `components/atoms/Button`), this is actually a **breaking change** for existing consumers (including the user's Next.js template). Re-run `pnpm changeset` if needed and select `major` instead of `minor` for `@elirobinson/react`, and add a short migration note to the changeset body: "Import paths now include the atomic tier, e.g. `@elirobinson/react/components/Button` → `@elirobinson/react/components/atoms/Button`. See `docs/agents/components.md` for the full tier mapping."
 
-- [ ] **Step 4: Run full verification**
+- [x] **Step 4: Run full verification**
 
 Run: `pnpm build && pnpm test && pnpm lint && pnpm typecheck`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/agents/components.md .changeset
