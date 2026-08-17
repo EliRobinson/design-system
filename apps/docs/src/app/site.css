@@ -347,7 +347,13 @@
   padding: var(--space-4);
   background: var(--bg-muted) !important; /* beats shiki's inline theme background */
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  /* EXPERIMENT (issue #65, do not merge as-is): square corners.
+     Every remaining flake failure lands on the antialiased arc of this
+     radius — (1142,302) and (1142,355) are its top-right and bottom-right
+     corners, and the pages that fail by exactly two pixels fail at exactly
+     those two. If the coverage computed for the arc is the nondeterminism,
+     removing the arc removes the failure. */
+  border-radius: 0;
   overflow-x: auto;
   font-size: var(--fs-sm);
   line-height: var(--lh-normal);
