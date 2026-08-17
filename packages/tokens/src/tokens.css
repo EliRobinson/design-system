@@ -31,8 +31,26 @@
   /* Neutrals — true black/white pinned, mids in oklch */
   --ink-0: #ffffff; /* pure white */
   --ink-50: oklch(98.4% 0.002 247); /* off-white surface */
-  --ink-100: oklch(96.2% 0.003 247); /* hairline backgrounds */
-  --ink-200: oklch(92.8% 0.004 247); /* dividers */
+  /* These two are pinned to the sRGB the oklch resolved to, byte for byte:
+     oklch(96.2% 0.003 247) is rgb(240.791, 242.572, 244.299) and
+     oklch(92.8% 0.004 247) is rgb(229.037, 231.391, 233.672), so every solid
+     fill paints exactly what it painted before. What changes is that the
+     rasteriser no longer runs the oklch -> lab -> sRGB conversion (cube roots
+     and a matrix multiply) to get there.
+
+     Why it matters: --bg-muted is --ink-100 and --border is --ink-200, which
+     between them are the background and 1px border of every code block, ~12
+     sRGB levels apart. Their 4px rounded corners blend across that narrow
+     band, and two builds of Skia agreeing only to a float epsilon round the
+     blended byte differently — which is the entire visual-suite flake in #65,
+     measured as 1-2 pixels on the corners of `pre.shiki`, always light, never
+     dark. Pinning removes the conversion rather than tolerating its jitter.
+
+     Deliberately only these two. The rest of the ramp stays oklch so the next
+     CI run has a control group: if the flake is this mechanism, it disappears
+     here and nowhere else changes behaviour. */
+  --ink-100: #f1f3f4; /* hairline backgrounds */
+  --ink-200: #e5e7ea; /* dividers */
   --ink-300: oklch(86% 0.005 247); /* borders */
   --ink-400: oklch(70% 0.006 247); /* disabled / placeholder */
   --ink-500: oklch(55% 0.008 247); /* tertiary text */
