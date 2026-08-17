@@ -14,23 +14,24 @@ sweepPages<Page>({
   baseUrl: DOCS_URL,
   routes: docsRoutes(),
 
-  /* Just the package default — `.ds-skeleton`. Code blocks are deliberately
-     NOT masked (issue #65).
+  /* Shiki code blocks are masked, on top of the package default.
+     `--bg-muted` and `--border` sit about 12 sRGB levels apart, and the block's
+     4px corner arc blends across that band, so the coverage computed for the
+     arc decides the byte in its last bit. Two runs of the identical commit
+     disagreed there and nowhere else — 23 failures over four runs, every one
+     light, all on the same corner coordinates. Squaring the corner removed it
+     on 11 of 11 pages across two runs, which is what identified the arc; this
+     masks it instead, so the docs keep their rounded code blocks.
 
-     They were, briefly. The flake lived on the 4px corner arc of
-     `pre.shiki`, where `--bg-muted` and `--border` sit ~12 sRGB levels apart
-     and the coverage computed for the arc decides the byte in its last bit:
-     23 failures across four runs, every one light, all on the same corner
-     coordinates. Masking hid it, at the cost of never comparing the block's
-     border, radius or background again.
+     Docs-specific on purpose. DEFAULT_MASK carries `.ds-skeleton`, a
+     design-system class every consumer has; `pre.shiki` is this site's
+     syntax highlighter and has no business in a published default.
 
-     site.css now splits the rounded box from the scrolling element instead,
-     so there is no rounded clip mask to compute and nothing to hide. Keeping
-     the mask on top of that fix would throw away the coverage for no reason.
-
-     If that split ever gets undone, this is the fallback:
-       mask: [...DEFAULT_MASK, 'pre.shiki'] */
-  mask: [...DEFAULT_MASK],
+     What this gives up: the code block's own border, radius and background
+     stop being compared. The syntax colours inside it were never a design
+     system concern, and the block's styling is three declarations in
+     site.css rather than a component. */
+  mask: [...DEFAULT_MASK, 'pre.shiki'],
 
   /* The @responsive tag is how the narrow project selects its subset — see the
      `grep` on docs-narrow in playwright.config.ts. Tagging beats a second
