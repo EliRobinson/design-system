@@ -22,29 +22,31 @@
   color: var(--fg-2);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
-  position: relative;
   text-decoration: none;
 }
 
 /* Breadcrumb links are nav items, so the 44px rule applies to them rather than
-   the dense scale — but they were 34-38px wide and 23px tall. Padding would
-   space the trail out and change every baseline it appears in; a bounded
-   overlay gives the same 44x44 a finger needs and moves nothing.
+   the dense scale — but they were 34-38px wide and 23px tall. The hit area is
+   grown with padding and taken straight back off with an equal negative margin:
+   the border box a finger lands on is 44x45, while the margin box that lays the
+   trail out is the width and height it always was. Each link is a flex item of
+   .ds-breadcrumb__item, so its margins cancel against the flex line exactly.
 
-   Bounded is the operative word: it grows to at most 44px, so it overhangs a
-   34px crumb by 5px a side, against an 8px gap to the separator. It cannot
-   reach a neighbour's centre, which is the constraint the hit-area contract
-   actually states. The current-page crumb is a <span>, not a control, so it is
-   deliberately left out. */
-a.ds-breadcrumb__link::after {
-  content: '';
-  height: 44px;
-  left: 50%;
-  min-width: 44px;
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 100%;
+   A positioned ::after overlay is the obvious alternative and was tried first.
+   It fails for a non-obvious reason: the overlay needs `position: relative` on
+   the link, that promotes the link into the positioned paint phase, and
+   Chromium then drops LCD subpixel antialiasing for text it can no longer prove
+   sits on an opaque background. Nothing moved, but every glyph in the trail went
+   from colour-fringed to neutral grey — softer text across the whole component.
+   Padding avoids the promotion entirely.
+
+   The 5px of horizontal overhang a side sits inside the 8px gap to the
+   separator, so a crumb still cannot reach a neighbour's centre, which is what
+   the hit-area contract actually states. The current-page crumb is a <span>,
+   not a control, so it is deliberately left out. */
+a.ds-breadcrumb__link {
+  margin: -11px -5px;
+  padding: 11px 5px;
 }
 
 .ds-breadcrumb__link:hover {

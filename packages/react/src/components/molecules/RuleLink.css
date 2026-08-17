@@ -13,24 +13,24 @@
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
   gap: var(--space-2);
-  padding-bottom: 2px;
-  position: relative;
-  text-decoration: none;
-}
+  /* A standalone call-to-action link, so the 44px rule applies. 18px of hit
+     area above the 24px line box and the 2px holding the rule off it comes to
+     44.1, and an equal negative margin takes it straight back off the line box,
+     so nothing moves. Width already clears 44.
 
-/* A standalone call-to-action link, so the 44px rule applies — but the border
-   below is the component, and padding would push it down. A bounded overlay is
-   the mechanism the contract documents for exactly this: it centres a 44px-tall
-   hit area on a 26px-tall link without moving a single painted pixel. Bounded
-   to the link's own width, so it cannot swallow a neighbour. */
-.ds-rule-link::after {
-  content: '';
-  height: 44px;
-  left: 0;
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+     Upward only, deliberately: padding at the bottom would push the border down,
+     and that border is the component's whole identity.
+
+     A positioned ::after overlay was tried first and reverted. It needs
+     `position: relative` here, which promotes the link into the positioned paint
+     phase, at which point Chromium drops LCD subpixel antialiasing for text it
+     can no longer prove sits on an opaque background — the label rendered
+     neutral grey instead of colour-fringed, i.e. visibly softer, without a
+     single pixel of layout moving. Padding does not trigger that. */
+  margin-top: -18px;
+  padding-bottom: 2px;
+  padding-top: 18px;
+  text-decoration: none;
 }
 
 .ds-rule-link:hover {
