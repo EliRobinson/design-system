@@ -97,29 +97,27 @@ This distinction cost #65 a full cycle. The narrow gap was read as _the cause_, 
 
 ## 5. Identify what the value is computed _from_
 
-| symptom                                                        | cause                                                                           | fix                            |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------ |
-| page height differs by a pixel or two; everything below shifts | a length in `vw`/`%` landing on a fraction — `4vw` at 1280px is 51.2px          | quantise it: `round(4vw, 4px)` |
-| 1–2 px on the corners of one element, one theme only           | `overflow` and `border-radius` on the same element, forcing a rounded clip mask | separate the two (see below)   |
+| symptom                                                        | cause                                                                                            | fix                                    |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------- |
+| page height differs by a pixel or two; everything below shifts | a length in `vw`/`%` landing on a fraction — `4vw` at 1280px is 51.2px                           | quantise it: `round(4vw, 4px)`         |
+| 1–2 px on the corners of one element, one theme only           | the antialiased arc of a `border-radius`, where the two colours meeting at it are close together | remove the radius, or mask the element |
 
-The geometry case is the one #65 spent longest on, so it is worth stating what actually identified it. The differing pixels were always the corners of `pre.shiki`, and squaring those corners cleared 11 of 11 previously-flaky pages across two consecutive runs. Masking them cleared the same 11. Two independent interventions at the same place, same result.
+The geometry case is the one #65 spent longest on. What is established is narrow, and worth keeping narrow:
 
-The distinguishing feature of that element was not its radius — cards, buttons, inputs and the search field all have one and none of them flake. It was that the code block **also scrolled**. `overflow-x: auto` with `border-radius` on one element makes the renderer build a rounded clip mask, which is a different and more expensive path than filling a plain rounded rect. So the fix is to stop asking for both on one element: the wrapper takes the fill, border and radius, and the inner element keeps only the scrolling.
+- The differing pixels were always the corners of `pre.shiki`.
+- **Squaring** those corners cleared 11 of 11 previously-flaky pages across two consecutive runs.
+- **Masking** them cleared the same 11.
 
-```css
-/* the painted box */
-.code-block__body {
-  background: var(--bg-muted);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-/* the scrolling box — no radius, nothing to clip against */
-.code-block__body pre {
-  overflow-x: auto;
-}
-```
+Two independent interventions at the same place, same result. That is the finding: the arc is where it happens, and removing it or hiding it both work.
 
-Whatever you try, change one thing and give the rest a control group. Squaring the corner while leaving every other rounded element alone is what made "the arc" a finding rather than a guess.
+**What is _not_ established is why that element and not others**, and the record here is a warning. The reasoning "cards, buttons and inputs all have a radius and do not flake, so the distinguishing feature must be that the code block also scrolls" was tested: the radius was moved to a non-scrolling wrapper, leaving the `<pre>` with only `overflow-x`. **It still flaked** — three of twelve pages in one run, two in the next, different sets. The scrolling was never the factor, and that hypothesis cost a full cycle. Reverted.
+
+So do not go looking for a clever structural cause. Reach for the two interventions that have been measured, and pick between them on design versus coverage:
+
+- **Square the corners.** Removes the instability at source and keeps the element under comparison. Changes how it looks.
+- **Mask the element.** Keeps the design; stops comparing that element's border, radius and background entirely.
+
+Whatever you try, change one thing and give the rest a control group — and hold the result to step 2's rule, or you will confirm something that did not happen.
 
 ---
 
