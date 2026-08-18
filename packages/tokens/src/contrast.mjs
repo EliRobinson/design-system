@@ -99,6 +99,8 @@ export const CONTRAST_RULES = [
       /* Inverse pairs are measured against --bg-inverse, not --bg; they are
          covered by the inverse-pair assertions in contrast.test.mjs. */
       '--fg-inverse': 'measured against --bg-inverse',
+      '--fg-inverse-2': 'measured against --bg-inverse',
+      '--fg-inverse-3': 'measured against --bg-inverse',
       '--fg-on-signal': 'measured against --accent',
     },
   },

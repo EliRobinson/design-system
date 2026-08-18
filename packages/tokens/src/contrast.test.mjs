@@ -82,6 +82,12 @@ describe('foreground/fill pairs', () => {
     ['--accent-ink', '--accent-tint', 4.5],
     ['--anchor-ink', '--anchor-tint', 4.5],
     ['--fg-inverse', '--bg-inverse', 4.5],
+    /* The muted foregrounds on an inverted band. Without these the band only
+       had a primary text token, and everything secondary on it used a fixed
+       ramp step that stayed put while the band flipped — 1.53:1 in dark. */
+    ['--fg-inverse-2', '--bg-inverse', 4.5],
+    ['--fg-inverse-3', '--bg-inverse', 4.5],
+    ['--accent-ink-inverse', '--bg-inverse', 4.5],
     ['--fg-on-signal', '--accent', 4.5],
     // Every surface the body text is drawn on.
     ['--fg', '--bg-subtle', 4.5],

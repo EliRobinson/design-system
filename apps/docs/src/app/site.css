@@ -715,7 +715,7 @@
 }
 
 .home-hero__eyebrow {
-  color: var(--signal-400);
+  color: var(--accent-ink-inverse);
   margin: 0 0 var(--space-4);
 }
 
@@ -737,7 +737,7 @@
 .home-hero__lead {
   font-size: var(--fs-xl);
   line-height: var(--lh-relaxed);
-  color: var(--ink-300);
+  color: var(--fg-inverse-2);
   max-width: var(--container-md);
   margin: 0 0 var(--space-7);
 }
@@ -759,7 +759,7 @@
 }
 
 .home-hero__secondary:hover {
-  color: var(--signal-400);
+  color: var(--accent-ink-inverse);
 }
 
 .home-hero__stats {
@@ -784,7 +784,7 @@
   font-size: var(--fs-xs);
   letter-spacing: var(--tr-caps);
   text-transform: uppercase;
-  color: var(--ink-400);
+  color: var(--fg-inverse-3);
 }
 
 .home-section {
@@ -878,7 +878,7 @@
 }
 
 .site-footer__tagline {
-  color: var(--ink-300);
+  color: var(--fg-inverse-2);
   margin: 0 0 var(--space-6);
 }
 
@@ -895,13 +895,13 @@
 }
 
 .site-footer__links a:hover {
-  color: var(--signal-400);
+  color: var(--accent-ink-inverse);
 }
 
 .site-footer__meta {
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
-  color: var(--ink-400);
+  color: var(--fg-inverse-3);
   margin: 0;
 }
 
