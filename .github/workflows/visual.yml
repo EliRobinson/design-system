@@ -5,6 +5,11 @@ on:
   push:
     branches:
       - main
+  # Re-run the check on demand. The Visual update workflow commits baselines
+  # with the default token, and pushes made with that token deliberately do
+  # not trigger workflows — so without this there is no way to verify a
+  # freshly regenerated set except by pushing an unrelated commit.
+  workflow_dispatch:
 
 # Separate from `quality.yml` on purpose: this job is minutes where that one is
 # seconds, and it is advisory for now. Keeping it out of that workflow means a
