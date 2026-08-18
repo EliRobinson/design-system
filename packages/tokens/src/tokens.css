@@ -107,6 +107,19 @@
   --fg-4: var(--ink-400); /* decorative / non-informational grey — 2.67:1 */
   --fg-disabled: var(--ink-500); /* 4.85:1 — disabled control text */
   --fg-inverse: var(--ink-0); /* on dark */
+  /* Muted text on an inverted band. --fg-inverse was the only foreground the
+     inverse pair shipped, so anything secondary on a dark hero or footer had
+     to reach for a fixed ramp step — and a fixed step does not flip when the
+     band does. The docs site hit exactly that: --ink-300 on a band that turns
+     white in dark mode measured 1.53:1, on all 71 pages via the footer.
+
+     These are the mirror theme's own --fg-2 / --fg-3. --bg-inverse in one
+     theme is exactly --bg in the other, so their ratio on the band is the
+     ratio the mirror theme already measures against its page — asserted as a
+     pair in contrast.test.mjs rather than against --bg, which would be the
+     wrong background for them. */
+  --fg-inverse-2: var(--ink-300); /* secondary on --bg-inverse — 13.73:1 */
+  --fg-inverse-3: var(--ink-400); /* tertiary / meta on --bg-inverse — 7.87:1 */
   --fg-on-signal: var(--ink-1000); /* text on lime */
 
   --accent: var(--signal-500); /* Miltinson Amber — fill, 2.53:1, fill-only */
@@ -122,6 +135,11 @@
      it cannot be a glyph, a mark, or a label. Anything amber that a user has
      to *read* — a filled rating star, a slider thumb — uses this. */
   --accent-ink: var(--signal-800); /* 9.69:1 */
+  /* The same idea as --accent-ink, one surface over: amber that can be read on
+     an inverted band. --accent-ink is tuned for --bg, so on the band it is the
+     wrong end of the ramp — the docs eyebrow used --signal-400 and fell to
+     2.07:1 once the band flipped white. */
+  --accent-ink-inverse: var(--signal-400); /* on --bg-inverse — 10.17:1 */
 
   --anchor: var(--anchor-500); /* Miltinson Forest */
   --anchor-hover: var(--anchor-400);
@@ -381,6 +399,8 @@
   --fg-4: var(--ink-500);
   --fg-disabled: var(--ink-400); /* 7.87:1 */
   --fg-inverse: var(--ink-1000);
+  --fg-inverse-2: var(--ink-600); /* secondary on --bg-inverse — 8.45:1 */
+  --fg-inverse-3: var(--ink-500); /* tertiary / meta on --bg-inverse — 4.85:1 */
 
   /* The light theme's focus ring is ink-on-white. Left un-inverted here it
      stays pure black against a pure black page, which makes every
@@ -411,6 +431,7 @@
   /* --accent is the same amber in both themes and stays a fill. --accent-ink
      has to invert: --signal-800 is 9.69:1 on white and 2.17:1 on black. */
   --accent-ink: var(--signal-400); /* 10.17:1 */
+  --accent-ink-inverse: var(--signal-800); /* on --bg-inverse — 9.69:1 */
   --anchor-ink: oklch(78% 0.13 160); /* 11.07:1 */
 
   /* The brand tints, mirrored the way the status tints are: the light values
