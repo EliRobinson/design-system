@@ -32,3 +32,9 @@ packages/react/_ds-entry.mjs
 # itself so the manifest generator has somewhere to look.
 design-system-docs/uploads/*
 !design-system-docs/uploads/.gitkeep
+
+# Playwright run output. Baselines under tests/visual/__screenshots__ are
+# committed on purpose (issue #65) — these three are per-run artifacts.
+playwright-report/
+test-results/
+blob-report/

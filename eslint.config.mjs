@@ -81,6 +81,16 @@ export default tseslint.config(
       'no-console': 'off',
     },
   },
+  // Playwright names a fixture's teardown callback `use`, and React 19 has a
+  // hook of the same name — so rules-of-hooks reads `await use(page)` as a hook
+  // called outside a component. There is no React in this directory at all; the
+  // react plugins are applied repo-wide above and simply over-reach here.
+  {
+    files: ['tests/visual/**/*.ts'],
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
+    },
+  },
   // We publish these rules; we hold ourselves to them. The component library is
   // the one place `@elirobinson/react` may be authored without importing itself,
   // so only the hardcoded-values half applies here.

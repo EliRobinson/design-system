@@ -63,8 +63,12 @@ export const RadioGroupItem = forwardRef<HTMLInputElement, RadioGroupItemProps>(
     const generatedId = useId();
     const itemId = id ?? generatedId;
 
+    /* Labelled row, for the reason spelled out in Checkbox — and here the row
+       is load-bearing twice over: the option text can be short ("Ash" measured
+       28x23), so even a full-height text label would not have reached 44px
+       wide. The row, input and gap included, does. */
     return (
-      <div className="ds-radio-group__item">
+      <label className="ds-radio-group__item" htmlFor={itemId}>
         <input
           ref={ref}
           type="radio"
@@ -76,10 +80,8 @@ export const RadioGroupItem = forwardRef<HTMLInputElement, RadioGroupItemProps>(
           className={cn('ds-radio-group__input', className)}
           {...props}
         />
-        <label htmlFor={itemId} className="ds-radio-group__label">
-          {label}
-        </label>
-      </div>
+        <span className="ds-radio-group__label">{label}</span>
+      </label>
     );
   },
 );

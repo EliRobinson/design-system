@@ -51,14 +51,21 @@ export const PRIMARY_CONTROL_SELECTOR = [
  * contracts.json → touch-target-dense. Inline affordances that follow the
  * shadcn/MUI scale instead of 44px. Mark your own with
  * `data-touch-target="dense"` rather than growing this list.
+ *
+ * Every class below names the element that *receives the click*. An exemption
+ * written against an inner span silently matches nothing, which reads as a
+ * clean sweep rather than as a broken rule — `.ds-rating__star` was that bug
+ * for as long as this list existed: Rating puts the class on the glyph and the
+ * control is `button.ds-rating__button`, so the exemption never fired. New
+ * design-system affordances declare themselves with the data attribute instead
+ * of being added here, which cannot drift the same way.
  */
 export const DENSE_AFFORDANCE_SELECTOR = [
   '[data-touch-target="dense"]',
   '.ds-chip__remove',
   '.ds-search-field__clear',
-  '.ds-rating__star',
+  '.ds-rating__button',
   '.ds-date-picker__day',
-  '.ds-calendar__day',
 ].join(', ');
 
 const FOCUS_MESSAGE =
@@ -81,12 +88,26 @@ function assertPage(page) {
  * as 44x44 when the browser actually routes a hit at the edges of a 44x44 box
  * back to it.
  *
+ * A form control's hit area is not always the control. A `<label>` forwards its
+ * clicks to the control it labels, so in the standard "small native input, real
+ * text label" pairing the label *is* the target a finger goes for — measuring
+ * only the 18x18 checkbox measures something nobody aims at. A control
+ * therefore passes when either its own hit area or a single label that
+ * activates it clears the minimum.
+ *
+ * It has to be a *single* surface, not the union of the two: an input and a
+ * label separated by a gap do not add up to one 44x44 region a finger can hit,
+ * and treating them as if they did would pass every checkbox ever written. So
+ * an unlabelled 18x18 checkbox still fails, and so does one whose label is a
+ * 20px-tall sliver of text — which is what makes this a measurement fix rather
+ * than an exemption.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {object} [options]
  * @param {string} [options.selector] which controls to measure
  * @param {string} [options.exempt] controls held to the dense scale instead
  * @param {number} [options.minimum] px, defaults to the contract's 44
- * @returns {Promise<Array<{ element: string, width: number, height: number, effectiveWidth: number, effectiveHeight: number, message: string }>>}
+ * @returns {Promise<Array<{ element: string, width: number, height: number, effectiveWidth: number, effectiveHeight: number, labelWidth?: number, labelHeight?: number, message: string }>>}
  */
 export async function checkTouchTargets(page, options = {}) {
   assertPage(page);
@@ -110,33 +131,41 @@ export async function checkTouchTargets(page, options = {}) {
         return `${element.tagName.toLowerCase()}${id}${classes}${label ? ` "${label}"` : ''}`;
       };
 
-      const violations = [];
-
-      for (const element of document.querySelectorAll(selector)) {
-        if (exempt && element.closest(exempt)) continue;
-        if (element.disabled) continue;
-
+      const isRendered = (element) => {
         const rect = element.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) continue;
-
+        if (rect.width === 0 || rect.height === 0) return false;
         const style = getComputedStyle(element);
-        if (style.visibility === 'hidden' || style.display === 'none') continue;
+        return style.visibility !== 'hidden' && style.display !== 'none';
+      };
 
+      // Walk outward from a surface's centre until the browser stops routing
+      // hits back to it. That is the hit area a finger actually gets, which is
+      // what the contract is about — padding and bounded overlays both count.
+      //
+      // Only the surface itself or something inside it counts. An *ancestor*
+      // answering the hit test means the point missed — and since <body>
+      // contains every control, treating ancestors as hits would make every
+      // target look infinitely large.
+      const measure = (surface) => {
+        const rect = surface.getBoundingClientRect();
         const centreX = rect.left + rect.width / 2;
         const centreY = rect.top + rect.height / 2;
 
-        // Only the control itself or something inside it counts. An *ancestor*
-        // answering the hit test means the point missed — and since <body>
-        // contains every control, treating ancestors as hits would make every
-        // target look infinitely large.
         const hits = (x, y) => {
           const hit = document.elementFromPoint(x, y);
-          return hit === element || element.contains(hit);
+          return hit === surface || surface.contains(hit);
         };
 
-        // Walk outward from the centre until the browser stops routing hits
-        // back here. That is the hit area a finger actually gets, which is what
-        // the contract is about — padding and bounded overlays both count.
+        // A surface nothing routes to is not a sizing question, and the walk
+        // below cannot tell the two apart: it starts at ±1px, so a control
+        // covered by something else reaches 0 in all four directions and comes
+        // back as "1x1". With a modal <dialog> open that is every control
+        // behind it — Chromium attributes hits over the ::backdrop to the
+        // dialog — so an untouched 186x44 button reported ~1x1 and advised
+        // padding, which would have done nothing. `null` means "unmeasurable",
+        // which the caller skips rather than reports.
+        if (!hits(centreX, centreY)) return null;
+
         const reach = (dx, dy) => {
           let distance = 0;
           for (let step = 1; step <= minimum; step += 1) {
@@ -146,19 +175,57 @@ export async function checkTouchTargets(page, options = {}) {
           return distance;
         };
 
-        const effectiveWidth = reach(-1, 0) + reach(1, 0) + 1;
-        const effectiveHeight = reach(0, -1) + reach(0, 1) + 1;
+        return { width: reach(-1, 0) + reach(1, 0) + 1, height: reach(0, -1) + reach(0, 1) + 1 };
+      };
 
-        if (effectiveWidth < minimum || effectiveHeight < minimum) {
-          violations.push({
-            element: describe(element),
-            width: Math.round(rect.width),
-            height: Math.round(rect.height),
-            effectiveWidth,
-            effectiveHeight,
-            message: `touch-target-primary: hit area is ~${effectiveWidth}x${effectiveHeight}, below ${minimum}x${minimum}. Expand it with padding or a bounded overlay — do not inflate the visible control. If this is a dense inline affordance, mark it data-touch-target="dense".`,
-          });
-        }
+      const meets = (area) => area.width >= minimum && area.height >= minimum;
+
+      // `.labels` covers both `<label for>` and a wrapping `<label>`, and is
+      // only defined on the elements that can actually be labelled — an <a> or
+      // a [role="button"] div gets nothing, which is correct: no label
+      // forwards a click to them.
+      const labelsOf = (element) => (element.labels ? Array.from(element.labels) : []);
+
+      const violations = [];
+
+      for (const element of document.querySelectorAll(selector)) {
+        if (exempt && element.closest(exempt)) continue;
+        if (element.disabled) continue;
+        if (!isRendered(element)) continue;
+
+        const own = measure(element);
+        if (!own || meets(own)) continue;
+
+        // Too small on its own. If a label that activates it is big enough by
+        // itself, that label is the surface being aimed at.
+        const labelAreas = labelsOf(element).filter(isRendered).map(measure).filter(Boolean);
+        if (labelAreas.some(meets)) continue;
+
+        // Report the roomiest label considered, so the message says what was
+        // measured rather than leaving the reader to guess why 18x18 was not
+        // rescued by the label sitting next to it.
+        const label = labelAreas.reduce(
+          (best, area) =>
+            !best || area.width * area.height > best.width * best.height ? area : best,
+          null,
+        );
+
+        const rect = element.getBoundingClientRect();
+
+        violations.push({
+          element: describe(element),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+          effectiveWidth: own.width,
+          effectiveHeight: own.height,
+          ...(label ? { labelWidth: label.width, labelHeight: label.height } : {}),
+          message:
+            `touch-target-primary: hit area is ~${own.width}x${own.height}, below ${minimum}x${minimum}` +
+            (label ? `, and its label is only ~${label.width}x${label.height}` : '') +
+            `. Expand it with padding or a bounded overlay — do not inflate the visible control` +
+            (label ? `; giving the label the full row height is usually the fix` : '') +
+            `. If this is a dense inline affordance, mark it data-touch-target="dense".`,
+        });
       }
 
       return violations;
@@ -228,6 +295,11 @@ export async function checkHitAreaOverlap(page, options = {}) {
  * so matches `:focus-visible`. Pass `useKeyboard: true` to drive real Tab
  * presses when a component's focus styling depends on key events.
  *
+ * Controls that refuse focus are skipped, not reported. Everything behind an
+ * open modal `<dialog>` is inert, so `.focus()` does nothing and the before and
+ * after snapshots match — which would otherwise read as a missing focus ring on
+ * a control whose ring is fine.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {object} [options]
  * @param {string} [options.selector]
@@ -252,6 +324,12 @@ export async function checkFocusVisible(page, options = {}) {
       // Leave and re-enter by keyboard so :focus-visible is unambiguous.
       await page.keyboard.press('Shift+Tab');
       await page.keyboard.press('Tab');
+
+      // Same guard as the programmatic branch: a control the browser refuses
+      // to focus (inert behind an open modal) would otherwise read as one
+      // whose focus ring does nothing.
+      if (!(await control.evaluate((element) => document.activeElement === element))) continue;
+
       const after = await control.evaluate(snapshotStyle);
 
       if (before === after) {
@@ -302,6 +380,14 @@ export async function checkFocusVisible(page, options = {}) {
 
         const before = snapshot(element);
         element.focus();
+
+        // Focus can be refused — a control behind an open modal <dialog> is
+        // inert, so `.focus()` is a no-op and activeElement stays inside the
+        // dialog. The snapshots then match for the trivial reason that the
+        // element was never focused, and the check would report a missing
+        // focus ring on a control that has one. Only judge what took focus.
+        if (document.activeElement !== element) continue;
+
         const after = snapshot(element);
         element.blur();
 

@@ -14,8 +14,11 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(function Switch(
   const generatedId = useId();
   const switchId = id ?? generatedId;
 
+  /* Labelled row, for the reason spelled out in Checkbox: the track is 44x24,
+     so it fails the 44px contract on height, and the text beside it carried no
+     hit area of its own. */
   return (
-    <div className="ds-switch">
+    <label className="ds-switch" htmlFor={switchId}>
       <input
         ref={ref}
         type="checkbox"
@@ -24,9 +27,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(function Switch(
         className={cn('ds-switch__input', className)}
         {...props}
       />
-      <label htmlFor={switchId} className="ds-switch__label">
-        {label}
-      </label>
-    </div>
+      <span className="ds-switch__label">{label}</span>
+    </label>
   );
 });

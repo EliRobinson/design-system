@@ -327,7 +327,17 @@
   --container-lg: 1024px;
   --container-xl: 1280px;
   --container-2xl: 1440px;
-  --gutter: max(20px, 4vw);
+  /* Quantised to 4px, not because the gutter needs to be a multiple of four,
+     but so it is always a whole number of pixels. Bare 4vw is 51.2px at a
+     1280px viewport, and that fraction does not stay local: it becomes the
+     origin of every centred shell, so the grid track after it lands on
+     853.625px and every full-width rule, table and code block inside it has
+     partially-covered pixels at both ends. Those partial coverages round
+     inconsistently between runs, which showed up as 1-4px snapshot diffs on a
+     rotating set of pages — the interior always identical, only the end caps
+     moving. round() keeps the gutter responsive and removes the fraction at
+     the source. max() still wins below ~500px, where the flat 20px applies. */
+  --gutter: max(20px, round(4vw, 4px));
 
   /* Z-index ladder */
   --z-base: 0;

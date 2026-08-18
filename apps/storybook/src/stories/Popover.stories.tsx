@@ -27,3 +27,23 @@ export const Default: Story = {
     </Popover>
   ),
 };
+
+/* The closed trigger above is the only state a story exercised, and it shows
+   none of what makes a popover worth testing — the panel is portalled into
+   document.body, positioned against the trigger at runtime, and carries its own
+   surface and elevation tokens. `defaultOpen` renders that without an
+   interaction, so the visual suite captures it and a human can see it without
+   clicking. */
+export const Open: Story = {
+  args: { children: null },
+  render: () => (
+    <Popover defaultOpen>
+      <PopoverTrigger>Filter guides</PopoverTrigger>
+      <PopoverContent>
+        <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--fg-2)' }}>
+          Practical, no-fluff guides written for sports coaches.
+        </p>
+      </PopoverContent>
+    </Popover>
+  ),
+};

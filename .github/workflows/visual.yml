@@ -1,0 +1,122 @@
+name: Visual
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  # Re-run the check on demand. The Visual update workflow commits baselines
+  # with the default token, and pushes made with that token deliberately do
+  # not trigger workflows — so without this there is no way to verify a
+  # freshly regenerated set except by pushing an unrelated commit.
+  workflow_dispatch:
+
+# Separate from `quality.yml` on purpose: this job is minutes where that one is
+# seconds, and it is advisory for now. Keeping it out of that workflow means a
+# slow or noisy visual run never delays the checks people actually gate on.
+concurrency:
+  group: visual-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # A job's `container:` is resolved before any of its steps run, so the image
+  # cannot be computed inside the job that uses it. This one exists only to
+  # print it. It deliberately does not install anything — visual-container.mjs
+  # falls back to reading the pinned version out of pnpm-lock.yaml, so the tag
+  # is still derived rather than written down here, and cannot drift from the
+  # Playwright that produced the baselines.
+  image:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.resolve.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+      - id: resolve
+        run: echo "ref=$(node scripts/visual-container.mjs --print-image)" >> "$GITHUB_OUTPUT"
+
+  visual:
+    needs: image
+    runs-on: ubuntu-latest
+    # Advisory. Issue #65 records the criterion for making this required: ten
+    # consecutive PRs with no false failure. Flipping it is a checklist item
+    # there, not a someday — delete this line when the criterion is met.
+    continue-on-error: true
+    # Well clear of a real run (496 tests serially, plus two app builds) and far
+    # under the 6-hour default. A webServer that never comes up otherwise burns
+    # six hours per PR to tell us nothing.
+    timeout-minutes: 90
+    container:
+      image: ${{ needs.image.outputs.ref }}
+      # Chromium exhausts Docker's default 64MB /dev/shm and crashes outright on
+      # large pages, which the full-page docs captures certainly are.
+      options: --shm-size=1g
+    env:
+      # This runner is amd64 and the image is amd64, so nothing is emulated
+      # here. That is the point: the flake recorded in #65 has only ever been
+      # observed on an emulated arm64 host, and this job is what settles
+      # whether it exists on native hardware.
+      HUSKY: 0
+      STORYBOOK_DISABLE_TELEMETRY: 1
+    steps:
+      - uses: actions/checkout@v7
+      # The image ships its own Node, matched to the Playwright it carries.
+      # Installing another one here would decouple the runtime from the
+      # browsers, which is the one thing this container exists to keep together.
+      - name: Set up pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+      - name: Locate the pnpm store
+        id: pnpm_store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+      - run: pnpm install --frozen-lockfile
+      # The specs enumerate from these builds — stories from Storybook's
+      # index.json, routes from Next's prerender manifest — so both have to
+      # exist before Playwright collects a single test. Its own step, rather
+      # than pnpm's implicit `pretest:visual`, for the same reason
+      # visual-container.mjs splits them: the two phases fail for entirely
+      # different reasons, and a 40-minute job is much easier to read when a
+      # build break and a pixel diff are not in the same log section.
+      - name: Build Storybook and the docs site
+        run: pnpm run pretest:visual
+      # Invoked through `pnpm exec`, not `pnpm test:visual`, so the flags reach
+      # the binary verbatim — the same reason the container script does it this
+      # way, and this keeps CI's invocation identical to the one that generated
+      # the baselines.
+      #
+      # Serial, deliberately. Worker contention is the largest single lever on
+      # this suite's flake — on the emulated host it moved a run from 18
+      # failures to 1 — so the first CI runs measure the calmest case. Raise it
+      # once native runs show real headroom.
+      #
+      # DS_VISUAL_CONTAINER is deliberately NOT set: without it the config pins
+      # updateSnapshots to 'none', so a missing baseline fails here instead of
+      # being written and silently accepted.
+      - name: Visual regression
+        run: pnpm exec playwright test --workers=1
+      # Not `if: failure()`. This job exists first of all to answer whether the
+      # flake in #65 survives off an emulated host, and a *passing* run is half
+      # of that evidence — the HTML report carries the timings and the retry
+      # counts that say how close to the edge a green run was.
+      - name: Upload report and diffs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: ignore

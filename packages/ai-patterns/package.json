@@ -46,6 +46,16 @@
       "types": "./src/testing/playwright.d.ts",
       "import": "./src/testing/playwright.mjs",
       "require": "./src/testing/playwright.mjs"
+    },
+    "./testing/visual-config": {
+      "types": "./src/testing/visual-config.d.ts",
+      "import": "./src/testing/visual-config.mjs",
+      "require": "./src/testing/visual-config.mjs"
+    },
+    "./testing/visual-sweep": {
+      "types": "./src/testing/visual-sweep.d.ts",
+      "import": "./src/testing/visual-sweep.mjs",
+      "require": "./src/testing/visual-sweep.mjs"
     }
   },
   "engines": {

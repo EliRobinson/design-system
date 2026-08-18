@@ -160,6 +160,22 @@ describeBrowser('browser contract checks', () => {
       expect(await checkTouchTargets(page)).toEqual([]);
     });
 
+    /* Rating's real shape. The exemption used to name `.ds-rating__star`,
+       which is the glyph inside the button, so it matched nothing and the
+       control it was written for failed anyway. Asserted against the markup
+       rather than the string, because a class list is only as good as the
+       elements it lands on. */
+    it('exempts a dense affordance by its shipped class, on the element that takes the click', async () => {
+      await render(
+        '<div class="ds-rating">' +
+          '<button class="ds-rating__button" style="width:32px;height:32px">' +
+          '<span class="ds-rating__star" aria-hidden="true">★</span>' +
+          '</button></div>',
+      );
+
+      expect(await checkTouchTargets(page)).toEqual([]);
+    });
+
     it('honours a custom minimum', async () => {
       await render('<button style="width:32px;height:32px">x</button>');
 
@@ -178,6 +194,119 @@ describeBrowser('browser contract checks', () => {
       );
 
       expect((await checkTouchTargets(page))[0].element).toBe('button#save.ds-button "Save"');
+    });
+
+    /* A small native input beside a real text label is the standard checkbox
+       pattern, and measuring the 18x18 box measures something nobody aims at.
+       These four cases fix the boundary: the label rescues the control only
+       when the label is itself a 44x44 surface. */
+    describe('labelled controls', () => {
+      it('passes a small input whose label is a target in its own right', async () => {
+        await render(`<style>
+            .row { align-items: center; display: flex; gap: 12px; }
+            .box { height: 18px; width: 18px; }
+            .text { align-self: stretch; display: flex; align-items: center; min-height: 44px; }
+          </style>
+          <div class="row">
+            <input id="c" type="checkbox" class="box">
+            <label for="c" class="text">Email updates</label>
+          </div>`);
+
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      it('passes when the label wraps the control instead of pointing at it', async () => {
+        await render(`<style>
+            .row { align-items: center; display: flex; gap: 12px; min-height: 44px; }
+            .box { height: 18px; width: 18px; }
+          </style>
+          <label class="row"><input type="checkbox" class="box"><span>Email updates</span></label>`);
+
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      /* The whole point of the rule. A 20px-tall run of text next to an 18px
+         box is what the system shipped, and it is not a 44px target — if this
+         passed, the check would be blind to every under-sized checkbox. */
+      it('still flags a small input whose label is only a sliver of text', async () => {
+        await render(`<style>
+            .row { align-items: center; display: flex; gap: 12px; min-height: 44px; }
+            .box { height: 18px; width: 18px; }
+            .text { font-size: 14px; line-height: 20px; }
+          </style>
+          <div class="row">
+            <input id="c" type="checkbox" class="box">
+            <label for="c" class="text">Email updates</label>
+          </div>`);
+
+        const violations = await checkTouchTargets(page);
+
+        expect(violations).toHaveLength(1);
+        expect(violations[0].effectiveHeight).toBe(18);
+        expect(violations[0].labelHeight).toBeLessThan(44);
+        expect(violations[0].message).toContain('its label is only');
+      });
+
+      it('still flags a small input with no label at all', async () => {
+        await render('<input type="checkbox" style="width:18px;height:18px">');
+
+        const violations = await checkTouchTargets(page);
+
+        expect(violations).toHaveLength(1);
+        expect(violations[0].labelWidth).toBeUndefined();
+        expect(violations[0].message).not.toContain('its label');
+      });
+
+      /* An input and a label 12px apart are two surfaces, not one 44px one.
+         Adding their bounding boxes together would pass every checkbox ever
+         written, which is why the rule takes the largest single surface. */
+      it('does not add a control and its label together into one target', async () => {
+        await render(`<style>
+            .row { align-items: center; display: flex; gap: 12px; }
+            .box { height: 40px; width: 20px; }
+            .text { height: 40px; width: 200px; }
+          </style>
+          <div class="row">
+            <input id="c" type="checkbox" class="box">
+            <label for="c" class="text">Wide but short</label>
+          </div>`);
+
+        expect(await checkTouchTargets(page)).toHaveLength(1);
+      });
+    });
+
+    /* Chromium attributes a hit over a modal's ::backdrop to the <dialog>, so
+       every control behind an open dialog measured ~1x1 — the walk starts at
+       ±1px and never tests the centre, so it could not tell "tiny" from
+       "nothing routes here". It then advised padding on compliant controls. */
+    describe('occluded controls', () => {
+      it('skips a compliant control sitting behind an open modal dialog', async () => {
+        await render(`<dialog id="d"><p>Panel</p></dialog>
+          <button style="width:186px;height:44px">Open command palette</button>`);
+        await page.evaluate(() => document.getElementById('d').showModal());
+
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      it('still flags an under-sized control once the modal is closed', async () => {
+        await render(`<dialog id="d"><p>Panel</p></dialog>
+          <button style="width:20px;height:20px">x</button>`);
+        await page.evaluate(() => document.getElementById('d').showModal());
+        expect(await checkTouchTargets(page)).toEqual([]);
+
+        await page.evaluate(() => document.getElementById('d').close());
+        expect(await checkTouchTargets(page)).toHaveLength(1);
+      });
+
+      it('skips a control covered by an ordinary overlay, rather than calling it 1x1', async () => {
+        await render(`<style>
+            .cover { position: fixed; inset: 0; background: rgba(0,0,0,0.5); }
+          </style>
+          <button style="width:186px;height:44px">Under the sheet</button>
+          <div class="cover"></div>`);
+
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
     });
   });
 
@@ -240,6 +369,35 @@ describeBrowser('browser contract checks', () => {
         <button>x</button>`);
 
       expect(await checkFocusVisible(page)).toEqual([]);
+    });
+
+    /* Same root cause as the 1x1 touch target: a control behind an open modal
+       is inert, `.focus()` is a no-op, and the before/after snapshots match
+       for the trivial reason that focus never moved — reporting a missing
+       ring on a control that has one. */
+    it('skips a control the browser refuses to focus', async () => {
+      await render(`<style>
+          button { width: 48px; height: 48px; outline: none; }
+          button:focus-visible { outline: 2px solid #000; }
+        </style>
+        <dialog id="d"><input id="inside"></dialog>
+        <button>Open command palette</button>`);
+      await page.evaluate(() => document.getElementById('d').showModal());
+
+      expect(await checkFocusVisible(page)).toEqual([]);
+    });
+
+    it('still flags a ringless control once the modal is closed', async () => {
+      await render(`<style>
+          button { width: 48px; height: 48px; outline: none !important; border: 0; }
+        </style>
+        <dialog id="d"><input id="inside"></dialog>
+        <button>x</button>`);
+      await page.evaluate(() => document.getElementById('d').showModal());
+      expect(await checkFocusVisible(page)).toEqual([]);
+
+      await page.evaluate(() => document.getElementById('d').close());
+      expect(await checkFocusVisible(page)).toHaveLength(1);
     });
   });
 

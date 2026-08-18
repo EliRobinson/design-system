@@ -47,6 +47,7 @@ system in an app**.
 | `tailwind.css`                                                          | `tokens`                               | A hand-maintained `@theme inline` block mapping ~30 colour aliases\*          |
 | Flat ESLint config + `no-hardcoded-design-values` + `no-padded-ui-copy` | `eslint-config`                        | Hand-written lint rules, or more often no check at all                        |
 | Playwright contract helpers                                             | `ai-patterns` (`./testing/playwright`) | Nothing — most consumers never check the runtime contracts                    |
+| Visual regression preset + sweeps                                       | `ai-patterns` (`./testing/visual-*`)   | A copied `playwright.config.ts` and a hand-kept list of what to snapshot      |
 | Agent templates                                                         | `ai-patterns` (`./agents/*`)           | Four near-identical instruction files per repo, each aging separately         |
 | `ds-resync` CLI                                                         | `ai-patterns` (`bin`)                  | Noticing by hand that a repo is several releases behind                       |
 | `ds-resync artifacts`                                                   | `ai-patterns` (`bin`)                  | A copy of the brand skill and a hand-written component cheatsheet per repo    |

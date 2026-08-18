@@ -22,7 +22,7 @@
   "componentConstraints": {
     "no-barrel-imports": {
       "summary": "Import via package subpaths only — @elirobinson/react/components/<tier>/<Name>, @elirobinson/react/hooks/<name>, @elirobinson/tokens/tokens.css. There are no barrel files; a bare @elirobinson/react import does not resolve.",
-      "check": "Every import from an @elirobinson package names a subpath (components/*, hooks/*, styles/*.css, styles.css, tokens.css, tailwind.css, tokens.json, tokens-data, manifest, patterns, contracts, agents/*, testing/playwright).",
+      "check": "Every import from an @elirobinson package names a subpath (components/*, hooks/*, styles/*.css, styles.css, tokens.css, tailwind.css, tokens.json, tokens-data, manifest, patterns, contracts, agents/*, testing/*).",
       "verifiedBy": "@elirobinson/eslint-config → no-restricted-imports. Run `ds props <Name>` for the exact specifier."
     },
     "no-foreign-component-libraries": {
@@ -47,7 +47,7 @@
     },
     "touch-target-primary": {
       "summary": "Primary interactive controls — buttons, pagination items, segmented-control options, nav items — have a minimum 44x44px touch target. Where visual density matters, keep the painted glyph small and expand the hit area with padding or a bounded overlay rather than inflating the visible control.",
-      "check": "The computed hit area of each primary control is at least 44x44px.",
+      "check": "The computed hit area of each primary control is at least 44x44px, measured on whichever single surface receives the interaction — the control itself, or a <label> that activates it. A label counts only if it is 44x44 on its own; a control and its label are not added together across the gap between them. Controls nothing routes to (anything behind an open modal dialog) are not measured rather than being reported as 1x1.",
       "verifiedBy": "@elirobinson/ai-patterns/testing/playwright → checkTouchTargets()"
     },
     "touch-target-dense": {
