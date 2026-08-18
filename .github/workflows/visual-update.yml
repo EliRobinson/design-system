@@ -90,6 +90,9 @@ jobs:
         # contents: write — the classic script-injection shape.
         env:
           GREP: ${{ inputs.grep }}
+        # Explicit bash: a container job's default shell is `sh -e {0}`, and
+        # `set -o pipefail` is not a valid option there. The image ships bash.
+        shell: bash
         run: |
           set -euo pipefail
           if [ -n "$GREP" ]; then
@@ -98,6 +101,9 @@ jobs:
             pnpm exec playwright test --update-snapshots --workers=1
           fi
       - name: Commit the regenerated baselines
+        # Explicit bash: a container job's default shell is `sh -e {0}`, and
+        # `set -o pipefail` is not a valid option there. The image ships bash.
+        shell: bash
         run: |
           set -euo pipefail
           # The container's git refuses a repo it does not own; the checkout is
