@@ -1,7 +1,7 @@
 // The contracts that can only be settled by reading a stylesheet:
 // no-hardcoded-design-values, the CSS half of the rule of the same name, and
-// no-underlined-control-label, which is a shape rather than a value and has no
-// JS counterpart.
+// two that are a shape rather than a value and have no JS counterpart —
+// no-underlined-control-label and no-decorative-control-edge.
 //
 // Kept in its own entry point because it needs @eslint/css, which registers a
 // second ESLint language. Importing '@elirobinson/eslint-config' never loads
@@ -17,12 +17,14 @@
 
 import css from '@eslint/css';
 
+import { rule as decorativeControlEdge } from './rules/no-decorative-control-edge.mjs';
 import { cssRule } from './rules/no-hardcoded-css-values.mjs';
 import { rule as underlinedControlLabel } from './rules/no-underlined-control-label.mjs';
 
 export const plugin = {
   meta: { name: '@elirobinson/eslint-config/css' },
   rules: {
+    'no-decorative-control-edge': decorativeControlEdge,
     'no-hardcoded-design-values': cssRule,
     'no-underlined-control-label': underlinedControlLabel,
   },
@@ -47,6 +49,7 @@ export function designSystemCss(options = {}) {
       language: 'css/css',
       plugins: { css, '@elirobinson-css': plugin },
       rules: {
+        '@elirobinson-css/no-decorative-control-edge': severity,
         '@elirobinson-css/no-hardcoded-design-values': severity,
         '@elirobinson-css/no-underlined-control-label': severity,
       },

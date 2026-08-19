@@ -9,6 +9,7 @@ import cssModule from '@eslint/css';
 
 import { designSystem } from './index.mjs';
 import { designSystemCss } from './css.mjs';
+import { readsAsControlEdge } from './rules/no-decorative-control-edge.mjs';
 import { readsAsControl } from './rules/no-underlined-control-label.mjs';
 import {
   DESIGN_PROPERTIES,
@@ -764,6 +765,120 @@ describe('readsAsControl', () => {
     ['.buttonish', false],
   ])('%j is %s', (selector, expected) => {
     expect(readsAsControl(selector)).toBe(expected);
+  });
+});
+
+// The edge half of the same class of defect. --border and --border-strong
+// measure correctly as decorative hairlines and are the wrong token the moment
+// the line is what tells a user a control is there. Every flagged case has a
+// neighbour that must stay silent — a surface seam, a geometry longhand, and a
+// control that already reached for --border-control.
+describe('no-decorative-control-edge', () => {
+  const messagesFor = (css) =>
+    lintCss(css)
+      .filter((result) => result.ruleId?.endsWith('no-decorative-control-edge'))
+      .map((result) => result.message);
+
+  it.each([
+    ['an input edge', '.ds-input { border: 1px solid var(--border); }'],
+    [
+      'the emphasized decorative token',
+      '.search-field { border: 1px solid var(--border-strong); }',
+    ],
+    ['a bare input element', 'input { border: 1px solid var(--border); }'],
+    ['a border-color longhand', '.chip { border-color: var(--border); }'],
+    ['a single side', '.segmented-control { border-bottom: 1px solid var(--border); }'],
+    ['a logical longhand', '.stepper__indicator { border-inline-start-color: var(--border); }'],
+    ['a state rule', '.btn:hover { border-color: var(--border-strong); }'],
+    ['a role attribute instead of a class', '[role="switch"] { border: 1px solid var(--border); }'],
+    [
+      'a type attribute instead of a class',
+      '[type="checkbox"] { border: 1px solid var(--border); }',
+    ],
+    [
+      'a trigger, which is a control even inside an overlay',
+      '.popover__trigger { border: 1px solid var(--border); }',
+    ],
+  ])('flags %s', (_what, css) => {
+    const messages = messagesFor(css);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('var(--border-control)');
+  });
+
+  it.each([
+    ['a card seam, which is what --border is for', '.card { border: 1px solid var(--border); }'],
+    ['a table rule', '.data-table__cell { border-bottom: 1px solid var(--border); }'],
+    ['a divider', '.stack__divider { border-top: 1px solid var(--border-strong); }'],
+    [
+      'an outline badge, which is a label and not a control',
+      '.ds-badge--outline { border: 1px solid var(--border-strong); }',
+    ],
+    ['the rule under a tab strip', '.ds-tabs__list { border-bottom: 1px solid var(--border); }'],
+    ['a floating panel a widget opens', '.ds-combobox__list { border: 1px solid var(--border); }'],
+    [
+      'a control that already uses the right token',
+      '.ds-input { border: 1px solid var(--border-control); }',
+    ],
+    [
+      'a control edge painted with a status token',
+      '.ds-input--error { border-color: var(--status-danger); }',
+    ],
+    [
+      'geometry, which paints no line',
+      '.btn { border-radius: var(--radius-sm); border-width: 1px; }',
+    ],
+    ['a control with no border at all', '.btn { background: var(--accent); }'],
+    [
+      'an outline, which is not a border',
+      '.btn:focus-visible { outline: 2px solid var(--focus-ring); }',
+    ],
+    [
+      'a word that merely contains a control word',
+      '.timetable-row { border: 1px solid var(--border); }',
+    ],
+    ['a zero border, which paints nothing', '.field__figure { border: 0; }'],
+  ])('stays silent on %s', (_what, css) => {
+    expect(messagesFor(css)).toEqual([]);
+  });
+
+  it('names the selector, the declaration and the token', () => {
+    const [message] = messagesFor('.ds-switch__track { border: 1px solid var(--border); }');
+
+    expect(message).toContain('.ds-switch__track');
+    expect(message).toContain('border: 1px solid var(--border)');
+    expect(message).toContain('--border');
+  });
+});
+
+describe('readsAsControlEdge', () => {
+  it.each([
+    ['.ds-input', true],
+    ['input', true],
+    ['textarea', true],
+    ['[type="search"]', true],
+    ['[role="combobox"]', true],
+    ['.search-field__control', true],
+    ['.ds-switch__track', true],
+    ['.btn', true],
+    ['.ds-pagination__item', true],
+    // Narrower than readsAsControl on purpose: these paint a fill, so an
+    // underline in them is a defect, but their border is trim.
+    ['.ds-badge--outline', false],
+    ['.ds-tabs__list', false],
+    ['.ds-combobox__list', false],
+    ['.ds-date-picker__popover', false],
+    ['.card', false],
+    ['.panel', false],
+    ['.data-table', false],
+    // Whole words, so prose that merely contains one does not match.
+    ['.switchboard-diagram', false],
+    ['.inputted', false],
+    // `field` is claimed on purpose: `.form-field` / `.field__control` is the
+    // canonical bordered input, and the cost of the collision is one selector
+    // told to use a more visible edge.
+    ['.field-guide', true],
+  ])('%j is %s', (selector, expected) => {
+    expect(readsAsControlEdge(selector)).toBe(expected);
   });
 });
 

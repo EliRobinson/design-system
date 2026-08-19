@@ -3,13 +3,20 @@
  * component-css.test.mjs asserts the *mechanism* — that every filled variant
  * carries a `color` declaration in each state. This file asserts the
  * *outcome*: resolve the cascade over the real shipped stylesheets and measure
- * what an `<a class="ds-button ds-button--accent">` label actually renders as,
- * resting, hovered and pressed, in both themes.
+ * what an `<a class="ds-button ds-button--VARIANT">` label actually renders
+ * as, resting, hovered and pressed, in both themes.
  *
  * Those are two different claims. A `color` declaration that loses the cascade
  * satisfies the first and not the second, and losing the cascade is exactly
  * what happened: tokens.css's `a:hover` (0,1,1) beat `.ds-button--accent`
  * (0,1,0), and the label came out amber on amber at 2.31:1.
+ *
+ * `--accent` is the variant that was reported, and it is the mildest case, not
+ * the worst. `--link-hover` is amber and `.ds-button--primary:hover` fills
+ * with `--fg-2`, so the same lost cascade there is amber on near-black:
+ * 1.15:1 light, 1.35:1 dark. Every variant is measured for that reason — a
+ * mechanism test tells you a `color` declaration exists, not that it wins the
+ * cascade or that what it paints is legible on the fill underneath it.
  *
  * Selectors are parsed and matched by jsdom's own CSSOM and selector engine.
  * Specificity comes from ./specificity.mjs — there is no DOM API that exposes
@@ -92,12 +99,48 @@ const STATES = [
   ['hover', 'hovered'],
   ['active', 'pressed'],
 ];
-/* Which fill each state paints, so the label is measured against what is
-   actually behind it rather than against the page background. */
-const FILL = { resting: '--accent', hovered: '--accent-hover', pressed: '--accent-press' };
 
-describe('an <a class="ds-button ds-button--accent"> label clears 4.5:1', () => {
-  const anchors = {};
+/* Every variant, and the token that paints what sits behind its label in each
+   state — so the label is measured against what is actually under it rather
+   than against the page background. `--secondary` and `--ghost` paint no fill
+   of their own when resting, so the page shows through and `--bg` is right.
+
+   `threshold` is 4.5 (SC 1.4.3) everywhere but disabled: SC 1.4.3 excludes
+   text that is part of an inactive user interface component, and
+   `--fg-disabled` on `--bg-muted` measures 4.34:1 light / 7.60:1 dark. It is
+   held to the 3:1 non-text floor rather than exempted outright, because a
+   disabled label a user cannot see at all is still a defect. */
+const VARIANTS = [
+  {
+    modifier: 'primary',
+    threshold: 4.5,
+    fills: { resting: '--fg', hovered: '--fg-2', pressed: '--fg' },
+  },
+  {
+    modifier: 'accent',
+    threshold: 4.5,
+    fills: { resting: '--accent', hovered: '--accent-hover', pressed: '--accent-press' },
+  },
+  {
+    modifier: 'secondary',
+    threshold: 4.5,
+    fills: { resting: '--bg', hovered: '--bg-subtle', pressed: '--bg-muted' },
+  },
+  {
+    modifier: 'ghost',
+    threshold: 4.5,
+    fills: { resting: '--bg', hovered: '--bg-subtle', pressed: '--bg-muted' },
+  },
+  {
+    modifier: 'disabled',
+    threshold: 3,
+    fills: { resting: '--bg-muted', hovered: '--bg-muted', pressed: '--bg-muted' },
+  },
+];
+
+describe('every <a class="ds-button ds-button--*"> label clears its threshold', () => {
+  /** One live anchor per `${modifier}:${theme}`, all in the same document. */
+  const anchors = new Map();
 
   beforeAll(() => {
     const style = document.createElement('style');
@@ -107,20 +150,24 @@ describe('an <a class="ds-button ds-button--accent"> label clears 4.5:1', () => 
     for (const theme of THEMES) {
       const host = document.createElement('div');
       if (theme === 'dark') host.setAttribute('data-theme', 'dark');
-      const anchor = document.createElement('a');
-      anchor.className = 'ds-button ds-button--accent';
-      anchor.href = '#';
-      anchor.textContent = 'Read the guide';
-      host.appendChild(anchor);
+      for (const { modifier } of VARIANTS) {
+        const anchor = document.createElement('a');
+        anchor.className = `ds-button ds-button--${modifier}`;
+        anchor.href = '#';
+        anchor.textContent = 'Read the guide';
+        host.appendChild(anchor);
+        anchors.set(`${modifier}:${theme}`, anchor);
+      }
       document.body.appendChild(host);
-      anchors[theme] = anchor;
     }
   });
 
   it('loaded the real stylesheets, not an empty document', () => {
     const selectors = [...document.styleSheets[0].cssRules].map((r) => r.selectorText);
     expect(selectors).toContain('a:hover');
-    expect(selectors).toContain('.ds-button--accent:hover');
+    for (const { modifier } of VARIANTS) {
+      expect(selectors.join('\n')).toContain(`.ds-button--${modifier}:hover`);
+    }
   });
 
   it('pins the specificities the bug turned on', () => {
@@ -131,31 +178,38 @@ describe('an <a class="ds-button ds-button--accent"> label clears 4.5:1', () => 
     expect(specificity('.ds-button--accent:hover')).toEqual([0, 2, 0]);
   });
 
-  for (const theme of THEMES) {
-    for (const [state, label] of STATES) {
-      it(`${theme}, ${label}`, () => {
-        const anchor = anchors[theme];
-        const winner = resolveColor(anchor, state);
-        expect(winner, `nothing set a color for ${label}`).not.toBeNull();
+  for (const { modifier, threshold, fills } of VARIANTS) {
+    for (const theme of THEMES) {
+      for (const [state, label] of STATES) {
+        it(`--${modifier}, ${theme}, ${label} >= ${threshold}:1`, () => {
+          const anchor = anchors.get(`${modifier}:${theme}`);
+          const winner = resolveColor(anchor, state);
+          expect(winner, `nothing set a color for --${modifier} ${label}`).not.toBeNull();
 
-        const foreground = resolveVar(winner.color, theme);
-        const background = tokenValue(FILL[label], theme);
-        const measured = contrastRatio(foreground, background);
+          const foreground = resolveVar(winner.color, theme);
+          const background = tokenValue(fills[label], theme);
+          const measured = contrastRatio(foreground, background);
 
-        expect(measured, `${winner.selector} gives ${foreground} on ${background}`).not.toBeNull();
-        expect(
-          Number(measured.toFixed(2)),
-          `${winner.selector} wins the cascade and puts ${foreground} on ${background}`,
-        ).toBeGreaterThanOrEqual(4.5);
-      });
+          expect(
+            measured,
+            `${winner.selector} gives ${foreground} on ${background}`,
+          ).not.toBeNull();
+          expect(
+            Number(measured.toFixed(2)),
+            `${winner.selector} wins the cascade and puts ${foreground} on ${background}`,
+          ).toBeGreaterThanOrEqual(threshold);
+        });
+      }
     }
   }
 
   it('is won by the variant, not by the global a:hover', () => {
-    for (const theme of THEMES) {
-      const winner = resolveColor(anchors[theme], 'hover');
-      expect(winner.selector, `${theme} hover`).not.toBe('a:hover');
-      expect(winner.color, `${theme} hover`).not.toBe('var(--link-hover)');
+    for (const { modifier } of VARIANTS) {
+      for (const theme of THEMES) {
+        const winner = resolveColor(anchors.get(`${modifier}:${theme}`), 'hover');
+        expect(winner.selector, `--${modifier} ${theme} hover`).not.toBe('a:hover');
+        expect(winner.color, `--${modifier} ${theme} hover`).not.toBe('var(--link-hover)');
+      }
     }
   });
 });

@@ -62,7 +62,7 @@ Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
 - **A filled variant restates `color` in every state.** If a rule sets `background-color`, the rule for each of its states (`:hover`, `:active`, `:focus`, `:disabled`) sets `color` too — even when the colour does not change.
 - **Never paint `--ink-*`, `--signal-*` or `--anchor-*`.** The scales are fixed and do not respond to `[data-theme="dark"]`; use the semantic token that flips. `component-css.test.mjs` enforces this.
 - **A background and the text on it come from the same world** — both themed, or both fixed. One of each inverts in dark mode.
-- Control edges use `--border-control`, not `--border`/`--border-strong`. See [Tokens](tokens.md) for which edges count.
+- Control edges use `--border-control`, not `--border`/`--border-strong` — enforced by `component-css.test.mjs` here and shipped to consumers as `@elirobinson-css/no-decorative-control-edge`. See [Tokens](tokens.md) for which edges count.
 - Status text uses `--status-*-fg`, status panels `--status-*-tint`; `--status-*` is a fill and two of them cannot carry a label at all.
 - Brand amber that a user reads is `--accent-ink`, not `--accent` (2.53:1).
 - **Colour is never the only signal for a state.** Pair it with a glyph, shape, label or border — see SC 1.4.1 in [Tokens](tokens.md).
@@ -77,6 +77,8 @@ Two layers fix it, and both are needed:
 
 1. `.ds-button--accent:hover` restating `color` is **(0,2,0)**, which wins. This is the component's job and applies to every filled variant.
 2. `tokens.css` scopes `--link-on-fill: currentColor` onto links inside filled surfaces (`.ds-button a`, `.ds-badge a`, `.ds-chip a`, `.ds-alert a`, `.ds-toast a`, `[data-on-fill] a`), so a link _nested inside_ a fill inherits that fill's foreground rather than a hue shift. Mark any new filled surface with `data-on-fill` or add its class there.
+
+Both layers are measured rather than asserted. `component-css.test.mjs` checks the _mechanism_ — that every state rule painting a background also declares `color`. `button-contrast.test.mjs` checks the _outcome_: it loads `tokens.css` plus `Button.css` into jsdom, resolves the real cascade for an `<a class="ds-button ds-button--*">` in every variant, both themes, resting/hovered/pressed, and measures what the winning declaration actually paints against the fill underneath it. A `color` that loses the cascade satisfies the first and fails the second, which is exactly what the reported bug was. `--accent` is the variant that was reported and the mildest case — `--link-hover` on `.ds-button--primary:hover`'s `--fg-2` fill is 1.15:1 in light. Disabled is measured to 3:1 rather than 4.5:1: SC 1.4.3 excludes text in an inactive component, but a disabled label nobody can see is still a defect.
 
 Because the hover hue shift is gone on those surfaces, the hover affordance is carried by `text-decoration-thickness: 2px` instead. A control that is an anchor (`a.ds-button`, `a.ds-chip`) drops the underline entirely — it is a control, not a link.
 
