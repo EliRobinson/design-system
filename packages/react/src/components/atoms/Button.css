@@ -135,3 +135,5 @@
   color: var(--fg-disabled);
   transform: none;
 }
+
+/* temporary: exercising visual scoping — close without merging */
