@@ -95,10 +95,8 @@ jobs:
     needs: image
     # `labeled` cannot be filtered in the `on:` trigger above — GitHub either
     # takes every label or none — so ANY label (docs, wip, anything) would
-    # otherwise start a full scoped run here, and because cancel-in-progress
-    # groups on the ref, it would cancel whatever visual run was already in
-    # flight and restart from zero. The filter has to live here instead: only
-    # run for a labeling event when the label is visual-accept.
+    # otherwise start a full scoped run here. The filter has to live here
+    # instead: only run for a labeling event when the label is visual-accept.
     if: >-
       github.event_name == 'pull_request' &&
       (github.event.action != 'labeled' || github.event.label.name == 'visual-accept')
@@ -434,6 +432,22 @@ jobs:
           LABEL_ALREADY_PRESENT: ${{ contains(github.event.pull_request.labels.*.name, 'visual-accept') }}
         run: |
           set -euo pipefail
+          # The comparison step deletes this file before it runs, so its
+          # absence here means that step never reached its reporter — a crash
+          # or a cancellation, not a judged set of failing shots, the same
+          # fact the Accept step's check above documents. `set -e` would
+          # otherwise kill this step on the node call below before the
+          # summary is written, and the human loses the instructions for how
+          # to accept — so write the summary here too, before exiting.
+          if [ ! -f test-results/report.json ]; then
+            {
+              echo "### Visual regression"
+              echo
+              echo "The comparison produced no report.json, so no shot was ever judged — a crash or a cancellation, not a set of failing shots to review. Re-run the check rather than adding \`visual-accept\`; the label only accepts shots a comparison actually reported failing."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::The comparison produced no report.json, so no shot was ever judged. Nothing here can be reported."
+            exit 1
+          fi
           if [ "$LABEL_ALREADY_PRESENT" = "true" ]; then
             ACCEPT_INSTRUCTION="These changes were not auto-accepted, even though \`visual-accept\` is already on this pull request — the label accepts once, on the run where it is applied, not on every later push. If they are intended, remove and re-add the \`visual-accept\` label to accept this run's failures; that re-add starts a new run on its own."
           else
@@ -537,6 +551,13 @@ jobs:
       # build break and a pixel diff are not in the same log section.
       - name: Build Storybook and the docs site
         run: pnpm run pretest:visual
+      # Same protection as `scoped`'s comparison step: the regen step below
+      # picks the shots to rewrite out of test-results/report.json, and that
+      # file must be the one THIS sweep wrote. Removing it first means a
+      # sweep that dies before its reporter flushes regenerates nothing,
+      # rather than regenerating against a report it did not produce.
+      - name: Discard any stale report
+        run: rm -f test-results/report.json
       # Invoked through `pnpm exec`, not `pnpm test:visual`, so the flags reach
       # the binary verbatim — the same reason the container script does it this
       # way, and this keeps CI's invocation identical to the one that generated
@@ -554,13 +575,6 @@ jobs:
       # continue-on-error at the step level, not the job level: this is what
       # lets the regen step below run off steps.sweep.outcome, and lets the
       # explicit "Fail the job" step at the end still fail the job overall.
-      # Same protection as `scoped`'s comparison step: the regen step below
-      # picks the shots to rewrite out of test-results/report.json, and that
-      # file must be the one THIS sweep wrote. Removing it first means a
-      # sweep that dies before its reporter flushes regenerates nothing,
-      # rather than regenerating against a report it did not produce.
-      - name: Discard any stale report
-        run: rm -f test-results/report.json
       - name: Visual regression
         id: sweep
         continue-on-error: true
@@ -609,6 +623,18 @@ jobs:
           mkdir -p pre-regen-report
           cp -r test-results pre-regen-report/test-results 2>/dev/null || true
           cp -r playwright-report pre-regen-report/playwright-report 2>/dev/null || true
+
+          # The copies above are `|| true` on purpose — a failed preserve
+          # should not block the regen step that follows. But `recover`'s
+          # pull request and tracking issue both assert the diff images live
+          # in `pre-regen-report/`, so a copy that silently failed would make
+          # both of those wrong. Say so loudly instead of staying quiet.
+          if [ -d test-results ] && [ ! -d pre-regen-report/test-results ]; then
+            echo "::warning::Preserving test-results before regeneration failed — pre-regen-report/test-results is missing, so the recovery pull request and tracking issue will point at diff images that are not there."
+          fi
+          if [ -d playwright-report ] && [ ! -d pre-regen-report/playwright-report ]; then
+            echo "::warning::Preserving playwright-report before regeneration failed — pre-regen-report/playwright-report is missing, so the recovery pull request and tracking issue will point at a report that is not there."
+          fi
 
       - name: Regenerate the failing baselines
         if: steps.sweep.outcome == 'failure' && github.ref == 'refs/heads/main'
