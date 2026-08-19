@@ -5,3 +5,37 @@ Always use conventional commit messages.
 ## Screenshots for front-end changes
 
 Any PR that changes front-end code (components, layout, styling, tokens that affect rendered output) must include before-and-after screenshots in the PR description. Take the "before" screenshot on the unmodified code, make the change, then take the "after" screenshot of the same view. This gives reviewers a visual diff alongside the code diff for stronger UI/UX review — don't rely on a description of the change instead.
+
+### Link them by pinned raw URL, not by relative path
+
+**GitHub does not resolve relative image paths in a pull request body.** It leaves the `src` exactly as written, and the browser then resolves it against the PR's own URL — `docs/pr-assets/x.png` on `/pull/88` becomes `/pull/docs/pr-assets/x.png`, which redirects to a login page and renders as a broken image. This is not a permissions problem and it does not come good later; the repo is public and the file is committed. It simply never worked. PR #88 shipped four screenshots this way and none of them display.
+
+Commit the images, then reference them by **absolute raw URL pinned to the commit SHA**:
+
+```markdown
+![Dialog centred in the viewport](https://raw.githubusercontent.com/EliRobinson/design-system/<sha>/docs/pr-assets/<slug>/dialog-after.png)
+```
+
+Pin the **SHA, not the branch name**. A `.../design-system/<branch>/...` URL works right up until the branch is deleted on merge, and then every screenshot in the PR history breaks at once — which is the moment the record becomes worth reading.
+
+The order matters, because the SHA has to exist before you can link to it:
+
+```bash
+git add docs/pr-assets/<slug> && git commit -m "docs(pr-assets): before/after screenshots for #<issue>" && git push && git rev-parse HEAD
+```
+
+Then write the body with that SHA and open the PR. Verify the images actually resolve rather than assuming — a broken screenshot in a PR body looks identical to no screenshot at all until someone opens the page:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://raw.githubusercontent.com/EliRobinson/design-system/<sha>/docs/pr-assets/<slug>/dialog-after.png
+```
+
+A human opening the PR in a browser can instead drag the PNGs into the description box, which uploads them to GitHub's `user-attachments` CDN and needs no commit at all. That is the nicer result — nothing enters the repo — but it cannot be scripted, so anything running headless uses the committed-asset path above.
+
+### Capturing the pair
+
+Both shots must differ by the change and nothing else. A stray hover state, a different viewport, or a rebuilt page with unrelated drift in it turns a visual diff into a puzzle.
+
+For a CSS-only change the cheapest way to guarantee that is to capture both from **one** build, toggling the single declaration under test in the live stylesheet between shots rather than rebuilding between them — walk `document.styleSheets`, find the rule by `selectorText`, and `removeProperty` / `setProperty` around each `page.screenshot()`. A throwaway Playwright config pointed at the docs build does this in a few seconds; delete it once the PNGs exist, so it never becomes a second visual suite that has to be maintained (and never mints baselines in `tests/visual/`). PR #107 is a worked example.
+
+Assert the end state inside the capture script too — that the element really is centred, really is the new colour. A silently broken capture is indistinguishable from a correct one until a human opens the PR, and by then it is being read as proof.
