@@ -10,6 +10,7 @@ import cssModule from '@eslint/css';
 import { designSystem } from './index.mjs';
 import { designSystemCss } from './css.mjs';
 import { readsAsControlEdge } from './rules/no-decorative-control-edge.mjs';
+import { paintsAnEdge, statusFillState } from './rules/no-mismatched-status-foreground.mjs';
 import { readsAsControl } from './rules/no-underlined-control-label.mjs';
 import {
   DESIGN_PROPERTIES,
@@ -879,6 +880,243 @@ describe('readsAsControlEdge', () => {
     ['.field-guide', true],
   ])('%j is %s', (selector, expected) => {
     expect(readsAsControlEdge(selector)).toBe(expected);
+  });
+});
+
+// The status surfaces. --status-success and --status-warning stopped being
+// brand aliases and now own their hues, which is what makes the two habits
+// below wrong: a foreground that flips with the theme no longer tracks a fill
+// that does not, and a warning hue that is a legible fill at 1.87:1 is not a
+// legible line. Every flagged case has a neighbour that must stay silent — the
+// already-migrated token, the tint pair, a geometry longhand, and a bare
+// warning fill, which is correct.
+describe('no-mismatched-status-foreground', () => {
+  const messagesFor = (css) =>
+    lintCss(css)
+      .filter((result) => result.ruleId?.endsWith('no-mismatched-status-foreground'))
+      .map((result) => result.message);
+
+  it.each([
+    [
+      'inverted text on a danger fill',
+      '.toast--error { background: var(--status-danger); color: var(--fg-inverse); }',
+      'var(--status-danger-on)',
+    ],
+    [
+      'a success fill',
+      '.badge--ok { background: var(--status-success); color: var(--fg-inverse); }',
+      'var(--status-success-on)',
+    ],
+    [
+      'a warning fill, where the text on it is the only contrast there is',
+      '.banner--warn { background: var(--status-warning); color: var(--fg-inverse); }',
+      'var(--status-warning-on)',
+    ],
+    [
+      'an info fill',
+      '.tip { background: var(--status-info); color: var(--fg-inverse); }',
+      'var(--status-info-on)',
+    ],
+    [
+      'the background-color longhand',
+      '.dot { background-color: var(--status-danger); color: var(--fg-inverse); }',
+      'var(--status-danger-on)',
+    ],
+    [
+      'the foreground declared before the fill',
+      '.pill { color: var(--fg-inverse); background: var(--status-danger); }',
+      'var(--status-danger-on)',
+    ],
+    [
+      'a fill written with a fallback',
+      '.pill { background: var(--status-danger, #b91c1c); color: var(--fg-inverse); }',
+      'var(--status-danger-on)',
+    ],
+    [
+      'a state rule',
+      '.alert:hover { background: var(--status-warning); color: var(--fg-inverse); }',
+      'var(--status-warning-on)',
+    ],
+  ])('flags %s', (_what, css, replacement) => {
+    const messages = messagesFor(css);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain(replacement);
+  });
+
+  it.each([
+    ['a border shorthand', '.callout { border: 1px solid var(--status-warning); }'],
+    ['a border-color longhand', '.callout { border-color: var(--status-warning); }'],
+    ['a single side', '.row { border-left: 3px solid var(--status-warning); }'],
+    ['a logical longhand', '.row { border-inline-start-color: var(--status-warning); }'],
+    ['an outline', '.field:focus-visible { outline: 2px solid var(--status-warning); }'],
+    ['an outline-color longhand', '.field { outline-color: var(--status-warning); }'],
+    ['a column rule', '.cols { column-rule: 1px solid var(--status-warning); }'],
+    ['a column-rule-color longhand', '.cols { column-rule-color: var(--status-warning); }'],
+    [
+      'an edge written with a fallback',
+      '.callout { border-color: var(--status-warning, #b45309); }',
+    ],
+  ])('flags the warning hue painting %s', (_what, css) => {
+    const messages = messagesFor(css);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('var(--status-warning-border)');
+  });
+
+  it.each([
+    ['as text on a plain background', '.note { color: var(--fg-on-signal); }'],
+    ['as a border colour', '.note { border-color: var(--fg-on-signal); }'],
+    ['inside a shorthand', '.note { border: 1px solid var(--fg-on-signal); }'],
+    ['written with a fallback', '.note { color: var(--fg-on-signal, #ffffff); }'],
+    // The opposite of no-hardcoded-design-values, which exempts `--*` because
+    // defining a value is what a token layer is for. Aliasing a legacy token
+    // into a name of your own is not defining anything.
+    [
+      'aliased into a consumer’s own custom property',
+      ':root { --my-badge-fg: var(--fg-on-signal); }',
+    ],
+  ])('flags the legacy --fg-on-signal %s', (_what, css) => {
+    const messages = messagesFor(css);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('var(--accent-fg)');
+  });
+
+  it.each([
+    [
+      'the correct pairing',
+      '.badge { background: var(--status-warning); color: var(--status-warning-on); }',
+    ],
+    ['an already-migrated edge', '.callout { border-color: var(--status-warning-border); }'],
+    // The exception is real: the hue is legible as a fill because the text on
+    // it carries the contrast. Only the line is wrong.
+    ['a bare warning fill, which is correct', '.callout { background: var(--status-warning); }'],
+    [
+      'the tint pair, which has nothing to do with the fill pair',
+      '.panel { background: var(--status-danger-tint); color: var(--status-danger-fg); }',
+    ],
+    ['a tint edge on a border', '.panel { border-color: var(--status-warning-tint-edge); }'],
+    [
+      'the tint pair with its own edge',
+      '.panel { background: var(--status-warning-tint); border: 1px solid var(--status-warning-tint-edge); color: var(--status-warning-fg); }',
+    ],
+    [
+      'a danger badge that already uses the right foreground',
+      '.badge--danger { background: var(--status-danger); color: var(--status-danger-on); }',
+    ],
+    ['status-coloured text on a neutral surface', '.hint { color: var(--status-warning-fg); }'],
+    [
+      '--fg-inverse on an inverted band, which is exactly what it is for',
+      '.hero { background: var(--bg-inverse); color: var(--fg-inverse); }',
+    ],
+    [
+      '--fg-inverse over a status tint, which is not the fill pair',
+      '.panel { background: var(--status-info-tint); color: var(--fg-inverse); }',
+    ],
+    ['the accent pair', '.btn { background: var(--accent); color: var(--accent-fg); }'],
+    // The same fixture no-decorative-control-edge keeps as a negative. A
+    // non-warning status hue on an edge is not this rule's business.
+    [
+      'a control edge painted with a non-warning status token',
+      '.ds-input--error { border-color: var(--status-danger); }',
+    ],
+    ['geometry, which paints no line', '.chip { border-radius: var(--radius-2); }'],
+    [
+      'a border width, which carries no colour',
+      '.chip { border-width: var(--border-width-thick); }',
+    ],
+    // Deciding this needs a cascade resolver and a DOM, so it is out of scope
+    // on purpose rather than by accident.
+    [
+      'a fill and a foreground in different blocks',
+      '.badge { background: var(--status-danger); } .badge__label { color: var(--fg-inverse); }',
+    ],
+  ])('stays silent on %s', (_what, css) => {
+    expect(messagesFor(css)).toEqual([]);
+  });
+
+  it('names the selector, both declarations, the state and the exact replacement', () => {
+    const [message] = messagesFor(
+      '.toast--error { background: var(--status-danger); color: var(--fg-inverse); }',
+    );
+
+    expect(message).toContain('.toast--error');
+    expect(message).toContain('background: var(--status-danger)');
+    expect(message).toContain('color: var(--fg-inverse)');
+    expect(message).toContain('var(--status-danger-on)');
+  });
+
+  it('names the declaration and the edge token it should have used', () => {
+    const [message] = messagesFor('.callout { border-left: 3px solid var(--status-warning); }');
+
+    expect(message).toContain('border-left: 3px solid var(--status-warning)');
+    expect(message).toContain('var(--status-warning-border)');
+    expect(message).toContain('1.87:1');
+  });
+
+  // Both halves are true at once and both are worth saying: the alias is
+  // legacy everywhere, and here specifically it is also the wrong kind of
+  // foreground. Asserted rather than left to fall out of the implementation.
+  it('reports twice on --fg-on-signal inside a status fill block', () => {
+    const messages = messagesFor(
+      '.badge--ok { background: var(--status-success); color: var(--fg-on-signal); }',
+    );
+
+    expect(messages).toHaveLength(2);
+    expect(messages.some((message) => message.includes('var(--status-success-on)'))).toBe(true);
+    expect(messages.some((message) => message.includes('var(--accent-fg)'))).toBe(true);
+  });
+});
+
+describe('paintsAnEdge', () => {
+  it.each([
+    ['border', true],
+    ['border-color', true],
+    ['border-top', true],
+    ['border-inline-start-color', true],
+    ['border-block-end', true],
+    ['outline', true],
+    ['outline-color', true],
+    ['column-rule', true],
+    ['column-rule-color', true],
+    // Geometry, which never carries the line's colour.
+    ['border-radius', false],
+    ['border-width', false],
+    ['border-style', false],
+    ['border-top-width', false],
+    ['border-inline-start-style', false],
+    ['border-spacing', false],
+    ['border-collapse', false],
+    ['border-image', false],
+    ['border-image-source', false],
+    ['outline-width', false],
+    ['outline-style', false],
+    ['background', false],
+    ['color', false],
+  ])('%j is %s', (property, expected) => {
+    expect(paintsAnEdge(property)).toBe(expected);
+  });
+});
+
+describe('statusFillState', () => {
+  it.each([
+    ['var(--status-danger)', 'danger'],
+    ['var(--status-success)', 'success'],
+    ['var(--status-warning)', 'warning'],
+    ['var(--status-info)', 'info'],
+    ['var(--status-danger, #b91c1c)', 'danger'],
+    ['linear-gradient(var(--status-info), var(--bg))', 'info'],
+    // The whole-reference terminator is what keeps the rest of the family out.
+    // Every one of these is a fix, and flagging a fix tells a consumer who
+    // already migrated to migrate again.
+    ['var(--status-warning-border)', null],
+    ['var(--status-warning-on)', null],
+    ['var(--status-warning-fg)', null],
+    ['var(--status-warning-tint)', null],
+    ['var(--status-warning-tint-edge)', null],
+    ['var(--status-danger-on)', null],
+    ['var(--accent)', null],
+    ['transparent', null],
+  ])('%j is %s', (value, expected) => {
+    expect(statusFillState(value)).toBe(expected);
   });
 });
 

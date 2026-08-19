@@ -1,0 +1,139 @@
+{
+  "$comment": "The token migrations, as data. See migrations.d.mts for the schema and migrations.test.mjs for the check that keeps this file honest. Authored by hand; verified against token-baseline.json.",
+  "package": "@elirobinson/tokens",
+  "migrations": [
+    {
+      "id": "warning-needs-an-edge",
+      "since": "0.9.0",
+      "kind": "rename",
+      "from": ["--status-warning"],
+      "to": "--status-warning-border",
+      "when": {
+        "properties": [
+          "border",
+          "border-color",
+          "border-top",
+          "border-top-color",
+          "border-right",
+          "border-right-color",
+          "border-bottom",
+          "border-bottom-color",
+          "border-left",
+          "border-left-color",
+          "border-inline",
+          "border-inline-color",
+          "border-inline-start",
+          "border-inline-start-color",
+          "border-inline-end",
+          "border-inline-end-color",
+          "border-block",
+          "border-block-color",
+          "border-block-start",
+          "border-block-start-color",
+          "border-block-end",
+          "border-block-end-color",
+          "outline",
+          "outline-color",
+          "column-rule",
+          "column-rule-color",
+          "caret-color",
+          "text-decoration-color"
+        ]
+      },
+      "report": "occurrence",
+      "reason": "--status-warning is 1.87:1 on --bg in light. Yellow that clears 3:1 on white is olive, which is not a caution colour, so the SC 1.4.11 floor is carried by a separate token instead of by the fill. The fill is still --status-warning; the edge around it is --status-warning-border (3.76:1 light, 11.22:1 dark).",
+      "guidance": "Keep the fill. Move only the edge."
+    },
+    {
+      "id": "fg-on-signal-is-accent-fg",
+      "since": "0.9.0",
+      "kind": "rename",
+      "from": ["--fg-on-signal"],
+      "to": "--accent-fg",
+      "when": {},
+      "report": "occurrence",
+      "reason": "--fg-on-signal was named for a ramp step (--signal-*) that the palette dial now owns, and it resolved to --ink-1000 — ink, which is only the right foreground under a palette whose accent is light. It survives as a documented alias of --accent-fg and collapses under any non-default palette. --accent-fg is the same colour under the default palette and the correct one under every other.",
+      "guidance": "A straight rename. The rendered colour does not move under the default `ember` palette."
+    },
+    {
+      "id": "status-fill-foreground",
+      "since": "0.9.0",
+      "kind": "review",
+      "from": ["--fg-inverse", "--fg-on-signal"],
+      "to": "--status-<state>-on",
+      "when": {
+        "properties": ["color", "fill", "stroke", "-webkit-text-fill-color"],
+        "blockMentions": [
+          "--status-success",
+          "--status-warning",
+          "--status-danger",
+          "--status-info"
+        ],
+        "blockProperties": ["background", "background-color", "background-image"]
+      },
+      "report": "occurrence",
+      "reason": "Neither --fg-inverse nor --fg-on-signal can be correct on a status fill in both themes, because both move with the theme while the fill under them does not. --fg-inverse is white in light and black in dark; on the previous token set it already failed two cells, and against the re-picked hues it would fail three. Each state now ships the foreground measured against its own fill: --status-success-on, --status-warning-on, --status-danger-on, --status-info-on, holding 5.17 / 11.22 / 5.41 / 5.06 across every palette x theme combination.",
+      "guidance": "Replace with the -on token of whichever status fill this text sits on. This is never rewritten for you: the tool can see that a status token is mentioned nearby, but not which fill this element is actually painted with, and guessing the wrong state would trade a contrast bug for a colour bug."
+    },
+    {
+      "id": "status-brand-coupling",
+      "since": "0.9.0",
+      "kind": "repoint",
+      "from": ["--status-success", "--status-warning"],
+      "to": null,
+      "rendered": "changed",
+      "when": {},
+      "report": "occurrence",
+      "reason": "Status used to be made of brand. --status-success was var(--anchor-500) — forest — and --status-warning was var(--signal-600), the identical amber as the primary CTA, so a caution badge sat next to an accent button in the same colour. Both now own a palette-independent hue and neither moves with the brand.",
+      "guidance": "The token name did not change, so nothing here is rewritten. Look at each of these and decide which one you meant: if you wanted the brand colour (a badge deliberately matched to a button) use --anchor or --accent explicitly; if you wanted the status, keep the status token and accept the new hue."
+    },
+    {
+      "id": "status-hues-tuned",
+      "since": "0.9.0",
+      "kind": "repoint",
+      "from": [
+        "--status-danger",
+        "--status-info",
+        "--status-success-fg",
+        "--status-warning-fg",
+        "--status-danger-fg",
+        "--status-info-fg",
+        "--status-success-tint",
+        "--status-warning-tint",
+        "--status-danger-tint",
+        "--status-info-tint"
+      ],
+      "to": null,
+      "rendered": "changed",
+      "when": {},
+      "report": "summary",
+      "reason": "The rest of each status set was re-picked alongside the two fills above so that every member of a set is measured against the same hue. The shifts are small — danger moved 25deg to 27deg, info 240deg to 250deg — and every pair still clears its threshold, so there is nothing to change.",
+      "guidance": "No action. Reported as a count so that a visual diff against these colours has an explanation."
+    },
+    {
+      "id": "neutral-ramp-dialled",
+      "since": "0.9.0",
+      "kind": "repoint",
+      "from": [
+        "--ink-50",
+        "--ink-100",
+        "--ink-200",
+        "--ink-300",
+        "--ink-400",
+        "--ink-500",
+        "--ink-600",
+        "--ink-700",
+        "--ink-800",
+        "--ink-900",
+        "--ink-950",
+        "--border-control"
+      ],
+      "to": null,
+      "rendered": "unchanged",
+      "when": {},
+      "report": "none",
+      "reason": "The neutral ramp is mixed from two palette-owned dials now — oklch(<L>% calc(<C> * var(--n-mult)) var(--n-h)) — rather than from literal hue and chroma. Lightness is untouched, and lightness is what carries contrast: across every neutral foreground on every neutral surface in both themes the largest disagreement between the two shipped palettes is 0.003:1. The declared values moved; the rendered colours did not.",
+      "guidance": "No action, and nothing is reported. The entry exists so that this claim is on the record and so a later, genuinely visible repoint of one of these tokens cannot hide among them."
+    }
+  ]
+}

@@ -2,11 +2,26 @@
 import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { bumpRange, detectPackageManager, installCommand, writeVersions } from './apply.mjs';
-import { ARTIFACTS_USAGE, parseArgs, parseArtifactsArgs, USAGE } from './args.mjs';
+import {
+  bumpRange,
+  detectPackageManager,
+  installCommand,
+  writeUpgradeRecord,
+  writeVersions,
+} from './apply.mjs';
+import {
+  ARTIFACTS_USAGE,
+  MIGRATE_USAGE,
+  parseArgs,
+  parseArtifactsArgs,
+  parseMigrateArgs,
+  USAGE,
+} from './args.mjs';
 import { formatArtifactsReport, runArtifacts } from './artifacts.mjs';
 import { isBreaking, sliceChangelog } from './changelog.mjs';
 import { detect, findDrift } from './detect.mjs';
+import { formatMigrateReport, runMigrate } from './migrate.mjs';
+import { collectMigrations, readUpgradeRecord } from './migrations.mjs';
 import { promptSelections } from './prompt.mjs';
 import { fetchAllVersions, fetchChangelog, RegistryError } from './registry.mjs';
 import { compareVersions, jumpClass, parseVersion, selectTarget } from './semver.mjs';
@@ -39,6 +54,54 @@ async function artifactsCommand(argv) {
   );
 
   return args.failOnDrift && result.drift ? 2 : 0;
+}
+
+async function migrateCommand(argv) {
+  let args;
+  try {
+    args = parseMigrateArgs(argv);
+  } catch (error) {
+    process.stderr.write(`${error.message}\n\n${MIGRATE_USAGE}`);
+    return 1;
+  }
+
+  if (args.help) {
+    process.stdout.write(MIGRATE_USAGE);
+    return 0;
+  }
+
+  let result;
+  try {
+    // detect() rather than survey(): the range comes from the upgrade record
+    // and node_modules, so there is nothing here the registry could answer and
+    // no reason to make a codemod wait on the network.
+    const { packages } = detect(args.cwd);
+
+    const collected = collectMigrations({
+      cwd: args.cwd,
+      packages,
+      record: readUpgradeRecord(args.cwd),
+      explicitFrom: args.from,
+      explicitTo: args.to,
+      only: args.only,
+    });
+
+    result = runMigrate({ cwd: args.cwd, packages: collected, write: args.write });
+  } catch (error) {
+    process.stderr.write(`ds-resync migrate: ${error.message}\n`);
+    return 1;
+  }
+
+  process.stdout.write(
+    args.json ? `${JSON.stringify(result, null, 2)}\n` : `${formatMigrateReport(result)}\n`,
+  );
+
+  // Only the reviews trip it. Rewrites under `--write` are done, and rewrites
+  // without it are a dry run the caller asked for — neither is a repo left in a
+  // state a human still has to visit.
+  if (args.failOnPending && result.review.length > 0) return 2;
+
+  return 0;
 }
 
 /**
@@ -299,6 +362,7 @@ export function formatReport(result) {
 
 function applyUpgrades(result, cwd) {
   const updates = [];
+  const crossed = [];
 
   for (const entry of result.packages) {
     if (!entry.outdated) continue;
@@ -310,11 +374,16 @@ function applyUpgrades(result, cwd) {
     }
 
     updates.push({ name: entry.name, field: entry.field, newRange });
+    crossed.push({ name: entry.name, from: entry.currentVersion, to: entry.targetVersion });
   }
 
   if (updates.length === 0) return;
 
   writeVersions(result.packageJsonPath, updates);
+  // Before the install, not after: the record is what `ds-resync migrate` reads
+  // to know where this upgrade started, and after the install that fact exists
+  // nowhere else on disk.
+  writeUpgradeRecord(cwd, crossed);
 
   const { command, args } = installCommand(detectPackageManager(cwd));
 
@@ -337,6 +406,7 @@ export async function main(argv) {
   // artifact sync share nothing but a package name, and folding them together
   // would make every flag ambiguous about which half it applies to.
   if (argv[0] === 'artifacts') return artifactsCommand(argv.slice(1));
+  if (argv[0] === 'migrate') return migrateCommand(argv.slice(1));
 
   let args;
   try {
