@@ -266,6 +266,12 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jsdom@26.1.0(supports-color@7.2.0))(lightningcss@1.32.0)(supports-color@7.2.0)(tsx@4.21.0)(yaml@2.8.3)
 
+  scripts:
+    devDependencies:
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jsdom@26.1.0(supports-color@7.2.0))(lightningcss@1.32.0)(supports-color@7.2.0)(tsx@4.21.0)(yaml@2.8.3)
+
 packages:
 
   '@adobe/css-tools@4.4.4':
