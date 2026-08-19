@@ -161,6 +161,9 @@ jobs:
       # move that a design doc assumed and no one performed, six red deploys).
       # This step is that verification, made mechanical.
       - name: Require the baseline bot's credentials
+        # Explicit, like every other run step in this job: the container's
+        # default shell is sh, and `set -o pipefail` is a bash builtin there.
+        shell: bash
         env:
           APP_ID: ${{ secrets.DS_BOT_APP_ID }}
           PRIVATE_KEY: ${{ secrets.DS_BOT_PRIVATE_KEY }}
