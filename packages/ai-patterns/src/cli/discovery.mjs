@@ -12,7 +12,7 @@
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const REACT_PKG = '@elirobinson/react';
 export const TOKENS_PKG = '@elirobinson/tokens';
@@ -208,9 +208,22 @@ export function cssClasses(css) {
 export const TOKEN_STYLESHEETS = ['palettes.css', 'tokens.css'];
 
 /**
- * Custom properties declared on `:root`, with CSS's last-declaration-wins
- * applied — `--status-success` is declared in the base scale and then
- * re-pointed at a brand color, and `ds tokens` must print the one that wins.
+ * The DEFAULT COMBINATION's values — every custom property declared on
+ * `:root`, with CSS's last-declaration-wins applied. Not "the tokens": `:root`
+ * is what a root element with no palette and no theme attribute renders, which
+ * is one combination out of however many the roster holds. Every other one
+ * lives behind an attribute selector this reader never looks at, so none of
+ * them is reachable here — `loadDials` below is the path that reaches them,
+ * and `ds tokens` prints its per-combination rows from there.
+ *
+ * This stays a `:root`-only reader deliberately. It is the one thing
+ * `discovery.test.mjs` pins to `parseTokensCss`, the shared parser, and that
+ * agreement is what keeps the duplicated parser below honest; widening it to
+ * chase the other combinations would be a second resolver disagreeing with the
+ * package's own.
+ *
+ * `--status-success` is declared in the base scale and then re-pointed at a
+ * brand color, so the winning declaration is the one to print.
  *
  * Takes one stylesheet or several. Several is what the palette split made
  * normal: read tokens.css alone and `ds tokens` still prints a few hundred
@@ -303,4 +316,69 @@ export function loadEnvironment(origins, selfDir) {
       .map((path) => readFile(path))
       .join('\n'),
   };
+}
+
+/**
+ * The installed @elirobinson/tokens' own dial modules, loaded out of the
+ * directory `loadEnvironment` already resolved — or null when there is nothing
+ * to load.
+ *
+ * This is how `ds` reports all four combinations and the platform layer
+ * without spelling any of it out. Note what is NOT here: no palette list, no
+ * theme list, no stylesheet filename beyond the roster `cssVariables` already
+ * needs, and no second resolver. The lists come from `dials.mjs` and the files
+ * come from that package's own `readTokenStylesheets` / `readPlatformStylesheets`,
+ * so a third palette or a fourth stylesheet reaches every surface here with no
+ * edit to this package at all.
+ *
+ * It is a *dynamic* import of a *resolved directory*, never `import
+ * '@elirobinson/tokens/dials'`, and the difference is the whole reason this
+ * function is shaped the way it is. A static import would make the package a
+ * runtime dependency; `findPackageDir` walks up from this module's own
+ * location as well as the consumer's cwd, so the package manager's private
+ * copy would be found and `ds` would cheerfully report tokens as installed, at
+ * ai-patterns' pinned version, in a project that has not installed it. The MCP
+ * server loads the consumer's modules the same way and for the same reason —
+ * see `designTokens()` in @elirobinson/design-system-mcp's environment.mjs.
+ *
+ * Returns null rather than throwing on every miss, because every miss has the
+ * same answer for the caller: fall back to the default combination and say so.
+ * An installed tokens that predates this release has no src/dials.mjs and no
+ * `readPlatformStylesheets`, and a consumer on it still deserves a working
+ * `ds tokens`.
+ *
+ * @param {{tokens: string | null}} env the resolved environment
+ * @returns {Promise<{dials: object, sources: string[], platformCss: string[]} | null>}
+ */
+export async function loadDials(env) {
+  const srcDir = env?.tokens ? join(env.tokens, 'src') : null;
+  if (!srcDir) return null;
+
+  const moduleAt = (name) => {
+    const path = join(srcDir, name);
+    return existsSync(path) ? pathToFileURL(path).href : null;
+  };
+
+  const dialsModule = moduleAt('dials.mjs');
+  const stylesheetsModule = moduleAt('token-stylesheets.mjs');
+  if (!dialsModule || !stylesheetsModule) return null;
+
+  try {
+    const dials = await import(dialsModule);
+    const { readTokenStylesheets: readTokens, readPlatformStylesheets: readPlatform } =
+      await import(stylesheetsModule);
+
+    /* Two releases shipped a token-stylesheets.mjs without the platform
+       reader. Feature-detected rather than version-compared: a version string
+       tells you nothing about a consumer who has patched their install. */
+    if (typeof readTokens !== 'function' || typeof readPlatform !== 'function') return null;
+    if (typeof dials.tokenDials !== 'function') return null;
+
+    return { dials, sources: readTokens(srcDir), platformCss: readPlatform(srcDir) };
+  } catch {
+    /* A half-published package, a file the roster names and the install does
+       not have, a syntax the running node cannot parse. All of them mean the
+       same thing here and none of them is worth a stack trace. */
+    return null;
+  }
 }

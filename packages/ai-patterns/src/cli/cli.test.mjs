@@ -4,11 +4,26 @@
 // is exercised directly rather than assumed.
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  COMBINATIONS,
+  DEFAULT_PLATFORM,
+  DIALS,
+  PALETTES,
+  PLATFORMS,
+  dialAttributeString,
+  platformOverrides,
+  tokenDials,
+} from '@elirobinson/tokens/dials';
+import {
+  readPlatformStylesheets,
+  readTokenStylesheets,
+} from '@elirobinson/tokens/token-stylesheets';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { findPackageDir, loadInventory } from './discovery.mjs';
@@ -128,6 +143,38 @@ function flatConsumer() {
   });
 }
 
+/* The real @elirobinson/tokens, resolved through its exports map the way a
+   consumer resolves it, and symlinked into a fixture's node_modules the way a
+   package manager installs it. The dial commands read the installed package's
+   own modules, so the only fixture that can exercise them is the real one —
+   and using it is what makes these tests widen with the roster: a third
+   palette appears here without an edit, and the assertions below fail if the
+   CLI does not pick it up. */
+const TOKENS_DIR = dirname(
+  dirname(createRequire(import.meta.url).resolve('@elirobinson/tokens/tokens.css')),
+);
+const stylesheets = readTokenStylesheets(join(TOKENS_DIR, 'src'));
+const platformCss = readPlatformStylesheets(join(TOKENS_DIR, 'src'));
+
+function dialConsumer() {
+  const root = consumer({});
+  const scope = join(root, 'node_modules', '@elirobinson');
+  mkdirSync(scope, { recursive: true });
+  symlinkSync(TOKENS_DIR, join(scope, 'tokens'), 'dir');
+  return root;
+}
+
+/** The indented rows `ds tokens` printed underneath one token's own line. */
+function rowsUnder(text, name) {
+  const lines = text.split('\n');
+  const start = lines.indexOf(`  ${name}`);
+  const rows = [];
+  for (let index = start + 1; index < lines.length && lines[index].startsWith('    '); index += 1) {
+    rows.push(lines[index]);
+  }
+  return rows;
+}
+
 const at = (root) => ({ origins: [root], cwd: root, selfDir: patternsRoot });
 
 describe('package resolution', () => {
@@ -163,28 +210,34 @@ describe('package resolution', () => {
         },
       });
 
-    it('still describes the project it is pointed at', () => {
-      const { text } = run([], at(project()));
+    it('still describes the project it is pointed at', async () => {
+      const { text } = await run([], at(project()));
 
       expect(text).toContain('COMPONENTS (1)');
       expect(text).toContain('@elirobinson/react@1.1.0');
     });
 
-    it('falls back to its own package for contracts, patterns and prompts', () => {
+    it('falls back to its own package for contracts, patterns and prompts', async () => {
       const env = at(project());
 
-      expect(run(['contracts'], env)).toMatchObject({ exitCode: 0 });
-      expect(run(['contracts'], env).text).toContain('no-barrel-imports');
-      expect(run(['patterns'], env).text).toContain('AI Product Patterns');
-      expect(run(['prompts'], env).text).toContain('adopt-system');
+      expect(await run(['contracts'], env)).toMatchObject({ exitCode: 0 });
+      expect((await run(['contracts'], env)).text).toContain('no-barrel-imports');
+      expect((await run(['patterns'], env)).text).toContain('AI Product Patterns');
+      expect((await run(['prompts'], env)).text).toContain('adopt-system');
     });
 
-    it('does not claim to be uninstalled when it is the thing running', () => {
-      expect(run([], at(project())).text).not.toContain('@elirobinson/ai-patterns (not installed)');
+    it('does not claim to be uninstalled when it is the thing running', async () => {
+      expect((await run([], at(project()))).text).not.toContain(
+        '@elirobinson/ai-patterns (not installed)',
+      );
     });
 
-    it('still reports a genuinely missing package', () => {
-      const { text } = run([], { origins: [consumer({})], cwd: '/nowhere', selfDir: patternsRoot });
+    it('still reports a genuinely missing package', async () => {
+      const { text } = await run([], {
+        origins: [consumer({})],
+        cwd: '/nowhere',
+        selfDir: patternsRoot,
+      });
 
       expect(text).toContain('@elirobinson/react (not installed)');
     });
@@ -207,8 +260,8 @@ describe('inventory source', () => {
 });
 
 describe('ds list', () => {
-  it('reports installed versions, components, hooks, classes and tokens', () => {
-    const { text, exitCode } = run([], at(tieredConsumer()));
+  it('reports installed versions, components, hooks, classes and tokens', async () => {
+    const { text, exitCode } = await run([], at(tieredConsumer()));
 
     expect(exitCode).toBe(0);
     expect(text).toContain('@elirobinson/react@1.1.0');
@@ -219,20 +272,20 @@ describe('ds list', () => {
     expect(text).toContain('TOKENS  2 custom properties');
   });
 
-  it('groups a tiered layout by tier', () => {
-    expect(run([], at(tieredConsumer())).text).toContain('atoms/');
+  it('groups a tiered layout by tier', async () => {
+    expect((await run([], at(tieredConsumer()))).text).toContain('atoms/');
   });
 
-  it('describes a flat layout without inventing a tier, and says the source', () => {
-    const { text } = run([], at(flatConsumer()));
+  it('describes a flat layout without inventing a tier, and says the source', async () => {
+    const { text } = await run([], at(flatConsumer()));
 
     expect(text).toContain('COMPONENTS (2)');
     expect(text).not.toContain('atoms/');
     expect(text).toContain('recovered from emitted declarations');
   });
 
-  it('names what to install when packages are missing, and still exits 0', () => {
-    const { text, exitCode } = run([], at(consumer({})));
+  it('names what to install when packages are missing, and still exits 0', async () => {
+    const { text, exitCode } = await run([], at(consumer({})));
 
     expect(exitCode).toBe(0);
     expect(text).toContain('@elirobinson/react (not installed)');
@@ -241,33 +294,33 @@ describe('ds list', () => {
 });
 
 describe('ds props', () => {
-  it('accepts a bare name and prints the exact import specifier', () => {
-    const { text, exitCode } = run(['props', 'Button'], at(tieredConsumer()));
+  it('accepts a bare name and prints the exact import specifier', async () => {
+    const { text, exitCode } = await run(['props', 'Button'], at(tieredConsumer()));
 
     expect(exitCode).toBe(0);
     expect(text).toContain("import { Button } from '@elirobinson/react/components/atoms/Button';");
     expect(text).toContain('variant (ButtonVariant): "primary" | "ghost"');
   });
 
-  it('accepts the full subpath', () => {
-    const { text } = run(['props', 'atoms/Button'], at(tieredConsumer()));
+  it('accepts the full subpath', async () => {
+    const { text } = await run(['props', 'atoms/Button'], at(tieredConsumer()));
     expect(text).toContain("'@elirobinson/react/components/atoms/Button'");
   });
 
-  it('treats a capitalised bare argument as a props lookup', () => {
-    expect(run(['Button'], at(tieredConsumer())).text).toContain(
+  it('treats a capitalised bare argument as a props lookup', async () => {
+    expect((await run(['Button'], at(tieredConsumer()))).text).toContain(
       "'@elirobinson/react/components/atoms/Button'",
     );
   });
 
-  it('prints the specifier the installed layout actually uses', () => {
-    expect(run(['props', 'Button'], at(flatConsumer())).text).toContain(
+  it('prints the specifier the installed layout actually uses', async () => {
+    expect((await run(['props', 'Button'], at(flatConsumer()))).text).toContain(
       "'@elirobinson/react/components/Button'",
     );
   });
 
-  it('lists what is available when the name is wrong', () => {
-    const { text, exitCode } = run(['props', 'Nope'], at(tieredConsumer()));
+  it('lists what is available when the name is wrong', async () => {
+    const { text, exitCode } = await run(['props', 'Nope'], at(tieredConsumer()));
 
     expect(exitCode).toBe(1);
     expect(text).toContain('No component named "Nope"');
@@ -276,54 +329,188 @@ describe('ds props', () => {
 });
 
 describe('ds tokens / classes', () => {
-  it('prints every token with its value', () => {
-    const { text } = run(['tokens'], at(tieredConsumer()));
+  it('prints every token with its value', async () => {
+    const { text } = await run(['tokens'], at(tieredConsumer()));
     expect(text).toContain('--accent');
     expect(text).toContain('var(--signal-500)');
   });
 
-  it('filters by name or value', () => {
-    expect(run(['tokens', 'accent'], at(tieredConsumer())).text).not.toContain('--bg ');
-    expect(run(['tokens', 'signal'], at(tieredConsumer())).text).toContain('--accent');
+  it('filters by name or value', async () => {
+    expect((await run(['tokens', 'accent'], at(tieredConsumer()))).text).not.toContain('--bg ');
+    expect((await run(['tokens', 'signal'], at(tieredConsumer()))).text).toContain('--accent');
   });
 
-  it('exits 1 when a filter matches nothing', () => {
-    expect(run(['tokens', 'nonesuch'], at(tieredConsumer())).exitCode).toBe(1);
+  it('exits 1 when a filter matches nothing', async () => {
+    expect((await run(['tokens', 'nonesuch'], at(tieredConsumer()))).exitCode).toBe(1);
   });
 
-  it('lists classes from both the tokens and component stylesheets', () => {
-    const { text } = run(['classes'], at(tieredConsumer()));
+  it('lists classes from both the tokens and component stylesheets', async () => {
+    const { text } = await run(['classes'], at(tieredConsumer()));
     expect(text).toContain('t-h1');
     expect(text).toContain('ds-button');
   });
 });
 
+/* The dials, and the half of `ds tokens` that reports them.
+ *
+ * Every assertion below is written against the roster @elirobinson/tokens
+ * exports — never against a list of palettes, themes or combinations spelled
+ * out here. That is the point: add a third palette upstream and these tests
+ * start demanding it of the CLI, and fail if the CLI has hard-coded anything.
+ */
+describe('ds dials', () => {
+  it('names every dial, its attribute, and every value it can take', async () => {
+    const { text, exitCode } = await run(['dials'], at(dialConsumer()));
+
+    expect(exitCode).toBe(0);
+    for (const dial of DIALS) {
+      expect(text, dial.name).toContain(dial.name);
+      expect(text, dial.attribute).toContain(dial.attribute);
+      expect(text, dial.default).toContain(`${dial.default} (default)`);
+      for (const value of dial.values) expect(text, value).toContain(value);
+    }
+    /* Implied by the loop while `palette` is one of the dials, and stated
+       anyway: a palette missing from this output is the exact regression. */
+    for (const palette of PALETTES) expect(text, palette).toContain(palette);
+  });
+
+  it('lists every combination with the attributes that select it', async () => {
+    const { text } = await run(['dials'], at(dialConsumer()));
+
+    expect(text).toContain(`COMBINATIONS (${COMBINATIONS.length})`);
+    for (const combination of COMBINATIONS) {
+      expect(text, combination.id).toContain(combination.id);
+
+      // The default combination is selected by no attribute at all, so there
+      // is nothing to look for — that it is named "default" is asserted below.
+      const attributes = dialAttributeString(combination);
+      if (attributes) expect(text, attributes).toContain(attributes);
+    }
+    expect(text).toMatch(/no attributes.*default/);
+  });
+
+  it('reports what the platform layer re-points, which no other command shows', async () => {
+    const { text } = await run(['dials'], at(dialConsumer()));
+    const overrides = platformOverrides(platformCss);
+
+    expect(overrides.length).toBeGreaterThan(0);
+    for (const { name, value } of overrides) {
+      const row = text.split('\n').find((line) => line.trimStart().startsWith(`${name} `));
+      expect(row, name).toBeDefined();
+      expect(row, name).toContain(`-> ${value}`);
+    }
+  });
+
+  it('keeps the platform out of the combination ids', async () => {
+    /* The vocabulary rule, enforced. A combination is `<palette>/<theme>` and
+       nothing else: the platform changes no colour, so folding it in would
+       print twice the combinations with half of them duplicates. */
+    const { text } = await run(['dials'], at(dialConsumer()));
+
+    for (const platform of PLATFORMS.filter((one) => one !== DEFAULT_PLATFORM)) {
+      for (const { id } of COMBINATIONS) {
+        expect(text, `${id}/${platform}`).not.toContain(`${id}/${platform}`);
+      }
+    }
+  });
+
+  it('says what to upgrade when the installed tokens has no roster', async () => {
+    const { text, exitCode } = await run(['dials'], at(tieredConsumer()));
+
+    expect(exitCode).toBe(1);
+    expect(text).toContain('predates the dial roster');
+    expect(text).toContain('pnpm add @elirobinson/tokens@latest');
+  });
+
+  it('names what to install when tokens is absent entirely', async () => {
+    const { text, exitCode } = await run(['dials'], at(consumer({})));
+
+    expect(exitCode).toBe(1);
+    expect(text).toContain('Not installed: @elirobinson/tokens');
+  });
+});
+
+describe('ds tokens across the combinations', () => {
+  const entries = tokenDials(stylesheets, { platformCss });
+
+  it('prints one labelled row per combination for a token that varies', async () => {
+    const varying = entries.find((entry) => entry.varies);
+    const { text } = await run(['tokens', varying.name], at(dialConsumer()));
+    const rows = rowsUnder(text, varying.name);
+
+    expect(rows).toHaveLength(COMBINATIONS.length);
+    COMBINATIONS.forEach((combination, index) => {
+      expect(rows[index], combination.id).toContain(combination.id);
+      expect(rows[index], combination.id).toContain(varying.values[index].value);
+    });
+  });
+
+  it('prints one unlabelled value for a token that does not vary', async () => {
+    const uniform = entries.find((entry) => !entry.varies && entry.platforms.length === 0);
+    const { text } = await run(['tokens', uniform.name], at(dialConsumer()));
+    const row = text.split('\n').find((line) => line.startsWith(`  ${uniform.name} `));
+
+    expect(row).toContain(uniform.values[0].value);
+    for (const { id } of COMBINATIONS) expect(row, id).not.toContain(id);
+  });
+
+  it('marks a token the platform re-points, so a filtered query cannot lie', async () => {
+    /* `ds dials` has the full list, but someone asking about one radius asks
+       here — and a value with nothing saying it moves on a phone is a wrong
+       answer, not a partial one. */
+    const overridden = entries.find((entry) => entry.platforms.length > 0);
+    const { text } = await run(['tokens', overridden.name], at(dialConsumer()));
+
+    for (const { platform, value } of overridden.platforms) {
+      expect(text).toContain(`[${dialAttributeString({ platform })}]`);
+      expect(text).toContain(value);
+    }
+  });
+
+  it('points at `ds dials` and names the default combination', async () => {
+    const { text } = await run(['tokens'], at(dialConsumer()));
+
+    expect(text).toContain('ds dials');
+    expect(text).toContain(COMBINATIONS[0].id);
+  });
+
+  it('falls back to the default combination alone, and says so, on an older tokens', async () => {
+    const { text, exitCode } = await run(['tokens'], at(tieredConsumer()));
+
+    // Still answers: one value each is what this package has always printed.
+    expect(exitCode).toBe(0);
+    expect(text).toContain('var(--signal-500)');
+    expect(text).toContain('predates the dial roster');
+    expect(text).toContain('pnpm add @elirobinson/tokens@latest');
+  });
+});
+
 describe('ds contracts / patterns / prompts', () => {
-  it('formats contracts, including what verifies each one', () => {
-    const { text } = run(['contracts'], at(tieredConsumer()));
+  it('formats contracts, including what verifies each one', async () => {
+    const { text } = await run(['contracts'], at(tieredConsumer()));
 
     expect(text).toContain('minimumTouchTarget: 44x44');
     expect(text).toContain('verified by: checkTouchTargets()');
     expect(text).toContain('no-barrel-imports');
   });
 
-  it('prints patterns.md', () => {
-    expect(run(['patterns'], at(tieredConsumer())).text).toContain('# AI Product Patterns');
+  it('prints patterns.md', async () => {
+    expect((await run(['patterns'], at(tieredConsumer()))).text).toContain('# AI Product Patterns');
   });
 
-  it('lists prompts, then prints one by name', () => {
+  it('lists prompts, then prints one by name', async () => {
     const env = at(tieredConsumer());
 
-    expect(run(['prompts'], env).text).toContain('audit-page');
-    expect(run(['prompts', 'audit-page'], env).text).toBe('# Audit');
-    expect(run(['prompts', 'nope'], env).exitCode).toBe(1);
+    expect((await run(['prompts'], env)).text).toContain('audit-page');
+    expect((await run(['prompts', 'audit-page'], env)).text).toBe('# Audit');
+    expect((await run(['prompts', 'nope'], env)).exitCode).toBe(1);
   });
 });
 
 describe('ds init --agents', () => {
-  it('installs every agent surface', () => {
+  it('installs every agent surface', async () => {
     const root = consumer({});
-    const { text, exitCode } = run(['init', '--agents'], at(root));
+    const { text, exitCode } = await run(['init', '--agents'], at(root));
 
     expect(exitCode).toBe(0);
     expect(text).toContain('.claude/skills/design-system/SKILL.md');
@@ -332,26 +519,26 @@ describe('ds init --agents', () => {
     expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toContain('design system first');
   });
 
-  it('refuses without --agents so a bare `init` cannot surprise anyone', () => {
-    expect(run(['init'], at(consumer({}))).exitCode).toBe(1);
+  it('refuses without --agents so a bare `init` cannot surprise anyone', async () => {
+    expect((await run(['init'], at(consumer({})))).exitCode).toBe(1);
   });
 
-  it('leaves existing files alone unless forced', () => {
+  it('leaves existing files alone unless forced', async () => {
     const root = consumer({});
     write(root, '.cursor/rules/design-system.mdc', 'mine');
 
-    run(['init', '--agents'], at(root));
+    await run(['init', '--agents'], at(root));
     expect(readFileSync(join(root, '.cursor/rules/design-system.mdc'), 'utf8')).toBe('mine');
 
-    run(['init', '--agents', '--force'], at(root));
+    await run(['init', '--agents', '--force'], at(root));
     expect(readFileSync(join(root, '.cursor/rules/design-system.mdc'), 'utf8')).toContain(
       'Design system first',
     );
   });
 
-  it('ships templates that contain no component inventory', () => {
+  it('ships templates that contain no component inventory', async () => {
     const root = consumer({});
-    run(['init', '--agents'], at(root));
+    await run(['init', '--agents'], at(root));
 
     for (const path of [
       '.claude/skills/design-system/SKILL.md',
@@ -386,16 +573,16 @@ describe('AGENTS.md block merging', () => {
 });
 
 describe('argument handling', () => {
-  it('prints usage for --help and for an unknown command', () => {
+  it('prints usage for --help and for an unknown command', async () => {
     const env = at(tieredConsumer());
 
-    expect(run(['--help'], env)).toMatchObject({ exitCode: 0 });
-    expect(run(['--help'], env).text).toContain('Usage: ds');
-    expect(run(['nonsense'], env).exitCode).toBe(1);
+    expect(await run(['--help'], env)).toMatchObject({ exitCode: 0 });
+    expect((await run(['--help'], env)).text).toContain('Usage: ds');
+    expect((await run(['nonsense'], env)).exitCode).toBe(1);
   });
 
-  it('reports the installed versions for --version', () => {
-    const { text } = run(['--version'], at(tieredConsumer()));
+  it('reports the installed versions for --version', async () => {
+    const { text } = await run(['--version'], at(tieredConsumer()));
     expect(text).toContain('@elirobinson/react@1.1.0');
   });
 });
@@ -427,8 +614,8 @@ describe('warning when node_modules disagrees with the lockfile', () => {
     return root;
   }
 
-  it('names both versions', () => {
-    const { warning } = run(['props', 'Button'], at(driftedProject()));
+  it('names both versions', async () => {
+    const { warning } = await run(['props', 'Button'], at(driftedProject()));
 
     expect(warning).toMatch(/lockfile/i);
     expect(warning).toContain('@elirobinson/react');
@@ -436,28 +623,28 @@ describe('warning when node_modules disagrees with the lockfile', () => {
     expect(warning).toContain('1.3.0');
   });
 
-  it('keeps the warning out of the command output, which gets piped', () => {
-    const { text, exitCode } = run(['props', 'Button'], at(driftedProject()));
+  it('keeps the warning out of the command output, which gets piped', async () => {
+    const { text, exitCode } = await run(['props', 'Button'], at(driftedProject()));
 
     expect(text).not.toMatch(/lockfile/i);
     expect(exitCode).toBe(0);
   });
 
-  it('warns on --version too, where the numbers are the whole answer', () => {
-    expect(run(['--version'], at(driftedProject())).warning).toContain('2.0.1');
+  it('warns on --version too, where the numbers are the whole answer', async () => {
+    expect((await run(['--version'], at(driftedProject()))).warning).toContain('2.0.1');
   });
 
-  it('says nothing when the install matches the lockfile', () => {
+  it('says nothing when the install matches the lockfile', async () => {
     const root = driftedProject({ installed: '1.3.0', locked: '1.3.0' });
-    expect(run(['props', 'Button'], at(root)).warning).toBeUndefined();
+    expect((await run(['props', 'Button'], at(root))).warning).toBeUndefined();
   });
 
-  it('says nothing in a project with no lockfile to disagree with', () => {
-    expect(run([], at(tieredConsumer())).warning).toBeUndefined();
+  it('says nothing in a project with no lockfile to disagree with', async () => {
+    expect((await run([], at(tieredConsumer()))).warning).toBeUndefined();
   });
 
-  it('survives a directory with no package.json at all', () => {
-    const { exitCode, warning } = run([], {
+  it('survives a directory with no package.json at all', async () => {
+    const { exitCode, warning } = await run([], {
       origins: [consumer({})],
       cwd: '/nowhere',
       selfDir: patternsRoot,

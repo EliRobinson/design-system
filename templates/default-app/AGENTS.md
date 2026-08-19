@@ -16,6 +16,7 @@ tokens is wrong as of the next release. Ask the installed packages instead:
 pnpm ds                  # components, exports, variants, hooks, typography, token groups
 pnpm ds props <Name>     # props, variant unions, and the exact import line to copy
 pnpm ds tokens [filter]  # tokens and their values
+pnpm ds dials            # palette/theme/platform: attributes, values, defaults
 pnpm ds contracts        # the machine-checkable rules UI here must satisfy
 pnpm ds patterns         # working principles and the definition of done
 ```
@@ -52,5 +53,7 @@ then the artifacts command again.
   shell. On Tailwind v4, `@elirobinson/tokens/tailwind.css` after them.
 - Colours, spacing, radii, shadows, and durations come from tokens. Semantic tokens
   (`--fg`, `--surface`, `--accent`) in app code, never raw scale values (`--ink-500`).
-- Dark mode is `[data-theme="dark"]`.
+- Three dials — palette, theme, platform — are root-element attributes, and an absent
+  attribute is that dial's default. `pnpm ds dials` prints the attributes, their values,
+  and which tokens each one moves. `lib/dials.ts` writes the two a person chooses.
 - Before calling UI work done, run `pnpm ds patterns` and work the checklist it prints.

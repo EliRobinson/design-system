@@ -269,7 +269,7 @@ export function llmsFull({
     '',
     IMPORT_RULES,
     '',
-    '## Design tokens (from @elirobinson/tokens/tokens.css)',
+    '## Design tokens (every token stylesheet @elirobinson/tokens declares, via readTokenStylesheets())',
     '',
     ...tokens.map(
       (token) => `- \`${token.name}: ${token.value}\`${token.comment ? ` — ${token.comment}` : ''}`,

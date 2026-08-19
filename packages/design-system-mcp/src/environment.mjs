@@ -49,6 +49,48 @@ export function componentManifest() {
   );
 }
 
+/* An installed @elirobinson/tokens that is too old fails in one of three
+ * shapes, none of which names a version: no such subpath in the exports map
+ * (`ERR_PACKAGE_PATH_NOT_EXPORTED`, raised as the `cause` of the import's
+ * error), the subpath present but a file it reads absent (`ENOENT`), or the
+ * module present but missing a function a later release added — which is a
+ * plain TypeError with nothing diagnostic in it at all. The first two are
+ * recognised here; the third is checked at the call site, where the name of
+ * the missing function is known.
+ *
+ * Anything else is a real failure and goes back untouched: swallowing a
+ * genuine bug into "upgrade your tokens" would send a model round a loop that
+ * cannot terminate. */
+function predatesRelease(error) {
+  return error?.code === 'ENOENT' || error?.cause?.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED';
+}
+
+/**
+ * The one shape of "your tokens are too old" message. A model is what reads
+ * this, and a model can only act on a message that names the diagnosis, the
+ * consequence of carrying on regardless, and the command that fixes it.
+ */
+function outdatedTokens(diagnosis, consequence, cause) {
+  return new Error(
+    `The @elirobinson/tokens installed in ${process.cwd()} ${diagnosis}. ${consequence} ` +
+      `Upgrade it: pnpm add @elirobinson/tokens (requires the @elirobinson GitHub Packages ` +
+      `registry in .npmrc).`,
+    { cause },
+  );
+}
+
+/** The installed tokens package's own `src/`, via its exports map. */
+function tokensSrcDir() {
+  return dirname(resolveFrom('@elirobinson/tokens/tokens.css', '@elirobinson/tokens'));
+}
+
+/** One subpath of the installed tokens package, imported. */
+async function importTokens(subpath) {
+  return import(
+    pathToFileURL(resolveFrom(`@elirobinson/tokens/${subpath}`, '@elirobinson/tokens'))
+  );
+}
+
 /** Every token stylesheet from the installed `@elirobinson/tokens`, parsed.
  *
  * tokens.css alone is not the vocabulary any more and does not say so: it
@@ -60,34 +102,81 @@ export function componentManifest() {
  * which knows the roster. */
 export async function designTokens() {
   return memo('tokens', async () => {
-    const cssPath = resolveFrom('@elirobinson/tokens/tokens.css', '@elirobinson/tokens');
-    const { parseTokensCss } = await import(
-      pathToFileURL(resolveFrom('@elirobinson/tokens/parse-tokens-css', '@elirobinson/tokens'))
-    );
+    const srcDir = tokensSrcDir();
+    const { parseTokensCss } = await importTokens('parse-tokens-css');
     try {
-      const { readTokenStylesheets } = await import(
-        pathToFileURL(resolveFrom('@elirobinson/tokens/token-stylesheets', '@elirobinson/tokens'))
-      );
-      return parseTokensCss(readTokenStylesheets(dirname(cssPath)));
+      const { readTokenStylesheets } = await importTokens('token-stylesheets');
+      return parseTokensCss(readTokenStylesheets(srcDir));
     } catch (error) {
-      /* Two shapes of one fact: the installed tokens package predates the
-         palette split. Old enough and it has no ./token-stylesheets export to
-         resolve; one release later it has the reader but not every file the
-         reader asks for. Neither `ERR_PACKAGE_PATH_NOT_EXPORTED` nor a bare
-         ENOENT says which version to install, and a model is what reads this.
-         Anything else is a real failure and goes back untouched. */
-      const missingExport = error?.cause?.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED';
-      if (error?.code !== 'ENOENT' && !missingExport) {
+      if (!predatesRelease(error)) {
         throw error;
       }
-      throw new Error(
-        `The @elirobinson/tokens installed in ${process.cwd()} predates the palette split ` +
-          `(${missingExport ? 'no ./token-stylesheets export' : `no ${error.path}`}). Its brand ` +
-          `lives in src/palettes.css now, and reading tokens.css alone drops every accent, ` +
-          `anchor, link and status token without failing. Upgrade it: ` +
-          `pnpm add @elirobinson/tokens (requires the @elirobinson GitHub Packages registry ` +
-          `in .npmrc).`,
-        { cause: error },
+      throw outdatedTokens(
+        `predates the palette split (${
+          error.code === 'ENOENT' ? `no ${error.path}` : 'no ./token-stylesheets export'
+        })`,
+        'Its brand lives in src/palettes.css now, and reading tokens.css alone drops every ' +
+          'accent, anchor, link and status token without failing.',
+        error,
+      );
+    }
+  });
+}
+
+/**
+ * The three dials of the installed `@elirobinson/tokens`, plus every token's
+ * value in every combination.
+ *
+ * Resolved through the consumer's own exports map, exactly like
+ * `designTokens()` above, so what this server reports is what the consumer
+ * has installed and not a snapshot of what this repo happened to ship.
+ *
+ * The roster is never restated here. `PALETTES`, `THEMES`, `PLATFORMS`,
+ * `COMBINATIONS` and `DIALS` all arrive from the module, so a third palette
+ * added upstream widens this server on a version bump with no edit here —
+ * which is the whole reason the dials ship as data rather than as prose.
+ *
+ * @returns {Promise<{dials: object, entries: object[], ownership: object}>}
+ *   `dials` is the whole `@elirobinson/tokens/dials` namespace; `entries` is
+ *   `tokenDials()` over the installed stylesheets; `ownership` is
+ *   `dialOwnership()` over the same.
+ */
+export async function designDials() {
+  return memo('dials', async () => {
+    const srcDir = tokensSrcDir();
+    try {
+      const dials = await importTokens('dials');
+      const stylesheets = await importTokens('token-stylesheets');
+      /* The reader for the platform layer arrived a release after the reader
+         for the token layer, so a package can export `./token-stylesheets`
+         and still not have this function. That miss is a TypeError with no
+         code on it, which is why it is caught by name rather than by code. */
+      if (typeof stylesheets.readPlatformStylesheets !== 'function') {
+        throw outdatedTokens(
+          'predates the platform dial (no readPlatformStylesheets in ./token-stylesheets)',
+          'Its platform layer is a separate stylesheet, and without the reader every radius ' +
+            'and small type step this server reports is the desktop value with nothing saying so.',
+        );
+      }
+      const sources = stylesheets.readTokenStylesheets(srcDir);
+      const platformCss = stylesheets.readPlatformStylesheets(srcDir);
+      return {
+        dials,
+        entries: dials.tokenDials(sources, { platformCss }),
+        ownership: dials.dialOwnership(sources, platformCss),
+      };
+    } catch (error) {
+      if (!predatesRelease(error)) {
+        throw error;
+      }
+      throw outdatedTokens(
+        `predates the three-dial roster (${
+          error.code === 'ENOENT' ? `no ${error.path}` : 'no ./dials export'
+        })`,
+        'Its tokens resolve under three root-element attributes, and without the roster every ' +
+          'value this server reports is the default combination alone, unlabelled, with no way ' +
+          'for a model to learn the other combinations exist.',
+        error,
       );
     }
   });
