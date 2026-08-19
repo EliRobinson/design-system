@@ -9,7 +9,7 @@ import { existsSync } from 'node:fs';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { parseNameStatus, resolveBaseArg, scopeFor } from './visual-scope.mjs';
+import { parseNameStatus, parseNxProjectList, resolveBaseArg, scopeFor } from './visual-scope.mjs';
 import { listShots } from './visual-shots.mjs';
 
 const shots = [
@@ -854,6 +854,52 @@ describe('parseNameStatus', () => {
 
   it('ignores blank lines', () => {
     expect(parseNameStatus('\n\n')).toEqual([]);
+  });
+});
+
+/* The first real CI run of this workflow died here: `nx show projects
+   --affected` prints a JSON array on a developer machine but bare,
+   newline-separated project names in the CI container, and the code was
+   relying on the JSON shape implicitly instead of asking for it. These pin
+   both shapes, the empty cases, and — separately — that a shape which is
+   neither is a hard failure rather than a silently wrong (but plausible)
+   project list, which would be a worse bug than the crash it replaces. */
+describe('parseNxProjectList', () => {
+  it('parses the JSON-array shape (developer machine)', () => {
+    expect(parseNxProjectList('["react","docs"]')).toEqual(['react', 'docs']);
+  });
+
+  it('parses the bare newline-separated shape (CI container)', () => {
+    expect(parseNxProjectList('react\ndocs\n')).toEqual(['react', 'docs']);
+  });
+
+  it('reproduces the exact string that broke the first real CI run', () => {
+    expect(parseNxProjectList('react\ndesign-system-mcp\ndocs\nstorybook\n')).toEqual([
+      'react',
+      'design-system-mcp',
+      'docs',
+      'storybook',
+    ]);
+  });
+
+  it('returns [] for empty input', () => {
+    expect(parseNxProjectList('')).toEqual([]);
+  });
+
+  it('returns [] for whitespace-only input', () => {
+    expect(parseNxProjectList('   \n\t  \n')).toEqual([]);
+  });
+
+  it('throws on non-empty input that is neither shape, rather than guessing', () => {
+    /* Valid JSON, but not an array of names — an object. Whitespace-splitting
+       the raw text would manufacture tokens like '{"projects":' and
+       '["react"]}', which look like plausible project names but are not.
+       Returning that silently would be a worse bug than the crash this
+       whole fix exists to replace: a wrong-but-plausible affected list is
+       indistinguishable from a correct one until baselines go stale. */
+    expect(() => parseNxProjectList('{"projects": ["react"]}')).toThrow(
+      /could not parse nx project list/,
+    );
   });
 });
 

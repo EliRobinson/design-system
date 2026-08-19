@@ -588,18 +588,66 @@ function isShared(path) {
   );
 }
 
+/* nx's own project name shape: lowercase/uppercase alphanumerics, dots,
+   dashes, underscores — nothing that could also be JSON punctuation. Used
+   below to tell "bare project names" apart from "JSON that parsed but
+   wasn't an array of names," which whitespace-splitting would otherwise
+   turn into plausible-looking garbage instead of failing loudly. */
+const PROJECT_NAME = /^[A-Za-z0-9_.-]+$/;
+
+/**
+ * Parses `nx show projects`' stdout into an array of project names.
+ *
+ * The format is not stable across environments: on a developer machine it
+ * prints a JSON array, but in the CI container the same command prints
+ * bare, newline-separated project names instead — that mismatch is what
+ * broke the very first real CI run of this workflow (`--json` was being
+ * relied on implicitly instead of passed). Both call sites below now pass
+ * `--json` explicitly to ask for the array shape, and this parser stays
+ * defensive anyway: an empty or unparseable affected list would mean silent
+ * under-selection — a green pull request running against stale baselines,
+ * with nothing reporting it.
+ *
+ * Shared by both call sites on purpose. A second, hand-rolled copy of this
+ * parsing is exactly the kind of drift this codebase keeps tripping over.
+ */
+export function parseNxProjectList(stdout) {
+  const trimmed = stdout.trim();
+  if (trimmed === '') {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    // Valid JSON but not an array (e.g. an object) — fall through to the
+    // bare-token form below, where the punctuation check will catch it.
+  } catch {
+    // Not JSON at all — the CI shape. Fall through.
+  }
+
+  const tokens = trimmed.split(/\s+/).filter(Boolean);
+  if (tokens.some((token) => !PROJECT_NAME.test(token))) {
+    throw new Error(
+      `visual-scope: could not parse nx project list from output: ${JSON.stringify(stdout)}`,
+    );
+  }
+  return tokens;
+}
+
 /** The projects Nx reports as affected between `base` and the working tree. */
 export function affectedProjects(base, { cwd = process.cwd() } = {}) {
   const stdout = execFileSync(
     'pnpm',
-    ['exec', 'nx', 'show', 'projects', '--affected', `--base=${base}`],
+    ['exec', 'nx', 'show', 'projects', '--affected', `--base=${base}`, '--json'],
     {
       cwd,
       encoding: 'utf8',
     },
   );
-  /* `nx show projects` prints a JSON array when its output is not a TTY. */
-  return JSON.parse(stdout.trim());
+  return parseNxProjectList(stdout);
 }
 
 /**
@@ -613,13 +661,13 @@ export function affectedProjects(base, { cwd = process.cwd() } = {}) {
 export function affectedByPaths(paths, { cwd = process.cwd() } = {}) {
   const stdout = execFileSync(
     'pnpm',
-    ['exec', 'nx', 'show', 'projects', '--affected', `--files=${paths.join(',')}`],
+    ['exec', 'nx', 'show', 'projects', '--affected', `--files=${paths.join(',')}`, '--json'],
     {
       cwd,
       encoding: 'utf8',
     },
   );
-  return JSON.parse(stdout.trim());
+  return parseNxProjectList(stdout);
 }
 
 /** The files changed between `base` and HEAD, as statuses and paths. */
