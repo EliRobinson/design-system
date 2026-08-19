@@ -11,7 +11,8 @@
       "command": "storybook build -c apps/storybook/.storybook -o apps/storybook/storybook-static"
     },
     "build": {
-      "command": "storybook build -c apps/storybook/.storybook -o apps/storybook/storybook-static"
+      "command": "storybook build -c apps/storybook/.storybook -o apps/storybook/storybook-static",
+      "outputs": ["{projectRoot}/storybook-static"]
     },
     "lint": {
       "command": "echo 'No lint configured for storybook app'"
