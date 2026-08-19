@@ -104,8 +104,9 @@ function ratio(combination, foreground, background) {
   return measured;
 }
 
-it('resolved all four combinations — the token reader has not gone quiet', () => {
-  expect(COMBINATIONS.length).toBe(4);
+it('resolved every palette x theme combination — the token reader has not gone quiet', () => {
+  expect(COMBINATIONS.length).toBe(PALETTES.length * THEMES.length);
+  expect(COMBINATIONS.length).toBeGreaterThan(THEMES.length);
   for (const { id } of COMBINATIONS) {
     expect(VALUES[id].size, `${id} resolved no tokens`).toBeGreaterThan(50);
   }

@@ -451,3 +451,122 @@
   --link-visited: var(--ink-200); /* 16.99:1 */
   --link-on-fill: currentColor;
 }
+
+/* ==========================================================================
+   BLOCK 5 — miltinson, light
+   --------------------------------------------------------------------------
+   Teal over indigo, on violet-leaning greys. The palette miltinsons.com and
+   the other Miltinson properties render in, contributed so those sites stop
+   hand-overriding brand tokens in a block no contrast gate can see.
+
+   The three teals the properties already ship are pinned to ramp steps rather
+   than re-picked, so adoption is a swap and not a redesign:
+
+     --signal-300  #5eead4    was `teal-light`
+     --signal-500  #14b8a6    was `teal`      — the resting CTA fill
+     --signal-600  #0d9488    was `teal-dark`
+
+   Structurally this follows ember, not slate: `--accent` is the 500 step with
+   ink text, hover LIGHTENS to 400 and press darkens to 600. Teal peaks bright
+   enough that the whole triad carries `--ink-1000` at AA in both themes
+   (8.44 / 11.10 / 5.60), which is what lets one `--accent-fg` serve both
+   blocks — the thing slate has to spend two different foregrounds on.
+
+   Status and chart are absent from this block on purpose. That absence is
+   what makes them palette-independent.
+   ========================================================================== */
+[data-palette='miltinson'] {
+  --n-h: 252; /* neutral hue */
+  --n-mult: 1; /* near-achromatic, as ember */
+
+  /* Signal — Miltinson Teal. */
+  --signal-50: oklch(97.5% 0.02 180);
+  --signal-100: oklch(94% 0.045 180);
+  --signal-200: oklch(90% 0.08 181);
+  --signal-300: oklch(85.5% 0.125 181); /* #5eead4 */
+  --signal-400: oklch(78% 0.13 182);
+  --signal-500: oklch(70.4% 0.123 182.5); /* peak teal, #14b8a6 — 2.49:1, a fill and nothing more */
+  --signal-600: oklch(60.02% 0.1038 184.7); /* #0d9488 */
+  --signal-700: oklch(50% 0.088 186);
+  --signal-800: oklch(38% 0.068 187); /* the readable step — 9.65:1 */
+  --signal-900: oklch(27% 0.048 188);
+
+  /* Anchor — indigo. Held ~90 degrees off the signal so a trust mark never
+     reads as a muted CTA, and pulled toward the neutral hue so it sits on the
+     greys rather than on top of them. --anchor-400 is parked in the narrow
+     band that clears 4.5:1 against both white and black (4.61 / 4.55), which
+     is what lets one step be the hover fill in light and the press fill in
+     dark. */
+  --anchor-50: oklch(96.5% 0.015 275);
+  --anchor-100: oklch(93% 0.03 275);
+  --anchor-200: oklch(86% 0.05 274);
+  --anchor-300: oklch(76% 0.07 272);
+  --anchor-400: oklch(56.5% 0.09 270);
+  --anchor-500: oklch(50% 0.095 270); /* primary — 6.09:1 */
+  --anchor-600: oklch(41% 0.085 270);
+  --anchor-700: oklch(32% 0.07 270);
+  --anchor-800: oklch(23% 0.055 270);
+  --anchor-900: oklch(16% 0.04 270);
+
+  --accent: var(--signal-500); /* fill — 2.49:1, fill-only */
+  --accent-hover: var(--signal-400); /* fill — 1.89:1 — LIGHTER, as ember */
+  --accent-press: var(--signal-600); /* fill — 3.74:1 */
+  --accent-fg: var(--ink-1000); /* on the three fills: 8.44 / 11.10 / 5.61 */
+  --accent-tint: var(--signal-50); /* with --accent-ink: 9.04:1 */
+  --accent-ink: var(--signal-800); /* 9.65:1 */
+  --accent-ink-inverse: var(--signal-400); /* on --bg-inverse — 11.10:1 */
+
+  --anchor: var(--anchor-500); /* fill — 6.09:1 */
+  --anchor-hover: var(--anchor-400); /* fill — 4.61:1 */
+  --anchor-press: var(--anchor-600); /* fill — 8.96:1 */
+  --anchor-fg: var(--ink-0); /* on the three fills: 6.09 / 4.61 / 8.96 */
+  --anchor-tint: var(--anchor-50); /* with --anchor-ink: 8.08:1 */
+  --anchor-ink: var(--anchor-600); /* 8.96:1 */
+
+  --focus-ring: var(--ink-1000); /* 21:1 */
+
+  --link: var(--ink-1000); /* 21:1 */
+  --link-hover: var(--signal-800); /* 9.65:1 */
+  --link-visited: var(--ink-700); /* 13.63:1 */
+  --link-on-fill: currentColor;
+}
+
+/* ==========================================================================
+   BLOCK 6 — miltinson, dark
+   --------------------------------------------------------------------------
+   (0,2,0), so it wins over block 5 without an `!important`. It restates the
+   whole semantic set rather than diffing block 2, for the same reason slate's
+   dark block does: block 5 is later in source order than block 2 and would
+   otherwise hand miltinson's LIGHT values to a dark page.
+
+   The accent triad does not move between themes here. 500/400/600 carries
+   `--ink-1000` at 8.44 / 11.10 / 5.61 on white and at exactly the same three
+   ratios on black, because all three are measured against the fill rather
+   than against the page. A teal bright enough to be a fill on white is bright
+   enough to be one on black; that is the property ember's amber has and
+   slate's deeper teal does not.
+   ========================================================================== */
+[data-palette='miltinson'][data-theme='dark'],
+[data-palette='miltinson'].dark {
+  --accent: var(--signal-500); /* fill — 8.44:1 */
+  --accent-hover: var(--signal-400); /* fill — 11.10:1 — LIGHTER, as in miltinson light */
+  --accent-press: var(--signal-600); /* fill — 5.61:1 */
+  --accent-fg: var(--ink-1000); /* on the three fills: 8.44 / 11.10 / 5.61 */
+  --accent-tint: var(--signal-900); /* with --accent-ink: 7.81:1 */
+  --accent-ink: var(--signal-400); /* 11.10:1 */
+  --accent-ink-inverse: var(--signal-800); /* on --bg-inverse — 9.65:1 */
+
+  --anchor: var(--anchor-300); /* fill — 9.71:1 */
+  --anchor-hover: var(--anchor-200); /* fill — 13.66:1 */
+  --anchor-press: var(--anchor-400); /* fill — 4.55:1 */
+  --anchor-fg: var(--ink-1000); /* on the three fills: 9.71 / 13.66 / 4.55 */
+  --anchor-tint: var(--anchor-800); /* with --anchor-ink: 11.05:1 */
+  --anchor-ink: var(--anchor-200); /* 13.66:1 */
+
+  --focus-ring: var(--ink-0); /* 21:1 */
+
+  --link: var(--ink-0); /* 21:1 */
+  --link-hover: var(--signal-300); /* 14.20:1 */
+  --link-visited: var(--ink-200); /* 16.99:1 */
+  --link-on-fill: currentColor;
+}

@@ -234,15 +234,21 @@ export function buildGuidelineCards(tokens) {
   });
 
   /* -- The palette dial --------------------------------------------------
-     One scale, rendered four times — every palette against every theme.
+     One scale, rendered once per palette per theme — every palette against
+     every theme.
 
      This needs no rendering engine and gets none. The blocks in palettes.css
      are bare `[data-palette]` / `[data-theme]` selectors, not `:root`-anchored
      ones, so an element carrying those attributes re-declares the brand tokens
      over its own subtree and the identical markup below resolves differently
      inside each panel. The markup is generated once and repeated verbatim;
-     that it is byte-identical in all four panels is the point, because a
+     that it is byte-identical in every panel is the point, because a
      component's markup is byte-identical across palettes too.
+
+     PALETTE_PANELS is hand-maintained and has to grow when palettes.css does.
+     It cannot be derived from tokens' own PALETTES list without ai-patterns
+     taking a dependency on @elirobinson/tokens, which it deliberately does
+     not have.
 
      Scoped to the brand tokens on purpose. `--ink-*` are declared once on
      `:root` with `var(--n-mult)` and `var(--n-h)` substituted *there*, and a
@@ -256,6 +262,11 @@ export function buildGuidelineCards(tokens) {
     { label: 'ember · dark', attrs: ' data-theme="dark"' },
     { label: 'slate · light', attrs: ' data-palette="slate"' },
     { label: 'slate · dark', attrs: ' data-palette="slate" data-theme="dark"' },
+    { label: 'miltinson · light', attrs: ' data-palette="miltinson"' },
+    {
+      label: 'miltinson · dark',
+      attrs: ' data-palette="miltinson" data-theme="dark"',
+    },
   ];
 
   const paletteScale =

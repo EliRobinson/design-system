@@ -78,13 +78,15 @@ function expectPaletteIndependent(label, theme, measure) {
 /* Before any threshold: the sweep has to be walking what it thinks it is.
    Each of these is a way the file could go quiet while still passing. */
 describe('the sweep covers the whole vocabulary', () => {
-  it('walks four combinations, not two themes', () => {
+  it('walks every palette x theme combination, not two themes', () => {
     expect(PALETTES.length).toBeGreaterThan(1);
     expect(COMBINATIONS.map((c) => c.id)).toEqual([
       'ember/light',
       'ember/dark',
       'slate/light',
       'slate/dark',
+      'miltinson/light',
+      'miltinson/dark',
     ]);
   });
 

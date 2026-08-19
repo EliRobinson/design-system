@@ -163,10 +163,16 @@ describe('the palette card', () => {
   const panels = html.match(/<section[^>]*>[\s\S]*?<\/section>/g) ?? [];
 
   it('renders one panel per palette and theme', () => {
-    expect(panels).toHaveLength(4);
+    /* Two per palette, light and dark. The count is explicit rather than
+       derived because ai-patterns has no dependency on @elirobinson/tokens
+       to read PALETTES from — so this assertion is the thing that fails when
+       palettes.css grows a palette and PALETTE_PANELS is not grown with it. */
+    expect(panels).toHaveLength(6);
     expect(html).toContain('data-theme="dark"');
     expect(html).toContain('data-palette="slate"');
     expect(html).toContain('data-palette="slate" data-theme="dark"');
+    expect(html).toContain('data-palette="miltinson"');
+    expect(html).toContain('data-palette="miltinson" data-theme="dark"');
   });
 
   it('repeats byte-identical markup and lets the cascade do the work', () => {
