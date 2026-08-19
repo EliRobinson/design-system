@@ -166,13 +166,20 @@ jobs:
       # from the restored cache, so a partial or stale hit degrades to a
       # rebuild rather than to wrong output.
       #
-      # Restoring the directory is only half of it. Nx caching is opt-in per
-      # target, and nothing in this repo had ever set `cache: true` — so
-      # `.nx/cache` was never WRITTEN either, and an actions/cache step on it
-      # would restore nothing, save nothing, and cost 0s while looking like a
-      # working cache. `nx.json` now sets `cache: true` on the `build`
-      # targetDefault, which is what makes this step do anything at all.
-      # Measured locally: `pretest:visual` 14.4s cold, 0.9s replayed.
+      # An actions/cache step is the smallest part of making this work. Two
+      # other things had to be true, and each failed silently on its own — a
+      # green run with a cache that did nothing:
+      #
+      #   1. Nx caching is opt-in per target, and nothing here had ever set
+      #      `cache: true`, so `.nx/cache` was never WRITTEN. The step restored
+      #      nothing, saved nothing and cost 0s while looking like a working
+      #      cache. `nx.json` now sets it on the `build` targetDefault.
+      #      Measured: `pretest:visual` 14.4s cold, 0.9s replayed.
+      #   2. The artifacts alone are unusable without their metadata — see the
+      #      note on `path:` below.
+      #
+      # Both were caught only by reading step durations on a real run. Neither
+      # would ever have failed a check.
       #
       # Enabling it is only safe because every `build` target declares outputs
       # its command actually writes. Audited all seven before turning it on:
@@ -191,7 +198,25 @@ jobs:
       # That is the standing cost of this line.
       - uses: actions/cache@v6
         with:
-          path: .nx/cache
+          # BOTH paths, and that is not belt-and-braces. `.nx/cache` holds the
+          # task outputs; the metadata that says which task hash produced them
+          # lives in the database under `.nx/workspace-data`. Restore the
+          # artifacts without the metadata and Nx says "Unrecognized Cache
+          # Artifacts — Nx can only restore artifacts it has metadata about",
+          # then rebuilds everything: a 71MB download that buys nothing.
+          # Measured directly (run 32305974350: primary-key hit, 71MB restored,
+          # build still 25s), and confirmed both directions locally — cache
+          # plus metadata replays 5/5 tasks, cache alone rebuilds 5/5.
+          #
+          # The daemon's own directory is excluded: it holds a socket and a
+          # `server-process.json` naming a PID from another machine, which is
+          # state about a running process rather than a build result. Nx
+          # disables the daemon in CI anyway, so this only keeps stale
+          # process state from travelling between runs.
+          path: |
+            .nx/cache
+            .nx/workspace-data
+            !.nx/workspace-data/d
           key: ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-
@@ -388,12 +413,17 @@ jobs:
       # With it restored, an untouched build is a cache replay, and this job
       # keeps its critical path to a single container start.
       #
-      # See `build` above for why the key is per-commit with prefix
-      # restore-keys rather than stable, and for why the Nx cache is only safe
-      # now that `apps/storybook/project.json` declares its real `outputs`.
+      # Identical to `build`'s step, deliberately — the two jobs never run in
+      # the same event, so this is the same cache read by whichever path the
+      # run takes, not a second one. See `build` above for the key design, for
+      # why `cache: true` in nx.json is what makes any of it work, and for why
+      # both paths below are required rather than just the artifacts.
       - uses: actions/cache@v6
         with:
-          path: .nx/cache
+          path: |
+            .nx/cache
+            .nx/workspace-data
+            !.nx/workspace-data/d
           key: ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-
