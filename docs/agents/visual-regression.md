@@ -32,7 +32,7 @@ The Accept and Report steps both key off `github.event.action == 'labeled'`, not
 
 **A `workflow_dispatch` red sweep off `main` doesn't open a recovery either** — `recover` only ever targets `main`, since that's the only branch its pull request could be based against. The job summary names the fix instead: `gh workflow run visual-update.yml --ref <branch> --field grep=<pattern>`.
 
-**A fork's pull request is refused before it runs anything.** `GITHUB_TOKEN` can't push to a fork's branch, so every mint, accept, and commit step in `scoped` would fail partway through. The job checks this first and fails fast with the same `visual-update.yml --ref ... --field grep=...` remedy.
+**A fork's pull request is refused before it runs anything.** The baseline bot's installation token is scoped to this repository and can't push to a fork's branch, so every mint, accept, and commit step in `scoped` would fail partway through. The job checks this first and fails fast with the same `visual-update.yml --ref ... --field grep=...` remedy.
 
 ### Adding or removing a component fails every docs baseline, and that is correct
 
@@ -56,6 +56,55 @@ Re-enable when **both** are true:
 
 - **A. A scoping answer that survives a sidebar change.** Options worth weighing: screenshot the page's content region rather than the full page; stub the registry to a fixed fixture set so the sidebar is invariant; or mask the sidebar in the comparison. Each trades some coverage for a signal that means one thing.
 - **B. Sharding and a CI matrix.** 142 wide-viewport page shots is the bulk of the suite's runtime. Sharded across a matrix it fails in minutes rather than 14, which is what makes a re-run cheap enough that a noisy project is tolerable in the first place.
+
+## The baseline bot, and why the pushes need it
+
+Every workflow here that commits baselines — `scoped`'s mint and accept steps, `recover`'s
+recovery branch, and `visual-update.yml` — pushes with a **GitHub App installation token**,
+not `GITHUB_TOKEN`.
+
+This is not about permissions. `contents: write` already grants those. It is about what the
+credential does to the events it creates: **GitHub suppresses workflow runs for anything
+pushed with `GITHUB_TOKEN`**, including pushes made through the Git API. A commit pushed
+that way carries no check runs at all — and once `main` requires status checks, a minted or
+accepted commit sitting at the head of a pull request with nothing able to satisfy the
+requirement makes that pull request **permanently unmergeable**.
+
+There is no ordering that rescues this. Required status checks reject a push _at push time_,
+before any workflow could run — verified directly:
+
+```
+remote: error: GH013: Repository rule violations found for refs/heads/...
+remote: - Required status check "..." is expected.
+```
+
+**Setup, if the secrets are ever lost.** A GitHub App installed on this repository with
+`contents: write` (plus `pull-requests: write` and `issues: write`, which `recover` needs for
+`gh pr create` and `gh issue create`), and two repository secrets:
+
+```bash
+gh secret set DS_BOT_APP_ID --body '<app id>'
+```
+
+```bash
+gh secret set DS_BOT_PRIVATE_KEY < <app>.private-key.pem
+```
+
+Deliberately **not** granted: `workflows: write`. These pushes only ever touch
+`tests/visual/__screenshots__`, so the bot can never rewrite CI.
+
+**`scoped` fails loudly if either secret is missing**, rather than falling back to
+`GITHUB_TOKEN`. That fallback would still push, still go green, and still produce the
+check-less commit — silently. This repo has already lost a week to an unverified manual
+setup step (#96: a Vercel Root Directory move a design doc assumed and nobody performed,
+six red deploys). That guard is the same lesson made mechanical.
+
+**The recursion is bounded.** An App token's push does start workflows, which is the point.
+The run it starts finds every baseline present, mints nothing, and pushes nothing, so it
+terminates there. The accept path terminates for the same reason plus the one-shot label.
+Cost is one extra `scoped` run per mint or accept.
+
+---
 
 To re-enable, uncomment the `docs-wide` block in `playwright.config.ts`. Nothing else changes: `docs-wide` is deliberately still in `SPEC_FILE_BY_PROJECT`, and the mint step in `visual.yml` regenerates the baselines on the runner automatically on the first pull request that runs it. Do not regenerate them locally — see the top of this file for why the host is the variable.
 
@@ -207,4 +256,4 @@ Each of these was tried on #65 and made things worse or hid the problem:
 - **`pnpm test:visual` on the host is a pre-flight, not a check.** It cannot write baselines by design, so every comparison fails identically on a missing snapshot — which makes hangs and structural breakage stand out in about two minutes instead of forty.
 - **A full container regeneration is ~30 minutes.** Do not start one casually, and do not start one while someone else is committing rendering changes to the same checkout: #65 lost three runs to commits landing mid-flight. Record the SHA at start and compare it at finish.
 - **CI is ~8 minutes and runs the image natively.** For any question about determinism it is both faster and more trustworthy than the local container. Reach for a rerun before reaching for a regeneration.
-- **`visual.yml` reports honestly.** `scoped` and `full` each wrap only their comparison _step_ in `continue-on-error: true` — not the job — so a later step can still run after a red comparison: `scoped`'s accept-and-commit step, or `full`'s regenerate-and-upload step. On a red `check`, `scoped` runs exactly one of two mutually exclusive steps: "Accept the changed baselines" if `github.event.action == 'labeled'` — THIS run is the one where `visual-accept` was just applied, not merely a run where the label is sitting on the pull request — or "Report the failing shots", which ends the job with `exit 1`, on every other action. The Accept step is not a guaranteed route to green: it exits non-zero itself if `scripts/visual-failures.mjs` lists no failing shot (the check failed for a reason with no baseline to accept — a crash or a build break) or if regenerating the failing shots produces no change on disk (the check failed for a reason accepting can't fix). So a `labeled` run can still end red — a red `scoped` job is not proof the label failed to apply. `full` has an explicit "Fail the job" step for the same red-job guarantee. A red job is a red job. Nothing on `main` is branch-protected, so this changes what you see, not what merges.
+- **`visual.yml` reports honestly.** `scoped` and `full` each wrap only their comparison _step_ in `continue-on-error: true` — not the job — so a later step can still run after a red comparison: `scoped`'s accept-and-commit step, or `full`'s regenerate-and-upload step. On a red `check`, `scoped` runs exactly one of two mutually exclusive steps: "Accept the changed baselines" if `github.event.action == 'labeled'` — THIS run is the one where `visual-accept` was just applied, not merely a run where the label is sitting on the pull request — or "Report the failing shots", which ends the job with `exit 1`, on every other action. The Accept step is not a guaranteed route to green: it exits non-zero itself if `scripts/visual-failures.mjs` lists no failing shot (the check failed for a reason with no baseline to accept — a crash or a build break) or if regenerating the failing shots produces no change on disk (the check failed for a reason accepting can't fix). So a `labeled` run can still end red — a red `scoped` job is not proof the label failed to apply. `full` has an explicit "Fail the job" step for the same red-job guarantee. A red job is a red job.
