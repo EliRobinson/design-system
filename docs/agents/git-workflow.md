@@ -8,7 +8,15 @@ Any PR that changes front-end code (components, layout, styling, tokens that aff
 
 ### Link them by pinned raw URL, not by relative path
 
-**GitHub does not resolve relative image paths in a pull request body.** It leaves the `src` exactly as written, and the browser then resolves it against the PR's own URL — `docs/pr-assets/x.png` on `/pull/88` becomes `/pull/docs/pr-assets/x.png`, which redirects to a login page and renders as a broken image. This is not a permissions problem and it does not come good later; the repo is public and the file is committed. It simply never worked. PR #88 shipped four screenshots this way and none of them display.
+Three PRs have each found a different way to get this wrong, so all three are named here:
+
+| PR  | form used                           | result                                         |
+| --- | ----------------------------------- | ---------------------------------------------- |
+| #88 | relative path                       | never rendered                                 |
+| #73 | absolute URL on the **branch name** | 404 once the branch was deleted on merge       |
+| #67 | absolute URL on **`main`**          | works, until the file is ever moved or renamed |
+
+**GitHub does not resolve relative image paths in a pull request body.** It leaves the `src` exactly as written, and the browser then resolves it against the PR's own URL — `docs/pr-assets/x.png` on `/pull/88` becomes `/pull/docs/pr-assets/x.png`, which redirects to a login page and renders as a broken image. This is not a permissions problem and it does not come good later; the repo is public and the file is committed. It simply never worked.
 
 Commit the images, then reference them by **absolute raw URL pinned to the commit SHA**:
 
@@ -27,10 +35,24 @@ git add docs/pr-assets/<slug> && git commit -m "docs(pr-assets): before/after sc
 Then write the body with that SHA and open the PR. Verify the images actually resolve rather than assuming — a broken screenshot in a PR body looks identical to no screenshot at all until someone opens the page:
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' https://raw.githubusercontent.com/EliRobinson/design-system/<sha>/docs/pr-assets/<slug>/dialog-after.png
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' https://raw.githubusercontent.com/EliRobinson/design-system/<sha>/docs/pr-assets/<slug>/dialog-after.png
 ```
 
-A human opening the PR in a browser can instead drag the PNGs into the description box, which uploads them to GitHub's `user-attachments` CDN and needs no commit at all. That is the nicer result — nothing enters the repo — but it cannot be scripted, so anything running headless uses the committed-asset path above.
+Check the content type, not just the status. A 404 from `github.com` redirects to a login page and answers `200 text/html`; only `image/png` means the link is good.
+
+### After merge, repoint to the squash commit
+
+**This repo squash-merges, which orphans every commit on the branch** — including the one the screenshots are pinned to. So the SHA you had to use when opening the PR is, by definition, not the SHA the record should keep.
+
+GitHub still serves blobs from unreachable commits, so nothing visibly breaks the moment it merges (verified on #107 after its branch commit was orphaned). But it is unreachable from any ref, nothing guarantees it stays served, and `git show <sha>` fails for anyone who fetches the repo fresh. Repoint the body once, right after merging:
+
+```bash
+gh pr view <pr> --json mergeCommit -q .mergeCommit.oid   # the squash commit, on main
+```
+
+Swap that SHA into the body's image URLs and `gh pr edit <pr> --body-file …`. Two SHAs total: the branch one to open with, the squash one to leave behind.
+
+A human opening the PR in a browser can skip all of this by dragging the PNGs into the description box, which uploads them to GitHub's `user-attachments` CDN — tied to no commit, so there is nothing to repoint and nothing enters the repo. That is the nicer result, but it cannot be scripted, so anything running headless uses the committed-asset path above.
 
 ### Capturing the pair
 
