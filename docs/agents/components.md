@@ -85,8 +85,9 @@ Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
 
 - Every component that renders a focusable/interactive native element uses `forwardRef`, forwarding to the outermost interactive/native element the component owns.
 - Touch targets are scoped by control role, not one blanket size:
-  - **Primary interactive controls** — buttons, pagination items, segmented-control options, nav items, and other button-like controls — have a minimum 44x44 touch target. Where visual density matters, keep the painted glyph small and expand the hit area (padding, or a bounded overlay) rather than inflating the visible control.
+  - **Primary interactive controls at their default size** — buttons, pagination items, segmented-control options, nav items, and other button-like controls — have a minimum 44x44 touch target. Where visual density matters, keep the painted glyph small and expand the hit area (padding, or a bounded overlay) rather than inflating the visible control.
   - **Dense inline affordances** — a chip's remove glyph, a search field's clear button, rating stars, calendar day cells — follow shadcn/MUI-scale sizing instead, not 44px. Reference values: MUI Chip is 32px tall (24px `small`) with a 22px (16px `small`) delete icon; shadcn Badge is ~20px tall with 12px icons and ships no remove affordance at all.
+  - **An explicitly compact size variant follows the dense scale too.** `Button`'s `size="sm"` is 36px and is meant to be — see "Why `size=\"sm\"` is 36px" below. `checkTouchTargets()` exempts `.ds-button--sm` by class, so both `<Button size="sm">` and a hand-written `<a class="ds-button ds-button--sm">` pass without anyone hand-adding `data-touch-target="dense"`.
   - **In both cases**, an expanded hit area must never overlap sibling content. A 44x44 overlay on a chip once covered the chip's own label, so clicking the label's tail fired the remove handler — bound the hit area (e.g. stretch to the container's height, not a symmetric negative inset) so this can't recur.
 - **A filled variant restates `color` in every state.** If a rule sets `background-color`, the rule for each of its states (`:hover`, `:active`, `:focus`, `:disabled`) sets `color` too — even when the colour does not change.
 - **Never paint `--ink-*`, `--signal-*` or `--anchor-*`.** The scales are fixed and do not respond to `[data-theme="dark"]`; use the semantic token that flips. `component-css.test.mjs` enforces this.
@@ -95,6 +96,38 @@ Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
 - Status text uses `--status-*-fg`, status panels `--status-*-tint`; `--status-*` is a fill and two of them cannot carry a label at all.
 - Brand amber that a user reads is `--accent-ink`, not `--accent` (2.53:1).
 - **Colour is never the only signal for a state.** Pair it with a glyph, shape, label or border — see SC 1.4.1 in [Tokens](tokens.md).
+
+#### Why `size="sm"` is 36px
+
+`.ds-button--sm` is 36px tall and `checkTouchTargets()`'s floor is 44px, so the
+system's own small button used to fail the system's own contract (issue #113).
+Neither remediation the error message offered was correct: padding it to 44px
+turns an `sm` into an `md`, and hand-adding `data-touch-target="dense"` to a
+header CTA teaches consumers to suppress the contract. `sm` stays 36px and the
+contract now recognises it. The reasoning:
+
+1. **36px is above the standard, below our floor.** WCAG 2.2 **AA** (SC 2.5.8,
+   Target Size Minimum) asks for 24x24 CSS px. 44x44 is **AAA** (SC 2.5.5).
+   A 36px control clears AA with margin — it is under _this system's_ stricter
+   self-imposed default, not under the standard.
+2. **44px would delete the variant.** Raised to 44, `sm` would differ from `md`
+   only in font size and horizontal padding. That is a typography variant, not
+   a size variant. Anyone who genuinely needs a compact control would then
+   hand-roll one outside the system, which is worse for the system's coverage
+   than a sanctioned 36px button.
+3. **The two-tier contract was not the problem.** `touch-target-primary` and
+   `touch-target-dense` are both right; the gap was that `size="sm"` had no way
+   to say which tier it belonged to.
+
+The exemption is keyed off `.ds-button--sm`, **not** off a React prop. The
+element that failed in the wild was `a.ds-button.ds-button--accent.ds-button--sm`
+— an anchor carrying the classes, which is a supported usage — so anything
+`Button.tsx` emitted for `size="sm"` would have missed it entirely.
+
+The cost, stated so it is not rediscovered: a consumer who reaches for
+`size="sm"` for a page's primary mobile action now gets a silent pass. Holding
+dense controls to a _dense floor_ (WCAG's 24px) rather than exempting them from
+measurement is the real answer to that, and is not built.
 
 #### Why a filled variant restates `color`
 
@@ -211,7 +244,7 @@ as the register.
 | shadcn component                                         | Miltinson equivalent / notes                                                                                                                                                  |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Badge                                                    | `Badge` — maps to preview tags (default, signal, anchor, solid, outline)                                                                                                      |
-| Button                                                   | `Button` — primary, accent, secondary, ghost; sm/md/lg sizes                                                                                                                  |
+| Button                                                   | `Button` — primary, accent, secondary, ghost; sm/md/lg sizes. `sm` is 36px, a sanctioned dense variant matching shadcn's own `sm` — see "Why `size=\"sm\"` is 36px"           |
 | Card                                                     | `Card` + subcomponents — matches preview portfolio cards                                                                                                                      |
 | Input, Textarea, Select, Label                           | Form primitives — match `components-fields.html` preview                                                                                                                      |
 | Alert                                                    | `Alert` — status tokens for success/warning/danger/info                                                                                                                       |

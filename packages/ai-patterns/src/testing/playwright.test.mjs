@@ -6,6 +6,9 @@
 // Skipped, loudly, when no browser is available (a bare CI image). The suite is
 // the verification; it should not be the thing that blocks an unrelated change.
 
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -13,10 +16,20 @@ import {
   checkFocusVisible,
   checkHitAreaOverlap,
   checkTouchTargets,
+  DENSE_AFFORDANCE_SELECTOR,
   expectDesignSystemContracts,
   MINIMUM_TOUCH_TARGET,
   PRIMARY_CONTROL_SELECTOR,
 } from './playwright.mjs';
+
+/* The `.ds-button--sm` cases below assert against the *shipped* stylesheets
+   rather than a hand-written 36px box. An exemption is only ever as good as the
+   geometry it exempts, and a fixture that restates `min-height: 36px` inline
+   would keep passing if Button.css moved — the one change that should make
+   somebody re-open the judgement. Both packages are devDependencies here, so
+   these resolve through their export maps. */
+const resolveFrom = createRequire(import.meta.url);
+const shippedCss = (specifier) => readFileSync(resolveFrom.resolve(specifier), 'utf8');
 
 /* Starting, opening and closing Chromium are process-level operations that
    share the machine with whatever else is running. Vitest's 10s hook budget is
@@ -106,6 +119,12 @@ describe('argument handling', () => {
     expect(MINIMUM_TOUCH_TARGET).toBe(44);
     expect(PRIMARY_CONTROL_SELECTOR).toContain('button');
   });
+
+  /* The geometry is asserted in the browser below. This is the part that
+     survives a bare CI image with no Chromium, where the browser suite skips. */
+  it('holds the small button variant to the dense scale', () => {
+    expect(DENSE_AFFORDANCE_SELECTOR).toContain('.ds-button--sm');
+  });
 });
 
 describeBrowser('browser contract checks', () => {
@@ -174,6 +193,79 @@ describeBrowser('browser contract checks', () => {
       );
 
       expect(await checkTouchTargets(page)).toEqual([]);
+    });
+
+    /* Issue #113. `size="sm"` is a sanctioned dense variant at 36px, and the
+       element a consumer ships it on is often an anchor carrying the classes
+       (`<a class="ds-button ds-button--sm">` in a site header) rather than the
+       React component's <button>. The exemption is keyed off the class for
+       exactly that reason, so both shapes are asserted here — a rule that only
+       covered the component would not have covered the reported bug.
+
+       These render the real Button.css over the real tokens.css: nothing is
+       restated inline, so the 36px being exempted is the 36px that ships. */
+    describe('the small button variant, which is dense by design', () => {
+      async function renderShipped(body) {
+        await page.setContent(
+          `<!doctype html><html><head><style>* { box-sizing: border-box; margin: 0; }` +
+            `body { background: #ffffff; color: #000000; font: 16px system-ui; padding: 40px; }</style>` +
+            `<style>${shippedCss('@elirobinson/tokens/tokens.css')}</style>` +
+            `<style>${shippedCss('@elirobinson/react/styles/atoms/Button.css')}</style>` +
+            `</head><body>${body}</body></html>`,
+        );
+      }
+
+      it('is still under the 44px floor, which is the thing being exempted', async () => {
+        await renderShipped(
+          '<a class="ds-button ds-button--accent ds-button--sm" href="#">Hire Me</a>',
+        );
+
+        const height = await page.evaluate(
+          () => document.querySelector('.ds-button--sm').getBoundingClientRect().height,
+        );
+
+        expect(height).toBeLessThan(MINIMUM_TOUCH_TARGET);
+      });
+
+      it('passes on the anchor carrying the classes, which is how the bug was reported', async () => {
+        await renderShipped(
+          '<a class="ds-button ds-button--accent ds-button--sm" href="#">Hire Me</a>',
+        );
+
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      it('passes on the <button> the React component renders', async () => {
+        await renderShipped(
+          '<button class="ds-button ds-button--primary ds-button--sm">Save</button>',
+        );
+
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      /* The half that matters. Exempting a named variant must not become a
+         blanket pass — an undersized control that has claimed nothing about
+         itself is still a violation, and a default-size .ds-button that has
+         been squashed is still a violation. */
+      it('does not exempt an undersized control that declares nothing', async () => {
+        await renderShipped(
+          '<a class="ds-button ds-button--accent ds-button--sm" href="#">Hire Me</a>' +
+            '<button style="width:24px;height:24px">x</button>',
+        );
+
+        const violations = await checkTouchTargets(page);
+
+        expect(violations).toHaveLength(1);
+        expect(violations[0].element).not.toContain('ds-button--sm');
+      });
+
+      it('does not exempt a default-size .ds-button that has been squashed', async () => {
+        await renderShipped(
+          '<button class="ds-button ds-button--primary" style="min-height:24px;padding:0">Save</button>',
+        );
+
+        expect(await checkTouchTargets(page)).toHaveLength(1);
+      });
     });
 
     it('honours a custom minimum', async () => {
