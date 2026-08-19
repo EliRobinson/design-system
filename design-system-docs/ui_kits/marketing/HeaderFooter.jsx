@@ -1,3 +1,15 @@
+/* eslint-disable react/jsx-no-undef --
+   Wordmark and Button are defined by _shared/Primitives.jsx. These kits are loaded as
+   classic <script type="text/babel"> tags (see the index.html beside this
+   file), in dependency order, sharing one global scope — so there is nothing
+   to import and no module boundary to import it across.
+
+   The directive is here because ds-resync writes this file into a consuming
+   repo's .claude/skills/, a directory most projects lint, where the same code
+   is indistinguishable from a module with missing imports. Scoped to the one
+   rule so everything else about these samples is still linted. #119 */
+/* global window -- a browser script: the kits publish their components onto
+   window for the sibling kit files loaded after them. See index.html. */
 const Header = ({ active = 'Home' }) => {
   const items = ['Home', 'Portfolio', 'Store', 'Services', 'About'];
   return (
