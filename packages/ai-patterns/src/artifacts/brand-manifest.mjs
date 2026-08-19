@@ -133,6 +133,26 @@ function hostOf(url) {
   return url.replace(/^https?:\/\//, '').split(/[/?#]/)[0];
 }
 
+/* Both CSS scans run over raw text, so a comment that merely TALKS about an
+   import or a URL used to count as one. Two different failures came out of
+   that, and only one of them was loud (#120):
+
+     - prose naming a local file threw the dangling-@import error below, from
+       the ai-patterns build, naming the design-system-docs symlink rather
+       than the packages/tokens file the comment was actually written in;
+     - prose naming an https:// host was recorded as a real externalOrigin
+       with a green build, so a sentence explaining that the system no longer
+       calls Google Fonts made the shipped manifest assert that it does.
+
+   Masking first is the whole fix. CSS has no line comments and nothing in
+   these stylesheets puts `/*` inside a string, so the block form is the only
+   case. Applied to the CSS scans only: the HTML scans above have the same
+   shape with `<!-- -->` and are not covered here — no artifact has needed it
+   yet, and inventing the case would be guessing at its edges. */
+function stripCssComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
 /**
  * External origins reachable from an entry file: what the file itself names,
  * plus what its relative stylesheet chain names — a card that links a
@@ -141,7 +161,9 @@ function hostOf(url) {
  * (The fonts used to make every chain name fonts.googleapis.com; they are
  * self-hosted now, so a first-party chain reports no origins at all.)
  */
-function originScanner() {
+/* Exported for brand-manifest-comments.test.mjs, which needs to drive the
+   scan over fixtures rather than the real tree. */
+export function originScanner() {
   const cssCache = new Map();
 
   function cssOrigins(absolutePath, referencedBy, seen = new Set()) {
@@ -181,10 +203,12 @@ function originScanner() {
         { cause: error },
       );
     }
-    const origins = new Set(
-      [...source.matchAll(CSS_FETCH_PATTERN)].map((match) => hostOf(match[1])),
-    );
-    for (const match of source.matchAll(/@import\s+(?:url\()?['"]([^'"]+)['"]/g)) {
+    /* Masked once, for both scans. They have to see the same text or they
+       drift: an import the origin scan ignored but the follow scan chased is
+       exactly the asymmetry that made #120 hard to place. */
+    const code = stripCssComments(source);
+    const origins = new Set([...code.matchAll(CSS_FETCH_PATTERN)].map((match) => hostOf(match[1])));
+    for (const match of code.matchAll(/@import\s+(?:url\()?['"]([^'"]+)['"]/g)) {
       if (!/^https?:/.test(match[1])) {
         for (const origin of cssOrigins(join(dirname(key), match[1]), key, seen)) {
           origins.add(origin);
