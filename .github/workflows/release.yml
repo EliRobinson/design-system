@@ -66,12 +66,24 @@ jobs:
           set -euo pipefail
 
           # The JOB's conclusion, not the run's. `full` carries
-          # `if: github.event_name != 'pull_request'`, so it is skipped rather
-          # than failed whenever that condition stops holding — and a run whose
-          # only visual job was skipped still concludes `success`. Gating on
-          # the run conclusion alone would therefore treat "the sweep never
-          # ran" as "the sweep passed", which is the exact silent
-          # under-selection this gate exists to prevent.
+          # `if: !cancelled() && github.event_name != 'pull_request'`, so it is
+          # skipped rather than failed whenever that condition stops holding —
+          # and a run whose only visual job was skipped still concludes
+          # `success`. Gating on the run conclusion alone would therefore treat
+          # "the sweep never ran" as "the sweep passed", which is the exact
+          # silent under-selection this gate exists to prevent.
+          #
+          # `full` is no longer the job that takes the screenshots — the sweep
+          # is a matrix of `sweep (<project>)` jobs, whose names change with
+          # the projects in playwright.config.ts and so cannot be named by any
+          # fixed selector here. `full` is the single downstream job that
+          # `needs` every one of them; it fails unless `needs.sweep.result` is
+          # `success` (which GitHub gives only when EVERY leg of the matrix
+          # succeeded, and never when the matrix was empty or skipped), and it
+          # separately asserts that every project the matrix planned actually
+          # appears in the merged report. So the selector below is unchanged
+          # and means more than it used to: not "one job passed" but "every
+          # expected job ran and passed". See visual.yml's `full` job.
           FULL=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/jobs" \
             --jq '[.jobs[] | select(.name == "full")] | first | .conclusion // empty')
           if [ "$FULL" != "success" ]; then

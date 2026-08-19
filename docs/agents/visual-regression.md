@@ -10,13 +10,21 @@ Do these in order. Most cases stop at step 2.
 
 ## Where the suite runs, and how to get back to green
 
-| trigger                                       | job(s)                                                                  | what runs                                                                                               |
-| --------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| pull request opened, synced, or reopened      | `scoped`                                                                | only the shots the change could have altered, plus any shot that has no baseline yet                    |
-| `visual-accept` label added to a pull request | `scoped` — a fresh run, since adding the label is itself a trigger      | the same scoped comparison, then regenerates and commits exactly the shots that failed                  |
-| push to `main`                                | `full`, then `recover` if it goes red                                   | the full sweep, 501 tests                                                                               |
-| nightly, 06:00 UTC                            | `full`, then `recover` if it goes red                                   | the full sweep                                                                                          |
-| `workflow_dispatch`                           | `full` (`recover` only fires if the ref is `main` and the sweep failed) | the full sweep — this dispatch takes no `--grep` input; use `visual-update.yml` for a scoped manual run |
+| trigger                                       | job(s)                                                                         | what runs                                                                                               |
+| --------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| pull request opened, synced, or reopened      | `scoped`                                                                       | only the shots the change could have altered, plus any shot that has no baseline yet                    |
+| `visual-accept` label added to a pull request | `scoped` — a fresh run, since adding the label is itself a trigger             | the same scoped comparison, then regenerates and commits exactly the shots that failed                  |
+| push to `main`                                | `build` → `sweep (<project>)` ×N → `full`, then `recover` if it goes red       | the full sweep, split by project across concurrent jobs                                                 |
+| nightly, 06:00 UTC                            | the same four                                                                  | the full sweep                                                                                          |
+| `workflow_dispatch`                           | the same four (`recover` only fires if the ref is `main` and the sweep failed) | the full sweep — this dispatch takes no `--grep` input; use `visual-update.yml` for a scoped manual run |
+
+**The full sweep is a matrix, one job per project.** `build` builds Storybook and the docs site once, uploads them as an artifact, and asks Playwright which projects it collected; each `sweep (<project>)` job downloads that build and compares only its own project's shots. The check name is the diagnosis: `sweep (docs-wide 1/2)` going red while `sweep (storybook-wide)` stays green says the sidebar fanned out, not that a component regressed — before anyone opens an artifact. A project long enough to be the critical path is split across shards as well (`scripts/visual-matrix.mjs` holds the shard counts).
+
+**Every invocation is still `--workers=1`.** Sharding is not raising the worker count. Worker contention is the largest single lever on this suite's flake rate (18 failures to 1, issue #65), so a shard is a separate machine running its own serial browser — parallelism is bought across VMs, never inside one.
+
+**Nothing in the matrix decides anything.** Each sweep job writes a Playwright _blob_ report and stops. `full` downloads all of them, merges them into the single `test-results/report.json` and `playwright-report/` everything else is written against, regenerates the failing shots, and renders the verdict. Five jobs each regenerating baselines, each uploading them, or each pushing a commit would race; one downstream job cannot.
+
+**`full` is the job Release gates on, and it no longer takes screenshots.** `release.yml` refuses to publish unless the job named `full` concluded `success`. It `needs` every `sweep` job, so it fails when any leg fails, when the matrix was empty or skipped — and separately when a project the matrix planned left no trace in the merged report, which is how a blob report that failed to upload gets caught instead of passing as a clean run.
 
 Any other label added to a pull request also re-triggers `scoped` — GitHub's `labeled` event can't be filtered to one label name in the workflow's `on:` block, so the job itself checks `github.event.label.name == 'visual-accept'` and no-ops for anything else. Worth knowing before you debug it twice: **adding any label cancels whatever scoped run is already in flight**, because the workflow-level `concurrency` group is evaluated before the job's `if:` — a `wip` or `needs-triage` label restarts the run and then does nothing with it.
 
@@ -26,13 +34,13 @@ Any other label added to a pull request also re-triggers `scoped` — GitHub's `
 
 The Accept and Report steps both key off `github.event.action == 'labeled'`, not off whether `visual-accept` is present on the pull request — so the label fires an accept only on the run where it was just applied, never on a later run where it merely happens to still be attached. Push again after that — even something unrelated to the shots that were just accepted — and if anything fails, `scoped` goes red and reports it instead of silently accepting: the label is still sitting on the pull request, but this run's `github.event.action` is `synchronize`, not `labeled`. **To accept a second time on the same pull request, remove the label and re-add it** — the re-add is itself a fresh `labeled` event and starts another run, exactly like the first accept. That round-trip is deliberate, not friction to route around: testing for the label's mere presence, the way this used to work, would let one approval on day one silently launder every regression pushed on day two into an accepted baseline.
 
-**A red sweep on `main` opens its own recovery, split across two jobs.** The Playwright container ships `git` but not the `gh` CLI, so `full` (inside the container) does the mechanical half — rerun with `--update-snapshots=changed` against just the failing shots, upload the result as an artifact — and a separate, container-less `recover` job downloads that artifact, commits it to a `visual/baselines-<short-sha>` branch, and opens the pull request and the tracking issue. The tracking issue is found by a dedicated `visual-baseline` label, not the general `visual` label — `visual` is also what a human would naturally put on issue #65 itself, and a collision there would mean the recovery path finds #65 forever and never opens a real issue. Merging the pull request closes the issue automatically, via a `Closes #<N>` line in its body.
+**A red sweep on `main` opens its own recovery, split across two jobs.** The Playwright container ships `git` but not the `gh` CLI, so `full` (inside the container) does the mechanical half — merge the shards' reports, rerun with `--update-snapshots=changed` against just the failing shots from that merged report, upload the result as an artifact — and a separate, container-less `recover` job downloads that artifact, commits it to a `visual/baselines-<short-sha>` branch, and opens the pull request and the tracking issue. The tracking issue is found by a dedicated `visual-baseline` label, not the general `visual` label — `visual` is also what a human would naturally put on issue #65 itself, and a collision there would mean the recovery path finds #65 forever and never opens a real issue. Merging the pull request closes the issue automatically, via a `Closes #<N>` line in its body.
 
 **If the regeneration changes nothing, that's a flake, not a regression.** `full` reruns the failing shots to regenerate them; if that rerun produces byte-identical output, nothing was actually wrong with the baseline — the failure was #65's flake reproducing itself. No pull request or issue opens for it. The job stays red, so the flake is still visible, and its summary points here — specifically at step 2 below ("run the identical commit twice"), which is the right procedure for exactly this shape of failure.
 
 **A `workflow_dispatch` red sweep off `main` doesn't open a recovery either** — `recover` only ever targets `main`, since that's the only branch its pull request could be based against. The job summary names the fix instead: `gh workflow run visual-update.yml --ref <branch> --field grep=<pattern>`.
 
-**A fork's pull request is refused before it runs anything.** The baseline bot's installation token is scoped to this repository and can't push to a fork's branch, so every mint, accept, and commit step in `scoped` would fail partway through. The job checks this first and fails fast with the same `visual-update.yml --ref ... --field grep=...` remedy.
+**A fork's pull request is refused before it runs anything.** The baseline bot's installation token is scoped to this repository and can't push to a fork's branch, so every mint, accept, and commit step in `scoped` would fail partway through. The job checks this first and fails fast with the same `visual-update.yml --ref ... --field grep=...` remedy. Only `scoped` needs this check: `build` and the matrix never run on a pull request.
 
 ### Adding or removing a component fails every docs baseline, and that is correct
 
@@ -44,7 +52,7 @@ This is why `scripts/visual-scope.mjs` treats an added or deleted component file
 
 `design-system-docs/` is a docs-wide event as well, and one Nx cannot see: the directory belongs to no project, so `nx show projects --affected --files=design-system-docs/…` answers `[]`. It is read at build time to generate `brand-manifest.json`, which becomes the UI Kits sidebar section on every docs page and the content of the `/brand/*` shots. The scoper forces the `docs` side whole for it, the same way it does for `playwright.config.ts`. The general rule to check any new path against: **a path Nx cannot map is a path the scoper cannot see** — if it can change a pixel, it has to be named in `visual-scope.mjs`.
 
-Meeting 142 red docs pages on a component-adding branch is expected, not a break — but see the next section: `docs-wide` is currently disabled precisely because "expected, not a break" still costs a 14-minute run and a label on every component PR.
+Meeting 142 red docs pages on a component-adding branch is expected, not a break — but see the next section: `docs-wide` is currently disabled precisely because "expected, not a break" still costs a long run and a label on every component PR. The matrix has since made the run part cheap (condition B below); the label on every component PR is what is still unsolved.
 
 ### Why `docs-wide` is disabled
 
@@ -54,8 +62,8 @@ The reason is the section above. Because the sidebar renders on every docs page 
 
 Re-enable when **both** are true:
 
-- **A. A scoping answer that survives a sidebar change.** Options worth weighing: screenshot the page's content region rather than the full page; stub the registry to a fixed fixture set so the sidebar is invariant; or mask the sidebar in the comparison. Each trades some coverage for a signal that means one thing.
-- **B. Sharding and a CI matrix.** 142 wide-viewport page shots is the bulk of the suite's runtime. Sharded across a matrix it fails in minutes rather than 14, which is what makes a re-run cheap enough that a noisy project is tolerable in the first place.
+- **A. A scoping answer that survives a sidebar change.** Still open. Options worth weighing: screenshot the page's content region rather than the full page; stub the registry to a fixed fixture set so the sidebar is invariant; or mask the sidebar in the comparison. Each trades some coverage for a signal that means one thing.
+- **B. ~~Sharding and a CI matrix.~~ Done.** The sweep is a matrix of per-project jobs, and `scripts/visual-matrix.mjs` already carries `docs-wide: 2` in its `SHARDS` table — so the project comes back as two concurrent shards of ~71 shots each, off the critical path rather than being the bulk of it.
 
 ## The baseline bot, and why the pushes need it
 
@@ -106,7 +114,7 @@ Cost is one extra `scoped` run per mint or accept.
 
 ---
 
-To re-enable, uncomment the `docs-wide` block in `playwright.config.ts`. Nothing else changes: `docs-wide` is deliberately still in `SPEC_FILE_BY_PROJECT`, and the mint step in `visual.yml` regenerates the baselines on the runner automatically on the first pull request that runs it. Do not regenerate them locally — see the top of this file for why the host is the variable.
+To re-enable, uncomment the `docs-wide` block in `playwright.config.ts`. Nothing else changes, and that is enforced rather than hoped for: the matrix is derived from the projects Playwright actually collected, so the two sharded jobs appear on their own — `scripts/visual-matrix.test.mjs` covers both the absent case and the sharded one. `docs-wide` is also deliberately still in `SPEC_FILE_BY_PROJECT`, and the mint step in `visual.yml` regenerates the baselines on the runner automatically on the first pull request that runs it. Do not regenerate them locally — see the top of this file for why the host is the variable.
 
 ---
 
