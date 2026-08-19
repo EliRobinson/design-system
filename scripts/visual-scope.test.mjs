@@ -6,11 +6,16 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { parseNameStatus, scopeFor } from './visual-scope.mjs';
+import { parseNameStatus, resolveBaseArg, scopeFor } from './visual-scope.mjs';
 
 const shots = [
   { project: 'storybook-wide', storyId: 'components-button--primary', route: null },
   { project: 'storybook-wide', storyId: 'components-badge--default', route: null },
+  /* Gives VerdictBadge storybook coverage so the fan-out tests below (which
+     add it) satisfy addComponent's per-side guard on the storybook side —
+     without this, "component added" would throw for lacking a story, which
+     is not what those tests are about. */
+  { project: 'storybook-wide', storyId: 'components-verdictbadge--default', route: null },
   { project: 'docs-wide', storyId: null, route: '/components/button' },
   { project: 'docs-wide', storyId: null, route: '/components/badge' },
   { project: 'docs-wide', storyId: null, route: '/patterns/forms' },
@@ -34,6 +39,22 @@ describe('layer 1: nx decides whether anything runs', () => {
   it('skips when only the scripts project is affected', () => {
     const result = plan([{ status: 'M', path: 'scripts/visual-scope.mjs' }], ['scripts']);
     expect(result.run).toBe(false);
+  });
+
+  it('forces both projects affected for a change nx cannot see an edge to', () => {
+    /* nx show projects --affected --files=playwright.config.ts returns [] —
+       verified against this repo. The suite's own config is not imported by
+       docs or storybook, so nx's import graph has no edge to it at all. */
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'playwright.config.ts' }],
+      affectedProjects: [],
+      shots,
+    });
+    expect(result.run).toBe(true);
+    expect(result.grep).toContain('components-button--');
+    expect(result.grep).toContain('components-badge--');
+    expect(result.grep).toContain('/components/button · ');
+    expect(result.grep).toContain('/patterns/forms · ');
   });
 });
 
@@ -83,6 +104,11 @@ describe('layer 1a: the sidebar fan-out', () => {
     const result = plan([
       { status: 'A', path: 'packages/react/src/components/atoms/VerdictBadge.tsx' },
     ]);
+    /* Positive assertion: storybook narrowed to VerdictBadge's own prefix,
+       not merely "doesn't contain badge's". A grep that matched nothing at
+       all on the storybook side would also pass the old negative-only
+       assertion, which is why it wasn't proof of narrowing. */
+    expect(result.grep).toContain('components-verdictbadge--');
     expect(result.grep).not.toContain('components-badge--');
   });
 });
@@ -112,6 +138,22 @@ describe('layer 2: narrowing', () => {
   it('maps a story file to its stories', () => {
     const result = plan([{ status: 'M', path: 'apps/storybook/src/stories/Badge.stories.tsx' }]);
     expect(result.grep).toContain('components-badge--');
+  });
+
+  it('maps a story file to its ids across a non-components namespace', () => {
+    /* apps/storybook/src/stories/MarketingPattern.stories.tsx declares
+       title: 'Patterns/Marketing' on this repo today, producing ids like
+       patterns-marketing--hero-section — not components-marketingpattern--. */
+    const withMarketing = [
+      ...shots,
+      { project: 'storybook-wide', storyId: 'patterns-marketing--hero-section', route: null },
+    ];
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'apps/storybook/src/stories/MarketingPattern.stories.tsx' }],
+      affectedProjects: BOTH,
+      shots: withMarketing,
+    });
+    expect(result.grep).toContain('patterns-marketing--');
   });
 
   it('maps a docs page to its own route', () => {
@@ -151,15 +193,39 @@ describe('the unnarrowable fallback is the project, never the world', () => {
     const result = plan([{ status: 'M', path: 'packages/react/src/lib/cx.ts' }]);
     expect(result.grep).toContain('components-badge--');
   });
+
+  it('runs everything nx marked affected for a change this file cannot classify at all', () => {
+    /* nx show projects --affected --files=pnpm-lock.yaml returns docs and
+       storybook among its affected projects — verified against this repo.
+       pnpm-lock.yaml matches none of COMPONENT_FILE/STORY_FILE/DOCS_PAGE/
+       DEMO_FILE, is not under apps/storybook or apps/docs, and is not under
+       packages/ — so the *only* correct behaviour is to widen to both
+       projects' full sets, never to fall through to run:false while nx says
+       otherwise. Same failure mode for package.json, nx.json,
+       tsconfig.base.json, types/global.d.ts. */
+    const result = plan([{ status: 'M', path: 'pnpm-lock.yaml' }]);
+    expect(result.run).toBe(true);
+    expect(result.grep).toContain('components-button--');
+    expect(result.grep).toContain('components-badge--');
+    expect(result.grep).toContain('/components/button · ');
+    expect(result.grep).toContain('/components/badge · ');
+    expect(result.grep).toContain('/patterns/forms · ');
+  });
 });
 
 describe('pattern anchoring', () => {
   it('anchors a story pattern on the trailing double dash', () => {
+    /* components-buttongroup--default is the trap: 'components-buttongroup'
+       starts with the unanchored prefix 'components-button', so only the
+       trailing '--' stops it from being wrongly selected. The previous trap
+       (components-dropdownmenu--...) shares no such prefix with
+       'components-button' and so passed even without the anchor doing
+       anything — it wasn't proof the anchor mattered. */
     const withTrap = [
       ...shots,
       {
         project: 'storybook-wide',
-        storyId: 'components-dropdownmenu--with-button-trigger',
+        storyId: 'components-buttongroup--default',
         route: null,
       },
     ];
@@ -170,7 +236,7 @@ describe('pattern anchoring', () => {
     });
     const re = new RegExp(result.grep);
     expect(re.test('components-button--primary · light')).toBe(true);
-    expect(re.test('components-dropdownmenu--with-button-trigger · light')).toBe(false);
+    expect(re.test('components-buttongroup--default · light')).toBe(false);
   });
 
   it('anchors a route pattern on the trailing separator', () => {
@@ -186,6 +252,21 @@ describe('pattern anchoring', () => {
     const result = plan([{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }]);
     expect(result.grep).not.toMatch(/\^/);
   });
+
+  it('escapes regex metacharacters in an interpolated route', () => {
+    /* Without escaping, the '.' in '/components/x.y' would compile as
+       "any character", so a decoy like '/components/xzy' would wrongly
+       satisfy the pattern too. */
+    const withDot = [...shots, { project: 'docs-wide', storyId: null, route: '/components/x.y' }];
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'apps/docs/src/app/(docs)/components/x.y/page.mdx' }],
+      affectedProjects: BOTH,
+      shots: withDot,
+    });
+    const re = new RegExp(result.grep);
+    expect(re.test('/components/x.y · light')).toBe(true);
+    expect(re.test('/components/xzy · light')).toBe(false);
+  });
 });
 
 describe('the guard fails loudly rather than narrowing quietly', () => {
@@ -199,6 +280,112 @@ describe('the guard fails loudly rather than narrowing quietly', () => {
     expect(() =>
       plan([{ status: 'M', path: 'apps/docs/src/app/(docs)/nowhere/page.mdx' }]),
     ).toThrow(/nowhere/);
+  });
+
+  it('throws when only the storybook side drifted, even though the docs side matched', () => {
+    /* Ordinary drift produces exactly this shape: one side still resolves,
+       the other doesn't. A single shared `matched` flag would let the docs
+       match paper over the missing story id and run 28 fewer shots with no
+       error — Ghost.tsx alone (missing on both sides) can't catch that. */
+    const noButtonStory = shots.filter((s) => s.storyId !== 'components-button--primary');
+    expect(() =>
+      scopeFor({
+        changes: [{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }],
+        affectedProjects: BOTH,
+        shots: noButtonStory,
+      }),
+    ).toThrow(/Button/);
+  });
+
+  it('throws when only the docs side drifted, even though storybook matched', () => {
+    const noButtonRoute = shots.filter((s) => s.route !== '/components/button');
+    expect(() =>
+      scopeFor({
+        changes: [{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }],
+        affectedProjects: BOTH,
+        shots: noButtonRoute,
+      }),
+    ).toThrow(/Button/);
+  });
+});
+
+describe('deletions are exempt from the coverage guard', () => {
+  it('does not throw when a story file is deleted and its ids are gone', () => {
+    const noBadgeStory = shots.filter((s) => s.storyId !== 'components-badge--default');
+    expect(() =>
+      scopeFor({
+        changes: [{ status: 'D', path: 'apps/storybook/src/stories/Badge.stories.tsx' }],
+        affectedProjects: BOTH,
+        shots: noBadgeStory,
+      }),
+    ).not.toThrow();
+  });
+
+  it('does not throw for the realistic combination: component, story, and docs page deleted together', () => {
+    const badgeGone = shots.filter(
+      (s) => s.storyId !== 'components-badge--default' && s.route !== '/components/badge',
+    );
+    expect(() =>
+      scopeFor({
+        changes: [
+          { status: 'D', path: 'packages/react/src/components/atoms/Badge.tsx' },
+          { status: 'D', path: 'apps/storybook/src/stories/Badge.stories.tsx' },
+          { status: 'D', path: 'apps/docs/src/app/(docs)/components/badge/page.mdx' },
+        ],
+        affectedProjects: BOTH,
+        shots: badgeGone,
+      }),
+    ).not.toThrow();
+  });
+});
+
+describe('a Next.js dynamic route segment', () => {
+  it('does not throw when its subtree has no enumerated route at all', () => {
+    /* apps/docs/src/app/(docs)/brand/ui-kits/[kit]/page.tsx maps to
+       /brand/ui-kits/[kit], which tests/visual/docs/routes.ts deliberately
+       does not enumerate — verified against this repo. That is exclusion,
+       not drift, and must not throw the way a static page with no route
+       would. */
+    expect(() =>
+      plan([{ status: 'M', path: 'apps/docs/src/app/(docs)/brand/ui-kits/[kit]/page.tsx' }]),
+    ).not.toThrow();
+  });
+
+  it('selects every enumerated route under its static prefix when the subtree is covered', () => {
+    const withKits = [
+      ...shots,
+      { project: 'docs-wide', storyId: null, route: '/brand/ui-kits/acme' },
+      { project: 'docs-wide', storyId: null, route: '/brand/ui-kits/globex' },
+    ];
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'apps/docs/src/app/(docs)/brand/ui-kits/[kit]/page.tsx' }],
+      affectedProjects: BOTH,
+      shots: withKits,
+    });
+    expect(result.grep).toContain('/brand/ui-kits/acme · ');
+    expect(result.grep).toContain('/brand/ui-kits/globex · ');
+    expect(result.grep).not.toContain('/components/button · ');
+  });
+});
+
+describe('resolveBaseArg', () => {
+  it('returns null when --base is absent', () => {
+    expect(resolveBaseArg(['node', 'visual-scope.mjs'])).toBeNull();
+  });
+
+  it('returns null when --base is the last argv element with no value after it', () => {
+    /* The bug this guards: argv.indexOf('--base') + 1 is 0 (the node binary
+       path) when --base is absent at all, which a naive `!base` check does
+       not catch because argv[0] is truthy. */
+    expect(resolveBaseArg(['node', 'visual-scope.mjs', '--base'])).toBeNull();
+  });
+
+  it('reads a space-separated --base value', () => {
+    expect(resolveBaseArg(['node', 'visual-scope.mjs', '--base', 'abc123'])).toBe('abc123');
+  });
+
+  it('reads an --base=value form', () => {
+    expect(resolveBaseArg(['node', 'visual-scope.mjs', '--base=abc123'])).toBe('abc123');
   });
 });
 

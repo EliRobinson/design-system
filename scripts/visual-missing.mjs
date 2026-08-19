@@ -58,7 +58,12 @@ export function grepFor(shots) {
   return [...seen].join('|');
 }
 
-function escapeRegExp(value) {
+/* Exported so visual-scope.mjs can reuse it: the two modules build different
+   pattern SHAPES (whole-title patterns here, prefix patterns there), but the
+   escaping a raw filename/route/story-id segment needs before it is safe to
+   interpolate into a regex is identical, so there is no reason for a second
+   copy to drift from this one. */
+export function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
