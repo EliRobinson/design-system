@@ -2,6 +2,13 @@ name: Visual
 
 on:
   pull_request:
+    # `labeled` matters: pull_request defaults to opened/synchronize/reopened,
+    # and the report step below tells a human to add the visual-accept label.
+    # That only starts a new run because labeling is itself a trigger here —
+    # re-running the existing run instead would replay the ORIGINAL event
+    # payload, whose `labels` list predates the label being added, so the
+    # accept step would never see it.
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches:
       - main
@@ -10,21 +17,38 @@ on:
   # was always marginal.
   schedule:
     - cron: '0 6 * * *'
+  # Re-run the check on demand. The Visual update workflow commits baselines
+  # with the default token, and pushes made with that token deliberately do
+  # not trigger workflows — so without this there is no way to verify a
+  # freshly regenerated set except by pushing an unrelated commit. The
+  # `scoped` job's own mint/accept steps now depend on that same behaviour:
+  # they push straight to the pull request branch with GITHUB_TOKEN, and if
+  # that push retriggered this workflow it would recurse into a second
+  # `scoped` run on its own commit. The tradeoff is that the pushed commit
+  # carries no check run of its own — acceptable only because nothing on
+  # main is branch-protected, so a pull request can still merge on the
+  # ORIGINAL run's status.
   workflow_dispatch:
 
 # Separate from `quality.yml` on purpose: this job is minutes where that one is
 # seconds, and it is advisory for now. Keeping it out of that workflow means a
 # slow or noisy visual run never delays the checks people actually gate on.
+#
+# cancel-in-progress, unlike visual-update.yml (which omits it): a pull
+# request job wants feedback on the newest push, not a stale one, and the
+# mint commit below is atomic — staged and committed in a single step — so a
+# cancellation before that point costs only compute, never a half-written
+# baseline on the branch.
 concurrency:
   group: visual-${{ github.ref }}
   cancel-in-progress: true
 
-# The scoped job commits baselines to the pull request branch, and the full
-# sweep opens a recovery pull request and a tracking issue.
+# Read-only by default. The `scoped` job below elevates to contents: write
+# for itself only, since it is the only job that commits anything today. A
+# Task 7 recovery job will need pull-requests: write and issues: write of
+# its own when it exists — not granted here in advance of that job existing.
 permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+  contents: read
 
 jobs:
   # A job's `container:` is resolved before any of its steps run, so the image
@@ -51,8 +75,15 @@ jobs:
   scoped:
     needs: image
     if: github.event_name == 'pull_request'
+    # Only this job commits anything; `image` and `visual` keep the
+    # workflow-level read-only default.
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Worst case here is two builds plus three near-full Playwright passes at
+    # --workers=1 (a fan-out mint, a fan-out check, a fan-out accept) — set to
+    # match the 90 minutes the full sweep gets for a single such pass.
+    timeout-minutes: 90
     container:
       image: ${{ needs.image.outputs.ref }}
       options: --shm-size=1g
@@ -60,14 +91,39 @@ jobs:
       HUSKY: 0
       STORYBOOK_DISABLE_TELEMETRY: 1
     steps:
+      # A fork's GITHUB_TOKEN cannot push back to the fork's own branch, so
+      # every step below that mints or accepts baselines would fail anyway —
+      # and fetching the base ref through `origin` (the fork, per the
+      # checkout below) can also silently compute the wrong merge base. Fail
+      # fast instead, with the remedy the design doc names, rather than
+      # limping through a run that cannot finish. This only prints that
+      # remedy; it does not invoke `gh` itself.
+      - name: Refuse pull requests from forks
+        if: github.event.pull_request.head.repo.fork == true
+        run: |
+          echo "::error::This pull request comes from a fork. GITHUB_TOKEN cannot push baselines back to a fork's branch, so this job cannot mint or accept them here."
+          echo "A maintainer can regenerate baselines directly instead:"
+          echo "  gh workflow run visual-update.yml --ref <branch> --field grep=<pattern>"
+          exit 1
       - uses: actions/checkout@v7
         with:
           # The scoper diffs against the merge base, and the commit steps push
           # back to the branch — neither works on a detached merge commit with
           # no history.
-          ref: ${{ github.event.pull_request.head.ref }}
+          #
+          # head.sha, not head.ref: checking out the exact commit the
+          # triggering event carried means a concurrent push to the same
+          # branch cannot move what this job operates on out from under it
+          # mid-run. The later pushes still target the branch by name (via
+          # HEAD_REF below) — if the branch moved in the meantime, git's own
+          # fast-forward check rejects the push rather than silently
+          # overwriting it.
+          ref: ${{ github.event.pull_request.head.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           fetch-depth: 0
+          # Explicit rather than left to the action's default: two steps
+          # below push with this credential, same as visual-update.yml.
+          persist-credentials: true
       - name: Set up pnpm via corepack
         run: |
           corepack enable
@@ -95,11 +151,22 @@ jobs:
       - name: Identify the merge base
         id: base
         shell: bash
+        env:
+          # Routed through the environment, not interpolated into the
+          # command: `${{ }}` substitutes into the run text before the shell
+          # parses it, and a base branch name is attacker-controlled text on
+          # a job holding contents: write. git allows `$()`, backticks and
+          # `;` in branch names.
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
-          echo "sha=$(git merge-base HEAD FETCH_HEAD)" >> "$GITHUB_OUTPUT"
+          git fetch --no-tags origin "$BASE_REF"
+          if ! MERGE_BASE=$(git merge-base HEAD FETCH_HEAD); then
+            echo "::error::git merge-base produced no result against origin/$BASE_REF."
+            exit 1
+          fi
+          echo "sha=$MERGE_BASE" >> "$GITHUB_OUTPUT"
 
       - name: Decide what to run
         id: scope
@@ -137,6 +204,16 @@ jobs:
       # shot" pattern could silently overwrite a sibling project's correct
       # baseline with a regression. With =missing, Playwright refuses to
       # overwrite anything, so the broad pattern is harmless by construction.
+      #
+      # `missing` mode WRITES the baseline and then FAILS the test on
+      # purpose — Playwright's handleMissing returns a softError under
+      # "missing" mode specifically (never under "all"/"changed"), and our
+      # own visual-config.mjs documents the same thing. So this command is
+      # expected to exit non-zero exactly when it minted something; `|| true`
+      # tolerates that expected exit. Nothing is laundered by tolerating it:
+      # the comparison step below runs WITHOUT DS_VISUAL_CONTAINER, which
+      # pins updateSnapshots to 'none', so any baseline this step failed to
+      # write still hard-fails there instead of being silently accepted.
       - name: Mint baselines for new shots
         if: steps.scope.outputs.run == 'true'
         id: mint
@@ -145,19 +222,28 @@ jobs:
           DS_VISUAL_CONTAINER: '1'
         run: |
           set -euo pipefail
-          MISSING=$(node scripts/visual-missing.mjs || true)
+          if MISSING=$(node scripts/visual-missing.mjs); then
+            :
+          else
+            echo "::error::visual-missing.mjs exited non-zero — treating that as a hard failure, not as 'nothing is missing'."
+            exit 1
+          fi
           if [ -z "$MISSING" ]; then
             echo "Every shot already has a baseline."
             echo "minted=0" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          pnpm exec playwright test --update-snapshots=missing --workers=1 --grep "$MISSING"
+          pnpm exec playwright test --update-snapshots=missing --workers=1 --grep "$MISSING" || true
           COUNT=$(git status --porcelain -- tests/visual/__screenshots__ | wc -l | tr -d ' ')
           echo "minted=$COUNT" >> "$GITHUB_OUTPUT"
 
       - name: Commit the new baselines
         if: steps.mint.outputs.minted != '0' && steps.mint.outputs.minted != ''
         shell: bash
+        env:
+          # See "Identify the merge base" above for why this is routed
+          # through the environment instead of interpolated into the command.
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -166,7 +252,7 @@ jobs:
           git add tests/visual/__screenshots__
           git commit -m "test(visual): ${{ steps.mint.outputs.minted }} new baselines" \
                      -m "Generated on the runner for shots that had none. Review the images in this diff."
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          git push origin "HEAD:$HEAD_REF"
 
       # No DS_VISUAL_CONTAINER: the config pins updateSnapshots to 'none'
       # without it, so a baseline that is still missing at this point is a hard
@@ -178,7 +264,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pnpm exec playwright test --workers=1 --grep "$(cat /tmp/scope-grep.txt)"
+          GREP=$(cat /tmp/scope-grep.txt)
+          if [ -z "$GREP" ]; then
+            echo "::error::scope said run=true but produced no grep pattern — refusing to fall back to an unscoped run of every shot."
+            exit 1
+          fi
+          pnpm exec playwright test --workers=1 --grep "$GREP"
+
+      # The accept run below re-invokes Playwright, which overwrites
+      # test-results/ and playwright-report/ with its own output — destroying
+      # the diff images and the failing report that explain WHY a human
+      # needed to add the visual-accept label in the first place. Preserve
+      # them first; the final upload step includes this copy alongside the
+      # post-accept state.
+      - name: Preserve the failing report before accepting
+        if: steps.check.outcome == 'failure' && contains(github.event.pull_request.labels.*.name, 'visual-accept')
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pre-accept-report
+          cp -r test-results pre-accept-report/test-results 2>/dev/null || true
+          cp -r playwright-report pre-accept-report/playwright-report 2>/dev/null || true
 
       # Overwriting an existing baseline is the operation the zero-tolerance
       # comparison exists to put a human in front of, so it is opt-in per pull
@@ -193,6 +299,9 @@ jobs:
         shell: bash
         env:
           DS_VISUAL_CONTAINER: '1'
+          # See "Identify the merge base" above for why this is routed
+          # through the environment instead of interpolated into the command.
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
           FAILED=$(node scripts/visual-failures.mjs test-results/report.json)
@@ -202,13 +311,17 @@ jobs:
           fi
           pnpm exec playwright test --update-snapshots=changed --workers=1 --grep "$FAILED"
           COUNT=$(git status --porcelain -- tests/visual/__screenshots__ | wc -l | tr -d ' ')
+          if [ "$COUNT" = "0" ]; then
+            echo "The check failed but accepting produced no baseline change — this is not a baseline problem. See the run's failure output above."
+            exit 1
+          fi
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tests/visual/__screenshots__
           git commit -m "test(visual): accept ${COUNT} baselines" \
                      -m "Accepted via the visual-accept label on this pull request. Review the images in this diff."
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          git push origin "HEAD:$HEAD_REF"
           echo "Accepted ${COUNT} baselines." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Report the failing shots
@@ -219,10 +332,38 @@ jobs:
           {
             echo "### Visual regression"
             echo
-            echo "If these changes are intended, add the \`visual-accept\` label and re-run this job."
+            echo "If these changes are intended, add the \`visual-accept\` label — that starts a new run on its own; there is no need to re-run this one."
             echo
             echo '```'
-            node scripts/visual-failures.mjs test-results/report.json | tr '|' '\n'
+            # visual-failures.mjs prints a --grep PATTERN: titles regex-escaped
+            # and joined on unescaped `|`. Splitting that on every `|` (as a
+            # plain `tr` would) also splits on an escaped `\|` inside a title
+            # and leaves the other regex escaping in place. This walks the
+            # pattern by hand, splitting only on unescaped `|` and reversing
+            # the escape (backslash + next char -> next char), to print plain
+            # titles instead.
+            node scripts/visual-failures.mjs test-results/report.json | node -e '
+              let input = "";
+              process.stdin.on("data", (chunk) => { input += chunk; });
+              process.stdin.on("end", () => {
+                const titles = [];
+                let cur = "";
+                for (let i = 0; i < input.length; i++) {
+                  const ch = input[i];
+                  if (ch === "\\" && i + 1 < input.length) {
+                    cur += input[i + 1];
+                    i++;
+                  } else if (ch === "|") {
+                    titles.push(cur);
+                    cur = "";
+                  } else {
+                    cur += ch;
+                  }
+                }
+                titles.push(cur);
+                console.log(titles.join("\n"));
+              });
+            '
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit 1
@@ -235,6 +376,7 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            pre-accept-report/
           retention-days: 14
           if-no-files-found: ignore
 
