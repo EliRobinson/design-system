@@ -8,6 +8,16 @@
 #
 # Requires three repository secrets from the Vercel project:
 #   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+#
+# WHICH vercel.json: the Vercel project's Root Directory is `apps/docs`, and
+# Vercel reads vercel.json from the ROOT DIRECTORY, not the repository root.
+# The build recipe therefore lives in `apps/docs/vercel.json`, and the `cd ../..`
+# in its commands is what climbs back out to the workspace root that `nx` needs.
+# This cost six red deploys (#96): the recipe sat in the repo-root vercel.json,
+# where Vercel never looked, so every run silently fell back to the Next.js
+# framework default (`pnpm run build` — a bare `next build` with no `^build`)
+# and no workspace `dist/` ever existed. If you move the build recipe, move it
+# to wherever Root Directory points, and change both together.
 name: Deploy
 
 on:
@@ -55,9 +65,12 @@ jobs:
           path: ${{ steps.pnpm_store.outputs.path }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: ${{ runner.os }}-pnpm-store-
-      # `vercel build` runs the install and build commands from vercel.json, so
-      # the site ships from exactly the recipe Quality verified — no second
-      # build definition in the dashboard.
+      # `vercel build` runs the install and build commands from
+      # `apps/docs/vercel.json` (see the header note on Root Directory), so the
+      # site ships from exactly the recipe Quality verified — no second build
+      # definition in the dashboard. `vercel pull` brings the project settings
+      # down first; if a dashboard Build Command override is ever switched back
+      # on, it wins over the file and this gate quietly stops meaning anything.
       - name: Pull Vercel project settings
         run: pnpm dlx vercel@latest pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
       - name: Build

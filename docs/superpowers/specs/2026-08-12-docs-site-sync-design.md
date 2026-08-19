@@ -98,6 +98,23 @@ repo root, which is what removes the `cd ../..`: `nx` needs `nx.json` and the pr
 graph, so the build genuinely is a workspace-root operation, and the current configuration
 sets the root one level too deep and then climbs back out.
 
+> **Correction, 2026-08-19 (issue #96).** The first sentence above is right and the rest
+> was never carried out. **Root Directory was never moved** — it is still `apps/docs`. So
+> the `vercel.json` this section specifies got committed at the repo root, where Vercel
+> does not read it, and every production deploy silently fell back to the Next.js
+> framework default (`pnpm run build`, a bare `next build`) with no workspace `dist/`
+> built. Six consecutive red deploys.
+>
+> The failure was invisible for a week because the plan's one manual, out-of-repo step had
+> no owner and nothing verified it. A design that requires a dashboard change should say so
+> as an explicit task with an explicit check, not as a subordinate clause.
+>
+> Fixed by moving the build recipe to `apps/docs/vercel.json` — where Root Directory
+> actually points — and restoring the `cd ../..` this section had hoped to delete. The
+> argument above stands on the merits: rooting at the workspace and dropping the `cd ../..`
+> is still cleaner. It is a Root Directory change, and it should be made deliberately,
+> together with the file move, rather than assumed.
+
 The commands then match `quality.yml` exactly, which is the actual prize — the site builds
 the same way CI verifies it, rather than by a second recipe that happens to agree.
 
