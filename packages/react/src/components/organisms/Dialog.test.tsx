@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { stubConsumerReset } from '../../test/consumerReset.js';
 import {
   Dialog,
   DialogClose,
@@ -229,6 +230,53 @@ describe('Dialog', () => {
 
       expect(screen.getByRole('button', { name: 'Close' })).toHaveAttribute('type', 'button');
       expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute('type', 'submit');
+    });
+  });
+
+  // Issue #103: the dialog rendered in the top-left corner of any consumer app
+  // that ships a CSS reset. `.ds-dialog` set width, max-width, max-height and
+  // padding but no margin, so its centring came from the UA stylesheet's
+  // `dialog { margin: auto }` — and a reset's universal `margin: 0` is an
+  // author rule, which beats the UA regardless of specificity. With the margin
+  // gone, `position: absolute; inset: 0` on a box narrower than the viewport
+  // pins it to the top-left.
+  //
+  // These assertions read computed style rather than geometry on purpose:
+  // jsdom has no layout engine, so there is no box to measure. What it does
+  // have is a UA stylesheet that carries the real `dialog { margin: auto }`
+  // and a cascade that resolves specificity, which is exactly the mechanism
+  // that broke — the used margin is the whole bug.
+  describe('centring under a consumer CSS reset', () => {
+    stubConsumerReset('components/organisms/Dialog.css');
+
+    it('keeps auto margins on .ds-dialog', () => {
+      render(
+        <Dialog defaultOpen>
+          <DialogContent>
+            <DialogTitle>Contact</DialogTitle>
+          </DialogContent>
+        </Dialog>,
+      );
+
+      const styles = getComputedStyle(screen.getByRole('dialog'));
+
+      expect(styles.marginTop).toBe('auto');
+      expect(styles.marginRight).toBe('auto');
+      expect(styles.marginBottom).toBe('auto');
+      expect(styles.marginLeft).toBe('auto');
+    });
+
+    // Proves the fixture above is actually hostile. If a future jsdom stopped
+    // applying the reset — or stopped shipping `dialog { margin: auto }` — the
+    // test above would pass for the wrong reason and go on passing after a
+    // real regression. A bare <dialog> under the same reset has to collapse.
+    it('collapses a <dialog> that has no margin of its own', () => {
+      const bare = document.createElement('dialog');
+      document.body.append(bare);
+
+      expect(getComputedStyle(bare).marginTop).toBe('0px');
+
+      bare.remove();
     });
   });
 });
