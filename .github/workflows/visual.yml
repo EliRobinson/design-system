@@ -5,10 +5,11 @@ on:
   push:
     branches:
       - main
-  # Re-run the check on demand. The Visual update workflow commits baselines
-  # with the default token, and pushes made with that token deliberately do
-  # not trigger workflows — so without this there is no way to verify a
-  # freshly regenerated set except by pushing an unrelated commit.
+  # 06:00 UTC daily. The sweep is the only thing that catches drift with no
+  # commit behind it — a browser patch in the pinned image, or a baseline that
+  # was always marginal.
+  schedule:
+    - cron: '0 6 * * *'
   workflow_dispatch:
 
 # Separate from `quality.yml` on purpose: this job is minutes where that one is
@@ -18,8 +19,12 @@ concurrency:
   group: visual-${{ github.ref }}
   cancel-in-progress: true
 
+# The scoped job commits baselines to the pull request branch, and the full
+# sweep opens a recovery pull request and a tracking issue.
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
   # A job's `container:` is resolved before any of its steps run, so the image
@@ -40,9 +45,206 @@ jobs:
       - id: resolve
         run: echo "ref=$(node scripts/visual-container.mjs --print-image)" >> "$GITHUB_OUTPUT"
 
+  # Only the shots the change could have altered. See
+  # docs/superpowers/specs/2026-08-19-scoped-visual-ci-design.md for why this is
+  # two layers, and why the sidebar fan-out overrides the narrowing.
+  scoped:
+    needs: image
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container:
+      image: ${{ needs.image.outputs.ref }}
+      options: --shm-size=1g
+    env:
+      HUSKY: 0
+      STORYBOOK_DISABLE_TELEMETRY: 1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The scoper diffs against the merge base, and the commit steps push
+          # back to the branch — neither works on a detached merge commit with
+          # no history.
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0
+      - name: Set up pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+      - name: Locate the pnpm store
+        id: pnpm_store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+      - run: pnpm install --frozen-lockfile
+      # The scoper and the missing-baseline detector both enumerate through
+      # Playwright, which needs both builds to collect a single test. This has
+      # to run before scope computation: visual-scope.mjs enumerates through
+      # Playwright's --list, and its per-side guard throws if a changed
+      # component maps to no shot — which happens whenever a newly added
+      # component's stories aren't in the built Storybook yet. Don't reorder
+      # this after the scope step.
+      - name: Build Storybook and the docs site
+        run: pnpm run pretest:visual
+
+      - name: Identify the merge base
+        id: base
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
+          echo "sha=$(git merge-base HEAD FETCH_HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Decide what to run
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/visual-scope.mjs --base "${{ steps.base.outputs.sha }}" > /tmp/plan.json
+          cat /tmp/plan.json
+
+          # The grep goes to a file rather than a step output: it can be long
+          # (the fan-out case names every route) and it contains characters
+          # that a $GITHUB_OUTPUT round trip would mangle.
+          node -pe 'JSON.parse(require("fs").readFileSync("/tmp/plan.json","utf8")).grep ?? ""' > /tmp/scope-grep.txt
+
+          RUN=$(node -pe 'JSON.parse(require("fs").readFileSync("/tmp/plan.json","utf8")).run')
+          REASON=$(node -pe 'JSON.parse(require("fs").readFileSync("/tmp/plan.json","utf8")).reason')
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+
+          printf '### Visual scope\n\n%s\n' "$REASON" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Nothing to check
+        if: steps.scope.outputs.run != 'true'
+        run: cat /tmp/plan.json
+
+      # Missing baselines are new work, not regressions. Minting them here is
+      # what stops a component-adding pull request costing 14 minutes and a
+      # manual dispatch. This can only ever CREATE a baseline — it cannot
+      # overwrite one, which is what keeps it from laundering a regression.
+      #
+      # --update-snapshots=missing, NOT a bare --update-snapshots: Playwright's
+      # bare flag defaults to "changed" mode, which overwrites any baseline
+      # that differs from the current render. grepFor matches by test TITLE,
+      # and titles are not unique across projects (wide vs. narrow share most
+      # of theirs) — so a bare flag combined with this broad "any missing
+      # shot" pattern could silently overwrite a sibling project's correct
+      # baseline with a regression. With =missing, Playwright refuses to
+      # overwrite anything, so the broad pattern is harmless by construction.
+      - name: Mint baselines for new shots
+        if: steps.scope.outputs.run == 'true'
+        id: mint
+        shell: bash
+        env:
+          DS_VISUAL_CONTAINER: '1'
+        run: |
+          set -euo pipefail
+          MISSING=$(node scripts/visual-missing.mjs || true)
+          if [ -z "$MISSING" ]; then
+            echo "Every shot already has a baseline."
+            echo "minted=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pnpm exec playwright test --update-snapshots=missing --workers=1 --grep "$MISSING"
+          COUNT=$(git status --porcelain -- tests/visual/__screenshots__ | wc -l | tr -d ' ')
+          echo "minted=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Commit the new baselines
+        if: steps.mint.outputs.minted != '0' && steps.mint.outputs.minted != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/visual/__screenshots__
+          git commit -m "test(visual): ${{ steps.mint.outputs.minted }} new baselines" \
+                     -m "Generated on the runner for shots that had none. Review the images in this diff."
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+
+      # No DS_VISUAL_CONTAINER: the config pins updateSnapshots to 'none'
+      # without it, so a baseline that is still missing at this point is a hard
+      # failure rather than something quietly written.
+      - name: Visual regression, scoped
+        if: steps.scope.outputs.run == 'true'
+        id: check
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec playwright test --workers=1 --grep "$(cat /tmp/scope-grep.txt)"
+
+      # Overwriting an existing baseline is the operation the zero-tolerance
+      # comparison exists to put a human in front of, so it is opt-in per pull
+      # request and never automatic.
+      #
+      # --update-snapshots=changed, explicit: overwriting IS the intent of
+      # this step, but the mode is spelled out so no reader has to know that a
+      # bare --update-snapshots defaults to "changed" — see the mint step
+      # above for why that default is dangerous when left implicit elsewhere.
+      - name: Accept the changed baselines
+        if: steps.check.outcome == 'failure' && contains(github.event.pull_request.labels.*.name, 'visual-accept')
+        shell: bash
+        env:
+          DS_VISUAL_CONTAINER: '1'
+        run: |
+          set -euo pipefail
+          FAILED=$(node scripts/visual-failures.mjs test-results/report.json)
+          if [ -z "$FAILED" ]; then
+            echo "The check failed but no shot is listed as failing — this is not a baseline problem."
+            exit 1
+          fi
+          pnpm exec playwright test --update-snapshots=changed --workers=1 --grep "$FAILED"
+          COUNT=$(git status --porcelain -- tests/visual/__screenshots__ | wc -l | tr -d ' ')
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/visual/__screenshots__
+          git commit -m "test(visual): accept ${COUNT} baselines" \
+                     -m "Accepted via the visual-accept label on this pull request. Review the images in this diff."
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          echo "Accepted ${COUNT} baselines." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report the failing shots
+        if: steps.check.outcome == 'failure' && !contains(github.event.pull_request.labels.*.name, 'visual-accept')
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "### Visual regression"
+            echo
+            echo "If these changes are intended, add the \`visual-accept\` label and re-run this job."
+            echo
+            echo '```'
+            node scripts/visual-failures.mjs test-results/report.json | tr '|' '\n'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Upload report and diffs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-report-scoped
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # The full sweep. Task 7 renames this job to `full` and adds recovery.
   visual:
     needs: image
     runs-on: ubuntu-latest
+    # Not on pull_request — `scoped` above covers that. Without this, both
+    # jobs would run on every pull request.
+    if: github.event_name != 'pull_request'
     # Advisory. Issue #65 records the criterion for making this required: ten
     # consecutive PRs with no false failure. Flipping it is a checklist item
     # there, not a someday — delete this line when the criterion is met.
