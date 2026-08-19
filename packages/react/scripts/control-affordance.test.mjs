@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { compareSpecificity as compare, specificity } from './specificity.mjs';
+import { compareCascade as compare, specificity, styleRules } from './specificity.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const componentsDir = join(here, '..', 'src', 'components');
@@ -51,26 +51,23 @@ const LINE_PROPERTIES = ['text-decoration-line', 'text-decoration'];
 /** The declaration that wins for the underline, resolved over every loaded sheet. */
 function resolveUnderline(element, state) {
   let winner = null;
-  let winning = [-1, -1, -1];
+  let winning = { layered: true, specificity: [-1, -1, -1] };
 
-  for (const sheet of document.styleSheets) {
-    for (const rule of sheet.cssRules) {
-      if (!rule.selectorText || !rule.style) continue;
-      const property = LINE_PROPERTIES.find((name) => rule.style.getPropertyValue(name));
-      if (!property) continue;
+  for (const { rule, layered } of styleRules(document.styleSheets)) {
+    const property = LINE_PROPERTIES.find((name) => rule.style.getPropertyValue(name));
+    if (!property) continue;
 
-      for (const part of rule.selectorText.split(',')) {
-        const selector = part.trim();
-        const withoutState = state === null ? selector : selector.replaceAll(`:${state}`, '');
-        // A rule gated on a state the element is not in never applies.
-        if (/:(hover|active|focus-visible|focus|disabled)\b/.test(withoutState)) continue;
-        if (!element.matches(withoutState)) continue;
+    for (const part of rule.selectorText.split(',')) {
+      const selector = part.trim();
+      const withoutState = state === null ? selector : selector.replaceAll(`:${state}`, '');
+      // A rule gated on a state the element is not in never applies.
+      if (/:(hover|active|focus-visible|focus|disabled)\b/.test(withoutState)) continue;
+      if (!element.matches(withoutState)) continue;
 
-        const spec = specificity(selector);
-        if (compare(spec, winning) >= 0) {
-          winning = spec;
-          winner = { selector, value: rule.style.getPropertyValue(property).trim() };
-        }
+      const candidate = { layered, specificity: specificity(selector) };
+      if (compare(candidate, winning) >= 0) {
+        winning = candidate;
+        winner = { selector, layered, value: rule.style.getPropertyValue(property).trim() };
       }
     }
   }
@@ -123,19 +120,28 @@ describe('a filled control never renders its own label underlined', () => {
   });
 
   it('loaded the real stylesheets, with the global underline in them', () => {
-    const rules = [...document.styleSheets[0].cssRules];
-    const anchor = rules.find((rule) => rule.selectorText === 'a');
+    const rules = [...styleRules(document.styleSheets)];
+    const anchor = rules.find(({ rule }) => rule.selectorText === 'a');
     expect(anchor, 'tokens.css no longer has a bare `a` rule').toBeDefined();
-    expect(anchor.style.getPropertyValue('text-decoration')).toContain('underline');
-    expect(rules.map((rule) => rule.selectorText)).toContain('.ds-button');
+    expect(anchor.rule.style.getPropertyValue('text-decoration')).toContain('underline');
+    expect(rules.map(({ rule }) => rule.selectorText)).toContain('.ds-button');
   });
 
-  it('pins the specificities the underline turns on', () => {
-    // The global underline is the weakest thing in the room, and has to stay
-    // that way: (0,1,0) and (0,1,1) both outrank (0,0,1).
+  it('pins the two mechanisms the underline turns on', () => {
+    /* The global underline is the weakest thing in the room, and has to stay
+       that way. It used to be weak by specificity alone — (0,1,0) and (0,1,1)
+       both outrank (0,0,1) — and since issue #112 it is also the only rule in
+       the set that sits in a cascade layer, which beats specificity outright.
+       Both facts are pinned: a specificity regression and a de-layering are
+       different edits and either would be a defect. */
     expect(specificity('a')).toEqual([0, 0, 1]);
     expect(specificity('.ds-button')).toEqual([0, 1, 0]);
     expect(specificity('a.ds-button')).toEqual([0, 1, 1]);
+
+    const layered = [...styleRules(document.styleSheets)]
+      .filter((candidate) => candidate.layered)
+      .map(({ rule }) => rule.selectorText);
+    expect(layered).toEqual(['a', 'a:hover']);
   });
 
   for (const theme of THEMES) {

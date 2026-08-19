@@ -61,7 +61,7 @@ import { COMBINATIONS, combinationValues } from '@elirobinson/tokens/contrast';
 import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { compareSpecificity as compare, specificity } from './specificity.mjs';
+import { compareCascade as compare, specificity, styleRules } from './specificity.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (...parts) => readFileSync(join(here, '..', ...parts), 'utf8');
@@ -78,23 +78,21 @@ const BUTTON_CSS = read('src', 'components', 'atoms', 'Button.css');
  */
 function resolveColor(element, state) {
   let winner = null;
-  let winningSpecificity = [-1, -1, -1];
+  let winning = { layered: true, specificity: [-1, -1, -1] };
 
-  for (const sheet of document.styleSheets) {
-    for (const rule of sheet.cssRules) {
-      if (!rule.selectorText || !rule.style?.color) continue;
-      for (const part of rule.selectorText.split(',')) {
-        const selector = part.trim();
-        const withoutState = state === null ? selector : selector.replaceAll(`:${state}`, '');
-        // A rule gated on a state the element is not in never applies.
-        if (/:(hover|active|focus-visible|focus|disabled)\b/.test(withoutState)) continue;
-        if (!element.matches(withoutState)) continue;
+  for (const { rule, layered } of styleRules(document.styleSheets)) {
+    if (!rule.style?.color) continue;
+    for (const part of rule.selectorText.split(',')) {
+      const selector = part.trim();
+      const withoutState = state === null ? selector : selector.replaceAll(`:${state}`, '');
+      // A rule gated on a state the element is not in never applies.
+      if (/:(hover|active|focus-visible|focus|disabled)\b/.test(withoutState)) continue;
+      if (!element.matches(withoutState)) continue;
 
-        const spec = specificity(selector);
-        if (compare(spec, winningSpecificity) >= 0) {
-          winningSpecificity = spec;
-          winner = { selector, color: rule.style.color };
-        }
+      const candidate = { layered, specificity: specificity(selector) };
+      if (compare(candidate, winning) >= 0) {
+        winning = candidate;
+        winner = { selector, layered, color: rule.style.color };
       }
     }
   }
@@ -198,7 +196,7 @@ describe('every <a class="ds-button ds-button--*"> label clears its threshold', 
   });
 
   it('loaded the real stylesheets, not an empty document', () => {
-    const selectors = [...document.styleSheets[0].cssRules].map((r) => r.selectorText);
+    const selectors = [...styleRules(document.styleSheets)].map(({ rule }) => rule.selectorText);
     expect(selectors).toContain('a:hover'); // tokens.css
     for (const { modifier } of VARIANTS) {
       expect(selectors.join('\n')).toContain(`.ds-button--${modifier}:hover`); // Button.css
@@ -214,6 +212,11 @@ describe('every <a class="ds-button ds-button--*"> label clears its threshold', 
     expect(specificity('.ds-button--accent')).toEqual([0, 1, 0]);
     // (0,2,0) beats (0,1,1) — this is the fix.
     expect(specificity('.ds-button--accent:hover')).toEqual([0, 2, 0]);
+    // And since issue #112 there is a second, stronger one behind it: the `a`
+    // rules moved into `@layer base`, and an unlayered declaration outranks a
+    // layered one whatever the specificity. `resolveColor` models that — see
+    // `compareCascade` — so this file would still be measuring the right
+    // winner if the (0,2,0) restatements above were ever removed.
   });
 
   it('resolved a brand for every palette and theme', () => {

@@ -39,3 +39,45 @@ export function specificity(selector) {
 
 /** Sort comparator for two specificity triples. */
 export const compareSpecificity = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+
+/**
+ * Every style rule in `sheets`, flattened out of any cascade layer it sits in
+ * and tagged with whether it was in one.
+ *
+ * `sheet.cssRules` is one level deep. tokens.css now puts its bare `a` rule in
+ * `@layer base` (issue #112), which both jsdom and a browser expose as a
+ * CSSLayerBlockRule holding the real rules — so a resolver that iterated
+ * `cssRules` directly stopped seeing `a` at all, and reported "nothing sets a
+ * text-decoration" rather than the truth.
+ *
+ * @param {Iterable<CSSStyleSheet>} sheets
+ * @returns {Generator<{ rule: CSSStyleRule, layered: boolean }>}
+ */
+export function* styleRules(sheets) {
+  for (const sheet of sheets) yield* rulesIn(sheet.cssRules, false);
+}
+
+function* rulesIn(rules, layered) {
+  for (const rule of rules) {
+    if (rule.cssRules && /^@layer\b/.test(rule.cssText ?? '')) {
+      yield* rulesIn(rule.cssRules, true);
+    } else if (rule.selectorText && rule.style) {
+      yield { rule, layered };
+    }
+  }
+}
+
+/**
+ * Which of two candidate declarations a browser picks. Positive when `a` wins.
+ *
+ * Layer beats specificity, and it is not a tie-breaker in the same series: an
+ * UNLAYERED declaration wins over a layered one however specific the layered
+ * one is. That is the whole mechanism issue #112 turned on, and a comparator
+ * that only knew specificity would now get `a:hover` (0,1,1) vs
+ * `.ds-button--accent` (0,1,0) exactly backwards.
+ *
+ * @param {{ layered: boolean, specificity: [number, number, number] }} a
+ * @param {{ layered: boolean, specificity: [number, number, number] }} b
+ */
+export const compareCascade = (a, b) =>
+  Number(b.layered) - Number(a.layered) || compareSpecificity(a.specificity, b.specificity);
