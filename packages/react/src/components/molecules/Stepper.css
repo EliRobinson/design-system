@@ -51,8 +51,12 @@
   font-weight: var(--fw-medium);
 }
 
+/* The label is --status-success-on, the text that belongs to this fill, and
+   not --surface. --surface is a themed page colour: on a dark page it resolves
+   near-black, so a completed step drew a dark tick on a mid green. The -on
+   member is the same in both themes because the fill is. */
 .ds-stepper__step--complete .ds-stepper__indicator {
   border-color: var(--status-success);
   background: var(--status-success);
-  color: var(--surface);
+  color: var(--status-success-on); /* 5.17:1 on the fill, both themes */
 }

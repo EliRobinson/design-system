@@ -8,17 +8,18 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
+import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { describe, expect, it } from 'vitest';
 
 import { BLOCK_BEGIN, BLOCK_END } from './brand.mjs';
-import { buildBrandManifest, renderRepoIndexTable } from './brand-manifest.mjs';
+import { BRAND_SOURCES, buildBrandManifest, renderRepoIndexTable } from './brand-manifest.mjs';
 import { buildGuidelineCards } from './guideline-cards.mjs';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const root = join(repoRoot, 'design-system-docs');
-const tokens = parseTokensCss(
-  readFileSync(join(repoRoot, 'packages/tokens/src/tokens.css'), 'utf8'),
-);
+/* Every token stylesheet — buildGuidelineCards refuses tokens.css alone, and
+   the manifest asks it which cards are generated. */
+const tokens = parseTokensCss(readTokenStylesheets(join(repoRoot, 'packages/tokens/src')));
 
 const manifest = buildBrandManifest({ root, tokens });
 const { artifacts } = manifest;
@@ -60,6 +61,21 @@ describe('brand manifest coverage', () => {
     const tokensArtifact = byId('colors_and_type');
     expect(tokensArtifact.symlinkTarget).toContain('packages/tokens/src/tokens.css');
     expect(tokensArtifact.ships).toBe(true);
+  });
+
+  it('ships the two layers colors_and_type.css @imports, under those exact names', () => {
+    /* The specifiers are relative — `@import './palettes.css'` — and the
+       importing file is copied as colors_and_type.css, so the siblings have to
+       keep these filenames or the shipped brand skill renders greyscale. */
+    for (const [id, target] of [
+      ['palettes', 'packages/tokens/src/palettes.css'],
+      ['mobile', 'packages/tokens/src/mobile.css'],
+    ]) {
+      const artifact = byId(id);
+      expect(artifact.symlinkTarget, id).toContain(target);
+      expect(artifact.ships, id).toBe(true);
+      expect(BRAND_SOURCES, id).toContain(`${id === 'palettes' ? 'palettes' : 'mobile'}.css`);
+    }
   });
 });
 

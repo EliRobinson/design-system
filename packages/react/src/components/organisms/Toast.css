@@ -23,20 +23,33 @@
   padding: var(--space-4);
 }
 
+/* The stripe is the toast's whole edge, and it is the only thing that says
+   which kind of toast this is before a word is read — a meaningful non-text
+   graphic under SC 1.4.11, so each colour has to clear 3:1 against the page it
+   sits on. Three of the four fills do on their own: success 5.17:1 light /
+   4.06:1 dark, danger 5.41 / 3.88, info 5.06 / 4.15.
+
+   Warning is the asymmetry, and it is deliberate. --status-warning is 1.87:1
+   on white, because a yellow pushed dark enough to clear 3:1 there is olive
+   and no longer reads as caution. Painted bare it would be a stripe a reader
+   cannot find on a white page. So warning — and only warning — reaches for
+   --status-warning-border (3.76:1 light, 11.22:1 dark), the token that exists
+   to carry the floor the fill cannot. In dark the border token IS the fill,
+   which is why this costs nothing there. */
 .ds-toast--success {
-  border-color: var(--status-success);
+  border-color: var(--status-success); /* 5.17:1 light, 4.06:1 dark */
 }
 
 .ds-toast--warning {
-  border-color: var(--status-warning);
+  border-color: var(--status-warning-border); /* 3.76:1 light, 11.22:1 dark */
 }
 
 .ds-toast--danger {
-  border-color: var(--status-danger);
+  border-color: var(--status-danger); /* 5.41:1 light, 3.88:1 dark */
 }
 
 .ds-toast--info {
-  border-color: var(--status-info);
+  border-color: var(--status-info); /* 5.06:1 light, 4.15:1 dark */
 }
 
 .ds-toast__content {
@@ -80,7 +93,8 @@
 }
 
 /* The action is a control; the toast's own edge and its status stripe stay
-   as they are — the stripe colours already clear 3:1 in both themes. */
+   as they are — three of the four stripes clear 3:1 in both themes as the bare
+   fill, and warning gets there through --status-warning-border. */
 .ds-toast__action {
   background: transparent;
   border: 1px solid var(--border-control);

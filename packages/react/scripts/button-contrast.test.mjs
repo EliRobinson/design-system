@@ -4,7 +4,7 @@
  * carries a `color` declaration in each state. This file asserts the
  * *outcome*: resolve the cascade over the real shipped stylesheets and measure
  * what an `<a class="ds-button ds-button--VARIANT">` label actually renders
- * as, resting, hovered and pressed, in both themes.
+ * as, resting, hovered and pressed, in every palette and theme.
  *
  * Those are two different claims. A `color` declaration that loses the cascade
  * satisfies the first and not the second, and losing the cascade is exactly
@@ -22,6 +22,30 @@
  * Specificity comes from ./specificity.mjs — there is no DOM API that exposes
  * it — so the two specificities the bug turned on are pinned as their own
  * assertions below, where the arithmetic is checkable rather than assumed.
+ *
+ * ---------------------------------------------------------------------------
+ * Why nothing here reads tokens.css by name
+ * ---------------------------------------------------------------------------
+ * This file used to open tokens.css, run its own `:root` and
+ * `[data-theme='dark'], .dark` regexes over the text, and inject that one
+ * string into jsdom. Every part of that broke on the palette split, and none
+ * of it broke loudly:
+ *
+ *   - `--accent`, `--accent-hover`, `--accent-press` and `--link-hover` moved
+ *     to palettes.css. A hand-rolled read of tokens.css still parses and
+ *     simply returns `undefined` for each of them.
+ *   - jsdom does NOT follow `@import`, so injecting tokens.css alone gives a
+ *     document whose stylesheet declares no brand at all.
+ *   - a per-theme regex cannot see `[data-palette='slate']`, and slate is
+ *     where a hardcoded hover DIRECTION would show up: ember lightens 500→400
+ *     on hover, slate darkens 600→700 in light and 300→400 in dark.
+ *
+ * So the roster comes from `@elirobinson/tokens/token-stylesheets`, the values
+ * come from contrast.mjs's `combinationValues` — the same resolver
+ * packages/tokens' own contrast.test.mjs measures against, which knows the
+ * four-block cascade including the (0,2,0) slate-dark block — and the
+ * stylesheet handed to jsdom is every source concatenated in cascade order, so
+ * the `@import` jsdom will not follow is already flattened.
  */
 
 import { readFileSync } from 'node:fs';
@@ -29,6 +53,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { contrastRatio } from '@elirobinson/tokens/color';
+/* The same resolver packages/tokens measures itself with, reached through its
+   exports map. A second implementation of "what does this token resolve to
+   under this palette and theme" is how the gate and the thing it gates come
+   to disagree. */
+import { COMBINATIONS, combinationValues } from '@elirobinson/tokens/contrast';
+import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { compareSpecificity as compare, specificity } from './specificity.mjs';
@@ -36,7 +66,7 @@ import { compareSpecificity as compare, specificity } from './specificity.mjs';
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (...parts) => readFileSync(join(here, '..', ...parts), 'utf8');
 
-const TOKENS_CSS = readFileSync(join(here, '..', '..', 'tokens', 'src', 'tokens.css'), 'utf8');
+const TOKEN_SOURCES = readTokenStylesheets();
 const BUTTON_CSS = read('src', 'components', 'atoms', 'Button.css');
 
 /**
@@ -71,29 +101,18 @@ function resolveColor(element, state) {
   return winner;
 }
 
-/** Follow a `var()` chain to a concrete colour, in one theme. */
-function resolveVar(value, theme) {
+/**
+ * Follow a `var()` chain to a concrete colour, inside one palette × theme.
+ *
+ * jsdom exposes custom properties on neither getComputedStyle nor
+ * CSSStyleDeclaration, so the resolved token map is the only place these
+ * values exist in this test.
+ */
+function resolveVar(value, values) {
   const reference = value.trim().match(/^var\(\s*(--[\w-]+)\s*\)$/);
-  return reference ? tokenValue(reference[1], theme) : value.trim();
+  return reference ? values.get(reference[1]) : value.trim();
 }
 
-/* A token's value per theme. Read straight out of tokens.css: jsdom exposes
-   custom properties on neither getComputedStyle nor CSSStyleDeclaration, so
-   the stylesheet text is the only place these values exist in this test. */
-function tokenValue(name, theme) {
-  const block =
-    theme === 'dark'
-      ? TOKENS_CSS.match(/\[data-theme='dark'\],\s*\.dark\s*\{([\s\S]*?)\n\}/)[1]
-      : '';
-  const root = TOKENS_CSS.match(/:root\s*\{([\s\S]*?)\n\}/)[1];
-  const find = (text) => [...text.matchAll(new RegExp(`${name}:\\s*([^;]+);`, 'g'))].at(-1)?.[1];
-  const raw = find(block) ?? find(root);
-  if (raw === undefined) return undefined;
-  const reference = raw.trim().match(/^var\(\s*(--[\w-]+)\s*\)$/);
-  return reference ? tokenValue(reference[1], theme) : raw.trim();
-}
-
-const THEMES = ['light', 'dark'];
 const STATES = [
   [null, 'resting'],
   ['hover', 'hovered'],
@@ -104,6 +123,11 @@ const STATES = [
    state — so the label is measured against what is actually under it rather
    than against the page background. `--secondary` and `--ghost` paint no fill
    of their own when resting, so the page shows through and `--bg` is right.
+
+   The fills are NAMED, never assumed to be a direction on the ramp. That is
+   what makes this table survive a second palette: ember's accent lightens on
+   hover (500 -> 400) and slate's darkens (600 -> 700 in light, 300 -> 400 in
+   dark), and a component reads `--accent-hover` either way.
 
    `threshold` is 4.5 (SC 1.4.3) everywhere but disabled: SC 1.4.3 excludes
    text that is part of an inactive user interface component, and
@@ -139,16 +163,27 @@ const VARIANTS = [
 ];
 
 describe('every <a class="ds-button ds-button--*"> label clears its threshold', () => {
-  /** One live anchor per `${modifier}:${theme}`, all in the same document. */
+  /** One live anchor per `${modifier}:${combination}`, all in the same document. */
   const anchors = new Map();
+  /** The resolved token values per palette × theme, keyed by combination id. */
+  const tokens = new Map(COMBINATIONS.map((c) => [c.id, combinationValues(TOKEN_SOURCES, c)]));
 
   beforeAll(() => {
     const style = document.createElement('style');
-    style.textContent = `${TOKENS_CSS}\n${BUTTON_CSS}`;
+    /* Cascade order, flattened: palettes.css then tokens.css then the
+       component. tokens.css's `@import './palettes.css'` is left where it is
+       and is inert — jsdom parses it as a CSSImportRule and never fetches it,
+       which is the whole reason the sources are concatenated here. */
+    style.textContent = [...TOKEN_SOURCES, BUTTON_CSS].join('\n');
     document.head.appendChild(style);
 
-    for (const theme of THEMES) {
+    for (const { palette, theme, id } of COMBINATIONS) {
       const host = document.createElement('div');
+      /* The dials as a consumer sets them. Both are inherited attributes in
+         the selector sense — palettes.css's blocks are `[data-palette='…']`
+         and `[data-theme='dark']`, not `:root`-only — so a host div is a
+         faithful stand-in for the documented mounting point. */
+      if (palette !== 'ember') host.setAttribute('data-palette', palette);
       if (theme === 'dark') host.setAttribute('data-theme', 'dark');
       for (const { modifier } of VARIANTS) {
         const anchor = document.createElement('a');
@@ -156,7 +191,7 @@ describe('every <a class="ds-button ds-button--*"> label clears its threshold', 
         anchor.href = '#';
         anchor.textContent = 'Read the guide';
         host.appendChild(anchor);
-        anchors.set(`${modifier}:${theme}`, anchor);
+        anchors.set(`${modifier}:${id}`, anchor);
       }
       document.body.appendChild(host);
     }
@@ -164,10 +199,13 @@ describe('every <a class="ds-button ds-button--*"> label clears its threshold', 
 
   it('loaded the real stylesheets, not an empty document', () => {
     const selectors = [...document.styleSheets[0].cssRules].map((r) => r.selectorText);
-    expect(selectors).toContain('a:hover');
+    expect(selectors).toContain('a:hover'); // tokens.css
     for (const { modifier } of VARIANTS) {
-      expect(selectors.join('\n')).toContain(`.ds-button--${modifier}:hover`);
+      expect(selectors.join('\n')).toContain(`.ds-button--${modifier}:hover`); // Button.css
     }
+    // palettes.css — the file jsdom would have silently skipped over the
+    // `@import`, taking the entire brand with it.
+    expect(selectors).toContain("[data-palette='slate']");
   });
 
   it('pins the specificities the bug turned on', () => {
@@ -178,16 +216,26 @@ describe('every <a class="ds-button ds-button--*"> label clears its threshold', 
     expect(specificity('.ds-button--accent:hover')).toEqual([0, 2, 0]);
   });
 
+  it('resolved a brand for every palette and theme', () => {
+    // Reading tokens.css alone leaves all four of these undefined, and every
+    // ratio below would then report null rather than fail on a number.
+    for (const { id } of COMBINATIONS) {
+      for (const name of ['--accent', '--accent-hover', '--accent-press', '--accent-fg']) {
+        expect(tokens.get(id).get(name), `${name} in ${id}`).toMatch(/^(#|oklch|rgb)/);
+      }
+    }
+  });
+
   for (const { modifier, threshold, fills } of VARIANTS) {
-    for (const theme of THEMES) {
+    for (const { id } of COMBINATIONS) {
       for (const [state, label] of STATES) {
-        it(`--${modifier}, ${theme}, ${label} >= ${threshold}:1`, () => {
-          const anchor = anchors.get(`${modifier}:${theme}`);
-          const winner = resolveColor(anchor, state);
+        it(`--${modifier}, ${id}, ${label} >= ${threshold}:1`, () => {
+          const values = tokens.get(id);
+          const winner = resolveColor(anchors.get(`${modifier}:${id}`), state);
           expect(winner, `nothing set a color for --${modifier} ${label}`).not.toBeNull();
 
-          const foreground = resolveVar(winner.color, theme);
-          const background = tokenValue(fills[label], theme);
+          const foreground = resolveVar(winner.color, values);
+          const background = values.get(fills[label]);
           const measured = contrastRatio(foreground, background);
 
           expect(
@@ -205,10 +253,10 @@ describe('every <a class="ds-button ds-button--*"> label clears its threshold', 
 
   it('is won by the variant, not by the global a:hover', () => {
     for (const { modifier } of VARIANTS) {
-      for (const theme of THEMES) {
-        const winner = resolveColor(anchors.get(`${modifier}:${theme}`), 'hover');
-        expect(winner.selector, `--${modifier} ${theme} hover`).not.toBe('a:hover');
-        expect(winner.color, `--${modifier} ${theme} hover`).not.toBe('var(--link-hover)');
+      for (const { id } of COMBINATIONS) {
+        const winner = resolveColor(anchors.get(`${modifier}:${id}`), 'hover');
+        expect(winner.selector, `--${modifier} ${id} hover`).not.toBe('a:hover');
+        expect(winner.color, `--${modifier} ${id} hover`).not.toBe('var(--link-hover)');
       }
     }
   });

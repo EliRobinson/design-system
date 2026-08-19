@@ -15,11 +15,11 @@
  * - Three stylesheet conventions coexist (`../styles.css`, a sibling
  *   `_card.css`, `colors_and_type.css` at varying depths). Each artifact's
  *   dependencies are recorded as written, never normalised.
- * - Some paths escape the folder: `colors_and_type.css`, `fonts.css`, and
- *   everything under `fonts/` are symlinks into `packages/tokens` (which
- *   `find -type f` misses — the walker uses dirents and records the target),
- *   and the generated `styles.css` `@import`s the real component stylesheets
- *   from `packages/react`.
+ * - Some paths escape the folder: `colors_and_type.css`, `palettes.css`,
+ *   `mobile.css`, `fonts.css`, and everything under `fonts/` are symlinks into
+ *   `packages/tokens` (which `find -type f` misses — the walker uses dirents
+ *   and records the target), and the generated `styles.css` `@import`s the real
+ *   component stylesheets from `packages/react`.
  *
  * Every file the walker finds must be claimed by some artifact's members;
  * an unclaimed file is a hard error, so a new folder cannot be silently
@@ -27,17 +27,37 @@
  */
 
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, readlinkSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, readlinkSync } from 'node:fs';
 import { dirname, join, resolve as resolvePath, sep } from 'node:path';
 
 import { buildGuidelineCards } from './guideline-cards.mjs';
 
 /* Copied verbatim into the consumer tarball by build-artifacts.mjs. Anything
    not listed is repo-internal — that allow-list is the entire ships rule.
-   fonts.css and fonts/ travel with colors_and_type.css: it @imports
-   './fonts.css', so shipping the stylesheet without the faces would leave a
-   dangling import in every consumer's skill. */
-export const BRAND_SOURCES = ['colors_and_type.css', 'fonts.css', 'fonts', 'assets', 'ui_kits'];
+
+   fonts.css, fonts/, palettes.css and mobile.css all travel with
+   colors_and_type.css because it `@import`s each of them, and a stylesheet
+   shipped without what it imports is a dangling import in every consumer's
+   skill. palettes.css is the one that made this a live defect rather than a
+   theoretical one: it carries the whole brand, so the first tarball after the
+   palette split contained a colors_and_type.css whose `@import './palettes.css'`
+   resolved to nothing, and the shipped skill rendered greyscale while every
+   file it names was present.
+
+   The names are not free. `@import './palettes.css'` is a RELATIVE specifier
+   resolved against the importing file, and the importing file is copied under
+   the name colors_and_type.css — so these two must sit beside it as exactly
+   `palettes.css` and `mobile.css`. Renaming either here breaks the brand
+   silently, the same way the omission did. */
+export const BRAND_SOURCES = [
+  'colors_and_type.css',
+  'palettes.css',
+  'mobile.css',
+  'fonts.css',
+  'fonts',
+  'assets',
+  'ui_kits',
+];
 
 const GUIDELINE_CARDS_MODULE = 'packages/ai-patterns/src/artifacts/guideline-cards.mjs';
 const STYLES_GENERATOR = 'packages/ai-patterns/scripts/build-design-project.mjs';
@@ -124,7 +144,7 @@ function hostOf(url) {
 function originScanner() {
   const cssCache = new Map();
 
-  function cssOrigins(absolutePath, seen = new Set()) {
+  function cssOrigins(absolutePath, referencedBy, seen = new Set()) {
     const key = resolvePath(absolutePath);
     if (seen.has(key)) {
       return [];
@@ -136,15 +156,37 @@ function originScanner() {
     let source;
     try {
       source = readFileSync(key, 'utf8');
-    } catch {
-      return []; // a dangling link is the artifact's own defect, not the scanner's
+    } catch (error) {
+      /* A local @import that resolves to nothing is a hard error, not a shrug.
+         This used to return [] on the reasoning that a broken reference was
+         the artifact's own defect rather than the scanner's — which is exactly
+         how the palette split shipped a broken brand skill. tokens.css gained
+         `@import './palettes.css'`; the copy staged into the tarball had no
+         such sibling because BRAND_SOURCES had not been widened; the scanner
+         swallowed the miss; and the manifest recorded a perfectly healthy
+         artifact for a stylesheet that rendered every page greyscale.
+
+         Nothing downstream can distinguish "names no external origin" from
+         "could not be read", so the distinction has to be drawn here, at the
+         one place that knows. An @import names a file inside a chain this repo
+         ships whole, so there is no version of a dangling one worth
+         publishing, and failing the build is the whole of the fix. Note the
+         entry `<link>` in `originsOf` is deliberately *not* held to this — see
+         the comment there. */
+      throw new Error(
+        `brand manifest: ${referencedBy} @imports "${absolutePath}", which is not on ` +
+          'disk. A dangling @import ships as a silently unstyled artifact — fix the ' +
+          'reference, or add its target to BRAND_SOURCES if it is a sibling that was ' +
+          'never staged.',
+        { cause: error },
+      );
     }
     const origins = new Set(
       [...source.matchAll(CSS_FETCH_PATTERN)].map((match) => hostOf(match[1])),
     );
     for (const match of source.matchAll(/@import\s+(?:url\()?['"]([^'"]+)['"]/g)) {
       if (!/^https?:/.test(match[1])) {
-        for (const origin of cssOrigins(join(dirname(key), match[1]), seen)) {
+        for (const origin of cssOrigins(join(dirname(key), match[1]), key, seen)) {
           origins.add(origin);
         }
       }
@@ -159,7 +201,17 @@ function originScanner() {
       [...contents.matchAll(HTML_FETCH_PATTERN)].map((match) => hostOf(match[1])),
     );
     for (const href of stylesheetLinks(contents)) {
-      for (const origin of cssOrigins(join(root, dirname(entryPath), href))) {
+      const target = join(root, dirname(entryPath), href);
+      /* An absent <link> target is tolerated where an absent @import is not,
+         and the asymmetry is deliberate. An @import sits inside a stylesheet
+         this repo ships, so its target belongs to a chain the tarball must
+         carry whole. A <link> in an HTML file can legitimately name a file
+         that only exists at the far end: every `_project-mirror/` entry links
+         the design project's own `styles.css`, which is deliberately not
+         mirrored, and the manifest already states that as `blockedBy` rather
+         than treating it as damage. */
+      if (!existsSync(target)) continue;
+      for (const origin of cssOrigins(target, entryPath)) {
         origins.add(origin);
       }
     }
@@ -298,6 +350,26 @@ export function buildBrandManifest({ root, tokens }) {
     origin: 'mirrored',
     members: [{ path: 'colors_and_type.css', role: 'entry' }],
   });
+  /* The two layers colors_and_type.css @imports. Separate artifacts rather
+     than members of it, because each is its own dial — a palette is swapped by
+     an attribute on the root element, not by editing the file that imports
+     it — and because the ships rule reads the top-level path. */
+  add({
+    id: 'palettes',
+    entry: 'palettes.css',
+    category: 'tokens',
+    title: 'Palette layer',
+    origin: 'mirrored',
+    members: [{ path: 'palettes.css', role: 'entry' }],
+  });
+  add({
+    id: 'mobile',
+    entry: 'mobile.css',
+    category: 'tokens',
+    title: 'Platform layer',
+    origin: 'mirrored',
+    members: [{ path: 'mobile.css', role: 'entry' }],
+  });
   add({
     id: 'styles',
     entry: 'styles.css',
@@ -344,9 +416,9 @@ export function buildBrandManifest({ root, tokens }) {
     });
   }
 
-  /* -- Guideline cards. Origin comes from buildGuidelineCards — the eleven
-        paths it emits are generated, everything else in the folder is
-        editorial writing. File inspection cannot recover this distinction. */
+  /* -- Guideline cards. Origin comes from buildGuidelineCards — the paths it
+        emits are generated, everything else in the folder is editorial
+        writing. File inspection cannot recover this distinction. */
   for (const file of under('guidelines')) {
     const contents = read(file.path);
     const card = parseDsCard(contents);
@@ -651,19 +723,31 @@ export function renderRepoIndexTable(manifest) {
     return `${first.title.split(' — ')[0]}.`;
   };
 
-  const tokensArtifact = kit('colors_and_type');
-  const tokensNote = tokensArtifact.symlinkTarget
-    ? ` Symlink to \`${tokensArtifact.symlinkTarget.replace(/^(\.\.\/)+/, '')}\`.`
-    : '';
-  const fontsArtifact = kit('fonts');
-  const fontsNote = fontsArtifact.symlinkTarget
-    ? ` Symlink to \`${fontsArtifact.symlinkTarget.replace(/^(\.\.\/)+/, '')}\`.`
-    : '';
+  const symlinkNote = (id) => {
+    const target = kit(id).symlinkTarget;
+    return target ? ` Symlink to \`${target.replace(/^(\.\.\/)+/, '')}\`.` : '';
+  };
 
   const rows = [
     {
       path: 'colors_and_type.css',
-      description: `All brand design tokens — colors, type, spacing, radii, shadow, motion.${tokensNote}`,
+      description:
+        'The neutral ramp, surfaces, type, spacing, radii, shadow and motion — and the ' +
+        `entry point that @imports the two layers below.${symlinkNote('colors_and_type')}`,
+    },
+    {
+      path: 'palettes.css',
+      description:
+        'The palette layer — brand ramps and every semantic derived from them, per ' +
+        '`data-palette` and `data-theme`. colors_and_type.css @imports it, so it must ' +
+        `keep this filename.${symlinkNote('palettes')}`,
+    },
+    {
+      path: 'mobile.css',
+      description:
+        'The platform layer — radii, the small end of the type ramp, gutter and ' +
+        'containers under `data-platform="mobile"`. Declares no token of its own and ' +
+        `changes no colour.${symlinkNote('mobile')}`,
     },
     {
       path: 'styles.css',
@@ -675,7 +759,7 @@ export function renderRepoIndexTable(manifest) {
       path: 'fonts.css',
       description:
         '@font-face for Geist and JetBrains Mono, self-hosted — colors_and_type.css ' +
-        `@imports it.${fontsNote}`,
+        `@imports it.${symlinkNote('fonts')}`,
     },
     {
       path: 'fonts/',

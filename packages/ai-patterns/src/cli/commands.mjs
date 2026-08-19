@@ -111,13 +111,13 @@ export function list(env) {
     lines.push(`  ${inventory.hooks.map((hook) => hook.name).join('  ')}`);
   }
 
-  const typography = cssClasses(env.tokensCss);
+  const typography = cssClasses(env.tokenStylesheets);
   if (typography.length) {
     lines.push('', 'TYPOGRAPHY CLASSES  use these instead of ad-hoc font-size utilities');
     lines.push(`  ${typography.join('  ')}`);
   }
 
-  const variables = cssVariables(env.tokensCss);
+  const variables = cssVariables(env.tokenStylesheets);
   if (variables.length) {
     const prefixes = group(variables, ({ name }) => name.split('-')[2] ?? name);
     lines.push('', `TOKENS  ${variables.length} custom properties — \`ds tokens\` for values`);
@@ -195,9 +195,9 @@ export function props(env, name) {
 }
 
 export function tokens(env, filter) {
-  if (!env.tokensCss) return fail(installHint(TOKENS_PKG));
+  if (!env.tokenStylesheets) return fail(installHint(TOKENS_PKG));
 
-  const variables = cssVariables(env.tokensCss).filter(
+  const variables = cssVariables(env.tokenStylesheets).filter(
     ({ name, value }) => !filter || name.includes(filter) || value.includes(filter),
   );
 
@@ -215,7 +215,7 @@ export function tokens(env, filter) {
 }
 
 export function classes(env, filter) {
-  const all = [...cssClasses(env.tokensCss), ...cssClasses(env.componentCss)].filter(
+  const all = [...cssClasses(env.tokenStylesheets), ...cssClasses(env.componentCss)].filter(
     (name) => !filter || name.includes(filter),
   );
 

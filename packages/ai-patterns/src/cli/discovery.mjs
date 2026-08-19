@@ -179,15 +179,44 @@ export function loadInventory(packageDir) {
 
 // --- CSS ------------------------------------------------------------------
 
+/* Both readers below take one stylesheet or several, because the token
+   vocabulary is spread across more than one file — see TOKEN_STYLESHEETS. */
+const sources = (css) => (css === null || css === undefined ? [] : [css].flat());
+
 export function cssClasses(css) {
-  if (!css) return [];
-  return [...new Set([...css.matchAll(/^\.([\w-]+)/gm)].map((match) => match[1]))].sort();
+  return [
+    ...new Set(sources(css).flatMap((one) => [...one.matchAll(/^\.([\w-]+)/gm)].map((m) => m[1]))),
+  ].sort();
 }
+
+/**
+ * The token-declaring stylesheets of an installed @elirobinson/tokens, in
+ * CASCADE order — @imported files first, the way a browser flattens them.
+ *
+ * This is a second copy of `TOKEN_STYLESHEETS` from
+ * `@elirobinson/tokens/token-stylesheets`, and it is here for the same reason
+ * `cssVariables` is a second copy of that package's parser: importing either
+ * one would make @elirobinson/tokens a *runtime* dependency (see below). It
+ * cannot be derived from the file either — tokens.css `@import`s mobile.css and
+ * fonts.css as well, and neither belongs in a token roster: mobile.css's
+ * `:root:root` block would be read as a set of defaults it is not, and
+ * fonts.css declares no token at all.
+ *
+ * `discovery.test.mjs` pins this list to the package's own, so the duplication
+ * is checked rather than merely hoped for.
+ */
+export const TOKEN_STYLESHEETS = ['palettes.css', 'tokens.css'];
 
 /**
  * Custom properties declared on `:root`, with CSS's last-declaration-wins
  * applied — `--status-success` is declared in the base scale and then
  * re-pointed at a brand color, and `ds tokens` must print the one that wins.
+ *
+ * Takes one stylesheet or several. Several is what the palette split made
+ * normal: read tokens.css alone and `ds tokens` still prints a few hundred
+ * rows, with no `--accent*` among them and `--fg-on-signal` pointing at a
+ * property nothing declares. Pass the sources in cascade order and the later
+ * file's declaration wins, which is what CSS means by it.
  *
  * This deliberately does NOT import `parseTokensCss` from @elirobinson/tokens,
  * which owns that parser everywhere else in the monorepo. Importing it would
@@ -197,24 +226,45 @@ export function cssClasses(css) {
  * `ds` would report tokens as installed, at ai-patterns' pinned version, in a
  * project that has not installed it. That would break the graceful degradation
  * this file's header calls load-bearing. `discovery.test.mjs` asserts this
- * function agrees with the shared parser on the real tokens.css instead.
+ * function agrees with the shared parser on the real stylesheets instead.
  */
 export function cssVariables(css) {
-  if (!css) return [];
-
-  const root = css.match(/:root\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
-  /* Comments blanked first: tokens.css documents the font override hook with a
-     `--ds-font-sans-override: …;` snippet inside one, and prose is not a token.
-     Values are then put back on one line, since Prettier wraps the font stacks
-     across several. Both match parseTokensCss, which this must agree with. */
-  const declarations = root.replace(/\/\*[\s\S]*?\*\//g, (comment) =>
-    comment.replace(/[^\n]/g, ' '),
-  );
   const seen = new Map();
-  for (const [, name, value] of declarations.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)) {
-    seen.set(name, value.trim().replace(/\s+/g, ' ').replace(/\(\s/g, '(').replace(/\s\)/g, ')'));
+
+  for (const one of sources(css)) {
+    const root = one.match(/:root\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
+    /* Comments blanked first: tokens.css documents the font override hook with
+       a `--ds-font-sans-override: …;` snippet inside one, and prose is not a
+       token. Values are then put back on one line, since Prettier wraps the
+       font stacks across several. Both match parseTokensCss, which this must
+       agree with. */
+    const declarations = root.replace(/\/\*[\s\S]*?\*\//g, (comment) =>
+      comment.replace(/[^\n]/g, ' '),
+    );
+    for (const [, name, value] of declarations.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)) {
+      seen.set(name, value.trim().replace(/\s+/g, ' ').replace(/\(\s/g, '(').replace(/\s\)/g, ')'));
+    }
   }
+
   return [...seen.entries()].map(([name, value]) => ({ name, value }));
+}
+
+/**
+ * Every token stylesheet an installed @elirobinson/tokens carries, in cascade
+ * order — or null when the package is absent, so a caller's `if (!…)` install
+ * hint still fires. A file the roster names but the installed version does not
+ * have is skipped rather than fatal: an older tokens package predates the
+ * palette split and still has a perfectly readable tokens.css.
+ *
+ * @param {string | null} tokensDir the resolved @elirobinson/tokens package root
+ * @returns {string[] | null}
+ */
+function readTokenStylesheets(tokensDir) {
+  if (!tokensDir) return null;
+  const found = TOKEN_STYLESHEETS.map((name) => readFile(join(tokensDir, 'src', name))).filter(
+    (source) => source !== null,
+  );
+  return found.length > 0 ? found : null;
 }
 
 /**
@@ -243,7 +293,12 @@ export function loadEnvironment(origins, selfDir) {
       [PATTERNS_PKG]: versionOf(patterns),
     },
     inventory: loadInventory(react),
-    tokensCss: readFile(tokens && join(tokens, 'src', 'tokens.css')),
+    /* Every token stylesheet, in cascade order, or null when the package is
+       not installed. An array rather than one concatenated string because the
+       readers above find the *first* `:root` block in what they are given —
+       joining the files would silently discard everything after palettes.css's
+       own `:root`, which is most of the system. */
+    tokenStylesheets: readTokenStylesheets(tokens),
     componentCss: walk(react && join(react, 'src'), '.css')
       .map((path) => readFile(path))
       .join('\n'),

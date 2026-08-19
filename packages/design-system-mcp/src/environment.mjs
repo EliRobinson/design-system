@@ -13,7 +13,7 @@
 
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const projectRequire = createRequire(join(process.cwd(), 'package.json'));
@@ -49,14 +49,47 @@ export function componentManifest() {
   );
 }
 
-/** Parsed tokens.css from the installed `@elirobinson/tokens`. */
+/** Every token stylesheet from the installed `@elirobinson/tokens`, parsed.
+ *
+ * tokens.css alone is not the vocabulary any more and does not say so: it
+ * parses, it returns a couple of hundred declarations, and the entire brand is
+ * absent — `search_tokens` would answer "no token matches --accent" and
+ * `buildAdherenceConfig` would call every accent token in a consumer's code an
+ * invented value. So the file is resolved through the consumer's own exports
+ * map as before, and its directory is handed to the package's own reader,
+ * which knows the roster. */
 export async function designTokens() {
   return memo('tokens', async () => {
     const cssPath = resolveFrom('@elirobinson/tokens/tokens.css', '@elirobinson/tokens');
     const { parseTokensCss } = await import(
       pathToFileURL(resolveFrom('@elirobinson/tokens/parse-tokens-css', '@elirobinson/tokens'))
     );
-    return parseTokensCss(readFileSync(cssPath, 'utf8'));
+    try {
+      const { readTokenStylesheets } = await import(
+        pathToFileURL(resolveFrom('@elirobinson/tokens/token-stylesheets', '@elirobinson/tokens'))
+      );
+      return parseTokensCss(readTokenStylesheets(dirname(cssPath)));
+    } catch (error) {
+      /* Two shapes of one fact: the installed tokens package predates the
+         palette split. Old enough and it has no ./token-stylesheets export to
+         resolve; one release later it has the reader but not every file the
+         reader asks for. Neither `ERR_PACKAGE_PATH_NOT_EXPORTED` nor a bare
+         ENOENT says which version to install, and a model is what reads this.
+         Anything else is a real failure and goes back untouched. */
+      const missingExport = error?.cause?.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED';
+      if (error?.code !== 'ENOENT' && !missingExport) {
+        throw error;
+      }
+      throw new Error(
+        `The @elirobinson/tokens installed in ${process.cwd()} predates the palette split ` +
+          `(${missingExport ? 'no ./token-stylesheets export' : `no ${error.path}`}). Its brand ` +
+          `lives in src/palettes.css now, and reading tokens.css alone drops every accent, ` +
+          `anchor, link and status token without failing. Upgrade it: ` +
+          `pnpm add @elirobinson/tokens (requires the @elirobinson GitHub Packages registry ` +
+          `in .npmrc).`,
+        { cause: error },
+      );
+    }
   });
 }
 

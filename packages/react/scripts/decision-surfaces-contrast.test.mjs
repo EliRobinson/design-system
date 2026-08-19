@@ -3,7 +3,12 @@
  * component-css.test.mjs asserts the *mechanism* — that these sheets reach for
  * a semantic token rather than a base-scale one, and that a filled rule states
  * its colour. This file asserts the *outcome*: it reads the token each rule
- * actually names, resolves it inside each theme, and measures the ratio.
+ * actually names, resolves it inside each palette AND theme, and measures the
+ * ratio.
+ *
+ * Four combinations, not two themes. Two of these three surfaces deliberately
+ * reach for the palette-INdependent status family, and "it does not move with
+ * the brand" is a claim only a sweep that changes the brand can check.
  *
  * Three pairings are covered because three are where the drafts were wrong:
  *
@@ -27,16 +32,23 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { contrastRatio } from '@elirobinson/tokens/color';
+/* Through the exports map, not a `../../tokens/src` path: the same resolver
+   packages/tokens gates itself with, which knows the four-block cascade
+   including the (0,2,0) slate-dark selector. */
+import { COMBINATIONS, PALETTES, THEMES, combinationValues } from '@elirobinson/tokens/contrast';
+import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { describe, expect, it } from 'vitest';
-
-import { themeValues } from '../../tokens/src/contrast.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const componentsDir = join(here, '..', 'src', 'components');
-const tokensCss = readFileSync(join(here, '..', '..', 'tokens', 'src', 'tokens.css'), 'utf8');
-
-const THEMES = ['light', 'dark'];
-const VALUES = Object.fromEntries(THEMES.map((theme) => [theme, themeValues(tokensCss, theme)]));
+/* Every token stylesheet, in cascade order. Reading tokens.css alone still
+   parses and still returns a few hundred declarations — with no --status-* and
+   no brand in them, so every ratio below would resolve to undefined and this
+   file would fail on "is not declared" rather than on a colour. */
+const TOKEN_SOURCES = readTokenStylesheets();
+const VALUES = Object.fromEntries(
+  COMBINATIONS.map((c) => [c.id, combinationValues(TOKEN_SOURCES, c)]),
+);
 
 const sheet = (path) => readFileSync(join(componentsDir, path), 'utf8');
 
@@ -78,12 +90,12 @@ function systemToken(componentsPath, selector, property) {
   return token;
 }
 
-/** Ratio between two token names, resolved inside one theme. */
-function ratio(theme, foreground, background) {
-  const fg = VALUES[theme].get(foreground);
-  const bg = VALUES[theme].get(background);
-  expect(fg, `${foreground} is not declared in tokens.css`).toBeDefined();
-  expect(bg, `${background} is not declared in tokens.css`).toBeDefined();
+/** Ratio between two token names, resolved inside one palette x theme. */
+function ratio(combination, foreground, background) {
+  const fg = VALUES[combination].get(foreground);
+  const bg = VALUES[combination].get(background);
+  expect(fg, `${foreground} is not declared in ${combination}`).toBeDefined();
+  expect(bg, `${background} is not declared in ${combination}`).toBeDefined();
   const measured = contrastRatio(fg, bg);
   expect(
     measured,
@@ -92,12 +104,15 @@ function ratio(theme, foreground, background) {
   return measured;
 }
 
-it('resolved both themes — the token reader has not gone quiet', () => {
-  for (const theme of THEMES) {
-    expect(VALUES[theme].size, `${theme} resolved no tokens`).toBeGreaterThan(50);
+it('resolved all four combinations — the token reader has not gone quiet', () => {
+  expect(COMBINATIONS.length).toBe(4);
+  for (const { id } of COMBINATIONS) {
+    expect(VALUES[id].size, `${id} resolved no tokens`).toBeGreaterThan(50);
   }
-  // --bg is the one token guaranteed to differ between them.
-  expect(VALUES.light.get('--bg')).not.toBe(VALUES.dark.get('--bg'));
+  // --bg differs between themes, --accent between palettes. Without both, a
+  // reader that had collapsed to one combination would pass everything here.
+  expect(VALUES['ember/light'].get('--bg')).not.toBe(VALUES['ember/dark'].get('--bg'));
+  expect(VALUES['ember/light'].get('--accent')).not.toBe(VALUES['slate/light'].get('--accent'));
 });
 
 /* ------------------------------------------------------------------------ *
@@ -119,9 +134,9 @@ describe('a verdict badge is readable on its own fill, in both themes', () => {
     const fill = systemToken('molecules/VerdictBadge.css', selector, 'background');
     const text = systemToken('molecules/VerdictBadge.css', selector, 'color');
 
-    for (const theme of THEMES) {
-      it(`${theme}: ${selector} draws ${text} on ${fill}`, () => {
-        expect(Number(ratio(theme, text, fill).toFixed(2))).toBeGreaterThanOrEqual(4.5);
+    for (const { id } of COMBINATIONS) {
+      it(`${id}: ${selector} draws ${text} on ${fill}`, () => {
+        expect(Number(ratio(id, text, fill).toFixed(2))).toBeGreaterThanOrEqual(4.5);
       });
     }
   }
@@ -139,10 +154,30 @@ describe('a verdict badge is readable on its own fill, in both themes', () => {
         'background',
       );
       expect(
-        VALUES.light.get(fill),
+        VALUES['ember/light'].get(fill),
         `${fill} resolves to the same value in both themes, so it is a fixed fill ` +
           'under a themed foreground — the pair that inverts.',
-      ).not.toBe(VALUES.dark.get(fill));
+      ).not.toBe(VALUES['ember/dark'].get(fill));
+    });
+  }
+
+  /* And the other axis. A verdict is a status, not a brand statement: green
+     means go under every palette. If a future palette "helpfully" re-hued the
+     status family to match its accent, every ratio above would still pass and
+     the badge would have changed meaning. */
+  for (const verdict of VERDICTS) {
+    it(`.ds-verdict--${verdict} does NOT follow the palette`, () => {
+      const selector = `.ds-verdict--${verdict}`;
+      for (const property of ['background', 'color']) {
+        const token = systemToken('molecules/VerdictBadge.css', selector, property);
+        for (const theme of THEMES) {
+          const values = PALETTES.map((palette) => VALUES[`${palette}/${theme}`].get(token));
+          expect(
+            new Set(values).size,
+            `${token} differs across palettes in ${theme}: ${values.join(' vs ')}`,
+          ).toBe(1);
+        }
+      }
     });
   }
 });
@@ -162,18 +197,30 @@ describe('the assistant avatar mark is legible on its own circle, in both themes
   /* The draft drew this mark in --accent. It is 14px semibold text, so it is
      text under SC 1.4.3 and not a graphic under 1.4.11 — the 3:1 exemption
      does not apply and 2.53:1 is not close. */
-  for (const theme of THEMES) {
-    it(`${theme}: ${mark} on ${circle}`, () => {
-      expect(Number(ratio(theme, mark, circle).toFixed(2))).toBeGreaterThanOrEqual(4.5);
+  for (const { id } of COMBINATIONS) {
+    it(`${id}: ${mark} on ${circle}`, () => {
+      expect(Number(ratio(id, mark, circle).toFixed(2))).toBeGreaterThanOrEqual(4.5);
     });
 
-    it(`${theme}: ${mark} also clears AA against the page`, () => {
-      expect(Number(ratio(theme, mark, '--bg').toFixed(2))).toBeGreaterThanOrEqual(4.5);
+    it(`${id}: ${mark} also clears AA against the page`, () => {
+      expect(Number(ratio(id, mark, '--bg').toFixed(2))).toBeGreaterThanOrEqual(4.5);
     });
   }
 
   it('is not painted with the fill token the draft used', () => {
     expect(mark).not.toBe('--accent');
+  });
+
+  /* Nor with the brand's readable step. --accent-ink would clear 4.5:1 in all
+     four, so a ratio sweep alone would never object — but it swaps hue with
+     the palette, and the assistant's mark is an identity rather than a brand
+     accent. A product that wants its own hue sets --product-signal-fg. */
+  it('does not re-hue with the palette', () => {
+    expect(mark).not.toBe('--accent-ink');
+    for (const theme of THEMES) {
+      const values = PALETTES.map((palette) => VALUES[`${palette}/${theme}`].get(mark));
+      expect(new Set(values).size, `${mark} differs across palettes in ${theme}`).toBe(1);
+    }
   });
 
   /* The avatar circle is an outline, so the edge is what says where it is. */
@@ -194,19 +241,29 @@ describe('the caveat reads as body copy on the card, in both themes', () => {
   const surface = systemToken('organisms/DecisionCard.css', '.ds-decision', 'background');
   const rule = systemToken('organisms/DecisionCard.css', '.ds-decision__caveat', 'border-left');
 
-  for (const theme of THEMES) {
-    it(`${theme}: caveat text ${text} on ${surface} clears 4.5:1 (SC 1.4.3)`, () => {
-      expect(Number(ratio(theme, text, surface).toFixed(2))).toBeGreaterThanOrEqual(4.5);
+  for (const { id } of COMBINATIONS) {
+    it(`${id}: caveat text ${text} on ${surface} clears 4.5:1 (SC 1.4.3)`, () => {
+      expect(Number(ratio(id, text, surface).toFixed(2))).toBeGreaterThanOrEqual(4.5);
     });
 
     /* The rule is the only thing marking the paragraph as a caution, which
        makes it a meaningful non-text graphic at 3:1 rather than decoration.
        --signal-500, which the draft used, is also base-scale and would not
        move with the theme at all. */
-    it(`${theme}: the caution rule ${rule} on ${surface} clears 3:1 (SC 1.4.11)`, () => {
-      expect(Number(ratio(theme, rule, surface).toFixed(2))).toBeGreaterThanOrEqual(3);
+    it(`${id}: the caution rule ${rule} on ${surface} clears 3:1 (SC 1.4.11)`, () => {
+      expect(Number(ratio(id, rule, surface).toFixed(2))).toBeGreaterThanOrEqual(3);
     });
   }
+
+  /* The rule must be --status-warning-border and not --status-warning. The
+     bare warning fill is 1.87:1 on a light surface — the documented exception
+     in the token set — so a caution rule drawn in it is invisible on exactly
+     the page where a caution matters most. The assertion above would catch it,
+     but only this one says which token is the fix. */
+  it('draws the rule with the token that carries the 3:1, not the bare fill', () => {
+    expect(rule).toBe('--status-warning-border');
+    expect(Number(ratio('ember/light', '--status-warning', surface).toFixed(2))).toBeLessThan(3);
+  });
 });
 
 /* ------------------------------------------------------------------------ *
@@ -220,9 +277,9 @@ describe('the streaming caret is visible as a state indicator, in both themes', 
     expect(fill).not.toBe('--accent');
   });
 
-  for (const theme of THEMES) {
-    it(`${theme}: ${fill} on --bg clears 3:1 (SC 1.4.11)`, () => {
-      expect(Number(ratio(theme, fill, '--bg').toFixed(2))).toBeGreaterThanOrEqual(3);
+  for (const { id } of COMBINATIONS) {
+    it(`${id}: ${fill} on --bg clears 3:1 (SC 1.4.11)`, () => {
+      expect(Number(ratio(id, fill, '--bg').toFixed(2))).toBeGreaterThanOrEqual(3);
     });
   }
 });

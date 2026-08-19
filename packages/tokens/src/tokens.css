@@ -10,7 +10,39 @@
    to this file, and `src/tokens.json` is generated from it by
    `scripts/build-tokens-json.mjs` — edit here, run the package build, and every
    derived form follows.
+
+   --------------------------------------------------------------------------
+   Three dials
+   --------------------------------------------------------------------------
+   This file is one of three layers, and they compose as three independent
+   attributes on the root element:
+
+     palette   data-palette="ember|slate"   palettes.css
+     theme     data-theme="light|dark"      palettes.css + this file
+     platform  data-platform="mobile"       mobile.css
+
+   This file owns what none of them changes the *meaning* of: the neutral
+   ramp, the surfaces built from it, type, space, radii, shadow, motion,
+   targets, safe areas, `--scrim`, and the global element styles. The brand
+   ramps and every semantic derived from them — `--accent*`, `--anchor*`,
+   `--link*`, `--focus-ring` — moved to palettes.css, along with the status and
+   chart families, which are palette-INdependent by design.
+
+   Nothing in this file may reference `--signal-*` or `--anchor-*` directly.
+   Those names exist under every palette and mean something different under
+   each, so a reference here is an assertion that one brand is mounted.
    ========================================================================== */
+
+/* --- Layers --------------------------------------------------------------
+   @imported first, so both files' declarations land BEFORE this file's own
+   `:root`. That is deliberate and it is also the one thing to know when
+   editing either of them: at equal specificity the later rule wins, so a
+   palette or platform block written as a bare `[data-*]` selector — (0,1,0),
+   the same as `:root` — would silently lose to the declarations below.
+   palettes.css owns `--n-h`/`--n-mult` for that reason, and mobile.css
+   qualifies its selectors with `:root`. ---------------------------------- */
+@import './palettes.css';
+@import './mobile.css';
 
 /* --- Webfonts ------------------------------------------------------------ */
 /* Geist (display + body sans) and JetBrains Mono (code + numerics),
@@ -22,60 +54,37 @@
 
 :root {
   /* ======================================================================
-     COLOR — base scale
-     Pure neutrals + one signal color (electric lime). No gradients,
-     no purple, no accidental brand-blue. Defined in oklch for
-     perceptual uniformity, with hex fallbacks where useful.
+     COLOR — the neutral ramp
+     ----------------------------------------------------------------------
+     Every step is `oklch(<L>% calc(<C> * var(--n-mult)) var(--n-h))`. The two
+     dials are declared by the palette (palettes.css), never here — `:root` and
+     `[data-palette='…']` are both (0,1,0), and this file's `:root` comes after
+     the @import, so a default written here would outrank every palette and the
+     dial would never turn.
+
+     What the split buys: lightness is untouched by either dial, and lightness
+     is what carries contrast. So a palette can take the greys from
+     near-achromatic (`--n-mult: 1`) to charcoal (`1.6`) and not one measured
+     neutral ratio moves. contrast.test.mjs measures the ramp under every
+     palette rather than taking that on trust.
+
+     `--ink-0` and `--ink-1000` are pinned white and black. They are the page
+     and its inverse, not steps in a ramp, and a tinted white is a different
+     claim entirely.
      ====================================================================== */
-
-  /* Neutrals — true black/white pinned, mids in oklch */
   --ink-0: #ffffff; /* pure white */
-  --ink-50: oklch(98.4% 0.002 247); /* off-white surface */
-  --ink-100: oklch(96.2% 0.003 247); /* hairline backgrounds */
-  --ink-200: oklch(92.8% 0.004 247); /* dividers */
-  --ink-300: oklch(86% 0.005 247); /* borders */
-  --ink-400: oklch(70% 0.006 247); /* disabled / placeholder */
-  --ink-500: oklch(55% 0.008 247); /* tertiary text */
-  --ink-600: oklch(42% 0.01 247); /* secondary text */
-  --ink-700: oklch(30% 0.01 247); /* high-contrast secondary */
-  --ink-800: oklch(20% 0.01 247); /* near-black surfaces */
-  --ink-900: oklch(12% 0.008 247); /* deep surface */
-  --ink-950: oklch(6% 0.006 247); /* card on dark */
+  --ink-50: oklch(98.4% calc(0.002 * var(--n-mult)) var(--n-h)); /* off-white surface */
+  --ink-100: oklch(96.2% calc(0.003 * var(--n-mult)) var(--n-h)); /* hairline backgrounds */
+  --ink-200: oklch(92.8% calc(0.004 * var(--n-mult)) var(--n-h)); /* dividers */
+  --ink-300: oklch(86% calc(0.005 * var(--n-mult)) var(--n-h)); /* borders */
+  --ink-400: oklch(70% calc(0.006 * var(--n-mult)) var(--n-h)); /* disabled / placeholder */
+  --ink-500: oklch(55% calc(0.008 * var(--n-mult)) var(--n-h)); /* tertiary text */
+  --ink-600: oklch(42% calc(0.01 * var(--n-mult)) var(--n-h)); /* secondary text */
+  --ink-700: oklch(30% calc(0.01 * var(--n-mult)) var(--n-h)); /* high-contrast secondary */
+  --ink-800: oklch(20% calc(0.01 * var(--n-mult)) var(--n-h)); /* near-black surfaces */
+  --ink-900: oklch(12% calc(0.008 * var(--n-mult)) var(--n-h)); /* deep surface */
+  --ink-950: oklch(6% calc(0.006 * var(--n-mult)) var(--n-h)); /* card on dark */
   --ink-1000: #000000; /* pure black */
-
-  /* Signal — Miltinson Amber. Warm, craftsman, honest. The primary accent.
-     Used for CTAs, links on dark, eyebrow underlines, key stats. */
-  --signal-50: oklch(97.5% 0.025 75);
-  --signal-100: oklch(94% 0.055 75);
-  --signal-200: oklch(89% 0.1 75);
-  --signal-300: oklch(83% 0.14 72);
-  --signal-400: oklch(78% 0.16 68);
-  --signal-500: oklch(72.5% 0.175 65); /* primary — Miltinson Amber */
-  --signal-600: oklch(63% 0.165 55);
-  --signal-700: oklch(52% 0.145 45);
-  --signal-800: oklch(40% 0.115 40);
-  --signal-900: oklch(28% 0.08 38);
-
-  /* Anchor — Forest. Secondary brand anchor used sparingly:
-     coaching/guides surfaces, success states, trust marks. */
-  --anchor-50: oklch(96% 0.018 165);
-  --anchor-100: oklch(91% 0.035 165);
-  --anchor-200: oklch(82% 0.055 162);
-  --anchor-300: oklch(70% 0.075 160);
-  --anchor-400: oklch(55% 0.085 158);
-  --anchor-500: oklch(42% 0.08 156); /* primary — Miltinson Forest */
-  --anchor-600: oklch(34% 0.065 156);
-  --anchor-700: oklch(26% 0.05 156);
-  --anchor-800: oklch(19% 0.035 156);
-  --anchor-900: oklch(13% 0.025 156);
-
-  /* Semantic status colors (kept neutral-leaning). These are FILLS — stripes,
-     dots, borders. Text uses the --status-*-fg pair in the semantic section
-     below; --status-warning in particular is 3.69:1 and cannot carry a label. */
-  --status-success: oklch(62% 0.16 155);
-  --status-warning: oklch(78% 0.16 85);
-  --status-danger: oklch(58% 0.22 25); /* fill — 4.79:1 light, 4.38:1 dark */
-  --status-info: oklch(60% 0.13 240); /* fill — 3.88:1, fill-only */
 
   /* ======================================================================
      COLOR — semantic (what components reference)
@@ -98,7 +107,11 @@
   --border: var(--ink-200); /* decorative hairline — 1.24:1 */
   --border-strong: var(--ink-300); /* decorative, emphasized — 1.53:1 */
   --border-inverse: oklch(100% 0 0 / 0.12); /* on dark */
-  --border-control: oklch(62% 0.008 247); /* 3.64:1 on --bg — control edges, SC 1.4.11 */
+  /* On the same dial as the ramp: it is a neutral, so it follows the palette's
+     greys rather than sitting at a fixed hue beside them. */
+  --border-control: oklch(
+    62% calc(0.008 * var(--n-mult)) var(--n-h)
+  ); /* 3.64:1 on --bg — control edges, SC 1.4.11 */
 
   --fg: var(--ink-1000); /* primary text */
   --fg-1: var(--ink-1000); /* alias */
@@ -120,73 +133,48 @@
      wrong background for them. */
   --fg-inverse-2: var(--ink-300); /* secondary on --bg-inverse — 13.73:1 */
   --fg-inverse-3: var(--ink-400); /* tertiary / meta on --bg-inverse — 7.87:1 */
-  --fg-on-signal: var(--ink-1000); /* text on lime */
+  /* Legacy alias of --accent-fg, kept because consumers import it by name.
+     "signal" was the old word for the accent fill, and the pairing is the same
+     one: the foreground the accent fill carries. New code uses --accent-fg. */
+  --fg-on-signal: var(--accent-fg);
 
-  --accent: var(--signal-500); /* Miltinson Amber — fill, 2.53:1, fill-only */
-  --accent-hover: var(--signal-400);
-  --accent-press: var(--signal-600);
-  --accent-fg: var(--ink-1000);
-  /* The tinted brand surface — a soft chip or an inset panel, the brand
-     counterpart to --status-*-tint. It carries --accent-ink and nothing else,
-     and like every tint it has a dark override: a fill that stays put while
-     its text follows the theme is the pair that inverts. */
-  --accent-tint: var(--signal-50); /* with --accent-ink: 8.96:1 */
-  /* Brand amber at legible weight. --accent is a fill: at 2.53:1 against --bg
-     it cannot be a glyph, a mark, or a label. Anything amber that a user has
-     to *read* — a filled rating star, a slider thumb — uses this. */
-  --accent-ink: var(--signal-800); /* 9.69:1 */
-  /* The same idea as --accent-ink, one surface over: amber that can be read on
-     an inverted band. --accent-ink is tuned for --bg, so on the band it is the
-     wrong end of the ramp — the docs eyebrow used --signal-400 and fell to
-     2.07:1 once the band flipped white. */
-  --accent-ink-inverse: var(--signal-400); /* on --bg-inverse — 10.17:1 */
+  /* --- Targets -----------------------------------------------------------
+     Hit areas, as tokens rather than as a number retyped in thirty
+     stylesheets. Touch targets are scoped, not blanket: --target-min is the
+     absolute AA floor SC 2.5.8 sets and is what a dense inline affordance (a
+     chip's remove button, a calendar day, a rating star) may shrink to;
+     --target is what a primary control gets, and what everything gets under
+     data-platform="mobile"; --target-lg is for the one action a thumb reaches
+     for without looking. An expanded hit area must never overlap a sibling.
+     ---------------------------------------------------------------------- */
+  --target-min: 24px; /* absolute AA floor, SC 2.5.8 */
+  --target: 44px; /* primary controls, and everything on mobile */
+  --target-lg: 56px; /* thumb-zone primary action */
 
-  --anchor: var(--anchor-500); /* Miltinson Forest */
-  --anchor-hover: var(--anchor-400);
-  --anchor-press: var(--anchor-600);
-  --anchor-fg: var(--ink-0);
-  --anchor-tint: var(--anchor-50); /* with --anchor-ink: 10.23:1 */
-  /* Forest at legible weight, the --accent-ink of the second brand colour.
-     --anchor is 8.13:1 and could carry text on white, but it is 2.58:1 on a
-     black page, so text drawn in it needs a token that inverts. */
-  --anchor-ink: var(--anchor-600); /* 11.41:1 */
+  /* --- Safe areas --------------------------------------------------------
+     The notch, the home indicator and the rounded corners, as four tokens
+     that resolve to 0px on every device that has none. Reading env() through
+     a token rather than inline is what lets a sticky footer or a full-bleed
+     sheet be written once: `padding-bottom: calc(var(--space-4) +
+     var(--safe-b))` is correct on a phone and unchanged on a desktop.
+     ---------------------------------------------------------------------- */
+  /* The @kind annotations are load-bearing, not decoration. The classifier in
+     @elirobinson/ai-patterns reads a token's kind off its resolved value, and
+     `env(...)` matches neither its colour pattern nor its length pattern — so
+     without these four the insets file under "other" and stop being offered
+     where a spacing value is picked. The annotation lives here because the
+     classification is the token's to state, not the classifier's to guess. */
+  --safe-t: env(safe-area-inset-top, 0px); /* @kind spacing */
+  --safe-r: env(safe-area-inset-right, 0px); /* @kind spacing */
+  --safe-b: env(safe-area-inset-bottom, 0px); /* @kind spacing */
+  --safe-l: env(safe-area-inset-left, 0px); /* @kind spacing */
 
-  --focus-ring: var(--ink-1000); /* high-contrast focus, ink-on-bg */
-
-  --link: var(--ink-1000);
-  --link-hover: var(--signal-800); /* 9.69:1 — was --signal-700 at 5.86:1 */
-  --link-visited: var(--ink-700);
-  /* A link sitting on a filled surface keeps the fill's own foreground. See
-     the `.ds-button a` block below for why this is not just a nicety. */
-  --link-on-fill: currentColor;
-
-  /* Status — two tokens per state, and they are not interchangeable.
-     --status-* is the FILL: a stripe, a dot, a border. It only has to clear
-     3:1 as a non-text graphic, and --status-warning (3.69:1) and
-     --status-info (3.88:1) do not have the headroom to be text.
-     --status-*-fg is the TEXT, measured against --bg at 4.5:1 or better.
-     It also clears 4.5:1 on every neutral surface, in both themes. The worst
-     case is --surface-3, where success/warning/danger/info sit at
-     10.22 / 8.68 / 6.76 / 6.46 in light and 9.54 / 9.55 / 6.80 / 8.25 in dark
-     — at most 1.54 below the --bg figure. A tint is never what takes status
-     text under AA; contrast.test.mjs measures all five neutral surfaces in
-     both themes so that stays true. */
-  --status-success: var(--anchor-500); /* fill — 8.13:1 */
-  --status-warning: var(--signal-600); /* fill — 3.69:1, fill-only */
-  --status-success-fg: var(--anchor-600); /* 11.41:1 on --bg */
-  --status-warning-fg: var(--signal-800); /* 9.69:1 on --bg */
-  --status-danger-fg: oklch(47% 0.19 25); /* 7.55:1 on --bg */
-  --status-info-fg: oklch(45% 0.12 240); /* 7.21:1 on --bg */
-
-  /* Tints — the third member of each status set, and the reason the other two
-     can both be themed. A tinted panel whose fill is fixed while its text
-     follows the theme inverts in dark mode: Alert's danger variant paired a
-     fixed pink with --status-danger-fg and landed at 2.40:1. Fill and text
-     move together or neither does. Each pairs with its --status-*-fg above. */
-  --status-success-tint: var(--anchor-50); /* with -fg: 10.23:1 */
-  --status-warning-tint: var(--signal-50); /* with -fg: 8.96:1 */
-  --status-danger-tint: oklch(97% 0.02 25); /* with -fg: 6.83:1 */
-  --status-info-tint: oklch(96% 0.02 240); /* with -fg: 6.44:1 */
+  /* The wash behind a modal, a sheet or a drawer. Pinned to black at both
+     ends rather than themed to the page: a scrim's job is to push everything
+     behind it back, and a scrim that turned white on a light page would push
+     it forward instead. Only the opacity moves — a dark page needs more of it
+     to separate the same two planes. */
+  --scrim: oklch(0% 0 0 / 0.56);
 
   /* ======================================================================
      TYPE — families
@@ -402,45 +390,11 @@
   --fg-inverse-2: var(--ink-600); /* secondary on --bg-inverse — 8.45:1 */
   --fg-inverse-3: var(--ink-500); /* tertiary / meta on --bg-inverse — 4.85:1 */
 
-  /* The light theme's focus ring is ink-on-white. Left un-inverted here it
-     stays pure black against a pure black page, which makes every
-     `outline: 2px solid var(--focus-ring)` in the component library invisible
-     in dark mode — a silent failure of the focusVisibleRequired contract. */
-  --focus-ring: var(--ink-0);
-
-  --link: var(--ink-0);
-  --link-hover: var(--signal-400); /* 10.17:1 — already clears AA, left as-is */
-  --link-visited: var(--ink-200);
-
-  /* --status-success is forest green, which is a dark-on-light color: left
-     un-inverted it sits at 2.58:1 against a black page, under the 3:1 SC 1.4.11
-     asks of the Toast stripe and Stepper ring it paints. The other three fills
-     clear 3:1 unchanged (warning 5.69, danger 4.38, info 5.41). */
-  --status-success: var(--anchor-300); /* fill — 8.13:1 */
-
-  --status-success-fg: oklch(78% 0.13 160); /* 11.07:1 on --bg */
-  --status-warning-fg: oklch(80% 0.14 80); /* 11.09:1 on --bg */
-  --status-danger-fg: oklch(72% 0.16 25); /* 7.90:1 on --bg */
-  --status-info-fg: oklch(75% 0.11 240); /* 9.58:1 on --bg */
-
-  --status-success-tint: oklch(20% 0.04 160); /* with -fg: 9.45:1 */
-  --status-warning-tint: oklch(22% 0.05 70); /* with -fg: 9.20:1 */
-  --status-danger-tint: oklch(22% 0.06 25); /* with -fg: 6.62:1 */
-  --status-info-tint: oklch(20% 0.05 240); /* with -fg: 8.22:1 */
-
-  /* --accent is the same amber in both themes and stays a fill. --accent-ink
-     has to invert: --signal-800 is 9.69:1 on white and 2.17:1 on black. */
-  --accent-ink: var(--signal-400); /* 10.17:1 */
-  --accent-ink-inverse: var(--signal-800); /* on --bg-inverse — 9.69:1 */
-  --anchor-ink: oklch(78% 0.13 160); /* 11.07:1 */
-
-  /* The brand tints, mirrored the way the status tints are: the light values
-     are the 50 step of each ramp, so the dark ones are a wash at the same hue.
-     Left fixed, a --signal-50 chip stayed 97% light on a black page while the
-     text on it inverted — the same defect the status tints were given dark
-     values to fix. */
-  --accent-tint: oklch(22% 0.05 70); /* with --accent-ink: 8.43:1 */
-  --anchor-tint: oklch(20% 0.04 160); /* with --anchor-ink: 9.45:1 */
+  /* The wash behind an overlay, heavier on an ink page. The same 56% that
+     separates a modal from a white page leaves a dark one looking merely
+     dimmed — the plane behind it is already near-black, so there is less
+     luminance to take away. Only the alpha moves; the colour stays black. */
+  --scrim: oklch(0% 0 0 / 0.72);
 }
 
 /* ==========================================================================
@@ -578,9 +532,13 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+/* The selection highlight is the brand fill, and it has to be *the* brand
+   fill. Hardcoding --signal-500 made it Miltinson Amber under every palette,
+   including the one whose signal ramp is teal — and it pinned the foreground
+   to ink, which is wrong the moment a palette's accent carries white text. */
 ::selection {
-  background: var(--signal-500);
-  color: var(--ink-1000);
+  background: var(--accent);
+  color: var(--accent-fg);
 }
 
 a {
@@ -639,6 +597,46 @@ a.ds-pagination__item:hover {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: var(--radius-xs);
+}
+
+/* Every control clears 44px on a phone, whatever the component sized it at.
+   SC 2.5.8 asks 24px of any pointer target and the system meets that with
+   --target-min; a finger is not a mouse, and the components that shrink to a
+   dense inline affordance on a desktop — a chip's remove button, a calendar
+   day — are exactly the ones that get missed at arm's length. This is a floor,
+   not a size: min-height leaves a control free to be taller.
+
+   `input:not([type='range'])` because a range input draws its own track and
+   thumb, and a min-height on it stretches the track rather than the thumb. */
+:root[data-platform='mobile'] button,
+:root[data-platform='mobile'] [role='button'],
+:root[data-platform='mobile'] a.ds-button,
+:root[data-platform='mobile'] input:not([type='range']),
+:root[data-platform='mobile'] select {
+  min-height: var(--target);
+}
+
+/* The same floor, reached without JavaScript — the element-level half of what
+   mobile.css does for the token values. That file repeats its declarations
+   under `@media (max-width: 480px) and (pointer: coarse)` so a responsive site
+   need not swap the attribute at a breakpoint, and the floor has to follow it
+   or a responsive site gets the coarser radii and the floored type ramp
+   without the touch targets — which is the half that is an accessibility
+   requirement rather than a refinement.
+
+   The query is duplicated rather than shared because these are element rules
+   and mobile.css declares custom properties; a `--target` that changed under
+   the query instead would move every explicit `min-height: var(--target)` in
+   the component library at a breakpoint, which is a much larger claim than
+   "a phone-sized coarse-pointer viewport gets 44px controls". */
+@media (max-width: 480px) and (pointer: coarse) {
+  button,
+  [role='button'],
+  a.ds-button,
+  input:not([type='range']),
+  select {
+    min-height: var(--target);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

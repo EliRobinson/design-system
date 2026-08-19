@@ -1,0 +1,113 @@
+/* ==========================================================================
+   Miltinson Technologies — Design Tokens
+   mobile.css — the platform layer
+   ==========================================================================
+   The platform dial: geometry and the small end of the type ramp, retuned for
+   a device held at arm's length rather than sat on a desk. @imported by
+   tokens.css alongside palettes.css.
+
+   This file changes no colour, and that is load-bearing rather than a
+   coincidence of scope. Every contrast ratio the system claims is measured
+   against the values in tokens.css and palettes.css and asserted in
+   contrast.test.mjs. A platform layer that moved a single colour token would
+   invalidate all of them silently — the assertions would still pass, because
+   they read the tokens this file does not touch, while a phone rendered
+   something nobody measured. Radii, font sizes, gutters and container widths
+   have no contrast consequences; colour does. Keep colour out of here.
+   ========================================================================== */
+
+/* --- Attribute selector --------------------------------------------------
+   `:root[data-platform='mobile']`, not `[data-platform='mobile']`, and the
+   extra `:root` is the whole point. Bare `[data-platform='mobile']` is (0,1,0)
+   — exactly the specificity of tokens.css's own `:root`. tokens.css @imports
+   this file at the top, so every declaration here lands *before* the `:root`
+   block it means to override, and at equal specificity the later rule wins:
+   the attribute block would parse cleanly, match correctly, and do nothing at
+   all. Qualifying with `:root` makes it (0,2,0), which outranks that `:root`
+   regardless of source order.
+
+   Only the tokens listed below are redeclared. --radius-none, --radius-pill
+   and --container-lg upward are deliberately absent: they inherit from
+   tokens.css, and a value repeated here is a value that has to be kept in step
+   with two files.
+   ------------------------------------------------------------------------- */
+:root[data-platform='mobile'] {
+  /* Radii — coarser across the board. The desktop ramp starts at 2px, which
+     is a legible corner on a monitor at desk distance and reads as a rendering
+     artefact on a phone at arm's length: too small to look intentional, big
+     enough to look like the edge failed to paint. Each step roughly doubles
+     what the desktop set uses so the corner survives the viewing distance. */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* Type — the small end only, floored. 10px and 11px are fine on a monitor
+     and are not legible on a phone, so --fs-3xs and --fs-2xs collapse onto a
+     shared 12px floor and the two steps above them lift with them.
+
+     Nothing at or above --fs-md moves, on purpose. Scaling the whole ramp is
+     the obvious instinct and the wrong one: body copy and every heading are
+     what line lengths, component heights and wrap points are built around, so
+     shifting them reflows every layout in the system on one device class. The
+     small end is captions, eyebrows and meta text — it carries no layout. */
+  --fs-3xs: 12px;
+  --fs-2xs: 12px;
+  --fs-xs: 13px;
+  --fs-sm: 15px;
+
+  /* A flat gutter. The desktop value is max(20px, round(4vw, 4px)) — the
+     viewport-proportional term is what keeps a wide page from running edge to
+     edge, and on a phone it is pure loss: it takes its cut from a content
+     column that has no width to spare. A fixed 16px each side is what a 390px
+     viewport can afford. */
+  --gutter: 16px;
+
+  /* Fluid shells at the small end. --container-sm and --container-md are fixed
+     640px and 768px, both wider than a 390px viewport, so a shell built on
+     either overflows and the page scrolls sideways. At 100% they are the
+     gutter's job to inset. --container-lg and up are untouched: nothing that
+     asks for a 1024px shell is being laid out for a phone. */
+  --container-sm: 100%;
+  --container-md: 100%;
+}
+
+/* --- Breakpoint fallback -------------------------------------------------
+   The same layer, reached without JavaScript. Both mechanisms exist because
+   they answer different questions. An app that renders a known-mobile shell
+   already knows what it is and states it once, on the root element. A
+   responsive site cannot know — it is one document served to everything — so
+   it needs the viewport to say it instead, and `pointer: coarse` is the half
+   of this query that keeps a narrow desktop window out: a browser dragged to
+   400px wide is still a mouse, and shipping thumb-sized radii and a floored
+   type ramp to it would be a regression, not an adaptation.
+
+   `:root:root` is a specificity bump, not a typo. A bare `:root` inside a
+   media query is still (0,1,0) — media queries do not add specificity — and
+   would lose to tokens.css's `:root` for the same source-order reason as
+   above. Repeating the selector makes it (0,2,0).
+
+   The values below are written out rather than shared with the block above
+   through a var() indirection. The repetition is deliberate: an indirection
+   would introduce a third dial that neither `data-platform` nor this query
+   owns, and whichever of the two set it last would silently decide the other. */
+@media (max-width: 480px) and (pointer: coarse) {
+  :root:root {
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+
+    --fs-3xs: 12px;
+    --fs-2xs: 12px;
+    --fs-xs: 13px;
+    --fs-sm: 15px;
+
+    --gutter: 16px;
+
+    --container-sm: 100%;
+    --container-md: 100%;
+  }
+}

@@ -27,16 +27,29 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import { effectiveTokens, parseTokensCss } from './parse-tokens-css.mjs';
+import { readTokenStylesheets, TOKEN_STYLESHEETS, TOKENS_SRC_DIR } from './token-stylesheets.mjs';
 
-const srcDir = dirname(fileURLToPath(import.meta.url));
-const tokensCss = readFileSync(join(srcDir, 'tokens.css'), 'utf8');
-const tokens = effectiveTokens(parseTokensCss(tokensCss));
+const tokensCss = readFileSync(join(TOKENS_SRC_DIR, 'tokens.css'), 'utf8');
+const tokens = effectiveTokens(parseTokensCss(readTokenStylesheets()));
+
+/* Every stylesheet the system @imports, not just the token roster.
+ *
+ * The two cascade facts below are properties of what a consumer LOADS, and
+ * loading tokens.css loads all three of these — it @imports palettes.css and
+ * mobile.css at the top. So an `@layer` opened in mobile.css, or a
+ * --ds-font-*-override declared in palettes.css, breaks the guarantee exactly
+ * as one written here would, and a check that only reads tokens.css would say
+ * nothing about it. mobile.css is deliberately absent from TOKEN_STYLESHEETS
+ * (it declares no default token) and just as deliberately present here. */
+const IMPORTED_STYLESHEETS = [...TOKEN_STYLESHEETS, 'mobile.css'];
+const allCss = Object.fromEntries(
+  IMPORTED_STYLESHEETS.map((name) => [name, readFileSync(join(TOKENS_SRC_DIR, name), 'utf8')]),
+);
 
 /** The stacks as they shipped before the hook existed, character for character. */
 const STACKS = {
@@ -78,14 +91,17 @@ describe('the font family override hook', () => {
 });
 
 describe('the cascade rule the hook relies on', () => {
-  it('leaves tokens.css unlayered, which is why a consumer @layer base override of a token loses', () => {
-    // An unlayered declaration beats a layered one at the same origin whatever
-    // the source order, so `@layer base { :root { --font-sans: … } }` in a
-    // consumer's globals.css silently does nothing. Documented in
-    // docs/agents/tokens.md, the README, patterns.md and adopt-system.md; if
-    // this stylesheet ever moves into a layer, all four are wrong.
-    expect(withoutComments(tokensCss)).not.toMatch(/@layer\b/);
-  });
+  it.each(IMPORTED_STYLESHEETS)(
+    'leaves %s unlayered, which is why a consumer @layer base override of a token loses',
+    (name) => {
+      // An unlayered declaration beats a layered one at the same origin whatever
+      // the source order, so `@layer base { :root { --font-sans: … } }` in a
+      // consumer's globals.css silently does nothing. Documented in
+      // docs/agents/tokens.md, the README, patterns.md and adopt-system.md; if
+      // any of these stylesheets ever moves into a layer, all four are wrong.
+      expect(withoutComments(allCss[name])).not.toMatch(/@layer\b/);
+    },
+  );
 
   it('never declares an override property, which is why setting one applies from any layer', () => {
     // Nothing to lose to. This is what lets a consumer write the override
@@ -93,6 +109,20 @@ describe('the cascade rule the hook relies on', () => {
     const declared = [...tokens.keys()].filter((name) => name.endsWith('-override'));
     expect(declared).toEqual([]);
   });
+
+  it.each(IMPORTED_STYLESHEETS)(
+    'declares no override property anywhere in %s, at any depth',
+    (name) => {
+      /* The `tokens` check above only sees `:root`, which is the right scope for
+       a token but the wrong one for this guarantee: a --ds-font-sans-override
+       declared inside `:root[data-platform='mobile']` or a `[data-palette]`
+       block would be just as fatal — the consumer's own override would now have
+       something to lose to — and would not appear in the token set at all. So
+       the text is swept too, comments blanked because tokens.css documents the
+       hook with a literal `--ds-font-sans-override: …;` snippet in one. */
+      expect(withoutComments(allCss[name])).not.toMatch(/--[\w-]+-override\s*:/);
+    },
+  );
 
   it('documents the hook in the stylesheet a consumer actually reads', () => {
     // The snippet in the TYPE section is the copy-paste a next/font app needs.

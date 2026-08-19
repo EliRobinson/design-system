@@ -5,11 +5,11 @@
  * thirteen.
  */
 
-import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
+import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -31,29 +31,39 @@ const provenance = (overrides = {}) =>
     target: { repo: 'EliRobinson/design-system', branch: 'main' },
     manifest,
     stylesheetCount: 41,
-    tokenCount: 153,
-    cardCount: 11,
+    tokenCount: 196,
+    cardCount: 13,
     kits: { shared: 4, projectOnly: 9 },
     ...overrides,
   });
 
 describe('pushBoundary', () => {
-  const target = { projectId: 'x', writes: ['tokens/tokens.css'], deletes: [] };
+  /* All three token layers, because that is what the bundle carries: tokens.css
+     `@import`s the other two with relative specifiers, and a boundary naming
+     only tokens.css would reject the push that carries them — or, worse, admit
+     one that pushes a stylesheet with two dangling imports. */
+  const tokenWrites = ['tokens/palettes.css', 'tokens/tokens.css', 'tokens/mobile.css'];
+  const target = { projectId: 'x', writes: tokenWrites, deletes: [] };
 
   it('covers every card the generator actually emits', () => {
     // The real pairing, not a fixture: a card added to the generator must land
     // inside the write boundary automatically, or the push rejects it.
     const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
     const cards = buildGuidelineCards(
-      parseTokensCss(readFileSync(join(repoRoot, 'packages/tokens/src/tokens.css'), 'utf8')),
+      parseTokensCss(readTokenStylesheets(join(repoRoot, 'packages/tokens/src'))),
     );
     const { writes } = pushBoundary(target, cards);
     for (const { path } of cards) expect(writes).toContain(`guidelines/${path}`);
   });
 
+  it('admits every token layer the bundle writes', () => {
+    const { writes } = pushBoundary(target, []);
+    for (const path of tokenWrites) expect(writes).toContain(path);
+  });
+
   it('grows with the roster instead of being restated', () => {
     const { writes } = pushBoundary(target, [{ path: 'a.html' }, { path: 'b.html' }]);
-    expect(writes).toEqual(['tokens/tokens.css', 'guidelines/a.html', 'guidelines/b.html']);
+    expect(writes).toEqual([...tokenWrites, 'guidelines/a.html', 'guidelines/b.html']);
   });
 
   it('leaves the project-owned editorial cards outside the boundary', () => {
@@ -120,11 +130,11 @@ describe('buildProvenanceDoc', () => {
   it('tracks the counts it is given rather than restating fixed numbers', () => {
     const doc = provenance({
       cardCount: 12,
-      tokenCount: 160,
+      tokenCount: 210,
       kits: { shared: 4, projectOnly: 10 },
     });
     expect(doc).toContain('12 generated foundation cards');
-    expect(doc).toContain('160 design tokens');
+    expect(doc).toContain('210 design tokens');
     expect(doc).toContain('14 ui kits');
   });
 

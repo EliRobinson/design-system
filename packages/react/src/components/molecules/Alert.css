@@ -30,27 +30,34 @@
 /* Each variant is a --status-*-tint fill with its --status-*-fg text. Both
    members follow the theme, which is the point: these used fixed light tints,
    so the moment the text token became themed the danger variant inverted into
-   light-red-on-pink at 2.40:1. Change one and you change the other. */
+   light-red-on-pink at 2.40:1. Change one and you change the other.
+
+   The edge is --status-*-tint-edge, the hairline that belongs to the tint, and
+   not --status-*, which is the fill. The fill is picked to be read against the
+   page, so drawn as this border it fights the quiet surface it encloses — and
+   for warning it is 1.87:1, a rule a reader cannot see at all. The edge here
+   is decorative: the -fg text on the tint is what carries the reading, and it
+   is the ratio measured on each variant below. */
 .ds-alert--success {
   background: var(--status-success-tint);
-  border-color: var(--status-success);
-  color: var(--status-success-fg); /* 10.23:1 light, 9.45:1 dark */
+  border-color: var(--status-success-tint-edge);
+  color: var(--status-success-fg); /* 6.71:1 light, 9.42:1 dark */
 }
 
 .ds-alert--warning {
   background: var(--status-warning-tint);
-  border-color: var(--status-warning);
-  color: var(--status-warning-fg); /* 8.96:1 light, 9.20:1 dark */
+  border-color: var(--status-warning-tint-edge);
+  color: var(--status-warning-fg); /* 6.24:1 light, 9.85:1 dark */
 }
 
 .ds-alert--danger {
   background: var(--status-danger-tint);
-  border-color: var(--status-danger);
-  color: var(--status-danger-fg); /* 6.83:1 light, 6.62:1 dark */
+  border-color: var(--status-danger-tint-edge);
+  color: var(--status-danger-fg); /* 6.69:1 light, 6.63:1 dark */
 }
 
 .ds-alert--info {
   background: var(--status-info-tint);
-  border-color: var(--status-info);
-  color: var(--status-info-fg); /* 6.44:1 light, 8.22:1 dark */
+  border-color: var(--status-info-tint-edge);
+  color: var(--status-info-fg); /* 6.38:1 light, 7.89:1 dark */
 }
