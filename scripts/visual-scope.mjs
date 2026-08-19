@@ -327,7 +327,25 @@ export function scopeFor({ changes, affectedProjects, shots, affectedBy }) {
       );
     }
 
-    const unmappedAffected = new Set(affectedBy(unmapped));
+    const affectedByResult = affectedBy(unmapped);
+    /* An unusable answer here is indistinguishable from "nx confirmed
+       neither project is affected" — the exact same silent-narrowing shape
+       the missing-default case above guards against, just one call deeper.
+       A nullish return, or any non-array (a bare string would iterate as
+       characters into the Set below and match no project name), must be
+       loud rather than quietly resolving to an empty set. An explicit `[]`
+       is different and stays valid — that's nx actively confirming neither
+       project depends on these paths, not a caller that forgot to return. */
+    if (!Array.isArray(affectedByResult)) {
+      throw new Error(
+        `visual-scope: affectedBy(${JSON.stringify(unmapped)}) must return an array of affected ` +
+          `project names; got ${JSON.stringify(affectedByResult)}. Refusing to treat an unusable ` +
+          'answer as "nx confirmed neither" — that indistinguishability is exactly what a missing ' +
+          'return statement would produce silently.',
+      );
+    }
+
+    const unmappedAffected = new Set(affectedByResult);
 
     if (unmappedAffected.has(STORYBOOK_PROJECT) && storybookNarrowable) {
       storybookNarrowable = false;

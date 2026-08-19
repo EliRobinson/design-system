@@ -460,6 +460,79 @@ describe('affectedBy governs whether an unmapped file actually widens anything',
       }),
     ).toThrow(/affectedBy/);
   });
+
+  describe('affectedBy must return a real array — a nullish or non-array answer is indistinguishable from "nx confirmed neither"', () => {
+    /* Today's only implementation (affectedByPaths) can't produce this —
+       JSON.parse either returns an array or throws — but this is the fourth
+       appearance of the same silent-narrowing shape in this module, and the
+       likeliest future mistake is a wrapper affectedBy that forgets
+       `return`. An unusable answer must be loud, exactly like the missing
+       affectedBy case just above. */
+    it.each([
+      ['undefined', () => undefined],
+      ['null', () => null],
+      ["the bare string 'docs'", () => 'docs'],
+    ])('throws when affectedBy returns %s', (_label, badStub) => {
+      expect(() =>
+        scopeFor({
+          changes: [{ status: 'M', path: 'pnpm-lock.yaml' }],
+          affectedProjects: BOTH,
+          shots,
+          affectedBy: badStub,
+        }),
+      ).toThrow(/affectedBy/);
+    });
+
+    it('names the offending value in the error', () => {
+      expect(() =>
+        scopeFor({
+          changes: [{ status: 'M', path: 'pnpm-lock.yaml' }],
+          affectedProjects: BOTH,
+          shots,
+          affectedBy: () => 'docs',
+        }),
+      ).toThrow(/"docs"/);
+    });
+
+    it('does NOT throw when affectedBy returns an empty array — that is nx actively confirming neither project is affected', () => {
+      /* The whole point of the distinction: [] is a real, valid answer (the
+         .changeset/x.md case elsewhere in this file), not a caller mistake. */
+      const result = scopeFor({
+        changes: [{ status: 'M', path: 'pnpm-lock.yaml' }],
+        affectedProjects: BOTH,
+        shots,
+        affectedBy: () => [],
+      });
+      expect(result.run).toBe(false);
+    });
+  });
+
+  it('does not call affectedBy at all when nothing could still widen, even with an unmapped path present (F2)', () => {
+    /* By the time pnpm-lock.yaml is reached, the docs side is already fully
+       widened by the VerdictBadge fan-out and the storybook side is already
+       fully widened by the unnarrowable .storybook/preview.ts config change
+       — so there is nothing left an nx call could change. Calling
+       affectedBy anyway would cost an extra nx round-trip for no scope
+       difference, and would spuriously throw when affectedBy happens to be
+       absent even though nothing needed it. The stub here throws if called
+       at all, so this pins that the guard actually skips the call rather
+       than merely happening not to change the result. */
+    const affectedByStub = vi.fn(() => {
+      throw new Error('affectedBy should not have been called: nothing could still widen');
+    });
+    const result = scopeFor({
+      changes: [
+        { status: 'A', path: 'packages/react/src/components/atoms/VerdictBadge.tsx' },
+        { status: 'M', path: 'apps/storybook/.storybook/preview.ts' },
+        { status: 'M', path: 'pnpm-lock.yaml' },
+      ],
+      affectedProjects: BOTH,
+      shots,
+      affectedBy: affectedByStub,
+    });
+    expect(result.run).toBe(true);
+    expect(affectedByStub).not.toHaveBeenCalled();
+  });
 });
 
 describe('pattern anchoring', () => {
