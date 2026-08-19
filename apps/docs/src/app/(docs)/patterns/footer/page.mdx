@@ -82,13 +82,13 @@ export function SiteFooter() {
 }
 
 .footer__nav a:hover {
-  color: var(--signal-400);
+  color: var(--accent-ink-inverse);
 }
 
 .footer__meta {
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
-  color: var(--ink-400);
+  color: var(--fg-inverse-3);
   margin: var(--space-6) 0 0;
 }
 ```
@@ -97,7 +97,9 @@ export function SiteFooter() {
 
 - Hairlines on dark use `--border-inverse` (12% white) — never `--border`, which
   disappears on ink.
-- Link hover shifts to `--signal-400` — the lighter amber step keeps AA on black.
+- Link hover shifts to `--accent-ink-inverse` — the brand color tuned for the inverted
+  band, which follows the theme when the band flips. A fixed ramp step does not: the docs
+  eyebrow was `--signal-400` and measured 2.07:1 the moment the band turned white.
 - Mono microcopy for the tagline and legal line; body sans for nothing-else-down-here.
 - The dot-grid texture is allowed here at 8% opacity, but the plain ink block is the
   default.

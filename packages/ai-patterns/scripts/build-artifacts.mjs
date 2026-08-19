@@ -33,6 +33,7 @@ import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
+import { TOKEN_STYLESHEETS, readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 
 import { replaceManagedBlock, transformBrandDocs } from '../src/artifacts/brand.mjs';
 import {
@@ -115,15 +116,22 @@ function main() {
 
   const manifest = componentManifest();
   const contracts = readJson(join(packageDir, 'src/contracts.json'));
-  const tokens = parseTokensCss(
-    readFileSync(join(repoRoot, 'packages/tokens/src/tokens.css'), 'utf8'),
-  );
+  /* Every token stylesheet, not tokens.css alone. The roster is the tokens
+     package's to name — asking it is what keeps a fourth layer from needing an
+     edit here — and reading one file is not a smaller version of reading all of
+     them: tokens.css on its own parses fine and simply has no brand in it, so
+     the packed llms snapshot and the brand manifest would both describe a
+     greyscale system without anything failing. */
+  const tokenSrcDir = join(repoRoot, 'packages/tokens/src');
+  const tokens = parseTokensCss(readTokenStylesheets(tokenSrcDir));
 
   if (!manifest.components?.length) {
     throw new Error('@elirobinson/react/manifest describes no components.');
   }
   if (tokens.length === 0) {
-    throw new Error('No tokens parsed from packages/tokens/src/tokens.css.');
+    throw new Error(
+      `No tokens parsed from ${TOKEN_STYLESHEETS.join(' + ')} in packages/tokens/src.`,
+    );
   }
 
   rmSync(outDir, { recursive: true, force: true });

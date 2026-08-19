@@ -440,7 +440,7 @@
   font-size: var(--fs-3xs);
   letter-spacing: var(--tr-wide);
   text-transform: uppercase;
-  color: var(--status-danger);
+  color: var(--status-danger-fg); /* 7.54:1 — the fill is a 3:1 graphic, not type */
 }
 
 .props-inherits,
@@ -479,12 +479,14 @@
   margin: 0 0 var(--space-2);
 }
 
+/* The -fg member, never the fill: --status-X is cleared for 3:1 as a graphic
+   and three of the four fall short of 4.5:1 as type. */
 .do-dont__col--do .do-dont__label {
-  color: var(--status-success);
+  color: var(--status-success-fg); /* 7.35:1 */
 }
 
 .do-dont__col--dont .do-dont__label {
-  color: var(--status-danger);
+  color: var(--status-danger-fg); /* 7.54:1 */
 }
 
 .do-dont ul {
@@ -565,16 +567,20 @@
   white-space: nowrap;
 }
 
+/* These three label the contrast table's own verdicts, which is why painting
+   them in the fill tokens was the worst version of this bug: "AA large only"
+   was drawn in --status-warning at 1.87:1 on white — a failing label on the
+   page that grades failures. */
 .contrast-verdict--pass {
-  color: var(--status-success);
+  color: var(--status-success-fg); /* 7.35:1 */
 }
 
 .contrast-verdict--large {
-  color: var(--status-warning);
+  color: var(--status-warning-fg); /* 6.97:1 */
 }
 
 .contrast-verdict--fail {
-  color: var(--status-danger);
+  color: var(--status-danger-fg); /* 7.54:1 */
 }
 
 .type-scale__row {
@@ -950,9 +956,13 @@
   color: var(--fg-2);
 }
 
+/* "Ships" is a state, not a brand statement, so it is painted in status and
+   not in the second brand ramp. --anchor-500 was also a base-scale paint: it
+   is fixed at 42% L, which is 8.13:1 on a white page and 2.58:1 on a black
+   one, so the badge dimmed to unreadable in dark mode. */
 .brand-card__badge--ships {
-  border-color: var(--anchor-500);
-  color: var(--anchor-500);
+  border-color: var(--status-success); /* 3:1 graphic edge */
+  color: var(--status-success-fg); /* 7.35:1 */
 }
 
 .brand-card__badge--repo {

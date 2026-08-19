@@ -45,7 +45,9 @@ export function Hero() {
 }
 
 .hero__eyebrow {
-  color: var(--signal-400);
+  /* The band's own readable brand color. A fixed ramp step does not flip when
+     the band does — --signal-400 on a band that turns white measures 2.07:1. */
+  color: var(--accent-ink-inverse);
 }
 
 .hero__title {
@@ -65,7 +67,7 @@ export function Hero() {
 .hero__lead {
   font-size: var(--fs-xl);
   line-height: var(--lh-relaxed);
-  color: var(--ink-300);
+  color: var(--fg-inverse-2);
   max-width: var(--container-md);
   margin: 0 0 var(--space-7);
 }

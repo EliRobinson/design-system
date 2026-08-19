@@ -59,7 +59,11 @@ describe('llms-full.txt corpus', () => {
   const full = llmsFull();
 
   it('carries the token surface, constraints, every component, and the patterns', () => {
-    expect(full).toContain('--signal-500');
+    /* The name alone was not evidence: the color page's prose mentions
+       `--signal-500`, so this passed for the whole stretch where the corpus
+       carried tokens.css without its palette layer and shipped an agent a
+       token surface with no brand in it. The rendered row is the proof. */
+    expect(full).toContain('- `--signal-500: oklch(72.5% 0.175 65)`');
     expect(full).toContain('touch-target-dense');
     for (const component of components) {
       expect(full).toContain(`### ${component.name} (${component.tier})`);

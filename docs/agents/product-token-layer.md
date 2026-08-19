@@ -19,6 +19,13 @@ inside its own `[data-product]` scope.
 **Miltinson Amber stays the system default.** A product that ships none of this gets the
 system palette, unchanged.
 
+Note the two layers are different things and compose. `data-palette` swaps the _brand_ —
+the ramps and everything derived from them — across the whole system, and is the design
+system's own dial. `--product-*` overrides individual _slots_ in a product's own scope,
+and every one of them falls back to a token that is already correct under every palette.
+A product that wants a different brand should reach for a palette; a product that wants a
+different verdict green should reach for this.
+
 ## The rule that makes it optional
 
 Every read is one level deep and always lands on a system token:
@@ -44,16 +51,18 @@ documents, so the table cannot drift away from the code.
 
 ## The variables
 
-| Variable                    | System fallback         | Role                                                                                                           |
-| --------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `--product-signal`          | `--accent-press`        | A non-text state graphic — a caret, a rule, a dot. Needs 3:1 under SC 1.4.11. Not `--accent`, which is 2.53:1. |
-| `--product-signal-fg`       | `--status-warning-fg`   | Brand colour a user **reads** — a mark, a glyph, a label. 9.69:1 light, 11.09:1 dark.                          |
-| `--product-verdict-go`      | `--status-success-tint` | Affirmative verdict fill.                                                                                      |
-| `--product-verdict-go-fg`   | `--status-success-fg`   | The foreground on that fill.                                                                                   |
-| `--product-verdict-no`      | `--status-danger-tint`  | Negative verdict fill.                                                                                         |
-| `--product-verdict-no-fg`   | `--status-danger-fg`    | The foreground on that fill.                                                                                   |
-| `--product-verdict-hold`    | `--status-warning-tint` | Conditional verdict fill.                                                                                      |
-| `--product-verdict-hold-fg` | `--status-warning-fg`   | The foreground on that fill.                                                                                   |
+| Variable                    | System fallback           | Role                                                                                                                                                                                                                   |
+| --------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--product-signal`          | `--accent-press`          | A non-text state graphic — a caret, a rule, a dot. Needs 3:1 under SC 1.4.11. Not `--accent`, which is 2.53:1.                                                                                                         |
+| `--product-signal-fg`       | `--status-warning-fg`     | A mark, glyph or label a user **reads**. 6.66:1 light, 11.51:1 dark on `--surface-2`. Deliberately not `--accent-ink`: that swaps hue with `data-palette`, and an assistant's mark is an identity, not a brand accent. |
+| `--product-verdict-go`      | `--status-success-tint`   | Affirmative verdict fill.                                                                                                                                                                                              |
+| `--product-verdict-go-fg`   | `--status-success-fg`     | The foreground on that fill.                                                                                                                                                                                           |
+| `--product-verdict-no`      | `--status-danger-tint`    | Negative verdict fill.                                                                                                                                                                                                 |
+| `--product-verdict-no-fg`   | `--status-danger-fg`      | The foreground on that fill.                                                                                                                                                                                           |
+| `--product-verdict-hold`    | `--status-warning-tint`   | Conditional verdict fill.                                                                                                                                                                                              |
+| `--product-verdict-hold-fg` | `--status-warning-fg`     | The foreground on that fill.                                                                                                                                                                                           |
+| `--product-caveat-rule`     | `--status-warning-border` | The rule marking a paragraph as a caution. **Not** `--status-warning`: the bare warning fill is 1.87:1 and cannot carry the 3:1 SC 1.4.11 asks of it. 3.76:1 light, 11.17:1 dark.                                      |
+| `--product-caveat-fg`       | `--status-warning-fg`     | That caveat's text. The second channel, so the caution is not carried by one thin rule alone (SC 1.4.1). 6.97:1 light, 11.86:1 dark.                                                                                   |
 
 Which components read which is derivable — `grep -r 'var(--product-' packages/react/src`
 — so it is not restated here. Today it is `ai/ChatMessage`, `ai/StreamingCaret` and

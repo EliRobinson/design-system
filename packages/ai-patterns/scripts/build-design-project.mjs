@@ -34,6 +34,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
+import { TOKEN_STYLESHEETS, readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 
 import { buildAdherenceConfig } from '../src/artifacts/adherence.mjs';
 import { replaceManagedBlock, visualArtifactsGuidance } from '../src/artifacts/brand.mjs';
@@ -54,6 +55,21 @@ const docsDir = join(repoRoot, 'design-system-docs');
    which is the whole reason its previews look like the product. One rename —
    the project has no nested directories under components/. */
 const STYLESHEET_RENAMES = { 'organisms/table/core.css': 'organisms/table-core.css' };
+
+const TOKENS_SRC = join(repoRoot, 'packages/tokens/src');
+
+/* The token stylesheets the bundle carries, under `tokens/`.
+ *
+ * `TOKEN_STYLESHEETS` is the *parse* roster — the files that declare a default
+ * token value — and mobile.css is deliberately not on it because it declares
+ * no name of its own. It still has to be copied: tokens.css `@import`s both
+ * siblings with relative specifiers, so a bundle holding tokens.css alone is a
+ * stylesheet with two dangling imports, and the mirrored project renders with
+ * no colour at all while every file in it looks present.
+ *
+ * Copy set = the roster plus the platform layer, derived rather than listed, so
+ * a palette file added to the tokens package lands here without an edit. */
+const BUNDLED_TOKEN_STYLESHEETS = [...TOKEN_STYLESHEETS, 'mobile.css'];
 
 /* Components that exist only in the design project, with no counterpart in
    @elirobinson/react. They are legal to use inside it and belong in the
@@ -78,7 +94,7 @@ const TARGET = {
     '_adherence.oxlintrc.json',
     'SKILL.md',
     'github.md',
-    'tokens/tokens.css',
+    ...BUNDLED_TOKEN_STYLESHEETS.map((name) => `tokens/${name}`),
     'components/atoms/*.css',
     'components/molecules/*.css',
     'components/organisms/*.css',
@@ -136,20 +152,28 @@ function countKitDirs(dir) {
 function main() {
   const require = createRequire(import.meta.url);
   const manifest = JSON.parse(readFileSync(require.resolve('@elirobinson/react/manifest'), 'utf8'));
-  const tokensCss = readFileSync(join(repoRoot, 'packages/tokens/src/tokens.css'), 'utf8');
-  const tokens = parseTokensCss(tokensCss);
+  /* Every token stylesheet, in cascade order. tokens.css alone parses and
+     yields a few hundred declarations with the entire brand missing, so the
+     adherence config would ship a token roster that has no `--accent*` in it
+     and nothing would fail. */
+  const tokens = parseTokensCss(readTokenStylesheets(TOKENS_SRC));
 
   if (!manifest.components?.length) {
     throw new Error('@elirobinson/react/manifest describes no components. Build that package.');
   }
   if (tokens.length === 0) {
-    throw new Error('No tokens parsed from packages/tokens/src/tokens.css.');
+    throw new Error(
+      `No tokens parsed from ${TOKEN_STYLESHEETS.join(' + ')} in packages/tokens/src.`,
+    );
   }
 
   rmSync(outDir, { recursive: true, force: true });
 
-  /* 1. Tokens — the project's copy is the repo's file, not a restatement. */
-  write('tokens/tokens.css', tokensCss);
+  /* 1. Tokens — the project's copies are the repo's files, not restatements.
+        All three layers, because tokens.css @imports the other two. */
+  for (const name of BUNDLED_TOKEN_STYLESHEETS) {
+    write(`tokens/${name}`, readFileSync(join(TOKENS_SRC, name), 'utf8'));
+  }
 
   /* 2. Component stylesheets. */
   const componentsRoot = join(repoRoot, 'packages/react/src/components');

@@ -37,10 +37,20 @@
   width: 100%;
 }
 
-/* The assistant mark is text a reader reads at 14px semibold, so it needs the
-   readable brand token and not the fill one: --accent is --signal-500 at
-   2.53:1. --product-signal-fg lets a product own the hue; the system fallback
-   is Miltinson Amber at 9.69:1 light / 11.09:1 dark. */
+/* The assistant mark is text a reader reads at 14px semibold, so it needs a
+   token cleared for text and not a fill: --accent is 2.53:1 against the page
+   under ember, which is a fill floor, not a text one.
+
+   The fallback is --status-warning-fg (6.66:1 light, 11.51:1 dark on
+   --surface-2), NOT the brand's readable amber. That looks like a near-miss
+   and is deliberate. --accent-ink would be legible too, but it swaps with the
+   palette — amber under ember, teal under slate — so the assistant's mark
+   would silently re-hue with the brand, and the mark is an identity, not a
+   brand accent. --status-* is the palette-independent family, so this reads
+   the same under every palette; it is identical in ember and slate.
+
+   --product-signal-fg is the override for a product that wants its own hue,
+   which is the supported way to change this — one token, not a fork. */
 .ds-chat-message--received .ds-chat-message__mark {
   color: var(--product-signal-fg, var(--status-warning-fg));
 }

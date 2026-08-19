@@ -2,22 +2,30 @@
  *
  * The case that matters is completeness: the hand-authored ink card rendered
  * 10 of 13 steps, and nothing caught it. A generated card must show every step
- * tokens.css defines, so adding one to the stylesheet is the whole change.
+ * the token stylesheets define, so adding one to a stylesheet is the whole
+ * change.
+ *
+ * Completeness now has a second half. The palette split moved the brand ramps
+ * out of tokens.css, so a reader that still opens that one file produces a
+ * card set with no signal, no anchor and no status in it — and the generator
+ * has to refuse that rather than write it. Both halves are asserted here.
  */
 
-import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
+import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { describe, expect, it } from 'vitest';
 
 import { buildGuidelineCards } from './guideline-cards.mjs';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
-const tokens = parseTokensCss(
-  readFileSync(join(repoRoot, 'packages/tokens/src/tokens.css'), 'utf8'),
-);
+const tokenSrc = join(repoRoot, 'packages/tokens/src');
+/* Every stylesheet, not tokens.css alone — the brand lives in palettes.css and
+   half these cards render nothing without it. */
+const stylesheets = readTokenStylesheets(tokenSrc);
+const tokens = parseTokensCss(stylesheets);
 
 const cards = buildGuidelineCards(tokens);
 const cardAt = (path) => cards.find((entry) => entry.path === path).html;
@@ -60,11 +68,27 @@ describe('completeness against tokens.css', () => {
     expect(html).toContain('var(--anchor-500)');
   });
 
-  it('renders all four status colours', () => {
+  it('renders every member of every status state, not just the fill', () => {
     const html = cardAt('colors-status.html');
-    expect(chipCount(html)).toBe(4);
-    for (const name of ['--status-success', '--status-warning', '--status-danger', '--status-info'])
-      expect(html).toContain(`var(${name})`);
+    for (const state of ['success', 'warning', 'danger', 'info']) {
+      for (const suffix of ['', '-on', '-fg', '-tint', '-tint-edge']) {
+        expect(html).toContain(`var(--status-${state}${suffix})`);
+      }
+    }
+    /* Warning's own border — the one asymmetric member. A card that showed the
+       fills alone left the ink, the tint and the edge to be guessed at. */
+    expect(html).toContain('var(--status-warning-border)');
+    expect(chipCount(html)).toBe(4 * 5 + 1);
+  });
+
+  it('renders every categorical series plus the chart chrome', () => {
+    const html = cardAt('colors-data.html');
+    expect(swatchCount(html, '--chart-')).toBe(
+      tokens.filter((token) => /^--chart-/.test(token.name)).length,
+    );
+    expect(html).toContain('var(--chart-1)');
+    expect(html).toContain('var(--chart-8)');
+    for (const name of ['--chart-grid', '--chart-axis']) expect(html).toContain(`var(${name})`);
   });
 
   it('renders every semantic surface and border', () => {
@@ -82,12 +106,27 @@ describe('completeness against tokens.css', () => {
 
   it('throws naming every missing token rather than rendering a short card', () => {
     // Silently dropping is the ink bug; a rename must fail where it happens.
-    expect(() => buildGuidelineCards(without('--status-danger', '--status-info'))).toThrow(
-      /colors-status\.html names --status-danger, --status-info/,
+    expect(() => buildGuidelineCards(without('--status-danger-tint-edge'))).toThrow(
+      /colors-status\.html names --status-danger-tint-edge/,
     );
     expect(() => buildGuidelineCards(without('--link-hover'))).toThrow(
       /colors-text\.html names --link-hover/,
     );
+    expect(() => buildGuidelineCards(without('--chart-grid'))).toThrow(
+      /colors-data\.html names --chart-grid/,
+    );
+  });
+
+  it('refuses to render a ramp card with no ramp, rather than an empty row', () => {
+    /* The palette split's failure mode: tokens.css alone still parses, still
+       yields a few hundred declarations, and has no --signal- step in it. The
+       old generator wrote a signal card containing one empty div. */
+    const tokensCssOnly = parseTokensCss(stylesheets.at(-1));
+    expect(tokensCssOnly.length).toBeGreaterThan(100);
+    expect(() => buildGuidelineCards(tokensCssOnly)).toThrow(
+      /colors-signal\.html renders the --signal- ramp/,
+    );
+    expect(() => buildGuidelineCards(tokensCssOnly)).toThrow(/readTokenStylesheets/);
   });
 
   it('renders every radius and weight', () => {
@@ -116,6 +155,45 @@ describe('editorial judgement that survives generation', () => {
   it('borders the near-white chips so they stay visible', () => {
     expect(cardAt('colors-ink.html')).toContain('border:1px solid var(--border)');
     expect(cardAt('colors-signal.html')).not.toContain('border:1px solid var(--border)');
+  });
+});
+
+describe('the palette card', () => {
+  const html = cardAt('colors-palettes.html');
+  const panels = html.match(/<section[^>]*>[\s\S]*?<\/section>/g) ?? [];
+
+  it('renders one panel per palette and theme', () => {
+    expect(panels).toHaveLength(4);
+    expect(html).toContain('data-theme="dark"');
+    expect(html).toContain('data-palette="slate"');
+    expect(html).toContain('data-palette="slate" data-theme="dark"');
+  });
+
+  it('repeats byte-identical markup and lets the cascade do the work', () => {
+    /* This is the whole mechanism, and it is also the claim the card makes: a
+       component's markup does not change with the palette either. If these
+       ever diverge, the card has grown a per-palette special case and is no
+       longer evidence of anything. */
+    const scales = panels.map((panel) =>
+      panel.replace(/^<section[^>]*>/, '').replace(/^<span[^>]*>[^<]*<\/span>/, ''),
+    );
+    expect(new Set(scales).size).toBe(1);
+  });
+
+  it('shows the full signal ramp under every palette', () => {
+    expect(swatchCount(html, '--signal-')).toBe(
+      tokens.filter((token) => /^--signal-\d+$/.test(token.name)).length,
+    );
+    for (const name of ['--accent', '--anchor', '--focus-ring']) {
+      expect(html).toContain(`var(${name})`);
+    }
+  });
+
+  it('shows no neutral swatch, because a nested block cannot re-mix one', () => {
+    /* --ink-* are computed on :root with --n-mult and --n-h already
+       substituted there, so a slate panel would render ember's greys under a
+       slate label. Neutrals stay on the ink card. */
+    expect(html).not.toContain('background:var(--ink-');
   });
 });
 

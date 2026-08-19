@@ -113,15 +113,31 @@
   font-size: var(--fs-xs);
 }
 
-/* --status-warning, not --signal-500. Same amber family, but --signal-500 is a
-   base-scale value that does not move with the theme, and this rule is a
-   3:1 non-text graphic: it is the only thing marking the paragraph as a
-   caution. --status-warning is that colour named for the job it does. The
-   caveat's own text stays --fg-2 — a caveat is body copy that has to be read,
-   not a warning label, and tinting the words would cost contrast for nothing. */
+/* --status-warning-border, not --status-warning, and not --signal-500.
+ *
+ * Three tokens, three different mistakes. --signal-500 is a base-scale value
+ * that does not move with the theme OR the palette — it is amber under ember
+ * and teal under slate, and a teal caution rule is not a caution.
+ *
+ * --status-warning is the right family and the wrong member. This rule is the
+ * only thing marking the paragraph as a caution, which makes it a meaningful
+ * non-text graphic under SC 1.4.11 and puts a 3:1 floor on it — and the
+ * warning FILL is 1.87:1 on a light page, because a yellow pushed dark enough
+ * to clear 3:1 on white is olive and stops reading as caution. That is the
+ * documented exception in the token set, and --status-warning-border is the
+ * token that exists to carry the floor the fill cannot: 3.76:1 light, 11.17:1
+ * dark. On ink no lift is needed, so there the border token IS the fill.
+ *
+ * The caveat's text takes --status-warning-fg (6.97:1 light, 11.86:1 dark)
+ * rather than --fg-2. --fg-2 is the higher ratio of the two at 8.45:1, so this
+ * is not a contrast decision: it is SC 1.4.1. A rule alone puts the whole
+ * caution on one thin line of colour at the paragraph's edge, and a reader who
+ * misses it reads the caveat as body copy. Tinting the words is the second
+ * channel. Both members go through --product-caveat*, so a product re-hues the
+ * rule and the text together — the pair that must never move apart. */
 .ds-decision__caveat {
-  border-left: 3px solid var(--status-warning);
-  color: var(--fg-2);
+  border-left: 3px solid var(--product-caveat-rule, var(--status-warning-border));
+  color: var(--product-caveat-fg, var(--status-warning-fg));
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
   line-height: var(--lh-normal);

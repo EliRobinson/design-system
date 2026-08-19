@@ -1,0 +1,453 @@
+/* ==========================================================================
+   Miltinson Technologies — Design Tokens
+   palettes.css — the palette layer
+   ==========================================================================
+   The brand dial, selected by `data-palette`. @imported by tokens.css
+   alongside mobile.css.
+
+   tokens.css used to hardcode one brand. It now owns the neutrals, the
+   surfaces and the geometry; this file owns everything that changes when the
+   brand does: the two colour ramps, the neutral hue and chroma the greys are
+   mixed from, and every semantic token derived from them — `--accent*`,
+   `--anchor*`, `--link*`, `--focus-ring`.
+
+   Two families deliberately live here and are NOT on the dial: status and
+   chart. They are declared once, in the two theme blocks, and no palette block
+   touches them. That omission is the mechanism, not an oversight — see
+   "Status" below for why a warning badge that changes colour with the brand is
+   a bug rather than a feature.
+
+   ---------------------------------------------------------------------------
+   Four blocks, not a matrix
+   ---------------------------------------------------------------------------
+   Two palettes times two themes is four combinations, and they resolve out of
+   four flat blocks with no `!important`, no `@layer`, and no build step:
+
+     1. `:root`                                            ember  light  (0,1,0)
+     2. `[data-theme='dark'], .dark`                        ember  dark   (0,1,0)
+     3. `[data-palette='slate']`                            slate  light  (0,1,0)
+     4. `[data-palette='slate'][data-theme='dark'],
+         [data-palette='slate'].dark`                       slate  dark   (0,2,0)
+
+   Block 4 is the only one that carries two compound conditions, so it is the
+   only one with (0,2,0), and it outranks the other three wherever it applies.
+   The first three tie at (0,1,0) and are decided by source order, which is why
+   the order above is the order below and must stay that way.
+
+   The consequence a reviewer has to check: on `slate` + `dark`, blocks 1, 2, 3
+   and 4 all match, and the tie between 2 and 3 goes to 3 — the *later* one —
+   which is slate's LIGHT block. So block 4 cannot be a thin diff over block 2;
+   anything block 3 declares that dark needs to change, block 4 must restate.
+   Rather than track which tokens that is, all four blocks declare the complete
+   semantic set. Identical values get repeated. That is the price of the
+   omission never being silent, and `contrast.test.mjs` measures all four
+   combinations so a token that leaks across a block is a failing build.
+
+   Ramps are palette-level, not theme-level, so `--signal-*` and `--anchor-*`
+   are declared in blocks 1 and 3 only. Status and chart are theme-level but
+   not palette-level, so they are declared in blocks 1 and 2 only.
+
+   ---------------------------------------------------------------------------
+   Adding a palette
+   ---------------------------------------------------------------------------
+   Two blocks — `[data-palette='<name>']` and
+   `[data-palette='<name>'][data-theme='dark'], [data-palette='<name>'].dark` —
+   appended after the ones below, each declaring the same complete set, plus
+   four measured columns in the ratio tables. Nothing else in the system
+   changes: tokens.css never names a ramp step, and no component may assume
+   which palette is mounted or which way its hover moves.
+
+   Every ratio in a comment here was measured against `--bg` in the palette and
+   theme whose block it sits in, unless the comment names another background.
+   An unmeasured colour is not cleared for use.
+   ========================================================================== */
+
+/* ==========================================================================
+   BLOCK 1 — ember (default), light
+   --------------------------------------------------------------------------
+   Miltinson Amber over Miltinson Forest, near-achromatic greys. This is the
+   brand the system shipped with; the ramps are unchanged from the tokens.css
+   that predates the split.
+
+   This block also carries the palette-independent status and chart families,
+   because `:root` is the only selector that is true under every palette.
+   ========================================================================== */
+:root {
+  /* --- The neutral dial ---------------------------------------------------
+     tokens.css mixes every `--ink-*` step as
+     `oklch(<L>% calc(<C> * var(--n-mult)) var(--n-h))`, so a palette can tint
+     the greys without touching a single lightness. Lightness is what carries
+     contrast, so every measured neutral ratio is identical under both dials —
+     asserted, not assumed, in contrast.test.mjs.
+
+     These are declared here and not in tokens.css on purpose. `:root` and
+     `[data-palette='slate']` are both (0,1,0), and tokens.css @imports this
+     file at the top, so a `--n-h` declared in tokens.css's own `:root` would
+     come later at equal specificity and beat every palette block — the dial
+     would exist and never turn. The palette owns the dial; tokens.css reads
+     it. ------------------------------------------------------------------ */
+  --n-h: 247; /* neutral hue */
+  --n-mult: 1; /* neutral chroma multiplier — 1 near-achromatic, 1.6 charcoal */
+
+  /* --- Ramps -------------------------------------------------------------- */
+
+  /* Signal — Miltinson Amber. Warm, craftsman, honest. The primary accent.
+     Used for CTAs, links on dark, eyebrow underlines, key stats. */
+  --signal-50: oklch(97.5% 0.025 75);
+  --signal-100: oklch(94% 0.055 75);
+  --signal-200: oklch(89% 0.1 75);
+  --signal-300: oklch(83% 0.14 72);
+  --signal-400: oklch(78% 0.16 68);
+  --signal-500: oklch(72.5% 0.175 65); /* primary — Miltinson Amber */
+  --signal-600: oklch(63% 0.165 55);
+  --signal-700: oklch(52% 0.145 45);
+  --signal-800: oklch(40% 0.115 40);
+  --signal-900: oklch(28% 0.08 38);
+
+  /* Anchor — Forest. Secondary brand anchor used sparingly:
+     coaching/guides surfaces, trust marks. It is no longer what success is
+     made of — see the status section. */
+  --anchor-50: oklch(96% 0.018 165);
+  --anchor-100: oklch(91% 0.035 165);
+  --anchor-200: oklch(82% 0.055 162);
+  --anchor-300: oklch(70% 0.075 160);
+  --anchor-400: oklch(55% 0.085 158);
+  --anchor-500: oklch(42% 0.08 156); /* primary — Miltinson Forest */
+  --anchor-600: oklch(34% 0.065 156);
+  --anchor-700: oklch(26% 0.05 156);
+  --anchor-800: oklch(19% 0.035 156);
+  --anchor-900: oklch(13% 0.025 156);
+
+  /* --- Brand semantics ----------------------------------------------------
+     Amber peaks bright, so `--accent` is the 500 step carrying ink text and
+     hover LIGHTENS to 400. Slate does the opposite. A component reads
+     `--accent-hover`/`--accent-press` and never assumes a direction. ------ */
+  --accent: var(--signal-500); /* fill — 2.53:1, fill-only */
+  --accent-hover: var(--signal-400); /* fill — 2.06:1, fill-only */
+  --accent-press: var(--signal-600); /* fill — 3.69:1 */
+  --accent-fg: var(--ink-1000); /* on the three fills: 8.30 / 10.17 / 5.69 */
+  /* The tinted brand surface — a soft chip or an inset panel, the brand
+     counterpart to --status-*-tint. It carries --accent-ink and nothing else,
+     and like every tint it has a dark override: a fill that stays put while
+     its text follows the theme is the pair that inverts. */
+  --accent-tint: var(--signal-50); /* with --accent-ink: 8.96:1 */
+  /* Brand amber at legible weight. --accent is a fill: at 2.53:1 against --bg
+     it cannot be a glyph, a mark, or a label. Anything amber that a user has
+     to *read* — a filled rating star, a slider thumb — uses this. */
+  --accent-ink: var(--signal-800); /* 9.69:1 */
+  /* The same idea as --accent-ink, one surface over: amber that can be read on
+     an inverted band. --accent-ink is tuned for --bg, so on the band it is the
+     wrong end of the ramp — the docs eyebrow used --signal-400 and fell to
+     2.07:1 once the band flipped white. */
+  --accent-ink-inverse: var(--signal-400); /* on --bg-inverse — 10.17:1 */
+
+  --anchor: var(--anchor-500); /* fill — 8.13:1 */
+  --anchor-hover: var(--anchor-400); /* fill — 4.65:1 */
+  --anchor-press: var(--anchor-600); /* fill — 11.41:1 */
+  --anchor-fg: var(--ink-0); /* on the three fills: 8.13 / 4.65 / 11.41 */
+  --anchor-tint: var(--anchor-50); /* with --anchor-ink: 10.23:1 */
+  /* Forest at legible weight, the --accent-ink of the second brand colour.
+     --anchor is 8.13:1 and could carry text on white, but it is 2.58:1 on a
+     black page, so text drawn in it needs a token that inverts. */
+  --anchor-ink: var(--anchor-600); /* 11.41:1 */
+
+  --focus-ring: var(--ink-1000); /* 21:1 — high-contrast focus, ink-on-bg */
+
+  --link: var(--ink-1000); /* 21:1 */
+  --link-hover: var(--signal-800); /* 9.69:1 — was --signal-700 at 5.86:1 */
+  --link-visited: var(--ink-700); /* 13.62:1 */
+  /* A link sitting on a filled surface keeps the fill's own foreground. See
+     the `.ds-button a` block in tokens.css for why this is not just a nicety. */
+  --link-on-fill: currentColor;
+
+  /* ======================================================================
+     STATUS — palette-independent, five members per state
+     ----------------------------------------------------------------------
+     Status used to be made of brand: `--status-success` was `--anchor-500`
+     and `--status-warning` was `--signal-600`, which made a caution badge the
+     exact colour of the primary CTA. An amber button beside an amber caution
+     badge is not a signal, and under a second palette it would have been a
+     teal one. Success is green because success is green, in every brand this
+     system will ever carry, so these four hues are owned here and no
+     `[data-palette]` block below touches them.
+
+     | member                 | job                                  | floor |
+     | ---------------------- | ------------------------------------ | ----- |
+     | --status-X             | the fill                             | 3:1   |
+     | --status-X-on          | text drawn ON that fill              | 4.5:1 |
+     | --status-X-fg          | status text on --bg / --surface      | 4.5:1 |
+     | --status-X-tint        | quiet alert or row background        | —     |
+     | --status-X-tint-edge   | that tint's hairline                 | —     |
+
+     `--status-X` is NEVER text. The fills carry over to dark unchanged — each
+     one clears 3:1 against both a white and a black page — and every `-fg`
+     and `-tint` is re-picked in block 2.
+     ====================================================================== */
+  --status-success: oklch(51.9% 0.145 150); /* fill — 5.17:1 light, 4.06:1 dark */
+  --status-success-on: var(--ink-0); /* on the fill — 5.17:1 */
+  --status-success-fg: oklch(44% 0.12 150); /* 7.35:1 on --bg */
+  --status-success-tint: oklch(96.5% 0.03 150); /* with -fg: 6.71:1 */
+  --status-success-tint-edge: oklch(88% 0.06 150); /* decorative hairline on the tint */
+
+  /* Warning is the documented exception. Yellow cannot reach 3:1 on white and
+     still read as yellow — push it dark enough to clear the floor and it is
+     olive. So `--status-warning` is 1.87:1, below the SC 1.4.11 floor, and a
+     warning fill or rule must be EDGED with `--status-warning-border`, which
+     is what actually carries the 3:1. Painting a bare warning fill is a bug;
+     `organisms/Toast.css` is the worked example. */
+  --status-warning: oklch(80.25% 0.16 85); /* fill — 1.87:1 light, 11.22:1 dark — must be edged */
+  --status-warning-border: oklch(61.9% 0.14 70); /* 3.76:1 — the edge that carries SC 1.4.11 */
+  --status-warning-on: var(--ink-1000); /* on the fill — 11.22:1 */
+  --status-warning-fg: oklch(47% 0.105 72); /* 6.97:1 on --bg */
+  --status-warning-tint: oklch(96.5% 0.05 85); /* with -fg: 6.24:1 */
+  --status-warning-tint-edge: oklch(87% 0.1 85); /* decorative hairline on the tint */
+
+  --status-danger: oklch(54.85% 0.2 27); /* fill — 5.41:1 light, 3.88:1 dark */
+  --status-danger-on: var(--ink-0); /* on the fill — 5.41:1 */
+  --status-danger-fg: oklch(47% 0.19 27); /* 7.54:1 on --bg */
+  --status-danger-tint: oklch(96.5% 0.025 27); /* with -fg: 6.69:1 */
+  --status-danger-tint-edge: oklch(87% 0.07 27); /* decorative hairline on the tint */
+
+  --status-info: oklch(54% 0.155 250); /* fill — 5.06:1 light, 4.15:1 dark */
+  --status-info-on: var(--ink-0); /* on the fill — 5.06:1 */
+  --status-info-fg: oklch(46% 0.14 250); /* 7.09:1 on --bg */
+  --status-info-tint: oklch(96.5% 0.03 250); /* with -fg: 6.38:1 */
+  --status-info-tint-edge: oklch(87% 0.07 250); /* decorative hairline on the tint */
+
+  /* ======================================================================
+     DATA / CATEGORICAL — also palette-independent
+     ----------------------------------------------------------------------
+     Eight hues at ONE lightness and ONE chroma, so no series shouts louder
+     than another: a categorical scale whose members differ in lightness reads
+     as an ordering the data does not have. They are fills and strokes, never
+     labels — 3.34:1 at the low end is a non-text graphic under SC 1.4.11, and
+     an in-chart label uses `--fg` or, in dark, the chart colour itself, which
+     clears 4.5:1 there.
+
+     The order is not the hue order. Adjacent series are the ones a reader has
+     to tell apart, so consecutive slots are at least 90° apart on the hue
+     circle; sorting them by hue would put two neighbouring greens side by side
+     in every two-series chart.
+
+     A legend still needs a label or a shape. Colour is never the only channel
+     that carries meaning (SC 1.4.1), and eight categories is exactly where
+     that rule starts to matter.
+     ====================================================================== */
+  --chart-1: oklch(62% 0.13 25); /* 3.87:1 */
+  --chart-2: oklch(62% 0.13 205); /* 3.34:1 */
+  --chart-3: oklch(62% 0.13 115); /* 3.55:1 */
+  --chart-4: oklch(62% 0.13 295); /* 3.81:1 */
+  --chart-5: oklch(62% 0.13 70); /* 3.74:1 */
+  --chart-6: oklch(62% 0.13 250); /* 3.63:1 */
+  --chart-7: oklch(62% 0.13 160); /* 3.42:1 */
+  --chart-8: oklch(62% 0.13 340); /* 3.90:1 */
+  /* The plot furniture is neutral, so it moves with the palette's grey dial
+     and never competes with a series for attention. */
+  --chart-grid: var(--border-strong); /* decorative — 1.53:1 */
+  --chart-axis: var(--border-control); /* 3.64:1 — the axis is a meaningful line */
+}
+
+/* ==========================================================================
+   BLOCK 2 — ember, dark
+   --------------------------------------------------------------------------
+   `.dark` is accepted as a compatibility alias because most theme switchers
+   default to a class strategy — next-themes in particular. Either convention
+   works; `[data-theme='dark']` remains the one the system documents.
+
+   This block also carries the palette-independent dark values for status and
+   chart, for the same reason block 1 carries their light values.
+   ========================================================================== */
+[data-theme='dark'],
+.dark {
+  /* Amber is bright enough to stay put: the same three fills clear 3:1 on a
+     black page as comfortably as they do on a white one, and ink text on them
+     is unchanged. Only the ink and tint tokens, which are tuned to a page,
+     have to move. */
+  --accent: var(--signal-500); /* fill — 8.30:1 */
+  --accent-hover: var(--signal-400); /* fill — 10.17:1 */
+  --accent-press: var(--signal-600); /* fill — 5.69:1 */
+  --accent-fg: var(--ink-1000); /* on the three fills: 8.30 / 10.17 / 5.69 */
+  /* The brand tint, mirrored the way the status tints are. Left at --signal-50
+     it stayed a 97%-light chip on a black page while the ink on it inverted —
+     the same defect the status tints were given dark values to fix. It is the
+     900 step now, and it is never the un-inverted 50. */
+  --accent-tint: var(--signal-900); /* with --accent-ink: 7.26:1 */
+  /* --signal-800 is 9.69:1 on white and 2.17:1 on black, so the readable amber
+     has to invert even though the fill does not. */
+  --accent-ink: var(--signal-400); /* 10.17:1 */
+  --accent-ink-inverse: var(--signal-800); /* on --bg-inverse — 9.69:1 */
+
+  /* Forest at 42% L is 2.58:1 on a black page — under the 3:1 SC 1.4.11 asks
+     of a fill — so --anchor lifts three steps and its foreground flips to ink.
+     This is the same class of bug as the un-inverted tints: the token was
+     correct on the page it was picked for and on no other. */
+  --anchor: var(--anchor-300); /* fill — 8.13:1 */
+  --anchor-hover: var(--anchor-200); /* fill — 12.30:1 */
+  --anchor-press: var(--anchor-400); /* fill — 4.51:1 */
+  --anchor-fg: var(--ink-1000); /* on the three fills: 8.13 / 12.30 / 4.51 */
+  --anchor-tint: var(--anchor-800); /* with --anchor-ink: 10.73:1 */
+  --anchor-ink: var(--anchor-200); /* 12.30:1 */
+
+  /* The light theme's focus ring is ink-on-white. Left un-inverted it stays
+     pure black against a pure black page, which makes every
+     `outline: 2px solid var(--focus-ring)` in the component library invisible
+     in dark mode — a silent failure of the focusVisibleRequired contract. */
+  --focus-ring: var(--ink-0); /* 21:1 */
+
+  --link: var(--ink-0); /* 21:1 */
+  --link-hover: var(--signal-400); /* 10.17:1 */
+  --link-visited: var(--ink-200); /* 16.99:1 */
+  --link-on-fill: currentColor;
+
+  /* --- Status, dark ------------------------------------------------------
+     The four fills and their `-on` partners are unchanged from block 1 — each
+     clears 3:1 against a black page as well as a white one, which is what
+     lets a status colour mean the same thing in both themes. Warning still
+     cannot be drawn bare, but on ink it needs no lift: the fill itself is
+     11.22:1 here, so the border token is the fill. -------------------- */
+  --status-warning-border: var(--status-warning); /* 11.22:1 */
+
+  --status-success-fg: oklch(78% 0.13 150); /* 11.03:1 on --bg */
+  --status-warning-fg: oklch(82% 0.13 82); /* 11.91:1 on --bg */
+  --status-danger-fg: oklch(72% 0.16 27); /* 7.91:1 on --bg */
+  --status-info-fg: oklch(74% 0.12 250); /* 9.16:1 on --bg */
+
+  --status-success-tint: oklch(20% 0.04 150); /* with -fg: 9.42:1 */
+  --status-warning-tint: oklch(22% 0.05 82); /* with -fg: 9.85:1 */
+  --status-danger-tint: oklch(22% 0.06 27); /* with -fg: 6.63:1 */
+  --status-info-tint: oklch(20% 0.05 250); /* with -fg: 7.89:1 */
+
+  --status-success-tint-edge: oklch(32% 0.06 150); /* decorative hairline on the tint */
+  --status-warning-tint-edge: oklch(34% 0.07 82); /* decorative hairline on the tint */
+  --status-danger-tint-edge: oklch(34% 0.09 27); /* decorative hairline on the tint */
+  --status-info-tint-edge: oklch(32% 0.07 250); /* decorative hairline on the tint */
+
+  /* --- Data, dark --------------------------------------------------------
+     Same eight hues, lifted and slightly desaturated for an ink page. At
+     8.61–9.59:1 these also clear 4.5:1, so a dark chart may label a series in
+     its own colour where a light one may not. ------------------------- */
+  --chart-1: oklch(74% 0.12 25); /* 8.66:1 */
+  --chart-2: oklch(74% 0.12 205); /* 9.52:1 */
+  --chart-3: oklch(74% 0.12 115); /* 9.31:1 */
+  --chart-4: oklch(74% 0.12 295); /* 8.78:1 */
+  --chart-5: oklch(74% 0.12 70); /* 8.92:1 */
+  --chart-6: oklch(74% 0.12 250); /* 9.16:1 */
+  --chart-7: oklch(74% 0.12 160); /* 9.59:1 */
+  --chart-8: oklch(74% 0.12 340); /* 8.61:1 */
+  --chart-grid: var(--border-strong); /* decorative — 1.54:1 */
+  --chart-axis: var(--border-control); /* 3.95:1 */
+}
+
+/* ==========================================================================
+   BLOCK 3 — slate, light
+   --------------------------------------------------------------------------
+   Teal over slate blue, on charcoal greys. The second palette exists to prove
+   the dial turns, so it differs from ember structurally and not only in hue:
+
+   - `--n-mult: 1.6` tints the neutrals hard enough that charcoal reads as
+     charcoal. Not one measured neutral ratio moves — the multiplier scales
+     chroma and lightness is what carries contrast.
+   - Teal peaks at 3.41:1 (`--signal-500`), which is a fill and nothing more.
+     So `--accent` is the 600 step with WHITE text, and hover DARKENS to 700.
+     Ember's amber is the exact opposite: the 500 step with ink text, hover
+     lightening to 400. Any component that hardcodes a direction is broken by
+     one of the two palettes; read `--accent-hover` / `--accent-press`.
+
+   Status and chart are absent from this block on purpose. That absence is
+   what makes them palette-independent.
+   ========================================================================== */
+[data-palette='slate'] {
+  --n-h: 252; /* neutral hue */
+  --n-mult: 1.6; /* charcoal, not near-achromatic */
+
+  /* Signal — Teal. */
+  --signal-50: oklch(97.5% 0.02 195);
+  --signal-100: oklch(94% 0.045 195);
+  --signal-200: oklch(87% 0.08 193);
+  --signal-300: oklch(79% 0.1 191);
+  --signal-400: oklch(71% 0.112 189);
+  --signal-500: oklch(62% 0.115 187); /* peak teal — 3.41:1, a fill and nothing more */
+  --signal-600: oklch(52% 0.105 186); /* the accent step — 5.11:1 */
+  --signal-700: oklch(43% 0.09 185);
+  --signal-800: oklch(33% 0.07 184);
+  --signal-900: oklch(23% 0.05 183);
+
+  /* Anchor — slate blue. --anchor-400 is deliberately parked in the narrow
+     band that clears 4.5:1 against BOTH white and black (4.58 / 4.59). Any
+     single colour can only do that between 4.50:1 and 4.67:1, because the two
+     ratios multiply to 21; that is what lets one ramp step be the hover fill
+     in light and the press fill in dark. */
+  --anchor-50: oklch(96.5% 0.015 262);
+  --anchor-100: oklch(93% 0.03 262);
+  --anchor-200: oklch(86% 0.05 262);
+  --anchor-300: oklch(76% 0.07 262);
+  --anchor-400: oklch(56.5% 0.085 262);
+  --anchor-500: oklch(50% 0.09 262); /* primary — 6.04:1 */
+  --anchor-600: oklch(41% 0.08 262);
+  --anchor-700: oklch(32% 0.065 262);
+  --anchor-800: oklch(23% 0.05 262);
+  --anchor-900: oklch(16% 0.035 262);
+
+  --accent: var(--signal-600); /* fill — 5.11:1 */
+  --accent-hover: var(--signal-700); /* fill — 7.57:1 — DARKER, unlike ember */
+  --accent-press: var(--signal-800); /* fill — 11.64:1 */
+  --accent-fg: var(--ink-0); /* on the three fills: 5.11 / 7.57 / 11.64 */
+  --accent-tint: var(--signal-50); /* with --accent-ink: 7.09:1 */
+  --accent-ink: var(--signal-700); /* 7.57:1 */
+  --accent-ink-inverse: var(--signal-300); /* on --bg-inverse — 11.32:1 */
+
+  --anchor: var(--anchor-500); /* fill — 6.04:1 */
+  --anchor-hover: var(--anchor-400); /* fill — 4.58:1 */
+  --anchor-press: var(--anchor-600); /* fill — 8.89:1 */
+  --anchor-fg: var(--ink-0); /* on the three fills: 6.04 / 4.58 / 8.89 */
+  --anchor-tint: var(--anchor-50); /* with --anchor-ink: 8.03:1 */
+  --anchor-ink: var(--anchor-600); /* 8.89:1 */
+
+  --focus-ring: var(--ink-1000); /* 21:1 */
+
+  --link: var(--ink-1000); /* 21:1 */
+  --link-hover: var(--signal-800); /* 11.64:1 */
+  --link-visited: var(--ink-700); /* 13.62:1 */
+  --link-on-fill: currentColor;
+}
+
+/* ==========================================================================
+   BLOCK 4 — slate, dark
+   --------------------------------------------------------------------------
+   (0,2,0), the only compound selector here, which is what makes it win over
+   block 3 without an `!important`. It restates the whole semantic set rather
+   than diffing block 2, because block 3 is later in source order than block 2
+   and would otherwise hand slate's LIGHT values to a dark page — the exact
+   shape of the un-inverted-tint bug, one level up.
+
+   Teal keeps its direction here: the fills step DOWN the ramp on hover and
+   press the way they do in slate light. What moves is where the triad starts
+   — 300/400/500 instead of 600/700/800 — and with it `--accent-fg`, which is
+   ink on a bright teal rather than white on a deep one. Only a ramp step
+   between 4.50:1 and 4.67:1 can carry both, and a CTA is not the place to
+   spend that margin.
+   ========================================================================== */
+[data-palette='slate'][data-theme='dark'],
+[data-palette='slate'].dark {
+  --accent: var(--signal-300); /* fill — 11.32:1 */
+  --accent-hover: var(--signal-400); /* fill — 8.58:1 — still DARKER, as in slate light */
+  --accent-press: var(--signal-500); /* fill — 6.16:1 */
+  --accent-fg: var(--ink-1000); /* on the three fills: 11.32 / 8.58 / 6.16 */
+  --accent-tint: var(--signal-900); /* with --accent-ink: 11.47:1 */
+  --accent-ink: var(--signal-200); /* 14.61:1 */
+  --accent-ink-inverse: var(--signal-800); /* on --bg-inverse — 11.64:1 */
+
+  --anchor: var(--anchor-300); /* fill — 9.76:1 */
+  --anchor-hover: var(--anchor-200); /* fill — 13.72:1 */
+  --anchor-press: var(--anchor-400); /* fill — 4.59:1 */
+  --anchor-fg: var(--ink-1000); /* on the three fills: 9.76 / 13.72 / 4.59 */
+  --anchor-tint: var(--anchor-800); /* with --anchor-ink: 11.06:1 */
+  --anchor-ink: var(--anchor-200); /* 13.72:1 */
+
+  --focus-ring: var(--ink-0); /* 21:1 */
+
+  --link: var(--ink-0); /* 21:1 */
+  --link-hover: var(--signal-300); /* 11.32:1 */
+  --link-visited: var(--ink-200); /* 16.99:1 */
+  --link-on-fill: currentColor;
+}

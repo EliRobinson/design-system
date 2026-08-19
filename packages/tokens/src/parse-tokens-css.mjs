@@ -25,39 +25,32 @@ const MAX_VAR_DEPTH = 8;
  */
 
 /**
- * Parse the `:root` block of a tokens stylesheet.
+ * Parse the `:root` block of a tokens stylesheet, or of several.
  *
  * Declarations are returned in source order, duplicates included — CSS is
- * last-declaration-wins and callers that care (`--status-success` is declared
- * in the base scale and then re-pointed at a brand color) need to see both.
- * Anything outside `:root` — the dark-mode block, the `.t-*` classes — is not a
- * token and is deliberately ignored.
+ * last-declaration-wins and callers that care need to see both. Anything
+ * outside `:root` — the dark-mode block, a `[data-palette]` block, the `.t-*`
+ * classes — is not a default token value and is deliberately ignored.
  *
- * `resolved` follows var() chains, including a var()'s fallback when the
- * property it names is not declared here — `var(--ds-font-sans-override,
- * 'Geist', …)` resolves to the stack, which is what a browser renders when the
- * consumer has not set the override.
+ * An ARRAY is accepted, and after the palette split it is what most callers
+ * should pass. tokens.css @imports palettes.css, so the system's `:root` is
+ * spread across two files: read tokens.css alone and `--accent-fg` is missing
+ * while `--fg-on-signal: var(--accent-fg)` dangles unresolved. Pass the
+ * sources in cascade order — @imported files first, as a browser sees them —
+ * and the declarations concatenate in that order, so last-wins still means
+ * what CSS means by it. `TOKEN_STYLESHEETS` in ./token-stylesheets.mjs is that
+ * list, and `readTokenStylesheets()` reads it off disk.
  *
- * @param {string} css
+ * `resolved` follows var() chains across the whole set, including a var()'s
+ * fallback when the property it names is not declared anywhere in it —
+ * `var(--ds-font-sans-override, 'Geist', …)` resolves to the stack, which is
+ * what a browser renders when the consumer has not set the override.
+ *
+ * @param {string | string[]} css one stylesheet, or several in cascade order
  * @returns {TokenEntry[]}
  */
 export function parseTokensCss(css) {
-  const root = css.match(/:root\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
-  /* Declarations are read out of a copy with every comment blanked, so an
-     example written inside one — tokens.css documents the font override hook
-     with a `--ds-font-sans-override: …;` snippet — is prose, not a token.
-     Offsets are preserved, so the trailing comment is still recoverable from
-     the original text at the end of each match. */
-  const masked = maskComments(root);
-  const raw = [...masked.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((match) => ({
-    name: match[1],
-    value: oneLine(match[2]),
-    comment:
-      root
-        .slice(match.index + match[0].length)
-        .match(/^[ \t]*\/\*\s*([\s\S]*?)\s*\*\//)?.[1]
-        .replace(/\s+/g, ' ') ?? null,
-  }));
+  const raw = (Array.isArray(css) ? css : [css]).flatMap(rootDeclarations);
 
   const byName = new Map(raw.map((token) => [token.name, token.value]));
   const resolve = (value, depth = 0) => {
@@ -75,6 +68,26 @@ export function parseTokensCss(css) {
   };
 
   return raw.map((token) => ({ ...token, resolved: resolve(token.value) }));
+}
+
+/** The `:root` declarations of one stylesheet, in source order. */
+function rootDeclarations(css) {
+  const root = css.match(/:root\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
+  /* Declarations are read out of a copy with every comment blanked, so an
+     example written inside one — tokens.css documents the font override hook
+     with a `--ds-font-sans-override: …;` snippet — is prose, not a token.
+     Offsets are preserved, so the trailing comment is still recoverable from
+     the original text at the end of each match. */
+  const masked = maskComments(root);
+  return [...masked.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((match) => ({
+    name: match[1],
+    value: oneLine(match[2]),
+    comment:
+      root
+        .slice(match.index + match[0].length)
+        .match(/^[ \t]*\/\*\s*([\s\S]*?)\s*\*\//)?.[1]
+        .replace(/\s+/g, ' ') ?? null,
+  }));
 }
 
 /* A value long enough for Prettier to wrap it across lines — the font stacks,

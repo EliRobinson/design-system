@@ -44,7 +44,7 @@ system in an app**.
 | ----------------------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
 | `elirobinson-ds` CLI                                                    | `ai-patterns` (`bin`)                  | A hand-written script that parses our directory layout and our `.d.ts` output |
 | `manifest.json`                                                         | `react` (`./manifest`)                 | Regex-parsing `dist/**/*.d.ts` to find components and variants                |
-| `tailwind.css`                                                          | `tokens`                               | A hand-maintained `@theme inline` block mapping ~30 colour aliases\*          |
+| `tailwind.css`                                                          | `tokens`                               | A hand-maintained `@theme inline` block mapping ~80 colour aliases\*          |
 | Flat ESLint config + `no-hardcoded-design-values` + `no-padded-ui-copy` | `eslint-config`                        | Hand-written lint rules, or more often no check at all                        |
 | Playwright contract helpers                                             | `ai-patterns` (`./testing/playwright`) | Nothing — most consumers never check the runtime contracts                    |
 | Visual regression preset + sweeps                                       | `ai-patterns` (`./testing/visual-*`)   | A copied `playwright.config.ts` and a hand-kept list of what to snapshot      |

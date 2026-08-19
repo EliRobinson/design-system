@@ -9,6 +9,7 @@ export type TokenEntry = {
   comment: string | null;
 };
 
-export declare function parseTokensCss(css: string): TokenEntry[];
+/** Accepts one stylesheet, or several in cascade order (@imported files first). */
+export declare function parseTokensCss(css: string | string[]): TokenEntry[];
 
 export declare function effectiveTokens(tokens: TokenEntry[]): Map<string, TokenEntry>;

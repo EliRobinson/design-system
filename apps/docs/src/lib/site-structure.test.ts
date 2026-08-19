@@ -8,6 +8,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { semanticColorGroups } from '../components/foundations/SemanticColorTable';
 import { components } from './manifest';
 import { allPages } from './site-map';
 
@@ -130,5 +131,34 @@ describe('counts derive from source', () => {
   it('derives every homepage stat rather than stating one', () => {
     const source = readFileSync(join(APP_DIR, 'page.tsx'), 'utf8');
     expect(source).not.toMatch(/value:\s*\d/);
+  });
+});
+
+describe('the color page covers what the token package ships', () => {
+  it('groups every semantic color family, and an empty group fails here', () => {
+    /* semanticColorGroups() throws on a group that matches nothing, so a
+       family that leaves the stylesheets — or that this table stops finding —
+       is a failing test rather than a quietly shorter page. The palette split
+       emptied four of the seven groups at once and rendered a color page with
+       no brand on it, on a green build.
+
+       The names below are one per family, each declared in a different place:
+       --accent-fg and --focus-ring only exist in the palette layer, --scrim
+       only in tokens.css, and --status-warning-border and --chart-1 were added
+       by the split. */
+    const rendered = new Set(
+      semanticColorGroups().flatMap((group) => group.rows.map((token) => token.name)),
+    );
+    for (const token of [
+      '--accent-fg',
+      '--anchor-ink',
+      '--link-hover',
+      '--focus-ring',
+      '--status-warning-border',
+      '--chart-1',
+      '--scrim',
+    ]) {
+      expect(rendered.has(token), `${token} is in no group on the color page`).toBe(true);
+    }
   });
 });

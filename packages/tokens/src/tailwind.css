@@ -18,9 +18,19 @@
    works, as long as it is present.
 
    Because every alias below is `@theme inline`, utilities compile to
-   `var(--token)` rather than to a snapshot of its value. That is what makes
-   `[data-theme="dark"]` flip Tailwind utilities at runtime, and what makes a
-   `@elirobinson/tokens` bump flow through without touching this file.
+   `var(--token)` rather than to a snapshot of its value. That is the whole
+   value of this file: the token is read at paint time, so all three of the
+   system's dials move Tailwind utilities at runtime with no rebuild —
+   `[data-theme="dark"]` flips them, `[data-palette="slate"]` re-brands them
+   (`bg-accent` goes from amber to teal, and `text-accent-foreground` from ink
+   to white with it), and `[data-platform="mobile"]` re-sizes `rounded-md`.
+   A `@elirobinson/tokens` bump flows through the same way, without touching
+   this file.
+
+   Keep it that way. An alias written as a literal, or as anything other than
+   a bare `var()` of a token this package declares, is a value snapshotted at
+   build time — it stops answering to every dial at once, silently, and only
+   for the utilities that use it.
 
    ---------------------------------------------------------------------------
    Three things worth knowing about — the first two are name collisions, the
@@ -148,26 +158,85 @@
   --color-anchor-ink: var(--anchor-ink);
 
   /* --- Status ------------------------------------------------------------ */
-  /* `-foreground` is shadcn's contract: the text drawn *on* the status fill.
-     `text-*-ink` is this system's addition: status-coloured text on the page
-     background, which the fill itself cannot do — --status-warning is 3.69:1
-     and --status-info 3.88:1, both under the 4.5:1 SC 1.4.3 asks of a label. */
+  /* Five members per state, and each maps to a different Tailwind idiom:
+
+       bg-success            the fill.  Never a text colour.
+       text-success-foreground   what goes ON that fill (shadcn's contract)
+       text-success-ink      status-coloured text on the PAGE, which the fill
+                             cannot do — --status-warning is 1.87:1
+       bg-success-tint       the quiet panel
+       border-success-tint-edge  that panel's hairline
+
+     `-foreground` used to be aliased to --fg-inverse (and warning's to
+     --fg-on-signal). Both were a guess at what the fill needed rather than a
+     measurement of it, and a guess of that shape cannot be right in both
+     themes: --fg-inverse is white in light and BLACK in dark, while the fill
+     under it does not move. On the shipped bridge that already cost two cells
+     — `text-info-foreground` on `bg-info` was 3.88:1 in light and
+     `text-destructive-foreground` on `bg-destructive` 4.38:1 in dark, both
+     under SC 1.4.3 — and with the status hues re-picked here it would have
+     cost three more in dark (success 4.06, danger 3.88, info 4.15) while
+     fixing light. Repointing is what makes the pairing hold in every cell
+     rather than trading one theme's failures for the other's.
+
+     --fg-on-signal is the other half, and it was latent rather than live: it
+     resolves to --accent-fg, which is ink under ember and white under slate,
+     so a warning label on the 1.87:1 yellow fill goes to 1.87:1 the moment a
+     second palette exists. One palette hid it; the dial exposes it.
+
+     --status-*-on is the token measured against the fill it is drawn on, and
+     it is 5.17 / 11.22 / 5.41 / 5.06 in all four combinations. */
   --color-destructive: var(--status-danger);
-  --color-destructive-foreground: var(--fg-inverse);
+  --color-destructive-foreground: var(--status-danger-on);
   --color-destructive-ink: var(--status-danger-fg);
   --color-destructive-tint: var(--status-danger-tint);
+  --color-destructive-tint-edge: var(--status-danger-tint-edge);
   --color-success: var(--status-success);
-  --color-success-foreground: var(--fg-inverse);
+  --color-success-foreground: var(--status-success-on);
   --color-success-ink: var(--status-success-fg);
   --color-success-tint: var(--status-success-tint);
+  --color-success-tint-edge: var(--status-success-tint-edge);
   --color-warning: var(--status-warning);
-  --color-warning-foreground: var(--fg-on-signal);
+  --color-warning-foreground: var(--status-warning-on);
   --color-warning-ink: var(--status-warning-fg);
   --color-warning-tint: var(--status-warning-tint);
+  --color-warning-tint-edge: var(--status-warning-tint-edge);
+  /* The documented exception, and the reason `border-warning` is not the
+     utility you want. Yellow cannot clear 3:1 on white and stay yellow, so
+     the warning FILL is 1.87:1 and a warning rule or fill edge has to be
+     drawn in this instead — 3.76:1 light, 11.22:1 dark. `border-warning`
+     still exists because a Tailwind consumer will type it; this is what makes
+     the correct one available beside it. */
+  --color-warning-border: var(--status-warning-border);
   --color-info: var(--status-info);
-  --color-info-foreground: var(--fg-inverse);
+  --color-info-foreground: var(--status-info-on);
   --color-info-ink: var(--status-info-fg);
   --color-info-tint: var(--status-info-tint);
+  --color-info-tint-edge: var(--status-info-tint-edge);
+
+  /* --- Data / categorical ------------------------------------------------- */
+  /* Eight hues at one lightness and one chroma, so no series shouts louder
+     than another. They are palette-independent — a chart does not restyle
+     itself when the brand does — and they are fills and strokes: at 3.34:1 at
+     the low end they are non-text graphics, and only the dark values (8.61+)
+     clear 4.5:1 for an in-chart label. A legend still needs a label or a
+     shape; colour is never the only channel (SC 1.4.1). */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+
+  /* --- Overlay ------------------------------------------------------------ */
+  /* The wash behind a modal or a sheet. Black at both ends, heavier on a dark
+     page — a scrim that themed to the page would push the backdrop forward
+     instead of back. */
+  --color-scrim: var(--scrim);
 
   /* --- Lines and focus --------------------------------------------------- */
   --color-border: var(--border);
@@ -213,6 +282,24 @@
   --font-sans: var(--ds-font-sans);
   --font-display: var(--ds-font-display);
   --font-mono: var(--ds-font-mono);
+
+  /* --- Targets ------------------------------------------------------------ */
+  /* Named entries in the spacing namespace, which is a different thing from
+     re-pointing the scale. Tailwind v4 derives `p-4`, `gap-6` and friends
+     from the single numeric `--spacing` base, and that base is left alone
+     for the reason given above — this system's --space-* ramp is non-linear
+     and cannot be expressed as a multiple. A named `--spacing-target` sits
+     beside that numeric scale rather than in it, so `min-h-target` and
+     `size-target-min` exist and `p-4` still means what Tailwind means.
+
+     No --ds-* indirection: `--spacing-target` and `--target` are different
+     names, so there is no cycle to break. --safe-t/-r/-b/-l are deliberately
+     not aliased — a safe-area inset is almost always ADDED to an existing
+     pad, and `pb-safe-b` would replace it. Write
+     `pb-[calc(var(--space-4)+var(--safe-b))]`. */
+  --spacing-target-min: var(--target-min);
+  --spacing-target: var(--target);
+  --spacing-target-lg: var(--target-lg);
 
   /* --- Motion ------------------------------------------------------------ */
   --ease-out: var(--ds-ease-out);
