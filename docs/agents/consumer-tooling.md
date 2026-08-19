@@ -95,6 +95,15 @@ and radius aliases have no such carve-out; those the bridge really does replace.
   never destroy a local edit: `ds-resync artifacts` records a sha256 of every file it
   writes in `.claude/ds-artifacts.json`, updates only files that still match, and reports
   the rest.
+- **Every tracked manifest names the shipped version.** `pnpm sync:deps` sweeps every
+  manifest in the pnpm workspace _and_ `templates/**/package.json`, and
+  `manifest-versions.test.mjs` in `ai-patterns` fails when either falls behind.
+  `templates/` is outside the workspace, so nothing installs it and drift has nowhere else
+  to surface — it went unnoticed there from `^0.1.0` to `@elirobinson/react` 2.x. The
+  scaffolder rewrites those ranges when it generates an app, so a stale template is inert
+  on that path, but the template is also copied by hand, and then the declared ranges are
+  all a reader gets. Workspace manifests sync to an exact pin; template manifests keep
+  their caret, which is what `create-elirobinson-design-system` writes.
 - **A contract without a check is a comment.** Adding an entry to `contracts.json` means
   shipping its `verifiedBy` — a lint rule or a Playwright helper — or stating plainly that
   it is review-only.
