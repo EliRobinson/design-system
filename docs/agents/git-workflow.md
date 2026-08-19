@@ -8,7 +8,7 @@ Any PR that changes front-end code (components, layout, styling, tokens that aff
 
 ### Link them by pinned raw URL, not by relative path
 
-Every PR that has ever attached a screenshot got the link form wrong, each in a different way, and only one of the three failed loudly. All are listed because the failure mode is what makes the rule stick:
+Every PR that has ever attached a screenshot got the link form wrong, each in a different way. Two were broken on arrival; the other two rendered fine and were quietly depending on a ref that would not last. All four are listed because the failure mode is what makes the rule stick:
 
 | PR   | form used                           | what happened                                         |
 | ---- | ----------------------------------- | ----------------------------------------------------- |
