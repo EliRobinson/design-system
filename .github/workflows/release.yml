@@ -21,17 +21,25 @@ concurrency:
 
 jobs:
   release:
-    # `event == 'push'` is load-bearing, and not for tidiness. Visual also runs
-    # on a 06:00 UTC schedule, and a scheduled run's head_sha is whatever main
-    # points at — which is very often `chore(release): version packages`, this
-    # workflow's own bot commit. Those commits are pushed with GITHUB_TOKEN,
-    # and GITHUB_TOKEN pushes deliberately do not trigger workflows, so they
-    # have NO runs of any kind: measured zero for afdb4f4, fc6827c and 988985c,
-    # and 7 of the last 20 commits on main are that bot. Without this filter
-    # the nightly sweep would fire this workflow against a SHA that has no
-    # Quality run to find, and the guard below would fail it — a red Release
-    # every night. Filtering to `push` leaves only real main pushes, every one
-    # of which has a Quality run.
+    # `event == 'push'` keeps the nightly sweep from firing this workflow.
+    # Visual also runs on a 06:00 UTC schedule, and a scheduled run's head_sha
+    # is whatever main points at — very often `chore(release): version
+    # packages`, this workflow's own bot commit (7 of 20 at time of writing).
+    # Re-running Release against a commit that was already released does no
+    # useful work: `changeset:version` finds no changesets, so nothing is
+    # versioned, published, or tagged. The filter skips the run rather than
+    # paying for it.
+    #
+    # HISTORICAL NOTE, because the original reason has expired. This filter
+    # was introduced when the version-bump push went out with GITHUB_TOKEN,
+    # whose pushes do not trigger workflows — so those commits had NO runs at
+    # all (measured zero for afdb4f4, fc6827c, 988985c) and the Quality lookup
+    # below would have found nothing and failed the guard: a red Release every
+    # night. The push now goes out as the release App, whose pushes DO trigger
+    # workflows, so those commits now carry a Quality run and that failure
+    # mode is gone. The filter stays because avoiding a pointless run is still
+    # worth it — but it is no longer load-bearing, and removing it would waste
+    # time rather than break anything.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
@@ -81,10 +89,58 @@ jobs:
           fi
 
           echo "full and Quality both passed for $SHA; proceeding to publish."
+      # The version-bump push below must NOT go out as `github-actions`.
+      #
+      # Once `main` requires status checks, that push needs a ruleset bypass —
+      # and a bypass granted to the generic `github-actions` identity is a
+      # bypass granted to EVERY workflow in this repository, because that is
+      # the identity each one gets automatically from GITHUB_TOKEN.
+      #
+      # A dedicated App narrows it to one named actor. Critically, this is a
+      # DIFFERENT App from the baseline bot (DS_BOT_*): that token is minted in
+      # visual.yml's `scoped` job, which persists it into the workspace and
+      # then builds Storybook and the docs site FROM THE PULL REQUEST'S OWN
+      # SOURCE. Pull-request-authored code therefore runs with the baseline
+      # bot's credential present. That is acceptable when the worst case is a
+      # stray baseline commit; it would be fatal if that same identity could
+      # also bypass main's protection, because any pull request could then
+      # exfiltrate the token and push straight to main — defeating the exact
+      # gate this is all meant to impose, silently and green.
+      #
+      # This App's token is only ever minted here, in a job that runs
+      # post-merge on main and never executes pull-request-authored code.
+      - name: Require the release bot's credentials
+        shell: bash
+        env:
+          APP_ID: ${{ secrets.DS_RELEASE_APP_ID }}
+          PRIVATE_KEY: ${{ secrets.DS_RELEASE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          MISSING=""
+          [ -n "${APP_ID:-}" ]      || MISSING="$MISSING DS_RELEASE_APP_ID"
+          [ -n "${PRIVATE_KEY:-}" ] || MISSING="$MISSING DS_RELEASE_PRIVATE_KEY"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing repository secret(s):$MISSING — the release bot cannot push the version bump, and this job must not fall back to GITHUB_TOKEN (that identity's ruleset bypass would have to cover every workflow in the repo)."
+            echo "Fix: create/install a release-only GitHub App with contents:write, then:"
+            echo "  gh secret set DS_RELEASE_APP_ID --body '<app id>'"
+            echo "  gh secret set DS_RELEASE_PRIVATE_KEY < <app>.private-key.pem"
+            exit 1
+          fi
+
+      - name: Mint a token for the release bot
+        id: release_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DS_RELEASE_APP_ID }}
+          private-key: ${{ secrets.DS_RELEASE_PRIVATE_KEY }}
+
       - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
+          # Persisted for the version-bump push and the tag pushes below, so
+          # both go out as the release App rather than as github-actions.
+          token: ${{ steps.release_token.outputs.token }}
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
