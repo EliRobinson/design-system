@@ -43,10 +43,10 @@ concurrency:
   group: visual-${{ github.ref }}
   cancel-in-progress: true
 
-# Read-only by default. The `scoped` job below elevates to contents: write
-# for itself only, since it is the only job that commits anything today. A
-# Task 7 recovery job will need pull-requests: write and issues: write of
-# its own when it exists — not granted here in advance of that job existing.
+# Read-only by default. `scoped` below elevates to contents: write for
+# itself only, and `recover` elevates to contents: write, pull-requests:
+# write and issues: write for itself only — each job asks for exactly what
+# it uses, and nothing is granted here in advance.
 permissions:
   contents: read
 
@@ -375,18 +375,26 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-  # The full sweep. Task 7 renames this job to `full` and adds recovery.
-  visual:
+  # The full sweep. A red run here means either an intended change nobody
+  # regenerated, or a real regression, and telling those apart is a visual
+  # judgement — so this job does only the mechanical half (run the sweep,
+  # then regenerate exactly the failing shots) and hands the result to
+  # `recover`, which opens the pull request and the tracking issue that put
+  # the judgement in front of a human. See `recover` below for why that is a
+  # separate job rather than more steps here.
+  full:
     needs: image
     runs-on: ubuntu-latest
     # Not on pull_request — `scoped` above covers that. Without this, both
     # jobs would run on every pull request.
     if: github.event_name != 'pull_request'
-    # Advisory. Issue #65 records the criterion for making this required: ten
-    # consecutive PRs with no false failure. Flipping it is a checklist item
-    # there, not a someday — delete this line when the criterion is met.
-    continue-on-error: true
-    # Well clear of a real run (496 tests serially, plus two app builds) and far
+    # No continue-on-error: a red sweep now has somewhere to go (this job's
+    # own regen step, then `recover`), so swallowing the red at the job level
+    # would hide the one signal that starts that path. Issue #65's ten-PR
+    # criterion for making this required is now moot — the job is meant to go
+    # red and be seen doing it.
+    #
+    # Well clear of a real run (492 tests serially, plus two app builds) and far
     # under the 6-hour default. A webServer that never comes up otherwise burns
     # six hours per PR to tell us nothing.
     timeout-minutes: 90
@@ -443,8 +451,73 @@ jobs:
       # DS_VISUAL_CONTAINER is deliberately NOT set: without it the config pins
       # updateSnapshots to 'none', so a missing baseline fails here instead of
       # being written and silently accepted.
+      #
+      # continue-on-error at the step level, not the job level: this is what
+      # lets the regen step below run off steps.sweep.outcome, and lets the
+      # explicit "Fail the job" step at the end still fail the job overall.
       - name: Visual regression
+        id: sweep
+        continue-on-error: true
         run: pnpm exec playwright test --workers=1
+
+      # A red sweep on main means either an intended change nobody
+      # regenerated or a real regression, and telling them apart is a visual
+      # judgement — so this step does only the mechanical half: regenerate
+      # exactly the failing shots so `recover` can put them in front of a
+      # human as a pull request.
+      #
+      # --update-snapshots=changed, explicit, never a bare --update-snapshots:
+      # bare defaults to "changed" in this Playwright version (see
+      # node_modules/.../playwright/lib/program.js, preset: "changed"), but
+      # spelling it out means no reader has to know that.
+      #
+      # No `|| true` here, unlike the `scoped` job's mint step. That step
+      # needs `|| true` because --update-snapshots=missing WRITES the
+      # baseline and then FAILS the test on purpose (a softError specific to
+      # "missing" mode — see the comment there). --update-snapshots=changed
+      # does not do that: it returns a plain pass for a shot it rewrote, so
+      # this command is expected to exit 0 on its own. Tolerating a non-zero
+      # exit here would hide a real crash instead of an expected soft-fail.
+      - name: Regenerate the failing baselines
+        if: steps.sweep.outcome == 'failure'
+        id: regen
+        shell: bash
+        env:
+          DS_VISUAL_CONTAINER: '1'
+        run: |
+          set -euo pipefail
+          FAILED=$(node scripts/visual-failures.mjs test-results/report.json)
+          if [ -z "$FAILED" ]; then
+            echo "The sweep failed with no failing shot listed — a crash or a build break, not a baseline. Nothing to regenerate."
+            echo "recovered=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Plain titles, one per line: this is what ships in the artifact for
+          # `recover` to read back, and what the tracking issue lists. Kept
+          # separate from $FAILED (the --grep pattern below), which is
+          # regex-escaped and not meant for a human to read.
+          node scripts/visual-failures.mjs --plain test-results/report.json > failing-shots.txt
+          COUNT=$(wc -l < failing-shots.txt | tr -d ' ')
+          echo "Regenerating ${COUNT} failing baseline(s)."
+
+          pnpm exec playwright test --update-snapshots=changed --workers=1 --grep "$FAILED"
+
+          echo "recovered=true" >> "$GITHUB_OUTPUT"
+
+      # Kept as its own artifact, separate from the report below: this is the
+      # one `recover` downloads, and it needs to exist even if the report
+      # upload were ever pruned or renamed independently.
+      - name: Upload the regenerated baselines
+        if: steps.regen.outputs.recovered == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-baselines-regen
+          path: |
+            tests/visual/__screenshots__
+            failing-shots.txt
+          retention-days: 14
+
       # Not `if: failure()`. This job exists first of all to answer whether the
       # flake in #65 survives off an emulated host, and a *passing* run is half
       # of that evidence — the HTML report carries the timings and the retry
@@ -459,3 +532,146 @@ jobs:
             test-results/
           retention-days: 14
           if-no-files-found: ignore
+
+      # The step itself tolerated the failure so the steps above could run;
+      # this is what makes that failure count against the job (and, through
+      # `needs: full` + `if: failure()`, trigger `recover`).
+      - name: Fail the job
+        if: steps.sweep.outcome == 'failure'
+        run: exit 1
+
+  # `full` runs inside the Playwright container image, which ships git
+  # (2.43.0) but not the `gh` CLI — nothing else in this repo shells out to
+  # `gh` from inside a container; release.yml is the other user of `gh` and
+  # it runs on a bare ubuntu-latest where the runner image preinstalls it.
+  # Rather than teach the container about `gh`, the pull request and the
+  # issue are opened from a second, container-less job instead.
+  #
+  # This split has a side benefit worth calling out: the regenerated
+  # baselines and the failing-shot list survive in `full`'s artifact even if
+  # this job's own PR/issue step fails.
+  recover:
+    needs: full
+    # No extra guard needed beyond this: `full` only fails this way when its
+    # own "Fail the job" step ran, which only happens when the sweep step
+    # failed. On a pull request `full` doesn't run at all (its own `if`
+    # excludes that event) — a skipped job is neither success nor failure, so
+    # `failure()` is false and this job is skipped too, not run.
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Two steps below push with this credential and call `gh`, which
+          # also reads it for auth.
+          persist-credentials: true
+
+      # continue-on-error: `full` fails this job (and so triggers this one)
+      # even when the sweep crashed before producing a failing-shot list, in
+      # which case `full` never uploaded this artifact at all. A hard-failing
+      # download step here would turn that case into an unhelpful red run
+      # with no explanation; the next step gives it one instead.
+      - name: Download the regenerated baselines
+        uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          name: visual-baselines-regen
+          path: .
+
+      - name: Check whether there is anything to recover
+        id: shots
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f failing-shots.txt ]; then
+            echo "recovered=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          COUNT=$(wc -l < failing-shots.txt | tr -d ' ')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "recovered=true" >> "$GITHUB_OUTPUT"
+
+      - name: Nothing to recover
+        if: steps.shots.outputs.recovered != 'true'
+        run: |
+          {
+            echo "### Visual sweep red — no recovery opened"
+            echo
+            echo "The sweep failed without a failing-shot list to regenerate from — a crash or a build break, not a baseline. See the \`visual-report\` artifact on the \`full\` job for the failure."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The issue first, so the pull request can name it; then the pull
+      # request; then the issue is edited to name the pull request back.
+      # Either one alone loses half the context a week later.
+      - name: Open the baselines pull request and the tracking issue
+        if: steps.shots.outputs.recovered == 'true'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Routed through the environment, not interpolated into the run
+          # text below: a `${{ }}` substitution happens before the shell
+          # parses the line, and this job holds contents: write,
+          # pull-requests: write and issues: write. See "Identify the merge
+          # base" in the `scoped` job above for the same reasoning.
+          COUNT: ${{ steps.shots.outputs.count }}
+        run: |
+          set -euo pipefail
+          # No `safe.directory` config here, unlike the container jobs above:
+          # this job runs on a bare runner, where the checkout is already
+          # owned by the user running these steps.
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          SHORT=$(git rev-parse --short HEAD)
+          BRANCH="visual/baselines-${SHORT}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          git checkout -b "$BRANCH"
+          git add tests/visual/__screenshots__
+          git commit -m "test(visual): regenerate ${COUNT} baselines from ${SHORT}"
+          git push origin "$BRANCH"
+
+          {
+            printf '%s\n\n' "The full sweep failed on \`main\` at \`${SHORT}\`."
+            printf -- '- Failing run: %s\n' "$RUN_URL"
+            printf -- '- Failing shots: %s (see the \`visual-report\` artifact on that run for images)\n\n' "$COUNT"
+            printf '%s\n\n' "A branch with the regenerated baselines is open as a pull request — merging it accepts these as the intended look, closing it says this is a real regression."
+            printf '%s\n\n' '<details><summary>Failing shots</summary>'
+            printf '```\n'
+            cat failing-shots.txt
+            printf '```\n'
+            printf '%s\n' '</details>'
+          } > /tmp/issue-body.md
+
+          ISSUE_URL=$(gh issue create \
+            --title "Visual sweep red on main (${SHORT})" \
+            --label visual \
+            --body-file /tmp/issue-body.md)
+
+          {
+            printf '%s\n\n' "The full sweep went red on \`main\` at \`${SHORT}\` and these ${COUNT} baselines were regenerated on the runner."
+            printf '%s\n' '**Merge** if this is the look you intended — these become the baselines.'
+            printf '%s\n\n' '**Close** if it is a regression; the tracking issue stays open with the evidence.'
+            printf -- '- Tracking issue: %s\n' "$ISSUE_URL"
+            printf -- '- Failing run: %s\n' "$RUN_URL"
+          } > /tmp/pr-body.md
+
+          PR_URL=$(gh pr create \
+            --head "$BRANCH" \
+            --base main \
+            --title "visual: ${COUNT} baselines changed on main" \
+            --body-file /tmp/pr-body.md)
+
+          gh issue comment "$ISSUE_URL" --body "Regenerated baselines: ${PR_URL}"
+
+          {
+            echo "### Visual sweep red — recovery opened"
+            echo
+            echo "- Pull request: ${PR_URL}"
+            echo "- Issue: ${ISSUE_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"
