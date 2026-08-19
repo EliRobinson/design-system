@@ -83,8 +83,8 @@ jobs:
     if: >-
       github.event_name == 'pull_request' &&
       (github.event.action != 'labeled' || github.event.label.name == 'visual-accept')
-    # Only this job commits anything; `image` and `visual` keep the
-    # workflow-level read-only default.
+    # `image` and `full` keep the workflow-level read-only default; `recover`
+    # below is the only other job that elevates, and only for itself.
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -466,6 +466,12 @@ jobs:
       # exactly the failing shots so `recover` can put them in front of a
       # human as a pull request.
       #
+      # github.ref == 'refs/heads/main' as well as the sweep having failed:
+      # `recover` below only ever opens a pull request against `main`, and
+      # only runs at all on that ref (see the "Auto-recovery is main-only"
+      # step below for the other case) — regenerating baselines nobody will
+      # use is wasted container time.
+      #
       # --update-snapshots=changed, explicit, never a bare --update-snapshots:
       # bare defaults to "changed" in this Playwright version (see
       # node_modules/.../playwright/lib/program.js, preset: "changed"), but
@@ -479,7 +485,7 @@ jobs:
       # this command is expected to exit 0 on its own. Tolerating a non-zero
       # exit here would hide a real crash instead of an expected soft-fail.
       - name: Regenerate the failing baselines
-        if: steps.sweep.outcome == 'failure'
+        if: steps.sweep.outcome == 'failure' && github.ref == 'refs/heads/main'
         id: regen
         shell: bash
         env:
@@ -498,12 +504,53 @@ jobs:
           # separate from $FAILED (the --grep pattern below), which is
           # regex-escaped and not meant for a human to read.
           node scripts/visual-failures.mjs --plain test-results/report.json > failing-shots.txt
-          COUNT=$(wc -l < failing-shots.txt | tr -d ' ')
-          echo "Regenerating ${COUNT} failing baseline(s)."
 
           pnpm exec playwright test --update-snapshots=changed --workers=1 --grep "$FAILED"
 
+          # A rerun that changes nothing on disk is the signature of issue
+          # #65's flake, not a baseline to regenerate: --update-snapshots=changed
+          # only rewrites a file when the rerun's pixels actually differ from
+          # what's checked in, so no diff here means the original failure did
+          # not reproduce. `git diff`, not `git status --porcelain`: every
+          # file this step could touch is already tracked (this rewrites
+          # existing baselines; it never creates one), so there is nothing
+          # untracked for `status` to catch that `diff` would miss.
+          if git diff --quiet -- tests/visual/__screenshots__; then
+            echo "recovered=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Visual sweep red — did not reproduce on regeneration"
+              echo
+              echo "The failing shot(s) below passed when rerun to regenerate baselines — the signature of the flake in #65, not a baseline change. This job stays red so that is still visible; no baseline pull request or tracking issue was opened."
+              echo
+              echo "See \`docs/agents/visual-regression.md\`, step 2 (\"run the identical commit twice\") for the diagnostic."
+              echo
+              echo '````'
+              cat failing-shots.txt
+              echo '````'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
           echo "recovered=true" >> "$GITHUB_OUTPUT"
+
+      # The counterpart to the ref guard on the regen step above: `recover`
+      # only runs on `main`, so a `workflow_dispatch` red sweep on a feature
+      # branch would otherwise fail silently with no explanation of why no
+      # pull request follows.
+      - name: Auto-recovery is main-only
+        if: steps.sweep.outcome == 'failure' && github.ref != 'refs/heads/main'
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          {
+            echo "### Visual sweep red — auto-recovery skipped"
+            echo
+            echo "This run was on \`${REF_NAME}\`, not \`main\`, so automatic baseline recovery (which opens a pull request against \`main\`) only runs there. To regenerate baselines for this branch by hand:"
+            echo
+            echo '```'
+            echo "gh workflow run visual-update.yml --ref ${REF_NAME} --field grep=<pattern>"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Kept as its own artifact, separate from the report below: this is the
       # one `recover` downloads, and it needs to exist even if the report
@@ -534,8 +581,9 @@ jobs:
           if-no-files-found: ignore
 
       # The step itself tolerated the failure so the steps above could run;
-      # this is what makes that failure count against the job (and, through
-      # `needs: full` + `if: failure()`, trigger `recover`).
+      # this is what makes that failure count against the job — which is
+      # what `recover`'s `needs.full.result == 'failure'` guard below reacts
+      # to, on `main`.
       - name: Fail the job
         if: steps.sweep.outcome == 'failure'
         run: exit 1
@@ -552,12 +600,24 @@ jobs:
   # this job's own PR/issue step fails.
   recover:
     needs: full
-    # No extra guard needed beyond this: `full` only fails this way when its
-    # own "Fail the job" step ran, which only happens when the sweep step
-    # failed. On a pull request `full` doesn't run at all (its own `if`
-    # excludes that event) — a skipped job is neither success nor failure, so
-    # `failure()` is false and this job is skipped too, not run.
-    if: failure()
+    # always(), not the bare `failure()` this started as: `failure()` on a
+    # job checks its ENTIRE dependency chain, not just its direct `needs` —
+    # so if `image` fails, `full` gets skipped (its own condition implicitly
+    # requires `image` to have succeeded), but `failure()` still sees `image`
+    # failing and would fire `recover` anyway, including on a pull request,
+    # where this job holds contents/pull-requests/issues: write. Checking
+    # `needs.full.result` directly is what makes this react only to `full`
+    # itself actually failing (which only happens by the explicit "Fail the
+    # job" step, i.e. only when the sweep was red) — but a plain `if:` that
+    # doesn't call a status function gets `success()` prepended by GitHub,
+    # which would always be false here since `full` failed; `always()` is
+    # what removes that implicit prefix so the explicit check below governs.
+    #
+    # github.ref == 'refs/heads/main': the pull request this job opens is
+    # always based on `main`, so it only runs there. A `workflow_dispatch`
+    # red sweep on any other ref gets an explanation instead, from `full`'s
+    # own "Auto-recovery is main-only" step — see there.
+    if: always() && needs.full.result == 'failure' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -592,8 +652,6 @@ jobs:
             echo "recovered=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          COUNT=$(wc -l < failing-shots.txt | tr -d ' ')
-          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           echo "recovered=true" >> "$GITHUB_OUTPUT"
 
       - name: Nothing to recover
@@ -602,23 +660,20 @@ jobs:
           {
             echo "### Visual sweep red — no recovery opened"
             echo
-            echo "The sweep failed without a failing-shot list to regenerate from — a crash or a build break, not a baseline. See the \`visual-report\` artifact on the \`full\` job for the failure."
+            echo "\`full\` failed without a failing-shot list to regenerate from. That covers more than a build break: an npm install failure, a Storybook or docs build failure, the container never starting, and the job timing out all land here too — none of them are a baseline problem. See the \`full\` job's own log, and the \`visual-report\` artifact on that run, for what actually happened."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # The issue first, so the pull request can name it; then the pull
-      # request; then the issue is edited to name the pull request back.
-      # Either one alone loses half the context a week later.
+      # Everything below is idempotent on purpose: a nightly schedule can
+      # fire again on a main that hasn't moved (same SHA, so the same branch
+      # name), and a still-open regression can carry across many nightly
+      # runs on a main that keeps moving (different SHAs, so different
+      # branch names, but the same tracking issue). Neither case should mint
+      # duplicates.
       - name: Open the baselines pull request and the tracking issue
         if: steps.shots.outputs.recovered == 'true'
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Routed through the environment, not interpolated into the run
-          # text below: a `${{ }}` substitution happens before the shell
-          # parses the line, and this job holds contents: write,
-          # pull-requests: write and issues: write. See "Identify the merge
-          # base" in the `scoped` job above for the same reasoning.
-          COUNT: ${{ steps.shots.outputs.count }}
         run: |
           set -euo pipefail
           # No `safe.directory` config here, unlike the container jobs above:
@@ -631,43 +686,101 @@ jobs:
           BRANCH="visual/baselines-${SHORT}"
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
+          # Looked up before anything is created, so the pull request body
+          # below can name a tracking issue that genuinely already exists,
+          # rather than a promise that might not hold if a later step fails.
+          EXISTING_ISSUE_URL=$(gh issue list --label visual --state open --limit 1 --json url --jq '.[0].url // empty')
+
           git checkout -b "$BRANCH"
           git add tests/visual/__screenshots__
-          git commit -m "test(visual): regenerate ${COUNT} baselines from ${SHORT}"
-          git push origin "$BRANCH"
+          # Real file count, not the de-duplicated-by-title count
+          # failedTitles() (and so scripts/visual-failures.mjs) produces: one
+          # title failing in two projects is one title but two PNGs, and this
+          # is what the commit, the pull request title, and the issue body
+          # should all actually say landed. Same shape as the `scoped` job's
+          # own minted-baseline count.
+          COUNT=$(git status --porcelain -- tests/visual/__screenshots__ | wc -l | tr -d ' ')
+          git commit -m "test(visual): regenerate ${COUNT} baseline file(s) from ${SHORT}"
+          # Fetched first, deliberately: --force-with-lease's safety check
+          # compares against the LOCAL remote-tracking ref, and this checkout
+          # never fetched this specific branch (only the default branch, via
+          # actions/checkout above). With no local tracking ref to lease
+          # against, git assumes the branch is expected not to exist yet and
+          # REFUSES the push the moment it actually does — the exact
+          # same-SHA re-run case this is meant to handle. `|| true`: the
+          # first time this SHA is ever seen, the branch genuinely doesn't
+          # exist upstream, and that fetch failing is expected, not an error.
+          git fetch origin "$BRANCH" || true
+          # --force-with-lease, not a plain push: a nightly re-run on a main
+          # that hasn't moved resolves to this exact branch name again, and a
+          # plain push is rejected non-fast-forward against yesterday's
+          # commit there — which, under `set -euo pipefail`, kills this step
+          # before the issue or the pull request is even looked up. The
+          # branch only ever holds one thing, this SHA's regenerated
+          # baselines, so overwriting it with today's regeneration (even if
+          # byte-identical) is correct, not destructive.
+          git push --force-with-lease origin "$BRANCH"
+
+          # Same branch name means the earlier run's pull request, if this is
+          # a same-SHA re-run, is still open against it — reuse it instead of
+          # asking `gh pr create` to fail on a head that already has one.
+          EXISTING_PR_URL=$(gh pr list --head "$BRANCH" --base main --state open --limit 1 --json url --jq '.[0].url // empty')
 
           {
-            printf '%s\n\n' "The full sweep failed on \`main\` at \`${SHORT}\`."
-            printf -- '- Failing run: %s\n' "$RUN_URL"
-            printf -- '- Failing shots: %s (see the \`visual-report\` artifact on that run for images)\n\n' "$COUNT"
-            printf '%s\n\n' "A branch with the regenerated baselines is open as a pull request — merging it accepts these as the intended look, closing it says this is a real regression."
-            printf '%s\n\n' '<details><summary>Failing shots</summary>'
-            printf '```\n'
-            cat failing-shots.txt
-            printf '```\n'
-            printf '%s\n' '</details>'
-          } > /tmp/issue-body.md
-
-          ISSUE_URL=$(gh issue create \
-            --title "Visual sweep red on main (${SHORT})" \
-            --label visual \
-            --body-file /tmp/issue-body.md)
-
-          {
-            printf '%s\n\n' "The full sweep went red on \`main\` at \`${SHORT}\` and these ${COUNT} baselines were regenerated on the runner."
+            printf '%s\n\n' "The full sweep went red on \`main\` at \`${SHORT}\` and these ${COUNT} baseline file(s) were regenerated on the runner."
             printf '%s\n' '**Merge** if this is the look you intended — these become the baselines.'
             printf '%s\n\n' '**Close** if it is a regression; the tracking issue stays open with the evidence.'
-            printf -- '- Tracking issue: %s\n' "$ISSUE_URL"
+            if [ -n "$EXISTING_ISSUE_URL" ]; then
+              printf -- '- Tracking issue: %s\n' "$EXISTING_ISSUE_URL"
+            fi
             printf -- '- Failing run: %s\n' "$RUN_URL"
           } > /tmp/pr-body.md
 
-          PR_URL=$(gh pr create \
-            --head "$BRANCH" \
-            --base main \
-            --title "visual: ${COUNT} baselines changed on main" \
-            --body-file /tmp/pr-body.md)
+          if [ -n "$EXISTING_PR_URL" ]; then
+            PR_URL="$EXISTING_PR_URL"
+            echo "Re-pushed the regenerated baselines from ${RUN_URL} (still \`${SHORT}\`)." > /tmp/pr-comment.md
+            gh pr comment "$PR_URL" --body-file /tmp/pr-comment.md
+          else
+            PR_URL=$(gh pr create \
+              --head "$BRANCH" \
+              --base main \
+              --title "visual: ${COUNT} baseline file(s) changed on main" \
+              --body-file /tmp/pr-body.md)
+          fi
 
-          gh issue comment "$ISSUE_URL" --body "Regenerated baselines: ${PR_URL}"
+          # The pull request above always exists for real by this point —
+          # whether just-created or reused — so the issue body below can say
+          # a pull request is open rather than one that might still fail to
+          # open after this text is written.
+          if [ -n "$EXISTING_ISSUE_URL" ]; then
+            ISSUE_URL="$EXISTING_ISSUE_URL"
+            {
+              printf '%s\n\n' "Red again at \`${SHORT}\` (run: ${RUN_URL})."
+              printf -- '- Regenerated baselines: %s\n' "$PR_URL"
+            } > /tmp/issue-comment.md
+            gh issue comment "$ISSUE_URL" --body-file /tmp/issue-comment.md
+          else
+            {
+              printf '%s\n\n' "The full sweep failed on \`main\` at \`${SHORT}\`."
+              printf -- '- Failing run: %s\n' "$RUN_URL"
+              printf -- '- Failing shots: %s file(s) (see the \`visual-report\` artifact on that run for images)\n\n' "$COUNT"
+              printf '%s\n\n' "A pull request with the regenerated baselines is open — merging it accepts these as the intended look, closing it says this is a real regression."
+              printf -- '- Regenerated baselines: %s\n\n' "$PR_URL"
+              printf '%s\n\n' '<details><summary>Failing shots</summary>'
+              # A quadruple-backtick fence, not a triple: a failing spec
+              # title is free text and could itself contain a triple-backtick
+              # run, which would close a triple-backtick fence early. Nothing
+              # in Markdown lets a title close a longer fence by accident.
+              printf '````\n'
+              cat failing-shots.txt
+              printf '````\n'
+              printf '%s\n' '</details>'
+            } > /tmp/issue-body.md
+            ISSUE_URL=$(gh issue create \
+              --title "Visual sweep red on main (${SHORT})" \
+              --label visual \
+              --body-file /tmp/issue-body.md)
+          fi
 
           {
             echo "### Visual sweep red — recovery opened"
