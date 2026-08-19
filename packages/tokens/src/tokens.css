@@ -79,7 +79,10 @@
    so hoisting it moves no declaration relative to any other. */
 @import url('./fonts.css');
 
-/* --- Layers --------------------------------------------------------------
+/* --- The two sibling stylesheets -----------------------------------------
+   Declaration order, not cascade layers — the section at the top of the file
+   is the one about `@layer`.
+
    @imported, so both files' declarations land BEFORE this file's own
    `:root`. That is deliberate and it is also the one thing to know when
    editing either of them: at equal specificity the later rule wins, so a
