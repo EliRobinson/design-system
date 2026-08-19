@@ -5,6 +5,15 @@
 .ds-dialog {
   background: transparent;
   border: none;
+  /* Centring is declared here rather than inherited from the UA stylesheet's
+     `dialog { margin: auto }`. Any consumer reset with a universal
+     `margin: 0` -- Tailwind preflight, normalize, sanitize.css, most
+     hand-rolled ones -- is an *author* rule and so beats the UA at any
+     specificity; with the margin gone, `position: absolute; inset: 0` on a
+     box narrower than the viewport pins the dialog to the top-left corner.
+     Restating it as an author rule of our own is enough, since `.ds-dialog`
+     outranks `*`. Same posture Sheet.css already takes. */
+  margin: auto;
   max-height: 90vh;
   max-width: 480px;
   padding: 0;

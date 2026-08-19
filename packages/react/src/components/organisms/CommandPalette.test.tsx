@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { stubConsumerReset } from '../../test/consumerReset.js';
 import { CommandPalette } from './CommandPalette.js';
 
 const commands = [
@@ -194,5 +195,33 @@ describe('CommandPalette', () => {
 
     expect(screen.getByRole('searchbox')).toHaveValue('');
     expect(screen.getByText('Open file')).toBeInTheDocument();
+  });
+
+  // Issue #103 named `.ds-command-palette` as needing the same `margin: auto`
+  // that `.ds-dialog` was missing. It does not, and adding one would be the
+  // wrong fix: the palette has no <dialog> of its own. It renders through
+  // <DialogContent>, so `ds-command-palette` lands on the same element as
+  // `ds-dialog` and is centred by that rule — which is exactly why
+  // CommandPalette.css declares no dialog-level geometry at all.
+  //
+  // That reasoning is only worth as much as it is enforced. Both stylesheets
+  // are mounted here, the way a consumer gets them, so if the palette ever
+  // grows its own surface — or `.ds-command-palette` starts overriding the
+  // margin — this fails instead of the corner-pinned dialog shipping twice.
+  describe('centring under a consumer CSS reset', () => {
+    stubConsumerReset('components/organisms/Dialog.css', 'components/organisms/CommandPalette.css');
+
+    it('is centred by .ds-dialog, with no rule of its own', () => {
+      render(<CommandPalette open onOpenChange={vi.fn()} commands={commands} />);
+
+      const palette = screen.getByRole('dialog');
+      expect(palette).toHaveClass('ds-dialog', 'ds-command-palette');
+
+      const styles = getComputedStyle(palette);
+      expect(styles.marginTop).toBe('auto');
+      expect(styles.marginRight).toBe('auto');
+      expect(styles.marginBottom).toBe('auto');
+      expect(styles.marginLeft).toBe('auto');
+    });
   });
 });
