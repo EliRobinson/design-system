@@ -59,12 +59,36 @@ jobs:
       # baselines is the entire point.
       DS_VISUAL_CONTAINER: 1
     steps:
+      # This REVERSES a deliberate choice, so the reasoning matters. The
+      # comment that stood here wanted the default token precisely because
+      # its pushes do not trigger workflows — "the commit this makes should
+      # not immediately re-run the visual check against baselines nobody has
+      # looked at yet."
+      #
+      # That intent does not survive branch protection. This workflow is the
+      # documented fallback for fork pull requests (see the fork guard in
+      # visual.yml), and it pushes to whatever branch it was dispatched on.
+      # Once `main` requires status checks, a commit pushed here with
+      # GITHUB_TOKEN carries none, and the pull request it lands on becomes
+      # permanently unmergeable — the fallback would hand maintainers a dead
+      # end.
+      #
+      # The original worry is also weaker than it looks: re-running the check
+      # approves nothing. It compares the regenerated baselines against
+      # themselves, which either passes or exposes a genuinely unstable shot.
+      # A human still reviews the images in the diff before merging, which is
+      # where the actual judgement lives.
+      - name: Mint a token for the baseline bot
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DS_BOT_APP_ID }}
+          private-key: ${{ secrets.DS_BOT_PRIVATE_KEY }}
+
       - uses: actions/checkout@v7
         with:
-          # The default token's pushes do not trigger workflows, which is what
-          # we want: the commit this makes should not immediately re-run the
-          # visual check against baselines nobody has looked at yet.
           persist-credentials: true
+          token: ${{ steps.app_token.outputs.token }}
       - name: Set up pnpm via corepack
         run: |
           corepack enable

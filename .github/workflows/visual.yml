@@ -17,17 +17,25 @@ on:
   # was always marginal.
   schedule:
     - cron: '0 6 * * *'
-  # Re-run the check on demand. The Visual update workflow commits baselines
-  # with the default token, and pushes made with that token deliberately do
-  # not trigger workflows — so without this there is no way to verify a
-  # freshly regenerated set except by pushing an unrelated commit. The
-  # `scoped` job's own mint/accept steps now depend on that same behaviour:
-  # they push straight to the pull request branch with GITHUB_TOKEN, and if
-  # that push retriggered this workflow it would recurse into a second
-  # `scoped` run on its own commit. The tradeoff is that the pushed commit
-  # carries no check run of its own — acceptable only because nothing on
-  # main is branch-protected, so a pull request can still merge on the
-  # ORIGINAL run's status.
+  # Re-run the check on demand. Still worth keeping now that the Visual
+  # update workflow pushes with the App token and so verifies itself: a
+  # dispatch is the only way to re-check a commit whose run was cancelled,
+  # or to re-test after a flake, without pushing an unrelated commit.
+  #
+  # `scoped` no longer shares that behaviour. Its mint and accept steps push
+  # with a GitHub App installation token, and an App token's pushes DO start
+  # workflows — which is the entire point: a commit pushed with GITHUB_TOKEN
+  # carries no check runs at all, so once `main` requires status checks, a
+  # minted or accepted commit would sit at the head of the pull request with
+  # nothing able to satisfy the requirement, and the pull request would be
+  # unmergeable forever. Verified: required status checks reject a push at
+  # push time, before any workflow could run (`GH013: Repository rule
+  # violations found`), so there is no ordering that rescues this.
+  #
+  # The recursion this trades for is bounded, and terminates on the run it
+  # creates: that run finds every baseline present, mints nothing, and so
+  # pushes nothing. The accept path terminates for the same reason plus the
+  # one-shot label. Cost is one extra `scoped` run per mint or accept.
   workflow_dispatch:
 
 # Separate from `quality.yml` on purpose: this job is minutes where that one is
@@ -116,8 +124,10 @@ jobs:
       HUSKY: 0
       STORYBOOK_DISABLE_TELEMETRY: 1
     steps:
-      # A fork's GITHUB_TOKEN cannot push back to the fork's own branch, so
-      # every step below that mints or accepts baselines would fail anyway —
+      # The baseline bot's installation token is scoped to THIS repository,
+      # so it cannot push to a fork's branch — every step below that mints or
+      # accepts baselines would fail anyway (this was equally true of the
+      # GITHUB_TOKEN this job used to push with) —
       # and fetching the base ref through `origin` (the fork, per the
       # checkout below) can also silently compute the wrong merge base. Fail
       # fast instead, with the remedy the design doc names, rather than
@@ -132,10 +142,54 @@ jobs:
       - name: Refuse pull requests from forks
         if: github.event.pull_request.head.repo.full_name != github.repository
         run: |
-          echo "::error::This pull request comes from a fork. GITHUB_TOKEN cannot push baselines back to a fork's branch, so this job cannot mint or accept them here."
+          echo "::error::This pull request comes from a fork. The baseline bot's installation token is scoped to this repository, so it cannot push back to a fork's branch, and this job cannot mint or accept baselines here."
           echo "A maintainer can regenerate baselines directly instead:"
           echo "  gh workflow run visual-update.yml --ref <branch> --field grep=<pattern>"
           exit 1
+
+      # Checked before the token is minted, because create-github-app-token's
+      # own failure on an absent secret is an opaque one, and because the
+      # thing being guarded against here is SILENCE. If these secrets go
+      # missing, the tempting fallback is GITHUB_TOKEN — and that fallback
+      # still pushes, still goes green, and produces exactly the commit with
+      # no check runs that this whole change exists to prevent. Every pull
+      # request that minted a baseline would then be permanently unmergeable
+      # with nothing reporting why. Fail here instead, loudly, naming the fix.
+      #
+      # This repo has been bitten once already by a manual, out-of-repo setup
+      # step that nothing verified (see issue #96: a Vercel Root Directory
+      # move that a design doc assumed and no one performed, six red deploys).
+      # This step is that verification, made mechanical.
+      - name: Require the baseline bot's credentials
+        env:
+          APP_ID: ${{ secrets.DS_BOT_APP_ID }}
+          PRIVATE_KEY: ${{ secrets.DS_BOT_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          MISSING=""
+          [ -n "${APP_ID:-}" ]      || MISSING="$MISSING DS_BOT_APP_ID"
+          [ -n "${PRIVATE_KEY:-}" ] || MISSING="$MISSING DS_BOT_PRIVATE_KEY"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing repository secret(s):$MISSING — the baseline bot cannot push, and this job must not fall back to GITHUB_TOKEN (its commits carry no check runs, which makes a minted pull request unmergeable under branch protection)."
+            echo "Fix: create/install the GitHub App with contents:write (plus pull-requests:write and issues:write for the recover job), then:"
+            echo "  gh secret set DS_BOT_APP_ID --body '<app id>'"
+            echo "  gh secret set DS_BOT_PRIVATE_KEY < <app>.private-key.pem"
+            exit 1
+          fi
+
+      # An App installation token, not GITHUB_TOKEN, and not for permissions —
+      # `contents: write` above already grants those. It is for what the token
+      # DOES to the events it creates: GitHub suppresses workflow runs for any
+      # push made with GITHUB_TOKEN, including pushes made through the Git
+      # API, so there is no way to have that credential produce a commit that
+      # carries checks. An installation token has no such suppression.
+      - name: Mint a token for the baseline bot
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DS_BOT_APP_ID }}
+          private-key: ${{ secrets.DS_BOT_PRIVATE_KEY }}
+
       - uses: actions/checkout@v7
         with:
           # The scoper diffs against the merge base, and the commit steps push
@@ -155,6 +209,11 @@ jobs:
           # Explicit rather than left to the action's default: two steps
           # below push with this credential, same as visual-update.yml.
           persist-credentials: true
+          # The App token, so the mint and accept pushes below start the
+          # workflows that give their commits check runs. Without this line
+          # the checkout persists GITHUB_TOKEN and the pushes go back to
+          # producing check-less commits — silently, and still green.
+          token: ${{ steps.app_token.outputs.token }}
       # Immediately after the checkout, before anything else can shell out to
       # git. The container's git refuses this working copy otherwise — it is
       # made by the runner user while the steps run as root, which is git's
@@ -803,11 +862,32 @@ jobs:
       issues: write
     timeout-minutes: 15
     steps:
+      # Same App token as `scoped`, for the same reason and one more. The
+      # branch this job force-pushes becomes the head of a recovery pull
+      # request — so once `main` requires status checks, that branch needs
+      # real check runs or the recovery it exists to offer cannot be merged.
+      # GITHUB_TOKEN gives it none. The extra reason: a pull request OPENED
+      # with GITHUB_TOKEN does not start `pull_request` workflows either, so
+      # `gh pr create` below has to run as the App as well — hence the App
+      # needs pull-requests:write and issues:write, not just contents:write.
+      #
+      # No credentials guard here, unlike `scoped`. This job only runs when
+      # the sweep on `main` has already gone red, so a missing secret surfaces
+      # as a loud failure on an already-red path rather than as a silently
+      # unmergeable pull request. `scoped` is the one that needs guarding.
+      - name: Mint a token for the baseline bot
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DS_BOT_APP_ID }}
+          private-key: ${{ secrets.DS_BOT_PRIVATE_KEY }}
+
       - uses: actions/checkout@v7
         with:
           # Two steps below push with this credential and call `gh`, which
           # also reads it for auth.
           persist-credentials: true
+          token: ${{ steps.app_token.outputs.token }}
 
       # continue-on-error: `full` fails this job (and so triggers this one)
       # even when the sweep crashed before producing a failing-shot list, in
@@ -851,7 +931,12 @@ jobs:
         if: steps.shots.outputs.recovered == 'true'
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The App token, not GITHUB_TOKEN: a pull request opened with
+          # GITHUB_TOKEN does not start `pull_request` workflows, so the
+          # recovery pull request would carry no checks and, under branch
+          # protection, could never be merged — defeating the entire purpose
+          # of this job.
+          GITHUB_TOKEN: ${{ steps.app_token.outputs.token }}
         run: |
           set -euo pipefail
           # No `safe.directory` config here, unlike the container jobs above:
