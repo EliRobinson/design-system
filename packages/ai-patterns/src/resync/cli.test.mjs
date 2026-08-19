@@ -204,10 +204,12 @@ describe('the artifacts subcommand', () => {
 const EXPECTED_USAGE = `ds-resync — bring this repo's @elirobinson packages up to date
 
 Usage: ds-resync [options]
+       ds-resync migrate [options]
        ds-resync artifacts [options]
 
 Commands:
   (default)             Report and optionally apply dependency upgrades
+  migrate               Apply the token migrations the upgrade calls for
   artifacts             Sync the design system's agent skills into this repo
 
 Compares the versions your lockfile resolved — what CI and a fresh clone install
@@ -227,7 +229,8 @@ Options:
                         disagree (for CI)
   -h, --help            Show this message
 
-Run \`ds-resync artifacts --help\` for that command's options.
+Run \`ds-resync migrate --help\` or \`ds-resync artifacts --help\` for those
+commands' options.
 `;
 
 const EXPECTED_ARTIFACTS_USAGE = `ds-resync artifacts — sync the design system's agent skills into this repo

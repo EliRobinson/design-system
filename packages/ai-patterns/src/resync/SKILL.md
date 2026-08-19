@@ -97,7 +97,10 @@ pnpm --package=@elirobinson/ai-patterns dlx ds-resync --write
 ```
 
 This rewrites the ranges in `package.json` (preserving `^`, `~`, or a pin) and
-runs the repo's package manager install.
+runs the repo's package manager install. It also records the versions it
+crossed in `.claude/ds-resync.json`, which is where step 4 reads the range it
+migrates across — nothing else on disk remembers where the upgrade started once
+the install has happened.
 
 If it reports that `package.json` was updated but the install exited non-zero,
 the ranges have already changed. Read the install output before re-running —
@@ -121,8 +124,55 @@ tell them what remains held back, so the deferred migration stays visible.
 
 ## 4. Migrate
 
-Fix the call sites the breaking entries described. Follow the repo's existing
-conventions. Constraints that always apply:
+The token migrations are mechanical. Run them rather than deriving them:
+
+```bash
+pnpm --package=@elirobinson/ai-patterns dlx ds-resync migrate
+```
+
+Dry-run by default, like everything else here. It reads the migration manifest
+each installed `@elirobinson` package ships, selects the entries between the
+version you upgraded from and the one you are on now, and finds their call sites
+in this repo's CSS and TSX. Step 3 recorded that range at
+`.claude/ds-resync.json`, so in the normal flow this takes no arguments.
+
+Read the report, then apply it:
+
+```bash
+pnpm --package=@elirobinson/ai-patterns dlx ds-resync migrate --write
+```
+
+`--from <version>` and `--to <version>` supply the range by hand when the repo
+was upgraded some other way — exact versions, never ranges. `--only` restricts
+the run to named packages, `--cwd` targets another directory, `--json` emits the
+report as data, and `--fail-on-pending` exits 2 when anything was left for a
+human, which is the CI spelling.
+
+**Do not re-derive token renames from the changelog prose you read in step 2.**
+The manifest is that same change expressed as data, checked against the
+package's own stylesheets by its own test, and it knows which occurrences are
+safe to rewrite and which are not. A hand-written find/replace over the same
+tokens is a guess at what the command already knows.
+
+**The manifest is tokens and nothing else.** Component API changes, renamed
+props, new required props, changed import paths, removed components — those are
+still yours, and the entries from step 2 are the only description of them.
+
+What the command declines to rewrite it prints under `left for you — not
+rewritten, on purpose`, each with a `why not:` line and, where a replacement
+exists, a `use:` line. Those are deliberate refusals, not failures: a token
+aliased through one of your own custom properties, a property it could not read
+at that position, a token whose value moved but whose name did not, a
+replacement that depends on which fill an element is actually painted with.
+There is no force flag, by design — rewriting those would change what this repo
+paints without saying so. Resolve each one by hand at the file and line printed.
+
+A package below the version that first ships a manifest reports nothing, and
+that is not a failure. Token migrations ship in `@elirobinson/tokens` from
+0.9.0; below that, the changelog entries from step 2 are the migration notes and
+the call sites are yours to fix.
+
+Constraints that always apply:
 
 - Imports use package subpaths only — `@elirobinson/react/components/<tier>/<Name>`.
   A bare `@elirobinson/react` import does not resolve.
@@ -157,5 +207,7 @@ and then repeat this step.
 
 ## 6. Verify
 
-Run the repo's own checks — typecheck, tests, build — and report the results. Do
-not claim the upgrade is done until they pass.
+Run the repo's own checks — typecheck, tests, build — and report the results. If
+step 4 ran with `--write`, run the repo's formatter first: those rewrites are
+edits to the bytes, not formatted output. Do not claim the upgrade is done until
+the checks pass.

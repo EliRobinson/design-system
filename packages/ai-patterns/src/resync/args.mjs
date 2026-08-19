@@ -1,5 +1,22 @@
 import { resolve as resolvePath } from 'node:path';
+import { compareVersions, parseVersion } from './semver.mjs';
 import { DEFAULT_TARGET_SPEC, parseOnly, parseTargetSpec, TARGETS } from './targets.mjs';
+
+/**
+ * A version flag that will not accept a range. `--from ^0.8.0` would silently
+ * compare as the string it is and select the wrong migrations, which is exactly
+ * the class of quiet wrongness this command exists to remove.
+ */
+function assertVersion(value, flag) {
+  const trimmed = String(value).trim();
+  if (!parseVersion(trimmed)) {
+    throw new Error(
+      `${flag} takes an exact version, not a range — got "${trimmed}". ` +
+        'The `currentVersion` and `targetVersion` in `ds-resync --json` are the two you want.',
+    );
+  }
+  return trimmed;
+}
 
 /**
  * Every flag either command understands, declared once — how it parses and how
@@ -98,6 +115,36 @@ const FLAGS = {
     whenValueAbsent: '',
     whenOmitted: () => null,
   },
+  // The two ends of the range `migrate` crosses. Both are optional because the
+  // normal path supplies them without the user: `--write` records where the
+  // upgrade started, and node_modules says where it landed. They exist for the
+  // repo that upgraded some other way and still wants the codemod.
+  from: {
+    names: ['--from'],
+    key: 'from',
+    type: 'value',
+    placeholder: '<version>',
+    description: 'The version you upgraded FROM\n(default: the record ds-resync --write left)',
+    parse: (value) => assertVersion(value, '--from'),
+    whenValueAbsent: '',
+    whenOmitted: () => null,
+  },
+  to: {
+    names: ['--to'],
+    key: 'to',
+    type: 'value',
+    placeholder: '<version>',
+    description: 'The version you upgraded TO\n(default: what is installed)',
+    parse: (value) => assertVersion(value, '--to'),
+    whenValueAbsent: '',
+    whenOmitted: () => null,
+  },
+  failOnPending: {
+    names: ['--fail-on-pending'],
+    key: 'failOnPending',
+    type: 'boolean',
+    description: 'Exit 2 when anything is left for a human\n(for CI)',
+  },
   target: {
     names: ['--target'],
     key: 'targetSpec',
@@ -119,10 +166,11 @@ function describedAs(spec, description) {
   return { ...spec, description };
 }
 
-// The two lists are deliberately not the same set. A flag absent from a
+// The three lists are deliberately not the same set. A flag absent from a
 // command's list is an unknown option there, which is the behaviour worth
-// keeping: `--force` has nothing to overwrite during a version sync, and
-// `--target` has no version to aim at during an artifact copy.
+// keeping: `--force` has nothing to overwrite during a version sync, `--target`
+// has no version to aim at during an artifact copy, and `--from` names a
+// version that only the codemod has any use for.
 //
 // The order is the order the flags print under `Options:`, so these lists
 // decide the help text as well as the parse.
@@ -132,6 +180,17 @@ const ARTIFACTS_FLAGS = [
   describedAs(FLAGS.json, 'Emit the plan as JSON'),
   FLAGS.cwd,
   FLAGS.failOnDrift,
+  FLAGS.help,
+];
+
+const MIGRATE_FLAGS = [
+  describedAs(FLAGS.write, 'Apply the safe rewrites (default is read-only)'),
+  FLAGS.from,
+  FLAGS.to,
+  FLAGS.only,
+  describedAs(FLAGS.json, 'Emit the plan as JSON'),
+  FLAGS.cwd,
+  FLAGS.failOnPending,
   FLAGS.help,
 ];
 
@@ -185,10 +244,12 @@ export function renderOptions(specs) {
 export const USAGE = `ds-resync — bring this repo's @elirobinson packages up to date
 
 Usage: ds-resync [options]
+       ds-resync migrate [options]
        ds-resync artifacts [options]
 
 Commands:
   (default)             Report and optionally apply dependency upgrades
+  migrate               Apply the token migrations the upgrade calls for
   artifacts             Sync the design system's agent skills into this repo
 
 Compares the versions your lockfile resolved — what CI and a fresh clone install
@@ -198,7 +259,24 @@ that lockfile.
 Options:
 ${renderOptions(RESYNC_FLAGS)}
 
-Run \`ds-resync artifacts --help\` for that command's options.
+Run \`ds-resync migrate --help\` or \`ds-resync artifacts --help\` for those
+commands' options.
+`;
+
+export const MIGRATE_USAGE = `ds-resync migrate — apply the token migrations an upgrade calls for
+
+Reads the migration manifest each installed @elirobinson package ships, selects
+the entries between the version you upgraded from and the one you are on, and
+finds their call sites in this repo's CSS and TSX.
+
+Renames whose context it can establish are rewritten. Anything else — a token
+aliased through one of your own custom properties, a property it cannot read, a
+token whose value moved but whose name did not — is REPORTED, never guessed at.
+
+Usage: ds-resync migrate [options]
+
+Options:
+${renderOptions(MIGRATE_FLAGS)}
 `;
 
 export const ARTIFACTS_USAGE = `ds-resync artifacts — sync the design system's agent skills into this repo
@@ -254,6 +332,24 @@ function parseFlags(argv, specs) {
 
 export function parseArtifactsArgs(argv) {
   return parseFlags(argv, ARTIFACTS_FLAGS);
+}
+
+export function parseMigrateArgs(argv) {
+  const args = parseFlags(argv, MIGRATE_FLAGS);
+
+  // Migrating "from 1.0.0 to 0.9.0" selects nothing and looks like a clean
+  // repo, which is the worst way for a mistyped flag to fail.
+  if (args.from && args.to && parseVersion(args.from) && parseVersion(args.to)) {
+    const [from, to] = [args.from, args.to];
+    if (compareVersions(from, to) > 0) {
+      throw new Error(
+        `--from ${from} is newer than --to ${to}. Migrations only ever run forwards; ` +
+          'swap them, or drop both and let the upgrade record supply the range.',
+      );
+    }
+  }
+
+  return args;
 }
 
 export function parseArgs(argv) {

@@ -23,6 +23,10 @@
     "./mobile.css": "./src/mobile.css",
     "./tailwind.css": "./src/tailwind.css",
     "./tokens.json": "./src/tokens.json",
+    "./migrations": {
+      "types": "./src/migrations.d.mts",
+      "default": "./src/migrations.json"
+    },
     "./parse-tokens-css": {
       "types": "./src/parse-tokens-css.d.mts",
       "default": "./src/parse-tokens-css.mjs"
@@ -46,6 +50,7 @@
   },
   "scripts": {
     "prepublishOnly": "pnpm run build",
+    "baseline": "node scripts/accept-token-baseline.mjs",
     "build": "node scripts/build-fonts.mjs && node scripts/build-tokens-json.mjs && rm -rf dist && tsc -p ./tsconfig.json",
     "lint": "echo 'No lint configured for tokens'",
     "test": "vitest run",

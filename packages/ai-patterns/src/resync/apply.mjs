@@ -1,5 +1,7 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { findLockfile } from './lockfile.mjs';
+import { UPGRADE_RECORD_PATH } from './migrations.mjs';
 
 // A leading operator (or none) followed by a bare x.y.z. Anything more
 // interesting — unions, wildcards, workspace and git protocols — is left for a
@@ -41,6 +43,45 @@ export function writeVersions(packageJsonPath, updates) {
   }
 
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf-8');
+}
+
+/**
+ * Records which version range each package was just moved across.
+ *
+ * `ds-resync migrate` needs both ends and can only recover one: after the
+ * install, node_modules says where the repo landed and nothing on disk
+ * remembers where it started. Without this the consumer would have to carry the
+ * numbers from step 1 of the upgrade to step 4 by hand — which is precisely the
+ * "read it out of the report and retype it" work the migrate command exists to
+ * delete, reintroduced one step earlier.
+ *
+ * Merged rather than replaced, so a run with `--only` does not erase the record
+ * of the packages it did not touch. Written best-effort: a repo where `.claude`
+ * cannot be created still gets its upgrade, and `migrate` falls back to
+ * considering every migration and says so.
+ */
+export function writeUpgradeRecord(cwd, upgrades) {
+  if (upgrades.length === 0) return;
+
+  const path = join(cwd, UPGRADE_RECORD_PATH);
+
+  let existing = {};
+  try {
+    existing = JSON.parse(readFileSync(path, 'utf-8'))?.upgrades ?? {};
+  } catch {
+    existing = {};
+  }
+
+  for (const { name, from, to } of upgrades) {
+    existing[name] = { from, to, at: new Date().toISOString() };
+  }
+
+  try {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `${JSON.stringify({ upgrades: existing }, null, 2)}\n`, 'utf-8');
+  } catch {
+    /* Best effort. The upgrade itself already succeeded. */
+  }
 }
 
 export function installCommand(packageManager) {
