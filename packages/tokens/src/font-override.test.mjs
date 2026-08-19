@@ -62,6 +62,30 @@ const STACKS = {
    being in one. */
 const withoutComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
 
+/**
+ * The body of every `@layer <name> { … }` block, brace-matched.
+ *
+ * Regex cannot do this: a layer block contains nested rules, so `\{[^}]*\}`
+ * stops at the first inner `}` and would report a block as empty — which would
+ * pass every assertion below while saying nothing. A bare `@layer name;`
+ * statement declares an order and holds no declarations, so it is skipped.
+ */
+function layerBlocks(css) {
+  const blocks = [];
+  for (const match of css.matchAll(/@layer\b[^;{]*\{/g)) {
+    let depth = 1;
+    let index = match.index + match[0].length;
+    const start = index;
+    while (depth > 0 && index < css.length) {
+      if (css[index] === '{') depth += 1;
+      if (css[index] === '}') depth -= 1;
+      index += 1;
+    }
+    blocks.push(css.slice(start, index - 1));
+  }
+  return blocks;
+}
+
 const HOOKS = {
   '--font-sans': '--ds-font-sans-override',
   '--font-display': '--ds-font-display-override',
@@ -92,16 +116,42 @@ describe('the font family override hook', () => {
 
 describe('the cascade rule the hook relies on', () => {
   it.each(IMPORTED_STYLESHEETS)(
-    'leaves %s unlayered, which is why a consumer @layer base override of a token loses',
+    'leaves every token declaration in %s unlayered, which is why a consumer @layer base override of a token loses',
     (name) => {
       // An unlayered declaration beats a layered one at the same origin whatever
       // the source order, so `@layer base { :root { --font-sans: … } }` in a
       // consumer's globals.css silently does nothing. Documented in
       // docs/agents/tokens.md, the README, patterns.md and adopt-system.md; if
-      // any of these stylesheets ever moves into a layer, all four are wrong.
-      expect(withoutComments(allCss[name])).not.toMatch(/@layer\b/);
+      // a token declaration ever moves into a layer, all four are wrong.
+      //
+      // This used to read `not.toMatch(/@layer\b/)` over the whole file, which
+      // was a stricter claim than the guarantee needs and than the system can
+      // now make: tokens.css puts its bare `a` rule in `@layer base` on purpose
+      // (issue #112), so that a Tailwind utility on an anchor can win. That
+      // rule declares no custom property and the docs' claim is untouched by
+      // it. What actually has to hold is the narrower thing asserted here — no
+      // `--token: …` anywhere inside a layer block.
+      for (const block of layerBlocks(withoutComments(allCss[name]))) {
+        expect(block, `a layer block in ${name} declares a custom property`).not.toMatch(
+          /--[\w-]+\s*:/,
+        );
+      }
     },
   );
+
+  it('keeps tokens.css’s one layer block down to the link rule it was opened for', () => {
+    // A guard on scope rather than on tokens: `@layer base { … }` is an easy
+    // thing to keep adding rules to, and every rule moved into it silently
+    // becomes overridable by any unlayered consumer CSS. Widening it should be
+    // a decision, not a drive-by.
+    const blocks = layerBlocks(withoutComments(tokensCss));
+
+    expect(blocks).toHaveLength(1);
+    const selectors = [...blocks[0].matchAll(/([^{}]+)\{/g)].map((match) =>
+      match[1].replace(/\s+/g, ' ').trim(),
+    );
+    expect(selectors).toEqual(['a', 'a:hover']);
+  });
 
   it('never declares an override property, which is why setting one applies from any layer', () => {
     // Nothing to lose to. This is what lets a consumer write the override

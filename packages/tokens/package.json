@@ -21,6 +21,7 @@
     "./tokens.css": "./src/tokens.css",
     "./palettes.css": "./src/palettes.css",
     "./mobile.css": "./src/mobile.css",
+    "./fonts.css": "./src/fonts.css",
     "./tailwind.css": "./src/tailwind.css",
     "./tokens.json": "./src/tokens.json",
     "./migrations": {
@@ -59,6 +60,7 @@
   "devDependencies": {
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "playwright": "^1.56.0",
     "prettier": "^3.8.3",
     "vitest": "^3.2.4"
   }
