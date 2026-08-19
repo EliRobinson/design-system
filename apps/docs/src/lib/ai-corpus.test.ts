@@ -115,9 +115,9 @@ describe('llms-full.txt corpus', () => {
 });
 
 describe('per-component records', () => {
-  it('serves all 44 slugs with import specifiers and docs links', () => {
+  it('serves all 50 slugs with import specifiers and docs links', () => {
     const slugs = recordSlugs();
-    expect(slugs).toHaveLength(44);
+    expect(slugs).toHaveLength(50);
     for (const slug of slugs) {
       const record = componentRecord(slug);
       expect(record?.importSpecifier).toContain('@elirobinson/react/components/');

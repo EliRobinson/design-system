@@ -1,0 +1,83 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/chat-message/Basic';
+
+export const metadata = { title: 'ChatMessage' };
+
+<ComponentHeader slug="chat-message" />
+
+<DemoBlock file="chat-message/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+`ChatMessage` is one turn in a conversation: an avatar column, optional attribution, the
+content, and optional turn-level affordances. Put turns inside a `ChatThread`, which owns
+the announcement contract; the message itself is layout and typography.
+
+`variant` is `received` by default. A `sent` turn reads as settled through `--fg-2` — a
+real foreground token that follows the theme and holds its contrast — never through
+`opacity`, which would drop body copy to roughly 3.4:1 and fail SC 1.4.3 while looking
+merely quiet.
+
+## Two required decisions
+
+`avatar` is a **required** node, and there is deliberately no fallback derived from
+`variant`. A system that invented a mark for the assistant would be picking a product's
+voice for it, and a system that invented one for the person would be guessing at their
+identity. Pass initials, a glyph, an image — whatever the product actually knows.
+
+`actions` is a node, not an `[{ label, onClick }]` array. An array shape would mean the
+system owns how an action renders, which button variant it gets, and what happens when a
+product needs a menu, a link, or a copy control with its own state. A node owns none of
+that: you pass the buttons you already have.
+
+## Props
+
+<PropsTables slug="chat-message" />
+
+## Accessibility
+
+- The avatar wrapper is `aria-hidden="true"` — always. It's a decorative restatement of
+  the speaker, so `name` is the single thing that identifies a turn to a screen reader.
+  That keeps one turn from being announced twice, and keeps identification off a node a
+  consumer may pass as a bare glyph.
+- Because the avatar carries nothing, a turn with no `name` is announced with no
+  attribution at all. Pass `name` on any thread where speakers alternate.
+- `timestamp` is a pre-formatted string. Formatting is the product's call — locale,
+  relative versus absolute, seconds or not — so the system never parses or reformats it.
+- The avatar column is 44px, drawn as an outline over `--surface-2` rather than a solid
+  fill, so the mark inside survives both themes.
+- **Keyboard:** the turn itself is not focusable. Anything tabbable comes from the node
+  you pass as `actions`.
+- The ref forwards to the outer `<div>`.
+
+<DoDont
+  do={[
+    'Pass name on both sides of a conversation so each turn is attributed once.',
+    'Format the timestamp before passing it, in the reader’s locale.',
+    'Pass real buttons as actions, styled the way the rest of your product styles them.',
+    'Use variant="sent" for the person and the default for the assistant.',
+  ]}
+  dont={[
+    'Expect an avatar to appear on its own — it is required, with no derived fallback.',
+    'Rely on the avatar to say who is speaking; it is hidden from screen readers.',
+    'Dim a settled turn with opacity; --fg-2 is what carries that state.',
+    'Pass an array of action descriptors — actions takes nodes.',
+  ]}
+/>
+
+## Product theming
+
+The assistant mark reads `--product-signal-fg` with a fallback to the system's
+`--status-warning-fg`, so a product can own that hue without forking the token set. The
+convention is documented in `docs/agents/product-token-layer.md`; the fallback means a
+product that declares nothing gets Miltinson Amber and measured contrast.
+
+## Related
+
+<RelatedComponents slugs={['chat-thread', 'streaming-caret', 'avatar', 'button']} />

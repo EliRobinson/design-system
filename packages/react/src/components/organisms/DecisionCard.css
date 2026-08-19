@@ -1,0 +1,150 @@
+/* ==========================================================================
+   DecisionCard
+   ========================================================================== */
+
+.ds-decision {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
+.ds-decision__head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.ds-decision__subject {
+  color: var(--fg-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-wide);
+  line-height: 1;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.ds-decision__body {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ds-decision__headline {
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-tight);
+  line-height: var(--lh-snug);
+  margin: 0;
+}
+
+.ds-decision__figures {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.ds-decision__figure {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.ds-decision__figure-label {
+  color: var(--fg-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.ds-decision__figure-value {
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  margin: 0;
+  text-align: right;
+}
+
+.ds-decision__total {
+  align-items: baseline;
+  border-top: 1px solid var(--border);
+  display: flex;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  gap: var(--space-3);
+  justify-content: space-between;
+  margin: 0;
+  padding-top: var(--space-3);
+}
+
+.ds-decision__total .ds-decision__figure-label,
+.ds-decision__total .ds-decision__figure-value {
+  color: var(--fg);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+}
+
+/* The comparison figure is secondary by construction: it exists to give the
+   total a size, so it must never compete with it. */
+.ds-decision__contrast {
+  align-items: baseline;
+  color: var(--fg-3);
+  display: flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  gap: var(--space-3);
+  justify-content: space-between;
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+.ds-decision__contrast .ds-decision__figure-label,
+.ds-decision__contrast .ds-decision__figure-value {
+  color: var(--fg-3);
+  font-size: var(--fs-xs);
+}
+
+/* --status-warning, not --signal-500. Same amber family, but --signal-500 is a
+   base-scale value that does not move with the theme, and this rule is a
+   3:1 non-text graphic: it is the only thing marking the paragraph as a
+   caution. --status-warning is that colour named for the job it does. The
+   caveat's own text stays --fg-2 — a caveat is body copy that has to be read,
+   not a warning label, and tinting the words would cost contrast for nothing. */
+.ds-decision__caveat {
+  border-left: 3px solid var(--status-warning);
+  color: var(--fg-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  margin: 0;
+  padding-left: var(--space-3);
+}
+
+.ds-decision__closing {
+  color: var(--fg-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+/* The action row exists only when there is an action — see the comment in
+   DecisionCard.tsx. There is deliberately no disabled or empty presentation
+   for this element, because it is never rendered empty. */
+.ds-decision__foot {
+  align-items: center;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+}

@@ -1,0 +1,84 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/chat-thread/Basic';
+
+export const metadata = { title: 'ChatThread' };
+
+<ComponentHeader slug="chat-thread" />
+
+<DemoBlock file="chat-thread/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+`ChatThread` is the scrolling region a conversation lives in: a column of `ChatMessage`
+turns that announces new ones as they arrive. It's the region, not the transcript — it
+holds no state, keeps no message list, and does no scrolling for you. What it owns is the
+announcement contract, which is the part that's easy to get wrong by hand.
+
+It sits in the `ai` tier because it only means anything inside an assistant interaction.
+The tier answers "what is this for," not "how much is assembled here" — a component earns
+`ai` when you can't describe it without saying assistant, model, or streaming. A card that
+happens to render a model's answer is still a `Card`.
+
+## Announcing, and not announcing
+
+`announce` defaults to `true`, which is right for a live conversation: `aria-live="polite"`
+means a turn that arrives while the reader is elsewhere still reaches them, at the next
+pause rather than mid-sentence.
+
+Pass `announce={false}` for a thread that isn't live — a closed conversation, a saved
+transcript, a replay in a history view. That sets `aria-live="off"`, so mounting a hundred
+past turns doesn't queue a hundred announcements. Rendering history is the case where the
+default is wrong.
+
+## Props
+
+<PropsTables slug="chat-thread" />
+
+## Accessibility
+
+- Renders `role="log"` with `aria-live="polite"` and `aria-relevant="additions text"`. The
+  `text` half matters for assistant output: a turn that grows token by token is a text
+  change inside an existing node, not an addition, and `additions` alone would announce
+  the empty turn and then go quiet.
+- `label` is **required** and becomes `aria-label`. No copy lives inside the component, so
+  the region's name is always the product's — and a page with more than one thread has two
+  distinguishable regions rather than two unnamed logs.
+- The region scrolls (`overflow-y: auto`), so it needs to be keyboard scrollable. If it
+  isn't focusable through its content, give it `tabIndex={0}` yourself; the component
+  doesn't add one, because a region full of focusable turns doesn't need it and a stray
+  tab stop is its own problem.
+- **Keyboard:** none of its own — `ChatThread` renders no controls. Anything focusable
+  comes from the turns you put inside it.
+- The ref forwards to the outer `<div>`.
+
+<DoDont
+  do={[
+    'Give every thread a label that says which conversation it is.',
+    'Pass announce={false} when you are rendering history rather than a live stream.',
+    'Keep the turns inside it ChatMessage elements, so the avatar column lines up.',
+    'Manage scroll position yourself — the region scrolls, but it does not decide when.',
+  ]}
+  dont={[
+    'Mount a long replayed transcript with announce left at its default.',
+    'Wrap the thread in another live region; nesting them announces twice.',
+    'Expect ChatThread to hold or order messages — it renders the children you give it.',
+    'Use it as a generic scrolling list; outside an assistant surface, the log role is wrong.',
+  ]}
+/>
+
+## Product theming
+
+`ChatThread` draws only system tokens, but it's the container for turns that read the
+optional product token layer — the `--product-*` convention documented in
+`docs/agents/product-token-layer.md`. Every read there falls back to a system token, so a
+product that declares none of it gets the system palette unchanged.
+
+## Related
+
+<RelatedComponents slugs={['chat-message', 'streaming-caret', 'avatar']} />

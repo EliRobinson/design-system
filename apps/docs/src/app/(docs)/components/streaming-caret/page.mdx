@@ -1,0 +1,75 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/streaming-caret/Basic';
+
+export const metadata = { title: 'StreamingCaret' };
+
+<ComponentHeader slug="streaming-caret" />
+
+<DemoBlock file="streaming-caret/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+`StreamingCaret` is the blinking mark at the end of a message an assistant is still
+writing. Put it inline, after the last of the text, inside the turn that's growing. It is
+a state graphic and nothing else: it holds no timer, watches no stream, and knows nothing
+about your transport.
+
+## It cannot outlive the stream
+
+When `active` is `false` the component returns `null` — no element, no wrapper, nothing in
+the DOM. That's the whole design. A caret that could be left mounted on a finished message
+is a caret that eventually is, and a finished answer that still looks like it's writing is
+worse than no affordance at all. Because the falsy case renders nothing, the only way to
+show a stale caret is to keep telling the component the stream is live.
+
+## Props
+
+<PropsTables slug="streaming-caret" />
+
+## Accessibility
+
+- Pass `label` and the caret becomes `role="status"` with that accessible name — a polite
+  announcement that the assistant is still writing, which is the right call when the
+  content it precedes takes a while to arrive.
+- Omit `label` and the caret is `aria-hidden`. That's the right call when the turn already
+  announces its own progress through the thread's live region, and a second announcement
+  would just be noise.
+- Under `prefers-reduced-motion: reduce` the blink stops and the caret goes **solid** —
+  never invisible. Removing the animation must not remove the state, because the caret is
+  the only signal that a message is still being written.
+- The fill is `--accent-press` rather than `--accent`: as a non-text state graphic it owes
+  3:1 against its surface under SC 1.4.11, and `--accent` measures 2.53:1.
+- **Keyboard:** none — it renders a single non-interactive `<span>`.
+- The ref forwards to that `<span>`, when one exists.
+
+<DoDont
+  do={[
+    'Drive active from the same state that decides whether the stream is still open.',
+    'Pass label when the caret is the only sign that a slow answer is coming.',
+    'Place it inline, immediately after the last rendered text of the turn.',
+    'Let the reduced-motion rule stand — a solid caret still says "writing."',
+  ]}
+  dont={[
+    'Leave it mounted on a settled message and rely on CSS to hide it.',
+    'Give every caret on a busy thread a label; the announcements stack up.',
+    'Restyle it to a lighter accent — it would drop under the 3:1 graphics threshold.',
+    'Use it as a generic loading spinner; that is Spinner, or Skeleton.',
+  ]}
+/>
+
+## Product theming
+
+The caret fill reads `--product-signal` with a fallback to the system's `--accent-press`,
+so a product can substitute its own hue for the same job. The convention — one level of
+fallback, always landing on a system token — is documented in
+`docs/agents/product-token-layer.md`, and the fallback is what keeps the layer optional.
+
+## Related
+
+<RelatedComponents slugs={['chat-message', 'chat-thread', 'spinner', 'skeleton']} />

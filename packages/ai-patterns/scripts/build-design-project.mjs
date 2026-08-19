@@ -55,12 +55,14 @@ const docsDir = join(repoRoot, 'design-system-docs');
    the project has no nested directories under components/. */
 const STYLESHEET_RENAMES = { 'organisms/table/core.css': 'organisms/table-core.css' };
 
-/* The project's `ai/` tier has no counterpart in @elirobinson/react. Those
-   components are the project's own, so they are legal to use inside it and
-   belong in the adherence roster — otherwise the "unknown component" rule
-   flags the project's own work. Promote any of these into the package and it
-   should be deleted from here in the same change. */
-const PROJECT_OWNED_COMPONENTS = ['ChatComposer', 'ChatMessage', 'ChatThread', 'PromptSuggestions'];
+/* Components that exist only in the design project, with no counterpart in
+   @elirobinson/react. They are legal to use inside it and belong in the
+   adherence roster — otherwise the "unknown component" rule flags the
+   project's own work. Promote any of these into the package and it should be
+   deleted from here in the same change; `ChatMessage` and `ChatThread` left
+   this list when the `ai/` tier was added to the package, which is what that
+   sentence means in practice. */
+const PROJECT_OWNED_COMPONENTS = ['ChatComposer', 'PromptSuggestions'];
 
 /* The Claude Design project these files belong to, and the fixed part of the
    only paths a push built from this output may touch. The generated foundation
@@ -80,6 +82,7 @@ const TARGET = {
     'components/atoms/*.css',
     'components/molecules/*.css',
     'components/organisms/*.css',
+    'components/ai/*.css',
   ],
   deletes: [],
 };

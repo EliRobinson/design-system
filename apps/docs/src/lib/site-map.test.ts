@@ -70,6 +70,7 @@ describe('siteSections', () => {
     expect(siteSections().map((s) => s.title)).toEqual([
       'Overview',
       'Foundations',
+      'AI',
       'Atoms',
       'Molecules',
       'Organisms',

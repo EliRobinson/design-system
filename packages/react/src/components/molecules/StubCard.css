@@ -1,0 +1,123 @@
+/* ==========================================================================
+   StubCard
+   ========================================================================== */
+
+.ds-stub {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  overflow: hidden;
+}
+
+.ds-stub__body {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+}
+
+.ds-stub__title {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-snug);
+  line-height: var(--lh-snug);
+  margin: 0;
+}
+
+.ds-stub__items {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.ds-stub__item {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.ds-stub__label {
+  color: var(--fg-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.ds-stub__value {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-normal);
+  margin: 0;
+  text-align: right;
+}
+
+.ds-stub__footnote {
+  color: var(--fg-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+/* The perforation. It is drawn with --border-control rather than --border
+   because it is not decoration between two blocks of the same surface: it is
+   the tear line that says the stub detaches, which is the whole reason the
+   layout has two columns. --border is a 1.24:1 seam meant to be felt and not
+   read; a line carrying meaning needs the 3:1 edge token, the same one a
+   control's boundary uses. Dashed, because a perforation is dashed. */
+.ds-stub__stub {
+  align-content: center;
+  border-left: 1px dashed var(--border-control);
+  display: grid;
+  gap: var(--space-1);
+  justify-items: center;
+  padding: var(--space-5) var(--space-6);
+  text-align: center;
+}
+
+.ds-stub__stub-label {
+  color: var(--fg-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-caps);
+  line-height: 1;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.ds-stub__stub-value {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-tight);
+  line-height: var(--lh-snug);
+  margin: 0;
+}
+
+.ds-stub__stub-caption {
+  color: var(--fg-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+/* Narrow: the stub tears off the bottom instead of the side, so the
+   perforation moves with it and stays a perforation. */
+@media (max-width: 30rem) {
+  .ds-stub {
+    grid-template-columns: 1fr;
+  }
+
+  .ds-stub__stub {
+    border-left: 0;
+    border-top: 1px dashed var(--border-control);
+  }
+}

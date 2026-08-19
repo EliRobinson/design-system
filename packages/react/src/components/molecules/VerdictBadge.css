@@ -1,0 +1,54 @@
+/* ==========================================================================
+   VerdictBadge
+   ========================================================================== */
+
+.ds-verdict {
+  align-items: center;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  gap: var(--space-2);
+  letter-spacing: var(--tr-caps);
+  line-height: 1;
+  padding: var(--space-2) var(--space-3);
+  text-transform: uppercase;
+}
+
+.ds-verdict__glyph {
+  font-size: var(--fs-sm);
+  line-height: 1;
+}
+
+.ds-verdict__word {
+  line-height: 1;
+}
+
+/* Each verdict is a themed status pair, read through the product layer with a
+   one-level fallback so the layer stays optional.
+ *
+ * The draft paired --anchor-100 with --anchor-800 and needed a
+ * [data-theme='dark'] block to stop light mint sitting behind light green.
+ * Both are base-scale tokens, which this system forbids painting: a scale does
+ * not respond to the theme attribute, so painting one asserts the colour is
+ * right on a white page and a black one. --status-success-tint IS that pair,
+ * already themed, and against --status-success-fg it measures 10.23:1 light /
+ * 9.45:1 dark. So the fix lands with no dark block, no exemption, and the
+ * product layer still overrides fill and text together. */
+.ds-verdict--go {
+  background: var(--product-verdict-go, var(--status-success-tint));
+  color: var(--product-verdict-go-fg, var(--status-success-fg));
+}
+
+/* It paints a background, so it states its own color in the same rule — a
+   fill without a colour lets an outer rule repaint the label. */
+.ds-verdict--no {
+  background: var(--product-verdict-no, var(--status-danger-tint));
+  color: var(--product-verdict-no-fg, var(--status-danger-fg)); /* 6.83:1 light, 6.62:1 dark */
+}
+
+.ds-verdict--hold {
+  background: var(--product-verdict-hold, var(--status-warning-tint));
+  color: var(--product-verdict-hold-fg, var(--status-warning-fg)); /* 8.96:1 light, 9.20:1 dark */
+}

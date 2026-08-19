@@ -1,0 +1,41 @@
+/* ==========================================================================
+   StreamingCaret
+   ========================================================================== */
+
+.ds-streaming-caret {
+  /* One blink is two --dur-slow beats. The duration is derived from the motion
+     scale rather than a literal so a product retuning the scale retunes this. */
+  animation: ds-streaming-caret-blink calc(var(--dur-slow) * 2) var(--ease-in-out) infinite;
+  /* The caret is a non-text state graphic, so SC 1.4.11 asks 3:1 against the
+     surface behind it. --accent is --signal-500 and measures 2.53:1 on --bg,
+     which misses; --accent-press is --signal-600 at 3.69:1, which clears.
+     --product-signal lets a product substitute its own hue for the same job. */
+  background: var(--product-signal, var(--accent-press));
+  border-radius: var(--radius-xs);
+  display: inline-block;
+  height: 1em;
+  margin-inline-start: var(--space-px);
+  vertical-align: text-bottom;
+  width: 0.5em;
+}
+
+@keyframes ds-streaming-caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
+/* Reduced motion stops the blink and leaves the caret solid — never hidden.
+   It is the only signal that a message is still being written, so removing the
+   animation must not remove the state. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-streaming-caret {
+    animation: none;
+    opacity: 1;
+  }
+}

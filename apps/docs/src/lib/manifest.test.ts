@@ -12,8 +12,8 @@ const reactSrc = join(repoRoot, 'packages/react/src');
 const docsSrc = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('component manifest', () => {
-  it('covers all 44 components and 7 hooks', () => {
-    expect(components).toHaveLength(44);
+  it('covers all 50 components and 7 hooks', () => {
+    expect(components).toHaveLength(50);
     expect(hooks).toHaveLength(7);
   });
 
@@ -23,7 +23,7 @@ describe('component manifest', () => {
   });
 
   it('reports the tiers the package actually groups its components under', () => {
-    expect(TIERS).toEqual(['atoms', 'molecules', 'organisms']);
+    expect(TIERS).toEqual(['ai', 'atoms', 'molecules', 'organisms']);
   });
 
   it('gives every component a page and at least one demo on disk', () => {

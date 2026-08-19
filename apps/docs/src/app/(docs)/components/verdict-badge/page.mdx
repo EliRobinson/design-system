@@ -1,0 +1,83 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/verdict-badge/Basic';
+
+export const metadata = { title: 'VerdictBadge' };
+
+<ComponentHeader slug="verdict-badge" />
+
+<DemoBlock file="verdict-badge/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+`VerdictBadge` marks a judgement: `go`, `no`, or `hold`. Use it where a surface has come
+to a conclusion and the reader needs to see which one before reading anything else — the
+head of a `DecisionCard`, a row in a results table, a summary at the top of a report.
+
+Colour is never the only signal. The badge always draws a glyph **and** a word, so the
+verdict survives greyscale, a colour-blind reader, and a theme switch. A marker that
+signalled by fill alone would fail SC 1.4.1 (Use of Color), and this is a marker whose
+whole job is to be unambiguous.
+
+## Not Badge
+
+`Badge` is a label — a category, a status word, a count. It has no icon slot and no state
+that reads as a decision in both themes, so a "verdict" built from `Badge` ends up being
+carried by its fill colour alone. That's the failure mode this component exists to close.
+Reach for `Badge` when you're tagging something, and `VerdictBadge` when you're
+concluding something.
+
+`glyph` overrides the default mark if a product has its own; `label` is always the
+product's word.
+
+## Props
+
+<PropsTables slug="verdict-badge" />
+
+## Accessibility
+
+- The glyph is `aria-hidden="true"` on purpose. `✓`, `✕` and `◑` are punctuation-class
+  characters: a screen reader may skip them silently or read them as something unhelpful,
+  and which of those happens varies by reader and by verbosity setting. The glyph is the
+  sighted channel only.
+- `label` is therefore the accessible text, and it's required. The meaning never depends
+  on a character a screen reader might drop.
+- Write the label as the verdict itself — "Worth it," "Skip it" — not as a restatement of
+  the colour or the glyph. It's the only thing a screen reader hears.
+- Each verdict's fill and foreground are a measured pair, so the word clears contrast on
+  its own tint in both themes.
+- **Keyboard:** none — the badge renders a non-interactive `<span>`. If a verdict needs to
+  be clickable, wrap it in your own control.
+- The ref forwards to the outer `<span>`.
+
+<DoDont
+  do={[
+    'Let the label carry the verdict in words, since that is what a screen reader reads.',
+    'Keep the same label wording for the same verdict across a list, so it scans.',
+    'Use hold for a conditional answer rather than inventing a fourth verdict.',
+    'Pair it with the reasoning nearby — a verdict with no figures behind it is a guess.',
+  ]}
+  dont={[
+    'Replace the glyph with something that only means anything in colour.',
+    'Use it as a category tag; that is Badge.',
+    'Write a label like "Green" that describes the styling instead of the decision.',
+    'Rely on the glyph reaching a screen reader — it is hidden, deliberately.',
+  ]}
+/>
+
+## Product theming
+
+Each verdict fill and foreground reads a `--product-verdict-*` variable with a fallback to
+the matching system status token, so a product can own its verdict palette without forking
+the token set or hardcoding a literal a contrast gate can't follow. The convention is
+documented in `docs/agents/product-token-layer.md`; declare none of it and the system
+status colours apply.
+
+## Related
+
+<RelatedComponents slugs={['decision-card', 'badge', 'alert', 'chip']} />

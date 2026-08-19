@@ -1,0 +1,70 @@
+/* ==========================================================================
+   The product token layer — a PATTERN, not tokens
+   --------------------------------------------------------------------------
+   This file is not published by @elirobinson/tokens and nothing in this repo
+   imports it. It is the starter a *consuming product* copies into its own
+   codebase to own one accent without forking the design system.
+
+   Read docs/agents/product-token-layer.md before using it. The short version:
+
+     - Every `--product-*` name below is OPTIONAL. Each one is read by a
+       component as `var(--product-x, var(--system-token))`, so a product that
+       ships none of this gets Miltinson Amber and the system's status palette,
+       which is the intended default.
+     - Declare them inside your own `[data-product]` scope, never on `:root`.
+       Scoping is what keeps the override a product decision rather than a
+       silent fork of the system for everything on the page.
+     - The theme attribute usually sits on `<html>`, above your product scope,
+       so the dark block needs the descendant selectors below — a bare
+       `[data-product][data-theme='dark']` matches nothing in the common case.
+     - Every value here is a token that already exists in tokens.css. Invent no
+       colours: a product-layer value that is a raw literal is a colour nobody
+       measured, in a slot the system's contrast gate cannot see.
+
+   The values below are the SYSTEM DEFAULTS restated. Copying the file as-is
+   changes nothing, which is the point: start from the defaults, then re-point
+   only the lines your product actually owns.
+   ========================================================================== */
+
+[data-product] {
+  /* A non-text state graphic — a caret, a rule, a dot. Needs 3:1 under
+     SC 1.4.11, which is why the default is --accent-press (--signal-600,
+     3.69:1 on --bg) and NOT --accent (--signal-500, 2.53:1). */
+  --product-signal: var(--accent-press);
+
+  /* Brand colour a user READS — a mark, a glyph, a label. --accent cannot do
+     this job at 2.53:1; --status-warning-fg is the same amber family at
+     9.69:1 light / 11.09:1 dark. */
+  --product-signal-fg: var(--status-warning-fg);
+
+  /* The three verdict pairs VerdictBadge and DecisionCard read. Each is a
+     fill plus the foreground drawn on it: override them together or neither,
+     because a fill that stays put while its text follows the theme is exactly
+     the pair that inverts in dark mode. */
+  --product-verdict-go: var(--status-success-tint);
+  --product-verdict-go-fg: var(--status-success-fg);
+
+  --product-verdict-no: var(--status-danger-tint);
+  --product-verdict-no-fg: var(--status-danger-fg);
+
+  --product-verdict-hold: var(--status-warning-tint);
+  --product-verdict-hold-fg: var(--status-warning-fg);
+}
+
+/* The dark half. `[data-theme='dark']` is the convention the system documents
+   and `.dark` is the class-strategy alias most theme switchers default to —
+   both are matched, and both are ancestors of the product scope rather than
+   siblings of it.
+
+   This block is empty of overrides on purpose: every default above is a
+   semantic token that already flips with the theme, so restating them here
+   would be a second copy that can only drift. A product that re-points a
+   fixed value in the light block MUST add its dark counterpart here. */
+[data-theme='dark'] [data-product],
+.dark [data-product] {
+  /* e.g.
+     --product-signal: <a value measured against the dark --bg>;
+     --product-verdict-go: <a dark tint>;
+     --product-verdict-go-fg: <its foreground, >=4.5:1 on that tint>;
+  */
+}

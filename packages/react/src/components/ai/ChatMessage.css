@@ -1,0 +1,92 @@
+/* ==========================================================================
+   ChatMessage
+   ========================================================================== */
+
+.ds-chat-message {
+  align-items: start;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 44px minmax(0, 1fr);
+}
+
+/* 44x44 is the floor for an avatar in this system. The circle is an outline
+   over --surface-2 rather than a solid fill: a pure-ink fill is the same colour
+   as a dark page and the mark inside it disappears, while an outline survives
+   both themes. */
+.ds-chat-message__avatar {
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-pill);
+  display: flex;
+  flex: none;
+  height: 44px;
+  justify-content: center;
+  overflow: hidden;
+  width: 44px;
+}
+
+.ds-chat-message__mark {
+  align-items: center;
+  display: flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  height: 100%;
+  justify-content: center;
+  width: 100%;
+}
+
+/* The assistant mark is text a reader reads at 14px semibold, so it needs the
+   readable brand token and not the fill one: --accent is --signal-500 at
+   2.53:1. --product-signal-fg lets a product own the hue; the system fallback
+   is Miltinson Amber at 9.69:1 light / 11.09:1 dark. */
+.ds-chat-message--received .ds-chat-message__mark {
+  color: var(--product-signal-fg, var(--status-warning-fg));
+}
+
+/* The settled turn. Not opacity: 0.72 — that drops body copy on --fg to about
+   3.4:1. --fg-2 reads as settled at 8.45:1 and follows the theme. */
+.ds-chat-message--sent {
+  color: var(--fg-2);
+}
+
+.ds-chat-message__body {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ds-chat-message__meta {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ds-chat-message__name {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.ds-chat-message__time {
+  color: var(--fg-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-wide);
+}
+
+.ds-chat-message__content {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.ds-chat-message__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
