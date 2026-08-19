@@ -70,7 +70,16 @@
    the tear line that says the stub detaches, which is the whole reason the
    layout has two columns. --border is a 1.24:1 seam meant to be felt and not
    read; a line carrying meaning needs the 3:1 edge token, the same one a
-   control's boundary uses. Dashed, because a perforation is dashed. */
+   control's boundary uses. Dashed, because a perforation is dashed.
+
+   Neither automated check would have caught the wrong token here, which is why
+   this comment exists rather than a lint suppression. component-css.test.mjs's
+   CONTROL_SELECTOR and @elirobinson-css/no-decorative-control-edge's EDGE_WORDS
+   both read the class name, and "stub" is not a control word in either — as it
+   should not be, since this is not a control. The 3:1 requirement follows from
+   the line carrying meaning, not from the element being interactive, and that
+   is a judgement no name-matching rule can make. Verified against the rule:
+   .ds-stub__stub does not match it, so this token is a choice, not a fix. */
 .ds-stub__stub {
   align-content: center;
   border-left: 1px dashed var(--border-control);
