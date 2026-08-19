@@ -2,22 +2,70 @@ name: Visual
 
 on:
   pull_request:
+    # `labeled` matters: pull_request defaults to opened/synchronize/reopened,
+    # and the report step below tells a human to add the visual-accept label.
+    # That only starts a new run because labeling is itself a trigger here —
+    # re-running the existing run instead would replay the ORIGINAL event
+    # payload, whose `labels` list predates the label being added, so the
+    # accept step would never see it.
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches:
       - main
+  # 06:00 UTC daily. The sweep is the only thing that catches drift with no
+  # commit behind it — a browser patch in the pinned image, or a baseline that
+  # was always marginal.
+  schedule:
+    - cron: '0 6 * * *'
   # Re-run the check on demand. The Visual update workflow commits baselines
   # with the default token, and pushes made with that token deliberately do
   # not trigger workflows — so without this there is no way to verify a
-  # freshly regenerated set except by pushing an unrelated commit.
+  # freshly regenerated set except by pushing an unrelated commit. The
+  # `scoped` job's own mint/accept steps now depend on that same behaviour:
+  # they push straight to the pull request branch with GITHUB_TOKEN, and if
+  # that push retriggered this workflow it would recurse into a second
+  # `scoped` run on its own commit. The tradeoff is that the pushed commit
+  # carries no check run of its own — acceptable only because nothing on
+  # main is branch-protected, so a pull request can still merge on the
+  # ORIGINAL run's status.
   workflow_dispatch:
 
 # Separate from `quality.yml` on purpose: this job is minutes where that one is
 # seconds, and it is advisory for now. Keeping it out of that workflow means a
 # slow or noisy visual run never delays the checks people actually gate on.
+#
+# cancel-in-progress, unlike visual-update.yml (which omits it): a pull
+# request job wants feedback on the newest push, not a stale one, and the
+# mint commit below is atomic — staged and committed in a single step — so a
+# cancellation before that point costs only compute, never a half-written
+# baseline on the branch.
+#
+# The label name is part of the key, and that is what keeps cancellation from
+# swallowing the check entirely. Concurrency is evaluated at RUN level, before
+# any job `if:` is read — so on a key of `github.ref` alone, adding ANY label
+# (`wip`, `docs`, anything) cancels the scoped run already in flight, and the
+# replacement run's `scoped` job is then skipped by its own `if:` (which only
+# admits `visual-accept`). The replacement concludes *success* having compared
+# nothing, and the pull request has no visual verdict until the next push.
+# Varying the key means a labelling run gets its own group and cancels
+# nothing: `github.event.action` is null for a push, so the `&&` is false and
+# the `||` falls through to the literal 'run'; on a `labeled` event it
+# resolves to the label's own name. Two labels added in quick succession still
+# land in different groups, which is the safe direction here — worst case is
+# an extra skipped job, never a cancelled comparison.
+#
+# Varying the key rather than moving `concurrency` down to the job level, on
+# purpose: job-level concurrency interacting with a job-level `if:` is not
+# something GitHub documents, and this is a mechanism a regression in would be
+# silent. The key is evaluated by the same expression engine either way.
 concurrency:
-  group: visual-${{ github.ref }}
+  group: visual-${{ github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name || 'run' }}
   cancel-in-progress: true
 
+# Read-only by default. `scoped` below elevates to contents: write for
+# itself only, and `recover` elevates to contents: write, pull-requests:
+# write and issues: write for itself only — each job asks for exactly what
+# it uses, and nothing is granted here in advance.
 permissions:
   contents: read
 
@@ -40,14 +88,418 @@ jobs:
       - id: resolve
         run: echo "ref=$(node scripts/visual-container.mjs --print-image)" >> "$GITHUB_OUTPUT"
 
-  visual:
+  # Only the shots the change could have altered. See
+  # docs/superpowers/specs/2026-08-19-scoped-visual-ci-design.md for why this is
+  # two layers, and why the sidebar fan-out overrides the narrowing.
+  scoped:
+    needs: image
+    # `labeled` cannot be filtered in the `on:` trigger above — GitHub either
+    # takes every label or none — so ANY label (docs, wip, anything) would
+    # otherwise start a full scoped run here. The filter has to live here
+    # instead: only run for a labeling event when the label is visual-accept.
+    if: >-
+      github.event_name == 'pull_request' &&
+      (github.event.action != 'labeled' || github.event.label.name == 'visual-accept')
+    # `image` and `full` keep the workflow-level read-only default; `recover`
+    # below is the only other job that elevates, and only for itself.
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    # Worst case here is two builds plus three near-full Playwright passes at
+    # --workers=1 (a fan-out mint, a fan-out check, a fan-out accept) — set to
+    # match the 90 minutes the full sweep gets for a single such pass.
+    timeout-minutes: 90
+    container:
+      image: ${{ needs.image.outputs.ref }}
+      options: --shm-size=1g
+    env:
+      HUSKY: 0
+      STORYBOOK_DISABLE_TELEMETRY: 1
+    steps:
+      # A fork's GITHUB_TOKEN cannot push back to the fork's own branch, so
+      # every step below that mints or accepts baselines would fail anyway —
+      # and fetching the base ref through `origin` (the fork, per the
+      # checkout below) can also silently compute the wrong merge base. Fail
+      # fast instead, with the remedy the design doc names, rather than
+      # limping through a run that cannot finish. This only prints that
+      # remedy; it does not invoke `gh` itself.
+      #
+      # head.repo.full_name != github.repository, not head.repo.fork: `.fork`
+      # is true whenever the HEAD repo is a fork of anything at all, so it
+      # would refuse every pull request the day this repo itself became a
+      # fork. Comparing the head repo's name to this repo's is the actual
+      # question — is the PR coming from somewhere this token cannot push to.
+      - name: Refuse pull requests from forks
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "::error::This pull request comes from a fork. GITHUB_TOKEN cannot push baselines back to a fork's branch, so this job cannot mint or accept them here."
+          echo "A maintainer can regenerate baselines directly instead:"
+          echo "  gh workflow run visual-update.yml --ref <branch> --field grep=<pattern>"
+          exit 1
+      - uses: actions/checkout@v7
+        with:
+          # The scoper diffs against the merge base, and the commit steps push
+          # back to the branch — neither works on a detached merge commit with
+          # no history.
+          #
+          # head.sha, not head.ref: checking out the exact commit the
+          # triggering event carried means a concurrent push to the same
+          # branch cannot move what this job operates on out from under it
+          # mid-run. The later pushes still target the branch by name (via
+          # HEAD_REF below) — if the branch moved in the meantime, git's own
+          # fast-forward check rejects the push rather than silently
+          # overwriting it.
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0
+          # Explicit rather than left to the action's default: two steps
+          # below push with this credential, same as visual-update.yml.
+          persist-credentials: true
+      # Immediately after the checkout, before anything else can shell out to
+      # git. The container's git refuses this working copy otherwise — it is
+      # made by the runner user while the steps run as root, which is git's
+      # "dubious ownership" case (visual-update.yml records the same). It used
+      # to live inside "Identify the merge base", i.e. after pnpm install and
+      # a full Storybook + docs build, either of which can invoke git through
+      # a tool that does not announce it. `--global` writes to ~/.gitconfig,
+      # which persists for every later step in this job, so this is the only
+      # place it is needed.
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Set up pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+      - name: Locate the pnpm store
+        id: pnpm_store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+      - run: pnpm install --frozen-lockfile
+      # The scoper and the missing-baseline detector both enumerate through
+      # Playwright, which needs both builds to collect a single test. This has
+      # to run before scope computation: visual-scope.mjs enumerates through
+      # Playwright's --list, and its per-side guard throws if a changed
+      # component maps to no shot — which happens whenever a newly added
+      # component's stories aren't in the built Storybook yet. Don't reorder
+      # this after the scope step.
+      - name: Build Storybook and the docs site
+        run: pnpm run pretest:visual
+
+      - name: Identify the merge base
+        id: base
+        shell: bash
+        env:
+          # Routed through the environment, not interpolated into the
+          # command: `${{ }}` substitutes into the run text before the shell
+          # parses it, and a base branch name is attacker-controlled text on
+          # a job holding contents: write. git allows `$()`, backticks and
+          # `;` in branch names.
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE_REF"
+          if ! MERGE_BASE=$(git merge-base HEAD FETCH_HEAD); then
+            echo "::error::git merge-base produced no result against origin/$BASE_REF."
+            exit 1
+          fi
+          echo "sha=$MERGE_BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Decide what to run
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/visual-scope.mjs --base "${{ steps.base.outputs.sha }}" > /tmp/plan.json
+          cat /tmp/plan.json
+
+          # The grep goes to a file rather than a step output: it can be long
+          # (the fan-out case names every route) and it contains characters
+          # that a $GITHUB_OUTPUT round trip would mangle.
+          node -pe 'JSON.parse(require("fs").readFileSync("/tmp/plan.json","utf8")).grep ?? ""' > /tmp/scope-grep.txt
+
+          RUN=$(node -pe 'JSON.parse(require("fs").readFileSync("/tmp/plan.json","utf8")).run')
+          REASON=$(node -pe 'JSON.parse(require("fs").readFileSync("/tmp/plan.json","utf8")).reason')
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+
+          printf '### Visual scope\n\n%s\n' "$REASON" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Nothing to check
+        if: steps.scope.outputs.run != 'true'
+        run: cat /tmp/plan.json
+
+      # Missing baselines are new work, not regressions. Minting them here is
+      # what stops a component-adding pull request costing 14 minutes and a
+      # manual dispatch. This can only ever CREATE a baseline — it cannot
+      # overwrite one, which is what keeps it from laundering a regression.
+      #
+      # --update-snapshots=missing, NOT a bare --update-snapshots: Playwright's
+      # bare flag defaults to "changed" mode, which overwrites any baseline
+      # that differs from the current render. grepFor matches by test TITLE,
+      # and titles are not unique across projects (wide vs. narrow share most
+      # of theirs) — so a bare flag combined with this broad "any missing
+      # shot" pattern could silently overwrite a sibling project's correct
+      # baseline with a regression. With =missing, Playwright refuses to
+      # overwrite anything, so the broad pattern is harmless by construction.
+      #
+      # `missing` mode WRITES the baseline and then FAILS the test on
+      # purpose — Playwright's handleMissing returns a softError under
+      # "missing" mode specifically (never under "all"/"changed"), and our
+      # own visual-config.mjs documents the same thing. So this command is
+      # expected to exit non-zero exactly when it minted something; `|| true`
+      # tolerates that expected exit. Nothing is laundered by tolerating it:
+      # the comparison step below runs WITHOUT DS_VISUAL_CONTAINER, which
+      # pins updateSnapshots to 'none', so any baseline this step failed to
+      # write still hard-fails there instead of being silently accepted.
+      - name: Mint baselines for new shots
+        if: steps.scope.outputs.run == 'true'
+        id: mint
+        shell: bash
+        env:
+          DS_VISUAL_CONTAINER: '1'
+        run: |
+          set -euo pipefail
+          if MISSING=$(node scripts/visual-missing.mjs); then
+            :
+          else
+            echo "::error::visual-missing.mjs exited non-zero — treating that as a hard failure, not as 'nothing is missing'."
+            exit 1
+          fi
+          if [ -z "$MISSING" ]; then
+            echo "Every shot already has a baseline."
+            echo "minted=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pnpm exec playwright test --update-snapshots=missing --workers=1 --grep "$MISSING" || true
+          COUNT=$(git status --porcelain -- tests/visual/__screenshots__ | wc -l | tr -d ' ')
+          echo "minted=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Commit the new baselines
+        if: steps.mint.outputs.minted != '0' && steps.mint.outputs.minted != ''
+        shell: bash
+        env:
+          # See "Identify the merge base" above for why this is routed
+          # through the environment instead of interpolated into the command.
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/visual/__screenshots__
+          git commit -m "test(visual): ${{ steps.mint.outputs.minted }} new baselines" \
+                     -m "Generated on the runner for shots that had none. Review the images in this diff."
+          git push origin "HEAD:$HEAD_REF"
+
+      # No DS_VISUAL_CONTAINER: the config pins updateSnapshots to 'none'
+      # without it, so a baseline that is still missing at this point is a hard
+      # failure rather than something quietly written.
+      - name: Visual regression, scoped
+        if: steps.scope.outputs.run == 'true'
+        id: check
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Delete any report left by an earlier Playwright invocation before
+          # this one starts. The Accept step below reads
+          # test-results/report.json to decide which baselines to overwrite,
+          # and nothing else guarantees that file belongs to THIS comparison:
+          # the mint step above runs Playwright with `|| true`, so its report
+          # survives whatever happened, and if the comparison dies before its
+          # own reporter flushes, Accept would run --update-snapshots=changed
+          # against titles no comparison ever judged — a baseline overwritten
+          # with no comparison behind it. Removing it first turns that into a
+          # loud "no shot is listed as failing" instead.
+          rm -f test-results/report.json
+          GREP=$(cat /tmp/scope-grep.txt)
+          if [ -z "$GREP" ]; then
+            echo "::error::scope said run=true but produced no grep pattern — refusing to fall back to an unscoped run of every shot."
+            exit 1
+          fi
+          pnpm exec playwright test --workers=1 --grep "$GREP"
+
+      # The accept run below re-invokes Playwright, which overwrites
+      # test-results/ and playwright-report/ with its own output — destroying
+      # the diff images and the failing report that explain WHY a human
+      # needed to add the visual-accept label in the first place. Preserve
+      # them first; the final upload step includes this copy alongside the
+      # post-accept state.
+      #
+      # github.event.action == 'labeled', not label presence: see "Accept the
+      # changed baselines" below for why a standing label must not keep
+      # accepting on every later push.
+      - name: Preserve the failing report before accepting
+        if: steps.check.outcome == 'failure' && github.event.action == 'labeled'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pre-accept-report
+          cp -r test-results pre-accept-report/test-results 2>/dev/null || true
+          cp -r playwright-report pre-accept-report/playwright-report 2>/dev/null || true
+
+      # Overwriting an existing baseline is the operation the zero-tolerance
+      # comparison exists to put a human in front of, so it is opt-in per pull
+      # request and never automatic. (`changed` mode doesn't only overwrite:
+      # it also writes any baseline that is still missing at this point and
+      # passes, same as `missing` mode's write — but without that mode's
+      # softError, since the softError is specific to `missing`. Either way,
+      # the visual-accept label is what gates this step, so neither behavior
+      # runs without a human asking for it.)
+      #
+      # github.event.action == 'labeled', NOT
+      # contains(github.event.pull_request.labels.*.name, 'visual-accept'):
+      # the label stays on the pull request after this run, so testing for
+      # its mere presence would turn every later push into a silent accept —
+      # a contributor labels a PR to accept an intended docs change, then
+      # pushes an unrelated commit that regresses Button, and that regression
+      # gets committed as an accepted baseline with no second human look. That
+      # is exactly the "launder a regression into an accepted baseline"
+      # failure the zero-tolerance comparison and the label both exist to
+      # prevent. `github.event.action` is the event THIS run fired on, not
+      # the label's standing state, so it is true only on the run where the
+      # label was actually just applied — one decision, one accept. The
+      # job-level `if:` above already guarantees a `labeled` action carries
+      # the `visual-accept` label specifically (it only lets the job proceed
+      # for other labels when the event isn't `labeled` at all), so no
+      # separate label-name check is needed here. Accepting again on the same
+      # pull request means removing and re-adding the label — that friction
+      # is the point, not an oversight.
+      #
+      # --update-snapshots=changed, explicit: overwriting IS the intent of
+      # this step, but the mode is spelled out so no reader has to know that a
+      # bare --update-snapshots defaults to "changed" — see the mint step
+      # above for why that default is dangerous when left implicit elsewhere.
+      - name: Accept the changed baselines
+        if: steps.check.outcome == 'failure' && github.event.action == 'labeled'
+        shell: bash
+        env:
+          DS_VISUAL_CONTAINER: '1'
+          # See "Identify the merge base" above for why this is routed
+          # through the environment instead of interpolated into the command.
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          # The comparison step deletes this file before it runs, so its
+          # absence here means that step never reached its reporter — a crash
+          # or a cancellation, not a judged set of failing shots. Accepting
+          # off some earlier run's report is exactly the laundering path this
+          # deletion closes; say so rather than dying on an ENOENT trace.
+          if [ ! -f test-results/report.json ]; then
+            echo "::error::The comparison produced no report.json, so no shot was ever judged. Nothing here can be accepted."
+            exit 1
+          fi
+          FAILED=$(node scripts/visual-failures.mjs test-results/report.json)
+          if [ -z "$FAILED" ]; then
+            echo "The check failed but no shot is listed as failing — this is not a baseline problem."
+            exit 1
+          fi
+          pnpm exec playwright test --update-snapshots=changed --workers=1 --grep "$FAILED"
+          COUNT=$(git status --porcelain -- tests/visual/__screenshots__ | wc -l | tr -d ' ')
+          if [ "$COUNT" = "0" ]; then
+            echo "The check failed but accepting produced no baseline change — this is not a baseline problem. See the run's failure output above."
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/visual/__screenshots__
+          git commit -m "test(visual): accept ${COUNT} baselines" \
+                     -m "Accepted via the visual-accept label on this pull request. Review the images in this diff."
+          git push origin "HEAD:$HEAD_REF"
+          echo "Accepted ${COUNT} baselines." >> "$GITHUB_STEP_SUMMARY"
+
+      # github.event.action != 'labeled', the mirror of the Accept step's
+      # condition above: mutually exclusive and exhaustive over the failure
+      # case, so exactly one of Report/Accept runs on any red `check`. A push
+      # that fails while the visual-accept label is already sitting on the
+      # pull request lands HERE, not in Accept — the label only fires an
+      # accept on the run where it was just applied.
+      - name: Report the failing shots
+        if: steps.check.outcome == 'failure' && github.event.action != 'labeled'
+        shell: bash
+        env:
+          # Whether `visual-accept` is already sitting on the pull request
+          # from an earlier, different accept — distinct from the step's own
+          # `if:` above, which asks whether THIS run is the one that just
+          # applied it. Both can be true on different runs of the same pull
+          # request, and the message below needs to tell them apart: "add
+          # the label" is the wrong instruction to a pull request that
+          # already carries it and needs the label removed and re-added
+          # instead.
+          LABEL_ALREADY_PRESENT: ${{ contains(github.event.pull_request.labels.*.name, 'visual-accept') }}
+        run: |
+          set -euo pipefail
+          # The comparison step deletes this file before it runs, so its
+          # absence here means that step never reached its reporter — a crash
+          # or a cancellation, not a judged set of failing shots, the same
+          # fact the Accept step's check above documents. `set -e` would
+          # otherwise kill this step on the node call below before the
+          # summary is written, and the human loses the instructions for how
+          # to accept — so write the summary here too, before exiting.
+          if [ ! -f test-results/report.json ]; then
+            {
+              echo "### Visual regression"
+              echo
+              echo "The comparison produced no report.json, so no shot was ever judged — a crash or a cancellation, not a set of failing shots to review. Re-run the check rather than adding \`visual-accept\`; the label only accepts shots a comparison actually reported failing."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::The comparison produced no report.json, so no shot was ever judged. Nothing here can be reported."
+            exit 1
+          fi
+          if [ "$LABEL_ALREADY_PRESENT" = "true" ]; then
+            ACCEPT_INSTRUCTION="These changes were not auto-accepted, even though \`visual-accept\` is already on this pull request — the label accepts once, on the run where it is applied, not on every later push. If they are intended, remove and re-add the \`visual-accept\` label to accept this run's failures; that re-add starts a new run on its own."
+          else
+            ACCEPT_INSTRUCTION="If these changes are intended, add the \`visual-accept\` label — that starts a new run on its own; there is no need to re-run this one."
+          fi
+          {
+            echo "### Visual regression"
+            echo
+            echo "$ACCEPT_INSTRUCTION"
+            echo
+            echo '```'
+            # --plain: failedTitles() already returns plain titles: the
+            # escaping only exists in the default --grep-pattern mode, where
+            # it goes through grepFor. --plain skips grepFor entirely, so
+            # there is nothing here to un-escape.
+            node scripts/visual-failures.mjs --plain test-results/report.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Upload report and diffs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-report-scoped
+          path: |
+            playwright-report/
+            test-results/
+            pre-accept-report/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # The full sweep. A red run here means either an intended change nobody
+  # regenerated, or a real regression, and telling those apart is a visual
+  # judgement — so this job does only the mechanical half (run the sweep,
+  # then regenerate exactly the failing shots) and hands the result to
+  # `recover`, which opens the pull request and the tracking issue that put
+  # the judgement in front of a human. See `recover` below for why that is a
+  # separate job rather than more steps here.
+  full:
     needs: image
     runs-on: ubuntu-latest
-    # Advisory. Issue #65 records the criterion for making this required: ten
-    # consecutive PRs with no false failure. Flipping it is a checklist item
-    # there, not a someday — delete this line when the criterion is met.
-    continue-on-error: true
-    # Well clear of a real run (496 tests serially, plus two app builds) and far
+    # Not on pull_request — `scoped` above covers that. Without this, both
+    # jobs would run on every pull request.
+    if: github.event_name != 'pull_request'
+    # No continue-on-error: a red sweep now has somewhere to go (this job's
+    # own regen step, then `recover`), so swallowing the red at the job level
+    # would hide the one signal that starts that path. Issue #65's ten-PR
+    # criterion for making this required is now moot — the job is meant to go
+    # red and be seen doing it.
+    #
+    # Well clear of a real run (492 tests serially, plus two app builds) and far
     # under the 6-hour default. A webServer that never comes up otherwise burns
     # six hours per PR to tell us nothing.
     timeout-minutes: 90
@@ -65,6 +517,14 @@ jobs:
       STORYBOOK_DISABLE_TELEMETRY: 1
     steps:
       - uses: actions/checkout@v7
+      # Same reason as `scoped`'s "Trust the checkout" step: this job also
+      # runs in the container, and its regen step below asks git what changed
+      # on disk (`git status --porcelain`) to tell a real baseline change from
+      # #65's flake. Without this, git refuses the working copy as dubiously
+      # owned and that check fails under `set -euo pipefail`. (`recover` needs
+      # no equivalent — it runs on a bare runner; see the note there.)
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       # The image ships its own Node, matched to the Playwright it carries.
       # Installing another one here would decouple the runtime from the
       # browsers, which is the one thing this container exists to keep together.
@@ -91,6 +551,13 @@ jobs:
       # build break and a pixel diff are not in the same log section.
       - name: Build Storybook and the docs site
         run: pnpm run pretest:visual
+      # Same protection as `scoped`'s comparison step: the regen step below
+      # picks the shots to rewrite out of test-results/report.json, and that
+      # file must be the one THIS sweep wrote. Removing it first means a
+      # sweep that dies before its reporter flushes regenerates nothing,
+      # rather than regenerating against a report it did not produce.
+      - name: Discard any stale report
+        run: rm -f test-results/report.json
       # Invoked through `pnpm exec`, not `pnpm test:visual`, so the flags reach
       # the binary verbatim — the same reason the container script does it this
       # way, and this keeps CI's invocation identical to the one that generated
@@ -104,8 +571,171 @@ jobs:
       # DS_VISUAL_CONTAINER is deliberately NOT set: without it the config pins
       # updateSnapshots to 'none', so a missing baseline fails here instead of
       # being written and silently accepted.
+      #
+      # continue-on-error at the step level, not the job level: this is what
+      # lets the regen step below run off steps.sweep.outcome, and lets the
+      # explicit "Fail the job" step at the end still fail the job overall.
       - name: Visual regression
+        id: sweep
+        continue-on-error: true
         run: pnpm exec playwright test --workers=1
+
+      # A red sweep on main means either an intended change nobody
+      # regenerated or a real regression, and telling them apart is a visual
+      # judgement — so this step does only the mechanical half: regenerate
+      # exactly the failing shots so `recover` can put them in front of a
+      # human as a pull request.
+      #
+      # github.ref == 'refs/heads/main' as well as the sweep having failed:
+      # `recover` below only ever opens a pull request against `main`, and
+      # only runs at all on that ref (see the "Auto-recovery is main-only"
+      # step below for the other case) — regenerating baselines nobody will
+      # use is wasted container time.
+      #
+      # --update-snapshots=changed, explicit, never a bare --update-snapshots:
+      # bare defaults to "changed" in this Playwright version (see
+      # node_modules/.../playwright/lib/program.js, preset: "changed"), but
+      # spelling it out means no reader has to know that.
+      #
+      # No `|| true` here, unlike the `scoped` job's mint step. That step
+      # needs `|| true` because --update-snapshots=missing WRITES the
+      # baseline and then FAILS the test on purpose (a softError specific to
+      # "missing" mode — see the comment there). --update-snapshots=changed
+      # does not do that: it returns a plain pass for a shot it rewrote, so
+      # this command is expected to exit 0 on its own. Tolerating a non-zero
+      # exit here would hide a real crash instead of an expected soft-fail.
+      # The regen step below re-invokes Playwright, which rewrites
+      # test-results/report.json, wipes its outputDir (test-results/output,
+      # where every -actual and -diff PNG lives) and clears
+      # playwright-report/. The upload step runs after it, so without this the
+      # `visual-report` artifact would hold a post-regen, all-green report and
+      # no diff images at all — while `recover` writes into the tracking issue
+      # "see the `visual-report` artifact on that run for images". Copy the
+      # evidence aside first; the upload below includes it.
+      #
+      # Guarded exactly like the regen step it protects against: nothing
+      # destroys the evidence on any other path.
+      - name: Preserve the failing report before regenerating
+        if: steps.sweep.outcome == 'failure' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pre-regen-report
+          cp -r test-results pre-regen-report/test-results 2>/dev/null || true
+          cp -r playwright-report pre-regen-report/playwright-report 2>/dev/null || true
+
+          # The copies above are `|| true` on purpose — a failed preserve
+          # should not block the regen step that follows. But `recover`'s
+          # pull request and tracking issue both assert the diff images live
+          # in `pre-regen-report/`, so a copy that silently failed would make
+          # both of those wrong. Say so loudly instead of staying quiet.
+          if [ -d test-results ] && [ ! -d pre-regen-report/test-results ]; then
+            echo "::warning::Preserving test-results before regeneration failed — pre-regen-report/test-results is missing, so the recovery pull request and tracking issue will point at diff images that are not there."
+          fi
+          if [ -d playwright-report ] && [ ! -d pre-regen-report/playwright-report ]; then
+            echo "::warning::Preserving playwright-report before regeneration failed — pre-regen-report/playwright-report is missing, so the recovery pull request and tracking issue will point at a report that is not there."
+          fi
+
+      - name: Regenerate the failing baselines
+        if: steps.sweep.outcome == 'failure' && github.ref == 'refs/heads/main'
+        id: regen
+        shell: bash
+        env:
+          DS_VISUAL_CONTAINER: '1'
+        run: |
+          set -euo pipefail
+          # Same reason as the `scoped` job's Accept step: the stale report is
+          # deleted before the sweep, so no file here means the sweep never
+          # reached its reporter. That is the crash case this step already
+          # handles below, so it takes the same exit — not an ENOENT trace.
+          if [ ! -f test-results/report.json ]; then
+            echo "The sweep produced no report.json at all — a crash or a build break, not a baseline. Nothing to regenerate."
+            echo "recovered=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          FAILED=$(node scripts/visual-failures.mjs test-results/report.json)
+          if [ -z "$FAILED" ]; then
+            echo "The sweep failed with no failing shot listed — a crash or a build break, not a baseline. Nothing to regenerate."
+            echo "recovered=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Plain titles, one per line: this is what ships in the artifact for
+          # `recover` to read back, and what the tracking issue lists. Kept
+          # separate from $FAILED (the --grep pattern below), which is
+          # regex-escaped and not meant for a human to read.
+          node scripts/visual-failures.mjs --plain test-results/report.json > failing-shots.txt
+
+          pnpm exec playwright test --update-snapshots=changed --workers=1 --grep "$FAILED"
+
+          # A rerun that changes nothing on disk is the signature of issue
+          # #65's flake, not a baseline to regenerate: --update-snapshots=changed
+          # only rewrites a file when the rerun's pixels actually differ from
+          # what's checked in, so no diff here means the original failure did
+          # not reproduce.
+          #
+          # `git status --porcelain`, NOT `git diff --quiet`: this step does
+          # not only rewrite existing baselines. A missing baseline (a new
+          # story or route added on `main`, which isn't branch-protected) is
+          # exactly the kind of failure this step regenerates, and
+          # --update-snapshots=changed WRITES a missing baseline and passes
+          # for it (expect.js's softError is specific to "missing" mode, same
+          # fact the `scoped` job's mint step documents) — producing a brand
+          # new, UNTRACKED file. `git diff` only ever looks at tracked files,
+          # so an all-new-baseline regeneration would show no diff at all and
+          # get mislabelled a flake here. `git status --porcelain` sees both
+          # tracked changes and untracked new files, same idiom the `scoped`
+          # job's mint and accept steps already use for this exact reason.
+          if [ -z "$(git status --porcelain -- tests/visual/__screenshots__)" ]; then
+            echo "recovered=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Visual sweep red — did not reproduce on regeneration"
+              echo
+              echo "The failing shot(s) below passed when rerun to regenerate baselines — the signature of the flake in #65, not a baseline change. This job stays red so that is still visible; no baseline pull request or tracking issue was opened."
+              echo
+              echo "See \`docs/agents/visual-regression.md\`, step 2 (\"run the identical commit twice\") for the diagnostic."
+              echo
+              echo '````'
+              cat failing-shots.txt
+              echo '````'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "recovered=true" >> "$GITHUB_OUTPUT"
+
+      # The counterpart to the ref guard on the regen step above: `recover`
+      # only runs on `main`, so a `workflow_dispatch` red sweep on a feature
+      # branch would otherwise fail silently with no explanation of why no
+      # pull request follows.
+      - name: Auto-recovery is main-only
+        if: steps.sweep.outcome == 'failure' && github.ref != 'refs/heads/main'
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          {
+            echo "### Visual sweep red — auto-recovery skipped"
+            echo
+            echo "This run was on \`${REF_NAME}\`, not \`main\`, so automatic baseline recovery (which opens a pull request against \`main\`) only runs there. To regenerate baselines for this branch by hand:"
+            echo
+            echo '```'
+            echo "gh workflow run visual-update.yml --ref ${REF_NAME} --field grep=<pattern>"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Kept as its own artifact, separate from the report below: this is the
+      # one `recover` downloads, and it needs to exist even if the report
+      # upload were ever pruned or renamed independently.
+      - name: Upload the regenerated baselines
+        if: steps.regen.outputs.recovered == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-baselines-regen
+          path: |
+            tests/visual/__screenshots__
+            failing-shots.txt
+          retention-days: 14
+
       # Not `if: failure()`. This job exists first of all to answer whether the
       # flake in #65 survives off an emulated host, and a *passing* run is half
       # of that evidence — the HTML report carries the timings and the retry
@@ -118,5 +748,267 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            pre-regen-report/
           retention-days: 14
           if-no-files-found: ignore
+
+      # The step itself tolerated the failure so the steps above could run;
+      # this is what makes that failure count against the job — which is
+      # what `recover`'s `needs.full.result == 'failure'` guard below reacts
+      # to, on `main`.
+      - name: Fail the job
+        if: steps.sweep.outcome == 'failure'
+        run: exit 1
+
+  # `full` runs inside the Playwright container image, which ships git
+  # (2.43.0) but not the `gh` CLI — nothing else in this repo shells out to
+  # `gh` from inside a container; release.yml is the other user of `gh` and
+  # it runs on a bare ubuntu-latest where the runner image preinstalls it.
+  # Rather than teach the container about `gh`, the pull request and the
+  # issue are opened from a second, container-less job instead.
+  #
+  # This split has a side benefit worth calling out: the regenerated
+  # baselines and the failing-shot list survive in `full`'s artifact even if
+  # this job's own PR/issue step fails.
+  recover:
+    needs: full
+    # !cancelled(), not the bare `failure()` this started as: `failure()` on
+    # a job checks its ENTIRE dependency chain, not just its direct `needs` —
+    # so if `image` fails, `full` gets skipped (its own condition implicitly
+    # requires `image` to have succeeded), but `failure()` still sees `image`
+    # failing and would fire `recover` anyway, including on a pull request,
+    # where this job holds contents/pull-requests/issues: write. Checking
+    # `needs.full.result` directly is what makes this react only to `full`
+    # itself actually failing (which only happens by the explicit "Fail the
+    # job" step, i.e. only when the sweep was red) — but a plain `if:` that
+    # doesn't call a status function gets `success()` prepended by GitHub,
+    # which would always be false here since `full` failed; a status function
+    # is what removes that implicit prefix so the explicit check below
+    # governs. `!cancelled()`, not `always()`: `always()` would also fire
+    # this job when a human cancels the run after `full` has already
+    # concluded `failure` — `!cancelled()` excludes exactly that case while
+    # still removing the implicit `success()` prefix.
+    #
+    # github.ref == 'refs/heads/main': the pull request this job opens is
+    # always based on `main`, so it only runs there. A `workflow_dispatch`
+    # red sweep on any other ref gets an explanation instead, from `full`'s
+    # own "Auto-recovery is main-only" step — see there.
+    if: >-
+      !cancelled() && needs.full.result == 'failure' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Two steps below push with this credential and call `gh`, which
+          # also reads it for auth.
+          persist-credentials: true
+
+      # continue-on-error: `full` fails this job (and so triggers this one)
+      # even when the sweep crashed before producing a failing-shot list, in
+      # which case `full` never uploaded this artifact at all. A hard-failing
+      # download step here would turn that case into an unhelpful red run
+      # with no explanation; the next step gives it one instead.
+      - name: Download the regenerated baselines
+        uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          name: visual-baselines-regen
+          path: .
+
+      - name: Check whether there is anything to recover
+        id: shots
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f failing-shots.txt ]; then
+            echo "recovered=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "recovered=true" >> "$GITHUB_OUTPUT"
+
+      - name: Nothing to recover
+        if: steps.shots.outputs.recovered != 'true'
+        run: |
+          {
+            echo "### Visual sweep red — no recovery opened"
+            echo
+            echo "\`full\` didn't leave anything here to act on. Two different causes land in this same place: a failure with no failing-shot list at all (an npm install failure, a Storybook or docs build failure, the container never starting, the job timing out — none of them a baseline problem), or a failing shot that passed clean when \`full\` reran it to regenerate — the flake in #65's signature, which \`full\`'s own job summary calls out specifically. Either way, check the \`full\` job's own log, and its job summary, for which one this was."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Everything below is idempotent on purpose: a nightly schedule can
+      # fire again on a main that hasn't moved (same SHA, so the same branch
+      # name), and a still-open regression can carry across many nightly
+      # runs on a main that keeps moving (different SHAs, so different
+      # branch names, but the same tracking issue). Neither case should mint
+      # duplicates.
+      - name: Open the baselines pull request and the tracking issue
+        if: steps.shots.outputs.recovered == 'true'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # No `safe.directory` config here, unlike the container jobs above:
+          # this job runs on a bare runner, where the checkout is already
+          # owned by the user running these steps.
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          SHORT=$(git rev-parse --short HEAD)
+          BRANCH="visual/baselines-${SHORT}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          # `visual-baseline`, a dedicated label, NOT the general `visual`
+          # label the tracking issue used to carry: `visual` is also the most
+          # natural label a human would put on issue #65 itself (the
+          # visual-regression flake issue this whole workflow references) —
+          # if anyone ever did that, this lookup would find #65 forever and
+          # never open a real tracking issue again. A label used nowhere else
+          # in this repo can't collide with anything.
+          #
+          # Looked up before anything is created, so the pull request body
+          # below can name a tracking issue that genuinely already exists,
+          # rather than a promise that might not hold if a later step fails.
+          EXISTING_ISSUE_URL=$(gh issue list --label visual-baseline --state open --limit 1 --json url --jq '.[0].url // empty')
+
+          git checkout -b "$BRANCH"
+          git add tests/visual/__screenshots__
+          # Real file count, not the de-duplicated-by-title count
+          # failedTitles() (and so scripts/visual-failures.mjs) produces: one
+          # title failing in two projects is one title but two PNGs, and this
+          # is what the commit, the pull request title, and the issue body
+          # should all actually say landed. Same shape as the `scoped` job's
+          # own minted-baseline count.
+          COUNT=$(git status --porcelain -- tests/visual/__screenshots__ | wc -l | tr -d ' ')
+          git commit -m "test(visual): regenerate ${COUNT} baseline file(s) from ${SHORT}"
+          # Fetched first, deliberately: --force-with-lease's safety check
+          # compares against the LOCAL remote-tracking ref, and this checkout
+          # never fetched this specific branch (only the default branch, via
+          # actions/checkout above). With no local tracking ref to lease
+          # against, git assumes the branch is expected not to exist yet and
+          # REFUSES the push the moment it actually does — the exact
+          # same-SHA re-run case this is meant to handle. `|| true`: the
+          # first time this SHA is ever seen, the branch genuinely doesn't
+          # exist upstream, and that fetch failing is expected, not an error.
+          git fetch origin "$BRANCH" || true
+          # --force-with-lease, not a plain push: a nightly re-run on a main
+          # that hasn't moved resolves to this exact branch name again, and a
+          # plain push is rejected non-fast-forward against yesterday's
+          # commit there — which, under `set -euo pipefail`, kills this step
+          # before the issue or the pull request is even looked up. The
+          # branch only ever holds one thing, this SHA's regenerated
+          # baselines, so overwriting it with today's regeneration (even if
+          # byte-identical) is correct, not destructive.
+          git push --force-with-lease origin "$BRANCH"
+
+          # Same branch name means the earlier run's pull request, if this is
+          # a same-SHA re-run, is still open against it — reuse it instead of
+          # asking `gh pr create` to fail on a head that already has one.
+          EXISTING_PR_URL=$(gh pr list --head "$BRANCH" --base main --state open --limit 1 --json url --jq '.[0].url // empty')
+
+          # No tracking-issue line here, even when EXISTING_ISSUE_URL is
+          # already known: this body only matters if it's used for a fresh
+          # `gh pr create` below, and either way the pull request gets its
+          # authoritative body — including the issue link — from the
+          # unconditional `gh pr edit` after the issue is settled. Keeping
+          # one body-writing block downstream of that, instead of two,
+          # is what stops the first-red case from silently omitting the
+          # link the way it used to.
+          {
+            printf '%s\n\n' "The full sweep went red on \`main\` at \`${SHORT}\` and these ${COUNT} baseline file(s) were regenerated on the runner."
+            printf '%s\n' '**Merge** if this is the look you intended — these become the baselines.'
+            printf '%s\n\n' '**Close** if it is a regression; the tracking issue stays open with the evidence.'
+            printf -- '- Failing run: %s\n' "$RUN_URL"
+            printf -- '- Failing report and diff images: %s#artifacts (the `visual-report` artifact, `pre-regen-report/`)\n' "$RUN_URL"
+          } > /tmp/pr-body.md
+
+          if [ -n "$EXISTING_PR_URL" ]; then
+            PR_URL="$EXISTING_PR_URL"
+            echo "Re-pushed the regenerated baselines from ${RUN_URL} (still \`${SHORT}\`)." > /tmp/pr-comment.md
+            gh pr comment "$PR_URL" --body-file /tmp/pr-comment.md
+          else
+            PR_URL=$(gh pr create \
+              --head "$BRANCH" \
+              --base main \
+              --title "visual: ${COUNT} baseline file(s) changed on main" \
+              --body-file /tmp/pr-body.md)
+          fi
+
+          # The pull request above always exists for real by this point —
+          # whether just-created or reused — so the issue body below can say
+          # a pull request is open rather than one that might still fail to
+          # open after this text is written.
+          if [ -n "$EXISTING_ISSUE_URL" ]; then
+            ISSUE_URL="$EXISTING_ISSUE_URL"
+            {
+              printf '%s\n\n' "Red again at \`${SHORT}\` (run: ${RUN_URL})."
+              printf -- '- Regenerated baselines: %s\n' "$PR_URL"
+            } > /tmp/issue-comment.md
+            gh issue comment "$ISSUE_URL" --body-file /tmp/issue-comment.md
+          else
+            {
+              printf '%s\n\n' "The full sweep failed on \`main\` at \`${SHORT}\`."
+              printf -- '- Failing run: %s\n' "$RUN_URL"
+              printf -- '- Failing shots: %s file(s) (see \`pre-regen-report/\` in the \`visual-report\` artifact on that run for the -actual and -diff images)\n\n' "$COUNT"
+              printf '%s\n\n' "A pull request with the regenerated baselines is open — merging it accepts these as the intended look, closing it says this is a real regression."
+              printf -- '- Regenerated baselines: %s\n\n' "$PR_URL"
+              printf '%s\n\n' '<details><summary>Failing shots</summary>'
+              # A quadruple-backtick fence, not a triple: a failing spec
+              # title is free text and could itself contain a triple-backtick
+              # run, which would close a triple-backtick fence early. Nothing
+              # in Markdown lets a title close a longer fence by accident.
+              printf '````\n'
+              cat failing-shots.txt
+              printf '````\n'
+              printf '%s\n' '</details>'
+            } > /tmp/issue-body.md
+            ISSUE_URL=$(gh issue create \
+              --title "Visual sweep red on main (${SHORT})" \
+              --label visual-baseline \
+              --body-file /tmp/issue-body.md)
+          fi
+          # A GitHub issue URL's trailing path segment is its number — true
+          # for both a freshly created issue and one found via the API, so
+          # this works uniformly for either branch above without a separate
+          # --json number lookup.
+          ISSUE_NUMBER="${ISSUE_URL##*/}"
+
+          # Unconditional, run whether the pull request was just created or
+          # reused: on a first red sweep it had no issue to link at creation
+          # time (EXISTING_ISSUE_URL was empty), so this is what actually
+          # attaches the link — in both directions, since the issue side
+          # already names the pull request above. `Closes #<N>`, not a bare
+          # URL: a closing keyword is what makes merging this pull request
+          # close its tracking issue automatically, which is what keeps the
+          # EXISTING_ISSUE_URL lookup above self-terminating instead of
+          # wedging open on one old issue forever.
+          {
+            printf '%s\n\n' "The full sweep went red on \`main\` at \`${SHORT}\` and these ${COUNT} baseline file(s) were regenerated on the runner."
+            printf '%s\n' '**Merge** if this is the look you intended — these become the baselines.'
+            printf '%s\n\n' '**Close** if it is a regression; the tracking issue stays open with the evidence.'
+            printf -- '- Tracking issue: %s\n' "$ISSUE_URL"
+            printf -- '- Failing run: %s\n' "$RUN_URL"
+            # The report artifact, which the design calls for alongside the
+            # run and the issue: the run page links the artifact but does not
+            # show what is in it, and `pre-regen-report/` inside it is the
+            # only place the -actual/-diff images for these baselines survive
+            # (the regen that produced this branch overwrote the live ones).
+            # Reviewing this pull request means looking at those images, so
+            # the body has to say where they are.
+            printf -- '- Failing report and diff images: %s#artifacts (the `visual-report` artifact, `pre-regen-report/`)\n\n' "$RUN_URL"
+            printf 'Closes #%s\n' "$ISSUE_NUMBER"
+          } > /tmp/pr-body-final.md
+          gh pr edit "$PR_URL" --body-file /tmp/pr-body-final.md
+
+          {
+            echo "### Visual sweep red — recovery opened"
+            echo
+            echo "- Pull request: ${PR_URL}"
+            echo "- Issue: ${ISSUE_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"

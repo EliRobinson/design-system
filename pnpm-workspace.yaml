@@ -1,6 +1,10 @@
 packages:
   - './packages/*'
   - './apps/*'
+  # Repo-local CI tooling. Private and never published — it encodes this
+  # repository's own paths, which is exactly what must not reach a consumer.
+  # It is a workspace package solely so `pnpm test` reaches its tests.
+  - './scripts'
 
 # Internal deps are declared with the workspace protocol ("@elirobinson/tokens":
 # "workspace:*"), which pins them to the workspace copy no matter what this
