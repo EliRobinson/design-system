@@ -21,6 +21,7 @@
 import { createHash } from 'node:crypto';
 import {
   cpSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -41,6 +42,7 @@ import {
   buildBrandManifest,
   renderRepoIndexTable,
 } from '../src/artifacts/brand-manifest.mjs';
+import { copyTree } from '../src/artifacts/copy-tree.mjs';
 import { llmsFull, llmsIndex } from '../src/artifacts/llms.mjs';
 import { referenceSkillDoc, SKILL_DIRS } from '../src/artifacts/skills.mjs';
 
@@ -168,8 +170,11 @@ function main() {
   for (const entry of BRAND_SOURCES) {
     const from = join(brandSource, entry);
     statSync(from); // throws with the path if the source moved
-    // dereference: colors_and_type.css is a symlink to packages/tokens/src/tokens.css.
-    cpSync(from, join(brandOut, entry), { recursive: true, dereference: true });
+    /* copyTree, not cpSync's `dereference`: that flag only governs the copy
+       root, so the four stylesheet links survived it and the thirteen links
+       inside `fonts/` were recreated as absolute links that `npm pack` then
+       dropped (#77). copyTree materialises links at every depth. */
+    copyTree(from, join(brandOut, entry));
   }
 
   /* The inventory the consumer reads is derived from the files that just landed
@@ -233,10 +238,25 @@ function main() {
 
   /* 4. The stamp. `reactVersion` is what `ds-resync artifacts` compares against
         the consuming repo's install to decide whether to warn. */
-  const files = walk(skillsDir).map((path) => ({
-    path,
-    hash: sha256(readFileSync(join(skillsDir, path))),
-  }));
+  const files = walk(skillsDir).map((path) => {
+    const staged = join(skillsDir, path);
+    /* lstat, not stat: a symlink into the workspace resolves on the machine
+       that built it, so `statSync` passes and `readFileSync` hashes the target
+       happily — and then `npm pack` drops the entry because it points outside
+       the package root. That is exactly how thirteen font assets shipped as
+       manifest rows with no bytes behind them, through a green CI, and were
+       only ever seen by consumers (#77). Everything in artifacts.json must be a
+       regular file here or the tarball is a lie. */
+    if (!lstatSync(staged).isFile()) {
+      throw new Error(
+        `dist/artifacts/skills/${path} is not a regular file. Every path in ` +
+          'artifacts.json must be one: npm pack drops symlinks pointing outside ' +
+          'the package root, so a link here ships as a missing file. See ' +
+          'src/artifacts/copy-tree.mjs.',
+      );
+    }
+    return { path, hash: sha256(readFileSync(staged)) };
+  });
 
   writeFileSync(
     join(outDir, 'artifacts.json'),
