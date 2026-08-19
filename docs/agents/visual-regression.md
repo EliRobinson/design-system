@@ -40,6 +40,10 @@ The Accept and Report steps both key off `github.event.action == 'labeled'`, not
 
 This is why `scripts/visual-scope.mjs` treats an added or deleted component file — and an added or deleted docs page file, and any change to `site-map.ts`, `manifest.ts`, the `(docs)` layout, `SiteHeader`, or `site.css` — as a docs-wide event rather than narrowing to that component's own page. Narrowing there would produce a green pull request and 142 stale baselines on `main`. A _modified_ component file doesn't trigger this: the registry is unchanged, so the sidebar is unchanged, and narrowing to that component's own shots stays safe.
 
+**Editing** a page under `foundations/`, `patterns/`, or `guidelines/` is a docs-wide event too, unlike editing a component page. Those three sections are the derived ones: `derivedSection()` reads each page's own `metadata.title`, `navTitle`, and `order` off disk to build the sidebar entry, so retitling or reordering one page moves an entry that renders on all 142. A component page carries no such metadata — its sidebar entry comes from the generated manifest — so editing one stays narrowed to that page.
+
+`design-system-docs/` is a docs-wide event as well, and one Nx cannot see: the directory belongs to no project, so `nx show projects --affected --files=design-system-docs/…` answers `[]`. It is read at build time to generate `brand-manifest.json`, which becomes the UI Kits sidebar section on every docs page and the content of the `/brand/*` shots. The scoper forces the `docs` side whole for it, the same way it does for `playwright.config.ts`. The general rule to check any new path against: **a path Nx cannot map is a path the scoper cannot see** — if it can change a pixel, it has to be named in `visual-scope.mjs`.
+
 Meeting 142 red docs pages on a component-adding branch is expected, not a break. Add `visual-accept`, review the images in the diff, done.
 
 ---

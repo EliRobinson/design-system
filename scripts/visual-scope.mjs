@@ -10,7 +10,18 @@
  * minutes; a scope that is too narrow produces a green pull request and stale
  * baselines on main, and nothing reports it. Every judgement call in this file
  * is therefore resolved by widening, and the two cases that cannot be resolved
- * at all throw. */
+ * at all throw.
+ *
+ * The standing invariant behind layer 1, worth checking any new path against:
+ * a path Nx cannot map is a path this scoper cannot see. `nx show projects
+ * --affected --files=<path>` answers `[]` for anything that belongs to no
+ * project — a file outside every project root, or one reached by an edge Nx's
+ * import graph does not model (Playwright's own config, a directory read at
+ * build time by a generator rather than imported). An `[]` there is
+ * indistinguishable, here, from "nothing renders differently", so it exits
+ * early with run:false and zero shots. Whenever a new path can change a
+ * rendered pixel without Nx having an edge to it, it must be named in one of
+ * the forcing lists below; Nx cannot be taught it. */
 
 import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
@@ -25,6 +36,25 @@ const COMPONENT_FILE = /^packages\/react\/src\/components\/[^/]+\/([A-Z][A-Za-z0
 const STORY_FILE = /^apps\/storybook\/src\/stories\/([A-Z][A-Za-z0-9]*)\.stories\.tsx$/;
 const DOCS_PAGE = /^apps\/docs\/src\/app\/\(docs\)\/(.+)\/page\.(mdx|tsx)$/;
 const DEMO_FILE = /^apps\/docs\/src\/components\/demos\/([^/]+)\//;
+
+/* A page in one of the three DERIVED sidebar sections — Foundations,
+   Patterns, Guidelines. site-map.ts's derivedSection() builds those sections
+   by reading each page's own `metadata.title` / `navTitle` / `order` off
+   disk, and that sidebar renders on all 142 docs pages. So editing one of
+   these files — not adding or deleting it, merely EDITING it — can retitle or
+   reorder a sidebar entry that appears in every single docs shot.
+   `[^/]+` mirrors derivedSection's own one-level readdir: only a page.mdx
+   directly under the section directory is part of the derived list.
+
+   Component pages, `(docs)/components/*`, are deliberately NOT in here and
+   must stay narrow. Their sidebar entries come from the generated component
+   manifest (`manifest.ts`, itself a SIDEBAR_SOURCE), not from the page file —
+   so editing one changes that one page. That distinction is the whole reason
+   this rule is "pages in the derived sections" rather than the far simpler
+   "all page files": making it all page files would run 142 docs shots for
+   every routine component-doc edit, which is most of them. */
+const DERIVED_SECTION_PAGE =
+  /^apps\/docs\/src\/app\/\(docs\)\/(?:foundations|patterns|guidelines)\/[^/]+\/page\.(?:mdx|tsx)$/;
 
 /* A change to the *set* of things in the registry changes every docs page,
    because site-map.ts derives the sidebar from the component manifest and the
@@ -58,6 +88,31 @@ function touchesSuiteConfig(changes) {
       SUITE_CONFIG_EXACT.includes(change.path) ||
       SUITE_CONFIG_PREFIXES.some((prefix) => change.path.startsWith(prefix)),
   );
+}
+
+/* The same shape as the suite-config override above, for the same reason and
+   with the same evidence: `nx show projects --affected
+   --files=design-system-docs/README.md` returns [] — verified against this
+   repo — because the directory belongs to no Nx project at all. It is
+   nonetheless read at build time by packages/ai-patterns/scripts/
+   build-artifacts.mjs to generate brand-manifest.json, which apps/docs/src/
+   lib/brand.ts imports and site-map.ts turns into the UI Kits sidebar section
+   on every docs page — and it supplies the content of the eight
+   /brand/{assets,guidelines,patterns,slides} shots directly. AGENTS.md names
+   it the brand source of truth, so it is actively edited.
+
+   Docs only, not storybook: nothing in Storybook renders brand content.
+   Unnarrowable within docs — a brand asset can surface on any docs page via
+   the sidebar — so it widens that side whole rather than trying to map a file
+   to a route. */
+const BRAND_SOURCE_PREFIX = 'design-system-docs/';
+
+function isBrandSource(path) {
+  return path.startsWith(BRAND_SOURCE_PREFIX);
+}
+
+function touchesBrandSource(changes) {
+  return changes.some((change) => isBrandSource(change.path));
 }
 
 /** `git diff --name-status` output → changes, with renames split in two. */
@@ -185,7 +240,8 @@ function findStoryPrefix(name, allStoryIds) {
 export function scopeFor({ changes, affectedProjects, shots, affectedBy }) {
   const affected = new Set(affectedProjects);
   const forcedBySuiteConfig = touchesSuiteConfig(changes);
-  const docsAffected = affected.has(DOCS_PROJECT) || forcedBySuiteConfig;
+  const forcedByBrandSource = touchesBrandSource(changes);
+  const docsAffected = affected.has(DOCS_PROJECT) || forcedBySuiteConfig || forcedByBrandSource;
   const storybookAffected = affected.has(STORYBOOK_PROJECT) || forcedBySuiteConfig;
 
   if (!docsAffected && !storybookAffected) {
@@ -209,7 +265,12 @@ export function scopeFor({ changes, affectedProjects, shots, affectedBy }) {
     (change) =>
       SIDEBAR_SOURCES.includes(change.path) ||
       (change.status !== 'M' && COMPONENT_FILE.test(change.path)) ||
-      (change.status !== 'M' && DOCS_PAGE.test(change.path)),
+      (change.status !== 'M' && DOCS_PAGE.test(change.path)) ||
+      /* No status test on this one, unlike the two above: a page in a derived
+         section carries its own sidebar entry in its metadata, so a plain
+         MODIFY of it can retitle or reorder that entry on all 142 docs pages.
+         See DERIVED_SECTION_PAGE for why component pages are excluded. */
+      DERIVED_SECTION_PAGE.test(change.path),
   );
 
   let docsNarrowable = docsAffected && !fanOut;
@@ -275,7 +336,8 @@ export function scopeFor({ changes, affectedProjects, shots, affectedBy }) {
        never the world, never nothing. `styles.css`, `src/lib/`, `.storybook/`,
        packages/tokens and every config file land here. */
     const inStorybookOrShared = isIn(change.path, 'apps/storybook') || isShared(change.path);
-    const inDocsOrShared = isIn(change.path, 'apps/docs') || isShared(change.path);
+    const inDocsOrShared =
+      isIn(change.path, 'apps/docs') || isShared(change.path) || isBrandSource(change.path);
 
     if (inStorybookOrShared && storybookNarrowable) {
       storybookNarrowable = false;
@@ -296,7 +358,10 @@ export function scopeFor({ changes, affectedProjects, shots, affectedBy }) {
     /* Not even recognized as belonging to either app or a shared package —
        e.g. pnpm-lock.yaml, package.json, nx.json, tsconfig.base.json,
        .changeset/*.md, README.md, docs/**, CHANGELOG.md, .github/**,
-       .prettierrc, CLAUDE.md, design-system-docs/**. This set is far bigger
+       .prettierrc, CLAUDE.md. (design-system-docs/** does NOT land here —
+       nx returns [] for it too, but it feeds the brand manifest the docs
+       sidebar renders, so isBrandSource above classifies it into the docs
+       side before this point.) This set is far bigger
        than "things that touch every consumer" — most of it has NO edge to
        docs or storybook at all, and every package-changing PR carries a
        .changeset/*.md by policy (quality.yml's "Require a changeset"
@@ -395,8 +460,23 @@ export function scopeFor({ changes, affectedProjects, shots, affectedBy }) {
        `matched` flag is how a drifted story title (or docs slug) used to stop
        being tested silently — the side that still matched would mask the
        side that did not. */
+    /* 'A' as well as 'D': the D exemption exists because a deleted subject is
+       absent from the post-change enumeration BY DEFINITION, and an ADDED
+       component that has no story yet is absent for exactly the same
+       definitional reason — the built Storybook enumerates the stories that
+       exist, and a component cannot have "drifted" from coverage it never
+       had. Nothing is under-selected by this: a component with no stories has
+       no storybook shots to lose, and the docs side of an add is already
+       fanned out to every route by the sidebar rule above. Without it,
+       committing a new component before its story hard-fails the whole
+       `scoped` job at this throw — nothing gets minted, and none of those
+       fanned-out docs shots run. */
     const storybookOk =
-      !storybookAffected || !storybookNarrowable || storybookMatched || status === 'D';
+      !storybookAffected ||
+      !storybookNarrowable ||
+      storybookMatched ||
+      status === 'D' ||
+      status === 'A';
 
     const route = `/components/${docsSlug(name)}`;
     let docsMatched = false;
@@ -412,7 +492,11 @@ export function scopeFor({ changes, affectedProjects, shots, affectedBy }) {
        filter that quietly drops a page produces a suite that covers nothing
        and reports nothing. A DELETE is exempt: the subject is gone by
        definition, so its absence from the post-change shot list is expected,
-       not drift — the routine "retire a component" PR must not hard-fail. */
+       not drift — the routine "retire a component" PR must not hard-fail. An
+       ADD is exempt on the storybook side for the same definitional reason;
+       see the storybookOk comment above. A MODIFY is exempt from neither:
+       a component present on both sides of the diff that maps to nothing IS
+       drift, and this is the guard that catches it. */
     if (!storybookOk || !docsOk) {
       const problems = [];
       if (!storybookOk) {

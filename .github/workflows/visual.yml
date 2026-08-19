@@ -39,8 +39,27 @@ on:
 # mint commit below is atomic — staged and committed in a single step — so a
 # cancellation before that point costs only compute, never a half-written
 # baseline on the branch.
+#
+# The label name is part of the key, and that is what keeps cancellation from
+# swallowing the check entirely. Concurrency is evaluated at RUN level, before
+# any job `if:` is read — so on a key of `github.ref` alone, adding ANY label
+# (`wip`, `docs`, anything) cancels the scoped run already in flight, and the
+# replacement run's `scoped` job is then skipped by its own `if:` (which only
+# admits `visual-accept`). The replacement concludes *success* having compared
+# nothing, and the pull request has no visual verdict until the next push.
+# Varying the key means a labelling run gets its own group and cancels
+# nothing: `github.event.action` is null for a push, so the `&&` is false and
+# the `||` falls through to the literal 'run'; on a `labeled` event it
+# resolves to the label's own name. Two labels added in quick succession still
+# land in different groups, which is the safe direction here — worst case is
+# an extra skipped job, never a cancelled comparison.
+#
+# Varying the key rather than moving `concurrency` down to the job level, on
+# purpose: job-level concurrency interacting with a job-level `if:` is not
+# something GitHub documents, and this is a mechanism a regression in would be
+# silent. The key is evaluated by the same expression engine either way.
 concurrency:
-  group: visual-${{ github.ref }}
+  group: visual-${{ github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name || 'run' }}
   cancel-in-progress: true
 
 # Read-only by default. `scoped` below elevates to contents: write for
@@ -138,6 +157,17 @@ jobs:
           # Explicit rather than left to the action's default: two steps
           # below push with this credential, same as visual-update.yml.
           persist-credentials: true
+      # Immediately after the checkout, before anything else can shell out to
+      # git. The container's git refuses this working copy otherwise — it is
+      # made by the runner user while the steps run as root, which is git's
+      # "dubious ownership" case (visual-update.yml records the same). It used
+      # to live inside "Identify the merge base", i.e. after pnpm install and
+      # a full Storybook + docs build, either of which can invoke git through
+      # a tool that does not announce it. `--global` writes to ~/.gitconfig,
+      # which persists for every later step in this job, so this is the only
+      # place it is needed.
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Set up pnpm via corepack
         run: |
           corepack enable
@@ -174,7 +204,6 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git fetch --no-tags origin "$BASE_REF"
           if ! MERGE_BASE=$(git merge-base HEAD FETCH_HEAD); then
             echo "::error::git merge-base produced no result against origin/$BASE_REF."
@@ -260,7 +289,6 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tests/visual/__screenshots__
@@ -278,6 +306,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Delete any report left by an earlier Playwright invocation before
+          # this one starts. The Accept step below reads
+          # test-results/report.json to decide which baselines to overwrite,
+          # and nothing else guarantees that file belongs to THIS comparison:
+          # the mint step above runs Playwright with `|| true`, so its report
+          # survives whatever happened, and if the comparison dies before its
+          # own reporter flushes, Accept would run --update-snapshots=changed
+          # against titles no comparison ever judged — a baseline overwritten
+          # with no comparison behind it. Removing it first turns that into a
+          # loud "no shot is listed as failing" instead.
+          rm -f test-results/report.json
           GREP=$(cat /tmp/scope-grep.txt)
           if [ -z "$GREP" ]; then
             echo "::error::scope said run=true but produced no grep pattern — refusing to fall back to an unscoped run of every shot."
@@ -346,6 +385,15 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
+          # The comparison step deletes this file before it runs, so its
+          # absence here means that step never reached its reporter — a crash
+          # or a cancellation, not a judged set of failing shots. Accepting
+          # off some earlier run's report is exactly the laundering path this
+          # deletion closes; say so rather than dying on an ENOENT trace.
+          if [ ! -f test-results/report.json ]; then
+            echo "::error::The comparison produced no report.json, so no shot was ever judged. Nothing here can be accepted."
+            exit 1
+          fi
           FAILED=$(node scripts/visual-failures.mjs test-results/report.json)
           if [ -z "$FAILED" ]; then
             echo "The check failed but no shot is listed as failing — this is not a baseline problem."
@@ -357,7 +405,6 @@ jobs:
             echo "The check failed but accepting produced no baseline change — this is not a baseline problem. See the run's failure output above."
             exit 1
           fi
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tests/visual/__screenshots__
@@ -456,6 +503,14 @@ jobs:
       STORYBOOK_DISABLE_TELEMETRY: 1
     steps:
       - uses: actions/checkout@v7
+      # Same reason as `scoped`'s "Trust the checkout" step: this job also
+      # runs in the container, and its regen step below asks git what changed
+      # on disk (`git status --porcelain`) to tell a real baseline change from
+      # #65's flake. Without this, git refuses the working copy as dubiously
+      # owned and that check fails under `set -euo pipefail`. (`recover` needs
+      # no equivalent — it runs on a bare runner; see the note there.)
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       # The image ships its own Node, matched to the Playwright it carries.
       # Installing another one here would decouple the runtime from the
       # browsers, which is the one thing this container exists to keep together.
@@ -499,6 +554,13 @@ jobs:
       # continue-on-error at the step level, not the job level: this is what
       # lets the regen step below run off steps.sweep.outcome, and lets the
       # explicit "Fail the job" step at the end still fail the job overall.
+      # Same protection as `scoped`'s comparison step: the regen step below
+      # picks the shots to rewrite out of test-results/report.json, and that
+      # file must be the one THIS sweep wrote. Removing it first means a
+      # sweep that dies before its reporter flushes regenerates nothing,
+      # rather than regenerating against a report it did not produce.
+      - name: Discard any stale report
+        run: rm -f test-results/report.json
       - name: Visual regression
         id: sweep
         continue-on-error: true
@@ -528,6 +590,26 @@ jobs:
       # does not do that: it returns a plain pass for a shot it rewrote, so
       # this command is expected to exit 0 on its own. Tolerating a non-zero
       # exit here would hide a real crash instead of an expected soft-fail.
+      # The regen step below re-invokes Playwright, which rewrites
+      # test-results/report.json, wipes its outputDir (test-results/output,
+      # where every -actual and -diff PNG lives) and clears
+      # playwright-report/. The upload step runs after it, so without this the
+      # `visual-report` artifact would hold a post-regen, all-green report and
+      # no diff images at all — while `recover` writes into the tracking issue
+      # "see the `visual-report` artifact on that run for images". Copy the
+      # evidence aside first; the upload below includes it.
+      #
+      # Guarded exactly like the regen step it protects against: nothing
+      # destroys the evidence on any other path.
+      - name: Preserve the failing report before regenerating
+        if: steps.sweep.outcome == 'failure' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pre-regen-report
+          cp -r test-results pre-regen-report/test-results 2>/dev/null || true
+          cp -r playwright-report pre-regen-report/playwright-report 2>/dev/null || true
+
       - name: Regenerate the failing baselines
         if: steps.sweep.outcome == 'failure' && github.ref == 'refs/heads/main'
         id: regen
@@ -536,6 +618,15 @@ jobs:
           DS_VISUAL_CONTAINER: '1'
         run: |
           set -euo pipefail
+          # Same reason as the `scoped` job's Accept step: the stale report is
+          # deleted before the sweep, so no file here means the sweep never
+          # reached its reporter. That is the crash case this step already
+          # handles below, so it takes the same exit — not an ENOENT trace.
+          if [ ! -f test-results/report.json ]; then
+            echo "The sweep produced no report.json at all — a crash or a build break, not a baseline. Nothing to regenerate."
+            echo "recovered=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           FAILED=$(node scripts/visual-failures.mjs test-results/report.json)
           if [ -z "$FAILED" ]; then
             echo "The sweep failed with no failing shot listed — a crash or a build break, not a baseline. Nothing to regenerate."
@@ -631,6 +722,7 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            pre-regen-report/
           retention-days: 14
           if-no-files-found: ignore
 
@@ -807,6 +899,7 @@ jobs:
             printf '%s\n' '**Merge** if this is the look you intended — these become the baselines.'
             printf '%s\n\n' '**Close** if it is a regression; the tracking issue stays open with the evidence.'
             printf -- '- Failing run: %s\n' "$RUN_URL"
+            printf -- '- Failing report and diff images: %s#artifacts (the `visual-report` artifact, `pre-regen-report/`)\n' "$RUN_URL"
           } > /tmp/pr-body.md
 
           if [ -n "$EXISTING_PR_URL" ]; then
@@ -836,7 +929,7 @@ jobs:
             {
               printf '%s\n\n' "The full sweep failed on \`main\` at \`${SHORT}\`."
               printf -- '- Failing run: %s\n' "$RUN_URL"
-              printf -- '- Failing shots: %s file(s) (see the \`visual-report\` artifact on that run for images)\n\n' "$COUNT"
+              printf -- '- Failing shots: %s file(s) (see \`pre-regen-report/\` in the \`visual-report\` artifact on that run for the -actual and -diff images)\n\n' "$COUNT"
               printf '%s\n\n' "A pull request with the regenerated baselines is open — merging it accepts these as the intended look, closing it says this is a real regression."
               printf -- '- Regenerated baselines: %s\n\n' "$PR_URL"
               printf '%s\n\n' '<details><summary>Failing shots</summary>'
@@ -874,7 +967,15 @@ jobs:
             printf '%s\n' '**Merge** if this is the look you intended — these become the baselines.'
             printf '%s\n\n' '**Close** if it is a regression; the tracking issue stays open with the evidence.'
             printf -- '- Tracking issue: %s\n' "$ISSUE_URL"
-            printf -- '- Failing run: %s\n\n' "$RUN_URL"
+            printf -- '- Failing run: %s\n' "$RUN_URL"
+            # The report artifact, which the design calls for alongside the
+            # run and the issue: the run page links the artifact but does not
+            # show what is in it, and `pre-regen-report/` inside it is the
+            # only place the -actual/-diff images for these baselines survive
+            # (the regen that produced this branch overwrote the live ones).
+            # Reviewing this pull request means looking at those images, so
+            # the body has to say where they are.
+            printf -- '- Failing report and diff images: %s#artifacts (the `visual-report` artifact, `pre-regen-report/`)\n\n' "$RUN_URL"
             printf 'Closes #%s\n' "$ISSUE_NUMBER"
           } > /tmp/pr-body-final.md
           gh pr edit "$PR_URL" --body-file /tmp/pr-body-final.md

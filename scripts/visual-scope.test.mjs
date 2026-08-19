@@ -4,9 +4,13 @@
 // widens when it must — above all the sidebar fan-out, which is why PR #88's
 // 142 docs pages legitimately changed.
 
+import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import { parseNameStatus, resolveBaseArg, scopeFor } from './visual-scope.mjs';
+import { listShots } from './visual-shots.mjs';
 
 const shots = [
   { project: 'storybook-wide', storyId: 'components-button--primary', route: null },
@@ -86,6 +90,41 @@ describe('layer 1: nx decides whether anything runs', () => {
     expect(result.grep).toContain('/components/button · ');
     expect(result.grep).toContain('/patterns/forms · ');
   });
+
+  it('runs every docs shot for a brand-source change nx reports no project for', () => {
+    /* `nx show projects --affected --files=design-system-docs/README.md`
+       returns [] — verified against this repo — because that directory
+       belongs to no Nx project. It is nonetheless read at build time to
+       generate brand-manifest.json, which the docs site imports and
+       site-map.ts renders into the UI Kits sidebar section on every docs
+       page, plus the eight /brand/* shots directly. Without the override,
+       run:false: zero shots for a change to the brand source of truth.
+
+       No affectedBy stub on purpose: this path must be CLASSIFIED into the
+       docs side rather than left unmapped, so nothing here should need to
+       ask nx a second question. Passing no stub makes that assertion — a
+       regression that leaves it unmapped throws instead of passing quietly. */
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'design-system-docs/README.md' }],
+      affectedProjects: [],
+      shots,
+    });
+    expect(result.run).toBe(true);
+    for (const pattern of fullRoutePatterns) {
+      expect(result.grep).toContain(pattern);
+    }
+  });
+
+  it('leaves storybook alone for a brand-source change — nothing in storybook renders brand content', () => {
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'design-system-docs/ui-kits/acme/brand.json' }],
+      affectedProjects: [],
+      shots,
+    });
+    for (const prefix of fullStoryPrefixes) {
+      expect(result.grep).not.toContain(prefix);
+    }
+  });
 });
 
 describe('layer 1a: the sidebar fan-out', () => {
@@ -128,6 +167,45 @@ describe('layer 1a: the sidebar fan-out', () => {
   it('fans out on a change to the site chrome', () => {
     const result = plan([{ status: 'M', path: 'apps/docs/src/app/(docs)/layout.tsx' }]);
     expect(result.grep).toContain('/patterns/forms · ');
+  });
+
+  it('fans out when a page in a DERIVED sidebar section is merely MODIFIED', () => {
+    /* Measured by the reviewer against the real shot list: this used to
+       select 2 shots when up to 142 could have changed. site-map.ts's
+       derivedSection() reads each Foundations/Patterns/Guidelines page's own
+       metadata (title, navTitle, order) off disk to build that sidebar
+       section, and the sidebar renders on every docs page — so editing the
+       metadata in one page retitles or reorders an entry on all of them. */
+    const result = plan([
+      { status: 'M', path: 'apps/docs/src/app/(docs)/foundations/color/page.mdx' },
+    ]);
+    expect(result.run).toBe(true);
+    for (const pattern of fullRoutePatterns) {
+      expect(result.grep).toContain(pattern);
+    }
+  });
+
+  it('fans out for a MODIFIED page in each of the three derived sections', () => {
+    for (const section of ['foundations', 'patterns', 'guidelines']) {
+      const result = plan([
+        { status: 'M', path: `apps/docs/src/app/(docs)/${section}/anything/page.mdx` },
+      ]);
+      for (const pattern of fullRoutePatterns) {
+        expect(result.grep).toContain(pattern);
+      }
+    }
+  });
+
+  it('does NOT fan out for a MODIFIED component docs page — its sidebar entry comes from the manifest', () => {
+    /* The distinction that keeps this rule from being "all page files":
+       (docs)/components/* pages take their sidebar entry from the generated
+       component manifest, not from the page file, so editing one changes
+       that one page. Fanning out here would run 142 docs shots for the most
+       routine docs edit there is. */
+    const result = plan([
+      { status: 'M', path: 'apps/docs/src/app/(docs)/components/badge/page.mdx' },
+    ]);
+    expect(result.grep).toBe('/components/badge · ');
   });
 
   it('fans out the docs side only, leaving storybook narrowed', () => {
@@ -276,10 +354,13 @@ describe('layer 2: narrowing', () => {
   });
 
   it('maps a docs page to its own route', () => {
+    /* A component page, not a Foundations/Patterns/Guidelines one: those
+       three sections derive their sidebar entries from the page files
+       themselves and so fan out on any edit — see the fan-out block above. */
     const result = plan([
-      { status: 'M', path: 'apps/docs/src/app/(docs)/patterns/forms/page.mdx' },
+      { status: 'M', path: 'apps/docs/src/app/(docs)/components/badge/page.mdx' },
     ]);
-    expect(result.grep).toBe('/patterns/forms · ');
+    expect(result.grep).toBe('/components/badge · ');
   });
 
   it('maps a demo directory to the component page that embeds it', () => {
@@ -362,16 +443,19 @@ describe('widening for an unmapped file is per file, not per changeset', () => {
   });
 
   it('case D (sharpest): an unmapped file alongside a single docs page edit still widens both sides fully, not just that one route', () => {
+    /* A component page deliberately: one that still maps NARROWLY on its
+       own, which is what keeps this a test of per-file widening rather than
+       of the derived-section fan-out. */
     const result = plan([
       { status: 'M', path: 'pnpm-lock.yaml' },
-      { status: 'M', path: 'apps/docs/src/app/(docs)/patterns/forms/page.mdx' },
+      { status: 'M', path: 'apps/docs/src/app/(docs)/components/badge/page.mdx' },
     ]);
     expectFullyWidened(result);
   });
 
   it('case D in the opposite order gives the identical fully-widened result', () => {
     const result = plan([
-      { status: 'M', path: 'apps/docs/src/app/(docs)/patterns/forms/page.mdx' },
+      { status: 'M', path: 'apps/docs/src/app/(docs)/components/badge/page.mdx' },
       { status: 'M', path: 'pnpm-lock.yaml' },
     ]);
     expectFullyWidened(result);
@@ -661,6 +745,43 @@ describe('deletions are exempt from the coverage guard', () => {
   });
 });
 
+describe('an ADDED component with no story yet is exempt on the storybook side', () => {
+  /* Verified against the real workflow: adding a component before its story
+     threw `visual-scope: 'VisuallyHidden' matched no story id
+     'components-visuallyhidden--*'`, which killed the scope step — so nothing
+     was minted and none of the fanned-out docs shots ran either. An added
+     subject with no story is absent from the post-change enumeration for the
+     same definitional reason a deleted one is, and it cannot have drifted
+     from coverage it never had. */
+  it('does not throw, and still fans the docs side out to every route', () => {
+    const noStory = shots.filter((s) => s.storyId !== 'components-verdictbadge--default');
+    const result = scopeFor({
+      changes: [{ status: 'A', path: 'packages/react/src/components/atoms/VerdictBadge.tsx' }],
+      affectedProjects: BOTH,
+      shots: noStory,
+      affectedBy: affectsBoth,
+    });
+    expect(result.run).toBe(true);
+    for (const pattern of fullRoutePatterns) {
+      expect(result.grep).toContain(pattern);
+    }
+  });
+
+  it('still throws for a MODIFIED component with no matching story id — that is real drift', () => {
+    /* The exemption must not become "never check adds or modifies". A
+       component that exists on both sides of the diff and maps to no story
+       is drift, and the guard is the only thing that reports it. */
+    const noButtonStory = shots.filter((s) => s.storyId !== 'components-button--primary');
+    expect(() =>
+      scopeFor({
+        changes: [{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }],
+        affectedProjects: BOTH,
+        shots: noButtonStory,
+      }),
+    ).toThrow(/Button/);
+  });
+});
+
 describe('a Next.js dynamic route segment', () => {
   it('does not throw when its subtree has no enumerated route at all', () => {
     /* apps/docs/src/app/(docs)/brand/ui-kits/[kit]/page.tsx maps to
@@ -734,4 +855,44 @@ describe('parseNameStatus', () => {
   it('ignores blank lines', () => {
     expect(parseNameStatus('\n\n')).toEqual([]);
   });
+});
+
+/* Everything above asserts against a fixture shot list, which proves the
+   scoper is self-consistent — not that the pattern it emits actually selects
+   the right tests when Playwright is the one applying it. This does. Same
+   guard as visual-shots.test.mjs's disk cross-check: it needs both builds,
+   because the specs enumerate stories from Storybook's index.json and routes
+   from Next's prerender manifest.
+
+   Worth an out-of-process Playwright call because the anchoring the whole
+   narrowing rests on — the ' · ' route separator, the '--' story-id
+   separator, the absence of a '^' — is Playwright's --grep semantics, not
+   ours, and a version bump could change them silently. Renovate bumps
+   Playwright in this repo. */
+const BUILDS_PRESENT =
+  existsSync('../apps/storybook/storybook-static/index.json') &&
+  existsSync('../apps/docs/.next/prerender-manifest.json');
+
+describe.skipIf(!BUILDS_PRESENT)('the emitted pattern, applied by Playwright itself', () => {
+  it('selects exactly the 30 tests a modified Button.tsx could have changed', () => {
+    const plan = scopeFor({
+      changes: [{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }],
+      affectedProjects: ['docs', 'storybook', 'react'],
+      shots: listShots({ cwd: '..' }),
+    });
+
+    /* --list, not a run: Playwright collects and prints the titles without
+         rendering a pixel, so this costs well under a second. */
+    const listed = execFileSync(
+      'pnpm',
+      ['exec', 'playwright', 'test', '--list', '--grep', plan.grep],
+      { cwd: '..', encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+    );
+
+    const total = listed.match(/Total:\s+(\d+)\s+tests?/);
+    /* A missing Total line would otherwise read as "0 tests" — the silent
+         under-selection answer this module exists to refuse. */
+    expect(total, `no "Total: N tests" line in --list output:\n${listed}`).not.toBeNull();
+    expect(Number(total[1])).toBe(30);
+  }, 120_000);
 });
