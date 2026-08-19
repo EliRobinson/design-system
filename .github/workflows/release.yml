@@ -1,10 +1,18 @@
 name: Release
 
 on:
+  # Triggered by Visual, not Quality, because Visual is the SLOWER of the two
+  # (~9m against ~2m) and publishing must wait for both. A `workflow_run`
+  # trigger listing several workflows fires when ANY of them completes, not
+  # when all do — `workflows: [Quality, Visual]` would publish on Quality's
+  # completion exactly as this file did before. So: trigger on the slow one,
+  # and assert the fast one separately in the first step below.
   workflow_run:
-    workflows: [Quality]
+    workflows: [Visual]
     types: [completed]
     branches: [main]
+  # The escape hatch, and the reason gating on the sweep is reversible: if a
+  # flaky sweep blocks a publish, dispatch this workflow by hand.
   workflow_dispatch:
 
 concurrency:
@@ -13,15 +21,66 @@ concurrency:
 
 jobs:
   release:
-    # Only runs after Quality has passed on main (or a manual dispatch), so a
-    # broken build or failing tests can never reach the registry.
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # `event == 'push'` is load-bearing, and not for tidiness. Visual also runs
+    # on a 06:00 UTC schedule, and a scheduled run's head_sha is whatever main
+    # points at — which is very often `chore(release): version packages`, this
+    # workflow's own bot commit. Those commits are pushed with GITHUB_TOKEN,
+    # and GITHUB_TOKEN pushes deliberately do not trigger workflows, so they
+    # have NO runs of any kind: measured zero for afdb4f4, fc6827c and 988985c,
+    # and 7 of the last 20 commits on main are that bot. Without this filter
+    # the nightly sweep would fire this workflow against a SHA that has no
+    # Quality run to find, and the guard below would fail it — a red Release
+    # every night. Filtering to `push` leaves only real main pushes, every one
+    # of which has a Quality run.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
       packages: write
+      # Reading another workflow's run and job conclusions in the guard step
+      # below. Without it that step 403s on the first real run.
+      actions: read
     steps:
+      # First step on purpose: it needs no checkout and no toolchain, so a
+      # commit that should not publish fails here in seconds rather than after
+      # a full install and build.
+      - name: Require the full sweep and Quality to have passed for this commit
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+
+          # The JOB's conclusion, not the run's. `full` carries
+          # `if: github.event_name != 'pull_request'`, so it is skipped rather
+          # than failed whenever that condition stops holding — and a run whose
+          # only visual job was skipped still concludes `success`. Gating on
+          # the run conclusion alone would therefore treat "the sweep never
+          # ran" as "the sweep passed", which is the exact silent
+          # under-selection this gate exists to prevent.
+          FULL=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/jobs" \
+            --jq '[.jobs[] | select(.name == "full")] | first | .conclusion // empty')
+          if [ "$FULL" != "success" ]; then
+            echo "::error::The full visual sweep did not pass for $SHA (conclusion: ${FULL:-absent}). Not publishing."
+            exit 1
+          fi
+
+          # Visual and Quality are separate workflows on the same commit, so
+          # Quality has to be looked up by SHA rather than read off this event.
+          QUALITY=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA&status=completed" \
+            --jq '[.workflow_runs[] | select(.name == "Quality")] | first | .conclusion // empty')
+          if [ "$QUALITY" != "success" ]; then
+            echo "::error::Quality did not pass for $SHA (conclusion: ${QUALITY:-absent}). Not publishing."
+            exit 1
+          fi
+
+          echo "full and Quality both passed for $SHA; proceeding to publish."
       - uses: actions/checkout@v7
         with:
           ref: main
