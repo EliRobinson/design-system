@@ -114,13 +114,24 @@ function idPrefix(id) {
  * A story file's title is free text (`title: 'Patterns/Marketing'`) and is
  * not required to match its filename exactly — `MarketingPattern.stories.tsx`
  * can title itself `Patterns/Marketing`, producing ids like
- * `patterns-marketing--hero-section`. The match is "the file's lower-cased
- * name starts with the id's segment" rather than equality, since the id's
- * segment is the title's leaf and the filename may carry an extra suffix
- * (`MarketingPattern` vs. `Marketing`).
+ * `patterns-marketing--hero-section`. So the match falls back to "the file's
+ * lower-cased name starts with the id's segment" — but only as a fallback.
+ *
+ * An exact match (segment === filename) always wins first: `ButtonGroup`
+ * exactly matches a `components-buttongroup--*` segment, and must not lose to
+ * `components-button--*`, whose segment is merely a *prefix* of `buttongroup`
+ * and would otherwise win or lose depending on which id the shot list happens
+ * to enumerate first. When no exact match exists, the longest prefix match
+ * wins, for the same reason — a shorter sibling's segment being a prefix of
+ * the real match must never decide the answer by enumeration order. Either
+ * way the result is independent of `allStoryIds`' order.
  */
 function findStoryPrefix(name, allStoryIds) {
   const lower = name.toLowerCase();
+
+  let exactId = null;
+  let bestPrefixId = null;
+  let bestPrefixLength = -1;
 
   for (const id of allStoryIds) {
     const doubleDash = id.indexOf('--');
@@ -130,12 +141,26 @@ function findStoryPrefix(name, allStoryIds) {
     }
 
     const segment = id.slice(dash + 1, doubleDash);
-    if (segment && lower.startsWith(segment)) {
-      return idPrefix(id);
+    if (!segment) {
+      continue;
+    }
+
+    if (segment === lower) {
+      /* Exact match is the maximum possible prefix length too (a segment
+         cannot be a prefix of `lower` and longer than `lower`), so no later
+         id in the loop can outrank it — safe to stop here. */
+      exactId = id;
+      break;
+    }
+
+    if (lower.startsWith(segment) && segment.length > bestPrefixLength) {
+      bestPrefixId = id;
+      bestPrefixLength = segment.length;
     }
   }
 
-  return null;
+  const winner = exactId ?? bestPrefixId;
+  return winner ? idPrefix(winner) : null;
 }
 
 export function scopeFor({ changes, affectedProjects, shots }) {
@@ -253,32 +278,49 @@ export function scopeFor({ changes, affectedProjects, shots }) {
        e.g. pnpm-lock.yaml, package.json, nx.json, tsconfig.base.json. Nx may
        still have marked docs and/or storybook affected by it (a lockfile
        changes what every consumer resolves to); this file cannot know what
-       changed inside it, so it cannot narrow. Tracked here rather than
-       silently doing nothing, so the fallback below can widen instead of
-       quietly returning run:false while nx says otherwise. */
+       changed inside it, so it cannot narrow.
+
+       Widening happens for THIS file right here — same as the isShared arms
+       above — rather than being deferred to a check at the end of the whole
+       changeset. Deferring it was the bug: gating it on "patterns is still
+       empty" meant an unmapped file's necessary widening silently vanished
+       the moment any other file in the same changeset happened to map
+       narrowly (a lockfile bump alongside a one-line docs edit, say), even
+       though nx had marked the project affected independently of that other
+       file. Widening per file, not per changeset, is what keeps the answer
+       right regardless of what else is in the diff. */
     if (!inStorybookOrShared && !inDocsOrShared) {
       unmapped.push(change.path);
+
+      if (storybookNarrowable) {
+        storybookNarrowable = false;
+        for (const id of allStoryIds) {
+          patterns.add(idPrefix(id));
+        }
+        reasons.push(
+          `${change.path} cannot be mapped to any story or route, so every storybook shot runs`,
+        );
+      }
+
+      if (docsNarrowable) {
+        docsNarrowable = false;
+        for (const route of allRoutes) {
+          patterns.add(routePattern(route));
+        }
+        reasons.push(
+          `${change.path} cannot be mapped to any story or route, so every docs shot runs`,
+        );
+      }
     }
   }
 
-  /* A change nx marked one or both projects affected by, but which this file
-     could not map to anything at all, must not fall through to run:false —
-     nx already established that docs and/or storybook depend on it, and this
-     module has no basis to override that. Falling back to "nothing runs"
-     here is exactly the silent-narrowing failure this file exists to
-     prevent, so instead it widens to the full shot set of whichever side(s)
-     nx marked affected. */
+  /* Backstop only: with widening now happening per file above, this should be
+     unreachable whenever an affected project's shot set is non-empty. Left in
+     place for the degenerate edge case of an affected project with zero shots
+     of its own in `shots` (nothing to widen to), so an unmapped change still
+     surfaces its reason rather than falling through to the generic message
+     below with no explanation. */
   if (patterns.size === 0 && unmapped.length > 0) {
-    if (storybookAffected) {
-      for (const id of allStoryIds) {
-        patterns.add(idPrefix(id));
-      }
-    }
-    if (docsAffected) {
-      for (const route of allRoutes) {
-        patterns.add(routePattern(route));
-      }
-    }
     reasons.push(
       `${unmapped.join(', ')} cannot be mapped to any story or route, so every shot of the affected project(s) runs`,
     );

@@ -156,6 +156,46 @@ describe('layer 2: narrowing', () => {
     expect(result.grep).toContain('patterns-marketing--');
   });
 
+  it('resolves a story file to its EXACT segment match, not a shorter sibling prefix', () => {
+    /* components-button--* is a string-prefix of 'buttongroup', so a naive
+       "first id whose segment is a prefix of the filename" search can return
+       Button's prefix instead of ButtonGroup's, depending on shot-list
+       order. No such pair exists in the repo today, but the shape is
+       realistic and the bug is silent — a green PR that runs Button's shots
+       and none of ButtonGroup's. */
+    const withGroup = [
+      ...shots,
+      { project: 'storybook-wide', storyId: 'components-buttongroup--default', route: null },
+    ];
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'apps/storybook/src/stories/ButtonGroup.stories.tsx' }],
+      affectedProjects: BOTH,
+      shots: withGroup,
+    });
+    expect(result.grep).toContain('components-buttongroup--');
+    expect(result.grep).not.toContain('components-button--primary');
+  });
+
+  it('gives the identical answer regardless of shot-list enumeration order', () => {
+    const buttonFirst = [
+      ...shots,
+      { project: 'storybook-wide', storyId: 'components-buttongroup--default', route: null },
+    ];
+    const groupFirst = [
+      { project: 'storybook-wide', storyId: 'components-buttongroup--default', route: null },
+      ...shots,
+    ];
+    const changes = [{ status: 'M', path: 'apps/storybook/src/stories/ButtonGroup.stories.tsx' }];
+
+    const a = scopeFor({ changes, affectedProjects: BOTH, shots: buttonFirst });
+    const b = scopeFor({ changes, affectedProjects: BOTH, shots: groupFirst });
+
+    expect(a.grep).toContain('components-buttongroup--');
+    expect(a.grep).not.toContain('components-button--primary');
+    expect(b.grep).toContain('components-buttongroup--');
+    expect(b.grep).not.toContain('components-button--primary');
+  });
+
   it('maps a docs page to its own route', () => {
     const result = plan([
       { status: 'M', path: 'apps/docs/src/app/(docs)/patterns/forms/page.mdx' },
@@ -210,6 +250,63 @@ describe('the unnarrowable fallback is the project, never the world', () => {
     expect(result.grep).toContain('/components/button · ');
     expect(result.grep).toContain('/components/badge · ');
     expect(result.grep).toContain('/patterns/forms · ');
+  });
+});
+
+describe('widening for an unmapped file is per file, not per changeset', () => {
+  /* Measured against the real shot list: an unmapped file (pnpm-lock.yaml)
+     alongside a file that DOES map narrowly used to lose its widening,
+     because the old fallback only fired when the whole changeset's patterns
+     were still empty. nx said both projects were affected independently of
+     what else was in the diff; the second file mapping narrowly must not
+     take that back. */
+  const fullStoryPrefixes = [
+    'components-button--',
+    'components-badge--',
+    'components-verdictbadge--',
+  ];
+  const fullRoutePatterns = ['/components/button · ', '/components/badge · ', '/patterns/forms · '];
+
+  function expectFullyWidened(result) {
+    expect(result.run).toBe(true);
+    for (const prefix of fullStoryPrefixes) {
+      expect(result.grep).toContain(prefix);
+    }
+    for (const pattern of fullRoutePatterns) {
+      expect(result.grep).toContain(pattern);
+    }
+  }
+
+  it('case B: an unmapped file alongside a file under apps/docs still widens storybook fully', () => {
+    const result = plan([
+      { status: 'M', path: 'pnpm-lock.yaml' },
+      { status: 'M', path: 'apps/docs/package.json' },
+    ]);
+    expectFullyWidened(result);
+  });
+
+  it('case C: an unmapped file alongside a narrowly-mapping component still widens both sides fully', () => {
+    const result = plan([
+      { status: 'M', path: 'pnpm-lock.yaml' },
+      { status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' },
+    ]);
+    expectFullyWidened(result);
+  });
+
+  it('case D (sharpest): an unmapped file alongside a single docs page edit still widens both sides fully, not just that one route', () => {
+    const result = plan([
+      { status: 'M', path: 'pnpm-lock.yaml' },
+      { status: 'M', path: 'apps/docs/src/app/(docs)/patterns/forms/page.mdx' },
+    ]);
+    expectFullyWidened(result);
+  });
+
+  it('case D in the opposite order gives the identical fully-widened result', () => {
+    const result = plan([
+      { status: 'M', path: 'apps/docs/src/app/(docs)/patterns/forms/page.mdx' },
+      { status: 'M', path: 'pnpm-lock.yaml' },
+    ]);
+    expectFullyWidened(result);
   });
 });
 
