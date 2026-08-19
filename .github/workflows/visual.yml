@@ -74,7 +74,15 @@ jobs:
   # two layers, and why the sidebar fan-out overrides the narrowing.
   scoped:
     needs: image
-    if: github.event_name == 'pull_request'
+    # `labeled` cannot be filtered in the `on:` trigger above — GitHub either
+    # takes every label or none — so ANY label (docs, wip, anything) would
+    # otherwise start a full scoped run here, and because cancel-in-progress
+    # groups on the ref, it would cancel whatever visual run was already in
+    # flight and restart from zero. The filter has to live here instead: only
+    # run for a labeling event when the label is visual-accept.
+    if: >-
+      github.event_name == 'pull_request' &&
+      (github.event.action != 'labeled' || github.event.label.name == 'visual-accept')
     # Only this job commits anything; `image` and `visual` keep the
     # workflow-level read-only default.
     permissions:
@@ -98,8 +106,14 @@ jobs:
       # fast instead, with the remedy the design doc names, rather than
       # limping through a run that cannot finish. This only prints that
       # remedy; it does not invoke `gh` itself.
+      #
+      # head.repo.full_name != github.repository, not head.repo.fork: `.fork`
+      # is true whenever the HEAD repo is a fork of anything at all, so it
+      # would refuse every pull request the day this repo itself became a
+      # fork. Comparing the head repo's name to this repo's is the actual
+      # question — is the PR coming from somewhere this token cannot push to.
       - name: Refuse pull requests from forks
-        if: github.event.pull_request.head.repo.fork == true
+        if: github.event.pull_request.head.repo.full_name != github.repository
         run: |
           echo "::error::This pull request comes from a fork. GITHUB_TOKEN cannot push baselines back to a fork's branch, so this job cannot mint or accept them here."
           echo "A maintainer can regenerate baselines directly instead:"
@@ -288,7 +302,12 @@ jobs:
 
       # Overwriting an existing baseline is the operation the zero-tolerance
       # comparison exists to put a human in front of, so it is opt-in per pull
-      # request and never automatic.
+      # request and never automatic. (`changed` mode doesn't only overwrite:
+      # it also writes any baseline that is still missing at this point and
+      # passes, same as `missing` mode's write — but without that mode's
+      # softError, since the softError is specific to `missing`. Either way,
+      # the visual-accept label is what gates this step, so neither behavior
+      # runs without a human asking for it.)
       #
       # --update-snapshots=changed, explicit: overwriting IS the intent of
       # this step, but the mode is spelled out so no reader has to know that a
@@ -335,35 +354,11 @@ jobs:
             echo "If these changes are intended, add the \`visual-accept\` label — that starts a new run on its own; there is no need to re-run this one."
             echo
             echo '```'
-            # visual-failures.mjs prints a --grep PATTERN: titles regex-escaped
-            # and joined on unescaped `|`. Splitting that on every `|` (as a
-            # plain `tr` would) also splits on an escaped `\|` inside a title
-            # and leaves the other regex escaping in place. This walks the
-            # pattern by hand, splitting only on unescaped `|` and reversing
-            # the escape (backslash + next char -> next char), to print plain
-            # titles instead.
-            node scripts/visual-failures.mjs test-results/report.json | node -e '
-              let input = "";
-              process.stdin.on("data", (chunk) => { input += chunk; });
-              process.stdin.on("end", () => {
-                const titles = [];
-                let cur = "";
-                for (let i = 0; i < input.length; i++) {
-                  const ch = input[i];
-                  if (ch === "\\" && i + 1 < input.length) {
-                    cur += input[i + 1];
-                    i++;
-                  } else if (ch === "|") {
-                    titles.push(cur);
-                    cur = "";
-                  } else {
-                    cur += ch;
-                  }
-                }
-                titles.push(cur);
-                console.log(titles.join("\n"));
-              });
-            '
+            # --plain: failedTitles() already returns plain titles: the
+            # escaping only exists in the default --grep-pattern mode, where
+            # it goes through grepFor. --plain skips grepFor entirely, so
+            # there is nothing here to un-escape.
+            node scripts/visual-failures.mjs --plain test-results/report.json
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit 1

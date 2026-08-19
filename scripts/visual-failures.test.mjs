@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { failedTitles } from './visual-failures.mjs';
+import { failedTitles, formatPlain } from './visual-failures.mjs';
 
 const report = {
   suites: [
@@ -52,5 +52,32 @@ describe('failedTitles', () => {
 
   it('is empty for a clean report', () => {
     expect(failedTitles({ suites: [] })).toEqual([]);
+  });
+});
+
+describe('formatPlain', () => {
+  it('is null for an empty list, so a caller cannot print a blank line', () => {
+    expect(formatPlain([])).toBeNull();
+  });
+
+  it('prints titles unescaped, one per line — no grepFor involved', () => {
+    // A title containing every character escapeRegExp would touch: | . ( [
+    const titles = [
+      'components-badge--default · dark',
+      'Button | Primary',
+      'components-input--a.b · light',
+      'Card (elevated)',
+      'Input [required] · light',
+    ];
+
+    expect(formatPlain(titles)).toBe(
+      [
+        'components-badge--default · dark',
+        'Button | Primary',
+        'components-input--a.b · light',
+        'Card (elevated)',
+        'Input [required] · light',
+      ].join('\n'),
+    );
   });
 });
