@@ -166,14 +166,29 @@ jobs:
       # from the restored cache, so a partial or stale hit degrades to a
       # rebuild rather than to wrong output.
       #
-      # This is only correct because `apps/storybook/project.json` declares
-      # `outputs: ["{projectRoot}/storybook-static"]` (fixed in 7e1947a).
-      # Without it the target inherited `{projectRoot}/dist` from nx.json's
-      # targetDefaults, a path the build never writes — Nx would cache nothing,
-      # then on a hit skip the build while restoring nothing, leaving no
-      # storybook-static/index.json for the specs to enumerate from. A cache
-      # restore is what turns that latent misdeclaration into a broken suite,
-      # so the two changes belong together.
+      # Restoring the directory is only half of it. Nx caching is opt-in per
+      # target, and nothing in this repo had ever set `cache: true` — so
+      # `.nx/cache` was never WRITTEN either, and an actions/cache step on it
+      # would restore nothing, save nothing, and cost 0s while looking like a
+      # working cache. `nx.json` now sets `cache: true` on the `build`
+      # targetDefault, which is what makes this step do anything at all.
+      # Measured locally: `pretest:visual` 14.4s cold, 0.9s replayed.
+      #
+      # Enabling it is only safe because every `build` target declares outputs
+      # its command actually writes. Audited all seven before turning it on:
+      # docs writes `.next` and storybook `storybook-static` (the latter fixed
+      # in 7e1947a — before that it inherited `{projectRoot}/dist`, a path the
+      # build never writes, so a cache hit would have skipped the build while
+      # restoring nothing and left no storybook-static/index.json for the specs
+      # to enumerate from); react, tokens and ai-patterns really do write
+      # `dist`; eslint-config and create-elirobinson-design-system are `echo`
+      # no-ops with nothing to restore. Verified by deleting every output with
+      # the cache warm and rebuilding: all five restored, both manifests back,
+      # and Playwright collected the identical suite off the restored tree.
+      #
+      # So a new project whose build writes somewhere its `outputs` does not
+      # name is now a silently under-selected sweep rather than a slow one.
+      # That is the standing cost of this line.
       - uses: actions/cache@v6
         with:
           path: .nx/cache
