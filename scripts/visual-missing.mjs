@@ -20,15 +20,30 @@ export function missingShots(shots, exists = existsSync) {
 }
 
 /**
- * A Playwright `--grep` pattern selecting exactly `shots`, or null for none.
+ * A Playwright `--grep` pattern selecting `shots` by title, or null for none.
  *
  * Null rather than an empty string, because `--grep ''` matches every test —
  * an empty selection must be impossible to turn into a full sweep by accident.
  *
- * Whole titles rather than prefixes: the caller already knows precisely which
- * shots it wants, so there is nothing to widen to. No `^` anchor — Playwright
- * matches --grep against the full title path, which starts with the spec file,
- * so a leading ^ matches nothing at all.
+ * This selects by title, not by (project, title) — Playwright's `--grep`
+ * matches title text only and cannot filter by project. Titles are NOT
+ * unique across projects: every Storybook story title is identical between
+ * `storybook-wide` and `storybook-narrow`, and every `@responsive` docs
+ * route title is identical between `docs-wide` and `docs-narrow`. So the
+ * returned pattern may select more shots than were passed in — e.g. asking
+ * for one project's missing shot also matches its sibling project's shot of
+ * the same title, whether or not that sibling's baseline exists.
+ *
+ * That makes the caller's regeneration mode load-bearing: it MUST pass an
+ * explicit `--update-snapshots=missing`, never a bare `--update-snapshots`.
+ * Playwright's bare flag defaults to `changed` mode, which would overwrite
+ * an existing, correct baseline on the sibling match the moment it differs —
+ * exactly the "launder a regression into an accepted baseline" failure this
+ * module exists to prevent. `missing` mode leaves any existing baseline
+ * alone regardless of how wide the pattern is.
+ *
+ * No `^` anchor — Playwright matches --grep against the full title path,
+ * which starts with the spec file, so a leading ^ matches nothing at all.
  */
 export function grepFor(shots) {
   if (shots.length === 0) {

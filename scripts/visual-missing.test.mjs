@@ -54,4 +54,22 @@ describe('grepFor', () => {
     const pattern = grepFor([shot({}), shot({}), shot({ title: '/ · dark' })]);
     expect(pattern).toBe('components-button--primary · light|/ · dark');
   });
+
+  /* Playwright's --grep matches title text only, and every Storybook story
+     title is identical between the `storybook-wide` and `storybook-narrow`
+     projects (same for @responsive docs routes across `docs-wide` /
+     `docs-narrow`). So a pattern built from one project's shot also matches
+     its sibling project's shot of the same title — this is not a bug to fix
+     here, it is why callers regenerating baselines with this pattern MUST
+     pass `--update-snapshots=missing` explicitly: a bare `--update-snapshots`
+     defaults to `changed` mode and would overwrite the sibling's existing,
+     correct baseline the moment it differs. */
+  it('selects by title, so a pattern also matches the same title in a sibling project', () => {
+    const wide = shot({ project: 'storybook-wide' });
+    const narrow = shot({ project: 'storybook-narrow' });
+
+    const pattern = grepFor([wide]);
+
+    expect(new RegExp(pattern).test(narrow.title)).toBe(true);
+  });
 });
