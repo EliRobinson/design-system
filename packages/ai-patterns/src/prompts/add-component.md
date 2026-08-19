@@ -28,8 +28,11 @@ never its styles and never a Tailwind dependency.
 
 ## Constraints
 
-- Place it by the tier boundary rule: portal/focus-trap/multi-element open state →
-  `organisms/`; assembled from 2+ atoms without that → `molecules/`; else `atoms/`.
+- Place it by the tier boundary rule, asking the domain question first: no meaning outside
+  an assistant surface → `ai/`; otherwise portal/focus-trap/multi-element open state →
+  `organisms/`; assembled from 2+ atoms without that → `molecules/`; else `atoms/`. `ai/`
+  is the only tier keyed to what a component is _for_ rather than how much it assembles,
+  and it buys a directory and nothing else — every other constraint below still applies.
 - `forwardRef` to the outermost interactive element it owns.
 - Touch targets by role: 44×44px minimum for primary controls; shadcn/MUI dense scale for
   inline affordances; an expanded hit area must never overlap sibling content.

@@ -1,0 +1,81 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/stub-card/Basic';
+
+export const metadata = { title: 'StubCard' };
+
+<ComponentHeader slug="stub-card" />
+
+<DemoBlock file="stub-card/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+`StubCard` is a summary that reads as a ticket stub: a body column of labelled details
+beside a perforated stub column carrying the one figure that matters. It's built for the
+moment before a user commits — the confirmation step where they check what they're about
+to do against what they meant to do.
+
+The split is the point. Everything the reader needs to verify goes in the body; the single
+number they'll remember goes in the stub. If your summary has two equally important
+figures, it isn't a stub — use `Card`.
+
+## The perforation
+
+The tear line between the two columns is a dashed `--border-control`, not the decorative
+`--border`. That's a deliberate distinction: `--border` is a faint seam meant to be felt
+rather than read, and this line carries meaning — it says the stub detaches, which is the
+entire reason the layout has two columns. A line that means something gets the 3:1 edge
+token, the same one a control's boundary uses.
+
+Below roughly 30rem the stub tears off the bottom instead of the side, and the perforation
+moves with it.
+
+## Props
+
+<PropsTables slug="stub-card" />
+
+## Accessibility
+
+- The body's details render as a real `<dl>`, with each `label` a `<dt>` and each `value`
+  a `<dd>`, so the pairing survives without visual layout.
+- `items` is keyed by `label`, so labels within one card must be unique. Two rows called
+  "Date" are a React key collision as well as an ambiguous summary.
+- The stub column is plain text, not a heading — it's the emphasised figure in a summary,
+  not a section title, and marking it up as one would put a stray entry in the document
+  outline.
+- Nothing here is interactive: `StubCard` renders no buttons and no links. The control the
+  user presses to commit belongs below the card, where it can be labelled with what it
+  actually does.
+- **Keyboard:** none of its own.
+- The ref forwards to the outer `<div>`.
+
+<DoDont
+  do={[
+    'Put the figure the user is confirming — the amount, the date, the count — in the stub.',
+    'Keep item labels short and unique; they are the keys as well as the copy.',
+    'Use footnote for the one caveat that belongs with the summary, not a paragraph.',
+    'Show it immediately before the commit control, not after the fact.',
+  ]}
+  dont={[
+    'Use it as a general content card — that is Card.',
+    'Put two competing figures in the stub column; it holds one.',
+    'Style the perforation with the decorative border token; it would drop below 3:1.',
+    'Nest interactive controls inside it and expect the layout to make room.',
+  ]}
+/>
+
+## Product theming
+
+`StubCard` draws only system tokens — surface, border, type, spacing — so it inherits a
+product's theme without reading the `--product-*` layer itself. It sits comfortably beside
+components that do; the convention is documented in `docs/agents/product-token-layer.md`,
+and every read there falls back to a system token.
+
+## Related
+
+<RelatedComponents slugs={['card', 'decision-card', 'separator', 'table']} />

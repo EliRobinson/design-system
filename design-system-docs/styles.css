@@ -3,6 +3,9 @@
    The aggregate the guidelines/ cards link to, pointing at the real
    component stylesheets rather than a copy of them. */
 @import './colors_and_type.css';
+@import '../packages/react/src/components/ai/ChatMessage.css';
+@import '../packages/react/src/components/ai/ChatThread.css';
+@import '../packages/react/src/components/ai/StreamingCaret.css';
 @import '../packages/react/src/components/atoms/Avatar.css';
 @import '../packages/react/src/components/atoms/Badge.css';
 @import '../packages/react/src/components/atoms/Button.css';
@@ -28,10 +31,13 @@
 @import '../packages/react/src/components/molecules/SearchField.css';
 @import '../packages/react/src/components/molecules/SegmentedControl.css';
 @import '../packages/react/src/components/molecules/Stepper.css';
+@import '../packages/react/src/components/molecules/StubCard.css';
+@import '../packages/react/src/components/molecules/VerdictBadge.css';
 @import '../packages/react/src/components/organisms/Accordion.css';
 @import '../packages/react/src/components/organisms/Combobox.css';
 @import '../packages/react/src/components/organisms/CommandPalette.css';
 @import '../packages/react/src/components/organisms/DatePicker.css';
+@import '../packages/react/src/components/organisms/DecisionCard.css';
 @import '../packages/react/src/components/organisms/Dialog.css';
 @import '../packages/react/src/components/organisms/DropdownMenu.css';
 @import '../packages/react/src/components/organisms/NavigationMenu.css';

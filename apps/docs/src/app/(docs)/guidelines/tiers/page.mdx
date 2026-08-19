@@ -2,14 +2,17 @@ export const metadata = { title: 'The tier boundary', order: 3 };
 
 # The tier boundary
 
-Components live under `packages/react/src/components/&lt;tier&gt;/` — atoms, molecules, or
-organisms. The boundary is a rule you can apply mechanically, not a judgment call, and it decides
-where a component lives and what it's allowed to do.
+Components live under `packages/react/src/components/&lt;tier&gt;/` — atoms, molecules,
+organisms, or ai. The boundary is a rule you can apply mechanically, not a judgment call, and it
+decides where a component lives and what it's allowed to do.
 
 ## The rule
 
 Ask these questions in order:
 
+0. **Does it have any meaning outside an assistant surface?** If not, it's **ai** —
+   ChatThread, ChatMessage, StreamingCaret. This question comes first because it's the
+   only one about the domain rather than the shape, and it overrides the rest.
 1. **Does it render into a portal, trap focus, or manage open/closed state across
    multiple sub-elements?** It's an **organism** — Dialog, Select, Combobox,
    DropdownMenu.
@@ -27,6 +30,14 @@ bugs live, so the components that do it are quarantined in one tier where the sh
 simple enough to review at a glance; the moment it grows open/closed state across
 sub-elements, it's an organism and moves.
 
+`ai` is the one exception, and it's deliberate: it tracks _domain_, not complexity.
+`StreamingCaret` is atom-shaped and `ChatThread` is molecule-shaped, and filing them by
+shape would have hidden the thing a reader needs to know — that they encode assumptions
+about generated, incremental, non-deterministic content. The test is whether you can
+describe the component without saying "assistant," "model," or "streaming." If you can,
+it isn't ai. Being a new tier buys a directory and nothing else: the same `ds-` classes,
+token rules, `forwardRef` requirement, touch targets and contrast contract apply.
+
 ## Edge cases, decided
 
 - **`SegmentedControl`** manages a selected value and arrow-key navigation, but across
@@ -39,6 +50,12 @@ sub-elements, it's an organism and moves.
   behavior.
 - **`FormField`** wires ids and ARIA attributes to an arbitrary child — wiring, not
   orchestration — molecule.
+- **`VerdictBadge`** and **`DecisionCard`** were designed for an assistant product and
+  are still a molecule and an organism. A verdict marker a model happened to produce is
+  a verdict marker; a card that happens to render generated figures is a card. The
+  domain question is about the component, not about who supplied its props.
+- **`StreamingCaret`** is a single `<span>` with no children — atom-shaped by the rule
+  above, and ai by question 0.
 
 ## What the tier changes in practice
 

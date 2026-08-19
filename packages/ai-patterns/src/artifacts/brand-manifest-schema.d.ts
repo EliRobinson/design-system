@@ -13,6 +13,7 @@ export type BrandCategory =
   | 'tokens'
   | 'aggregate-stylesheet'
   | 'guideline-card'
+  | 'component-card'
   | 'preview-card'
   | 'ui-kit'
   | 'slide'

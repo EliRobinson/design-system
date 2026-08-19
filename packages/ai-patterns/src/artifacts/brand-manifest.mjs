@@ -368,6 +368,30 @@ export function buildBrandManifest({ root, tokens }) {
     });
   }
 
+  /* -- Component specimen cards. Same `@dsCard` shape as a guideline card,
+        but they specimen a component tier rather than a token ramp, and none
+        of them is generated — the roster is whatever is on disk. Grouped by
+        the tier directory they sit in, so `components/ai/` needs no edit here
+        the way a new tier needs none in the component manifest. ------------ */
+  for (const file of under('components')) {
+    const contents = read(file.path);
+    const card = parseDsCard(contents);
+    if (!card) {
+      throw new Error(`brand manifest: ${file.path} carries no @dsCard marker.`);
+    }
+    add({
+      id: file.path.replace(/\.card\.html$/, '').replace(/\.html$/, ''),
+      entry: file.path,
+      category: 'component-card',
+      title: card.name ?? file.path,
+      subtitle: card.subtitle,
+      group: card.group,
+      origin: 'hand-authored',
+      members: [{ path: file.path, role: 'entry' }],
+      render: renderOf(file.path, { viewport: card.viewport }),
+    });
+  }
+
   /* -- Preview cards (working material; the pinned 700px width lives in
         _card.css, not in the cards) --------------------------------------- */
   add({
@@ -597,6 +621,7 @@ export function renderRepoIndexTable(manifest) {
   const kit = (id) => artifacts.find((artifact) => artifact.id === id);
 
   const guidelineCards = ofCategory('guideline-card');
+  const componentCards = ofCategory('component-card').length;
   const generatedCards = guidelineCards.filter((card) => card.origin === 'generated').length;
   const slideTemplates = ofCategory('slide')
     .filter((slide) => slide.render?.viewport?.width === 1280)
@@ -673,6 +698,13 @@ export function renderRepoIndexTable(manifest) {
       description:
         'Design System tab cards — type/color/spacing/component swatches. Working material.',
     },
+    {
+      path: 'components/',
+      description:
+        `${componentCards} component specimen cards — one per tier group, ` +
+        'showing the real `ds-*` markup against the aggregate stylesheet. Working material.',
+    },
+
     { path: 'ui_kits/marketing/', description: kitRow('ui_kits/marketing') },
     { path: 'ui_kits/webapp/', description: kitRow('ui_kits/webapp') },
     { path: 'ui_kits/mobile/', description: kitRow('ui_kits/mobile') },

@@ -25,9 +25,19 @@ const APP_DIR = join(process.cwd(), 'src/app/(docs)');
 
 /* Tier names come from the package's own directory layout, so the label is
    derived rather than looked up — a new tier gets a sidebar section without an
-   edit here. */
+   edit here.
+
+   Acronyms are the one exception, and they are named rather than guessed at:
+   title-casing `ai` gives "Ai", which reads as a typo rather than as a label,
+   and no rule short of a dictionary distinguishes an acronym from a word. A
+   tier missing from this set still gets a section; it just gets the wrong
+   capitalisation, which is a review comment and not an outage. */
+const ACRONYM_TIERS = new Set<string>(['ai']);
+
 function tierLabel(tier: Tier): string {
-  return tier.charAt(0).toUpperCase() + tier.slice(1);
+  return ACRONYM_TIERS.has(tier)
+    ? tier.toUpperCase()
+    : tier.charAt(0).toUpperCase() + tier.slice(1);
 }
 
 type PageMetadata = {

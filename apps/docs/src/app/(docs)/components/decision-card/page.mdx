@@ -1,0 +1,111 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/decision-card/Basic';
+import NoAction from '@/components/demos/decision-card/NoAction';
+
+export const metadata = { title: 'DecisionCard' };
+
+<ComponentHeader slug="decision-card" />
+
+<DemoBlock file="decision-card/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+`DecisionCard` is for a surface that has reached a conclusion and has to show its work: a
+verdict at the head, the figures behind it, a contrasting figure to measure against, the
+caveat that qualifies it, and — only sometimes — an action. It composes `VerdictBadge` for
+the marker, so the verdict is a glyph and a word rather than a colour.
+
+Use it when the reader's next question is "why?" A surface that only announces an outcome
+doesn't need this; a surface that has to justify one does.
+
+## Named for the shape, not the subject
+
+`DecisionCard` is named for its shape — verdict, figures by kind, contrast figure, caveat,
+conditional action — and not for any particular thing a product puts in it. That shape is
+a quote, an eligibility result, or a risk assessment just as readily as it is a
+recommendation, which is why the name says "decision" and not something narrower.
+
+The same reasoning drives `kind` on a figure. It renders as `data-kind` rather than
+resolving to a class from a fixed enum, so a product can group its figures — costs,
+coverage, timing, whatever it actually tracks — and style those groups from its own
+stylesheet, without the system having to learn the product's vocabulary or grow a union
+type every time a product invents a category.
+
+## The footer guarantee
+
+<DemoBlock file="decision-card/NoAction.tsx">
+  <NoAction />
+</DemoBlock>
+
+When `action` is absent, `DecisionCard` renders **no `.ds-decision__foot` element at all**
+— not a disabled button, not a hidden one, nothing. This is a product guarantee, not a
+style choice, and it has its own test in the package.
+
+The reason is blunt. A decision surface that can render a "pay now" control under a "do
+not buy" verdict is one CSS bug away from taking a user's money against its own advice,
+and a disabled button is exactly that bug waiting for a stylesheet to lose. One override,
+one stray `disabled={false}`, one screen reader that ignores `hidden`, and the control is
+live again. The only way to be certain that can't happen is for the element not to exist —
+so a negative verdict is structurally incapable of offering a payment control.
+
+`closing` is what carries the last word instead. It renders in the body, above where a
+footer would have been, so a card that recommends against something still ends on a
+sentence rather than trailing off. Pass `closing` on every negative verdict; it's the
+replacement for the button you're not shipping.
+
+If you need a control near a "no" — "remind me later," "see other options" — put it
+outside the card, where it can be labelled for what it actually does and can't inherit the
+card's authority.
+
+## Props
+
+<PropsTables slug="decision-card" />
+
+## Accessibility
+
+- The figures render as a real `<dl>`: each figure's `label` is a `<dt>` and its `value` a
+  `<dd>`, so the pairing holds without the grid.
+- Figures are keyed by `kind` and `label` together, so the same label can appear under two
+  different kinds without a key collision.
+- `total` and `contrast` render as paragraphs rather than more `<dl>` entries — they're a
+  summation and a comparison, not further items of the same list.
+- The verdict marker comes from `VerdictBadge`: its glyph is `aria-hidden` and
+  `verdictLabel` is the accessible text. Write it as the verdict in words.
+- The card itself has no role and no live region. If a verdict updates in place, announce
+  that from wherever your product owns status messages.
+- **Keyboard:** only the node you pass as `action` is focusable. When there's no action
+  there's nothing to tab to, which is the intended outcome, not an oversight.
+- The ref forwards to the outer `<div>`.
+
+<DoDont
+  do={[
+    'Pass closing on every negative verdict — it is what replaces the missing footer.',
+    'Give the reader the contrast figure; a number with nothing to measure against persuades nobody.',
+    'State the caveat that would change the verdict, in the caveat slot.',
+    'Use kind to group figures your product already groups, and style them from your own stylesheet.',
+  ]}
+  dont={[
+    'Pass a disabled button as action to "grey out" an offer — omit action instead.',
+    'Reintroduce a footer with a wrapper element that renders whether or not there is an action.',
+    'Put a payment control outside the card and style it to look like it belongs to a "no" verdict.',
+    'Use it for a plain summary with no judgement in it; that is Card or StubCard.',
+  ]}
+/>
+
+## Product theming
+
+`DecisionCard` inherits the product token layer through the `VerdictBadge` it composes:
+the verdict fills and foregrounds read `--product-verdict-*` with a fallback to the
+matching system status token. The convention is documented in
+`docs/agents/product-token-layer.md`, and the fallback keeps it optional — a product that
+declares nothing gets the system palette.
+
+## Related
+
+<RelatedComponents slugs={['verdict-badge', 'stub-card', 'card', 'alert', 'button']} />

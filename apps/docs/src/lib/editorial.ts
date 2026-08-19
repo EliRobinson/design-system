@@ -5,6 +5,7 @@
    usage note or rendering an empty paragraph. */
 
 export const TIER_INTRO: Record<string, string> = {
+  ai: 'Surfaces that only mean anything inside an assistant interaction — a turn-taking message log, a streaming affordance. The one tier keyed to a domain rather than to how much is assembled.',
   atoms: 'Single-purpose primitives — not further divisible.',
   molecules:
     'A few atoms combined into one functional unit, with no portal or overlay orchestration.',

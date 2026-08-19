@@ -26,8 +26,37 @@ Components live under `packages/react/src/components/<tier>/`:
 - **atoms/** — single-purpose, not further divisible (e.g. `Button`, `Input`).
 - **molecules/** — a few atoms combined into one functional unit, no portal/overlay orchestration (e.g. `Card`, `Alert`).
 - **organisms/** — compound components with internal state and/or overlay orchestration: portals, focus trapping, keyboard nav (e.g. `Dialog`, `Select`).
+- **ai/** — surfaces that only mean anything inside an assistant interaction (e.g. `ChatThread`, `StreamingCaret`).
 
 Boundary rule: if a component renders into a portal, traps focus, or manages open/closed state across multiple sub-elements, it's an organism. If it's assembled from 2+ atoms with no such orchestration, it's a molecule. Otherwise it's an atom.
+
+### Why `ai` is a tier and not a fourth size
+
+The other three tiers answer "how much is assembled here." `ai` answers a different
+question — "what is this for" — and it is deliberately the only tier that does. A component
+belongs in `ai/` when **it has no meaning outside an assistant surface**: a turn-taking
+message log, a token-by-token streaming affordance. `StreamingCaret` is atom-shaped and
+`ChatThread` is molecule-shaped, and neither placement would have told a reader the thing
+they need to know, which is that these encode assumptions about generated, incremental,
+non-deterministic content.
+
+Two consequences, both of them checks rather than advice:
+
+- **The test is the domain, not the shape.** A card that happens to render a model's output
+  is still a `Card`. A verdict marker that happens to be produced by a model is still a
+  molecule — `VerdictBadge` and `DecisionCard` live in `molecules/` and `organisms/` for
+  exactly that reason, even though they were designed for an assistant product. If you can
+  describe the component without saying "assistant," "model," or "streaming," it is not an
+  `ai` component.
+- **`ai/` inherits every other constraint unchanged.** Same `ds-` classes, same token
+  rules, same `forwardRef` requirement, same touch targets, same contrast contract. Being a
+  new tier buys a directory and nothing else.
+
+The tier is derived, not declared: `packages/react/scripts/manifest.mjs` reads the
+directory segments under `src/components`, so `ai` reaches the manifest, the `ds` CLI, the
+MCP server, and the docs sidebar without any of them being told about it. The one place a
+new tier is not free is `apps/docs/src/lib/editorial.ts`, whose `TIER_INTRO` map is
+hand-written prose and whose key set is asserted equal to the manifest's tier set.
 
 ## Styles
 
@@ -131,32 +160,79 @@ compositions (Header, Footer, Hero, Sidebar, TopBar, StatCard) and doesn't
 discuss nav-item lists at all, so no genuine cross-reference exists to add.
 Left as-is rather than inventing one.
 
+## Decision and assistant surfaces
+
+Ported up from a product built on this system, where every one of them had been hand-built
+because the library had no equivalent. Import them via the tiered subpath
+(`@elirobinson/react/components/<tier>/<Name>`, see above).
+
+| Tier      | Export           | Notes                                                                                                                                                                                                                                   |
+| --------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ai        | `ChatThread`     | `role="log"`, `aria-live="polite"`, `aria-relevant="additions text"`. `label` is required — the accessible name is a prop, never copy in the component. `announce={false}` sets `aria-live="off"` for a closed or replayed thread.      |
+| ai        | `ChatMessage`    | One turn. `avatar` is a **required** node — there is no role-derived fallback. `actions` is a node, not an `[{ label, onClick }]` array. `variant` is `sent` \| `received`; a sent turn reads as settled via `--fg-2`, never `opacity`. |
+| ai        | `StreamingCaret` | Returns `null` when `active` is false, so it cannot be left mounted on a finished message. `label` promotes it to `role="status"`; without one it is `aria-hidden`. Honours `prefers-reduced-motion`.                                   |
+| molecules | `VerdictBadge`   | A decision marker that survives both themes. Carries a glyph **and** a word — `Badge` has no state that does either. The glyph is `aria-hidden`; the word is the accessible text.                                                       |
+| molecules | `StubCard`       | A summary that reads as a ticket stub: a body column plus a perforated stub column. The perforation is structure, so it is a dashed `--border-control`.                                                                                 |
+| organisms | `DecisionCard`   | A headline verdict, figures broken out by `kind`, a contrast figure, a caveat, and a **conditional** action. Composes `VerdictBadge`. See the footer guarantee below.                                                                   |
+
+### `DecisionCard` renders no footer when there is no action
+
+This is a product guarantee, not a style choice, and it has its own test.
+
+When `action` is absent, `DecisionCard` renders **no `.ds-decision__foot` element at all** —
+not a disabled button, not a hidden one, nothing. A decision surface that can render a
+"pay now" control under a "do not buy" verdict is one CSS bug away from taking a user's
+money against its own advice, and a disabled button is exactly that bug waiting for a
+stylesheet to lose. `closing` renders in the body instead.
+
+`DecisionCard.test.tsx` asserts both halves: no button in the accessible tree, and no
+`.ds-decision__foot` in the DOM.
+
+### Naming
+
+`DecisionCard` is named for the shape, not for what a product happens to put in it: a
+verdict, figures broken out by kind, a contrast figure, a caveat, a conditional action.
+That shape is a quote, an eligibility result, or a risk assessment just as readily as it is
+a recommendation. `kind` on a figure renders as `data-kind` rather than a class from a
+fixed enum, so a product can group its figures without the system having to learn the
+product's vocabulary.
+
+### Product theming
+
+`ChatMessage`, `StreamingCaret` and `VerdictBadge` read the optional
+product token layer (`DecisionCard` inherits it through the `VerdictBadge` it composes) — see [Product token layer](product-token-layer.md). Every read falls
+back to a system token, so the layer is always optional and Miltinson Amber stays the
+default. Which components read it is derivable
+(`grep -r 'var(--product-' packages/react/src`), so treat that sentence as a pointer, not
+as the register.
+
 ## shadcn → Miltinson mapping reference
 
-| shadcn component                                         | Miltinson equivalent / notes                                                                                                              |
-| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Badge                                                    | `Badge` — maps to preview tags (default, signal, anchor, solid, outline)                                                                  |
-| Button                                                   | `Button` — primary, accent, secondary, ghost; sm/md/lg sizes                                                                              |
-| Card                                                     | `Card` + subcomponents — matches preview portfolio cards                                                                                  |
-| Input, Textarea, Select, Label                           | Form primitives — match `components-fields.html` preview                                                                                  |
-| Alert                                                    | `Alert` — status tokens for success/warning/danger/info                                                                                   |
-| Separator                                                | `Separator` — `--border` hairline                                                                                                         |
-| Tabs                                                     | `Tabs` — ink underline active state                                                                                                       |
-| Dialog                                                   | `Dialog` — native `<dialog>` with token surfaces                                                                                          |
-| DropdownMenu, Popover, Tooltip, Sheet, Toast             | Overlay primitives — portal positioning, keyboard nav, aria-live toasts                                                                   |
-| Avatar, Breadcrumb, Checkbox, Switch, Skeleton, Progress | Styled per tokens; check UI kits for context                                                                                              |
-| Eyebrow, RuleLink                                        | Marketing typography primitives from ui_kits                                                                                              |
-| RadioGroup                                               | `RadioGroup` / `RadioGroupItem` — context-based group, native radios                                                                      |
-| Slider                                                   | `Slider` — labelled native `<input type="range">`                                                                                         |
-| Pagination                                               | `Pagination` — page-button list, `aria-current="page"`                                                                                    |
-| Accordion                                                | `Accordion` — compound, configurable heading level                                                                                        |
-| Calendar / Date Picker                                   | `DatePicker` — popover date grid, ARIA `grid`/`row`/`gridcell`                                                                            |
-| Combobox                                                 | `Combobox` — filterable listbox popup, virtualized option list                                                                            |
-| Data Table (TanStack Table recipe)                       | `Table` (paginated) / `VirtualTable` (windowed) — `@tanstack/react-table` row models                                                      |
-| NavigationMenu                                           | `NavigationMenu` — simplified: always-rendered nested list, no submenu disclosure/triggers                                                |
-| Command (cmdk)                                           | `CommandPalette` — built on this repo's `Dialog`, not the `cmdk` library                                                                  |
-| Kbd (registry component)                                 | `Kbd` — styled `<kbd>`, used for shortcut hints                                                                                           |
-| Badge (removable variant)                                | `Chip` — shadcn ships no removable badge; sized to the MUI/shadcn dense scale                                                             |
-| Toggle Group                                             | `SegmentedControl` — closest shadcn analog; a primary control, keeps the 44px target                                                      |
-| Form / FormField (react-hook-form)                       | `FormField` — same render-prop-to-a11y-bundle idea, not bound to react-hook-form                                                          |
-| —                                                        | `SearchField`, `Stepper`, `EmptyState`, `Rating`, `VirtualList` — no direct shadcn primitive; local patterns (see "New components" above) |
+| shadcn component                                         | Miltinson equivalent / notes                                                                                                                                                  |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Badge                                                    | `Badge` — maps to preview tags (default, signal, anchor, solid, outline)                                                                                                      |
+| Button                                                   | `Button` — primary, accent, secondary, ghost; sm/md/lg sizes                                                                                                                  |
+| Card                                                     | `Card` + subcomponents — matches preview portfolio cards                                                                                                                      |
+| Input, Textarea, Select, Label                           | Form primitives — match `components-fields.html` preview                                                                                                                      |
+| Alert                                                    | `Alert` — status tokens for success/warning/danger/info                                                                                                                       |
+| Separator                                                | `Separator` — `--border` hairline                                                                                                                                             |
+| Tabs                                                     | `Tabs` — ink underline active state                                                                                                                                           |
+| Dialog                                                   | `Dialog` — native `<dialog>` with token surfaces                                                                                                                              |
+| DropdownMenu, Popover, Tooltip, Sheet, Toast             | Overlay primitives — portal positioning, keyboard nav, aria-live toasts                                                                                                       |
+| Avatar, Breadcrumb, Checkbox, Switch, Skeleton, Progress | Styled per tokens; check UI kits for context                                                                                                                                  |
+| Eyebrow, RuleLink                                        | Marketing typography primitives from ui_kits                                                                                                                                  |
+| RadioGroup                                               | `RadioGroup` / `RadioGroupItem` — context-based group, native radios                                                                                                          |
+| Slider                                                   | `Slider` — labelled native `<input type="range">`                                                                                                                             |
+| Pagination                                               | `Pagination` — page-button list, `aria-current="page"`                                                                                                                        |
+| Accordion                                                | `Accordion` — compound, configurable heading level                                                                                                                            |
+| Calendar / Date Picker                                   | `DatePicker` — popover date grid, ARIA `grid`/`row`/`gridcell`                                                                                                                |
+| Combobox                                                 | `Combobox` — filterable listbox popup, virtualized option list                                                                                                                |
+| Data Table (TanStack Table recipe)                       | `Table` (paginated) / `VirtualTable` (windowed) — `@tanstack/react-table` row models                                                                                          |
+| NavigationMenu                                           | `NavigationMenu` — simplified: always-rendered nested list, no submenu disclosure/triggers                                                                                    |
+| Command (cmdk)                                           | `CommandPalette` — built on this repo's `Dialog`, not the `cmdk` library                                                                                                      |
+| Kbd (registry component)                                 | `Kbd` — styled `<kbd>`, used for shortcut hints                                                                                                                               |
+| Badge (removable variant)                                | `Chip` — shadcn ships no removable badge; sized to the MUI/shadcn dense scale                                                                                                 |
+| Toggle Group                                             | `SegmentedControl` — closest shadcn analog; a primary control, keeps the 44px target                                                                                          |
+| Form / FormField (react-hook-form)                       | `FormField` — same render-prop-to-a11y-bundle idea, not bound to react-hook-form                                                                                              |
+| —                                                        | `SearchField`, `Stepper`, `EmptyState`, `Rating`, `VirtualList` — no direct shadcn primitive; local patterns (see "New components" above)                                     |
+| —                                                        | `VerdictBadge`, `StubCard`, `DecisionCard`, `ChatThread`, `ChatMessage`, `StreamingCaret` — no shadcn primitive; local patterns (see "Decision and assistant surfaces" above) |
