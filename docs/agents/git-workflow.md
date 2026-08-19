@@ -8,7 +8,18 @@ Any PR that changes front-end code (components, layout, styling, tokens that aff
 
 ### Link them by pinned raw URL, not by relative path
 
-**GitHub does not resolve relative image paths in a pull request body.** It leaves the `src` exactly as written, and the browser then resolves it against the PR's own URL — `docs/pr-assets/x.png` on `/pull/88` becomes `/pull/docs/pr-assets/x.png`, which redirects to a login page and renders as a broken image. This is not a permissions problem and it does not come good later; the repo is public and the file is committed. It simply never worked. PR #88 shipped four screenshots this way and none of them display.
+Every PR that has ever attached a screenshot got the link form wrong, each in a different way. Two were broken on arrival; the other two rendered fine and were quietly depending on a ref that would not last. All four are listed because the failure mode is what makes the rule stick:
+
+| PR   | form used                           | what happened                                         |
+| ---- | ----------------------------------- | ----------------------------------------------------- |
+| #88  | relative path                       | never rendered, from the day it was opened            |
+| #73  | absolute URL on the **branch name** | 404 the moment the branch was deleted on merge        |
+| #67  | absolute URL on **`main`**          | renders — until the file is moved, renamed or deleted |
+| #107 | absolute URL on the **branch SHA**  | renders, but the SHA was orphaned by squash-merge     |
+
+All four have since been repointed at a commit reachable from `main`, so don't read them as live examples of the breakage — read the table.
+
+**GitHub does not resolve relative image paths in a pull request body.** It leaves the `src` exactly as written, and the browser then resolves it against the PR's own URL — `docs/pr-assets/x.png` on `/pull/88` becomes `/pull/docs/pr-assets/x.png`, which redirects to a login page and renders as a broken image. This is not a permissions problem and it does not come good later; the repo is public and the file is committed. It simply never worked.
 
 Commit the images, then reference them by **absolute raw URL pinned to the commit SHA**:
 
@@ -27,10 +38,24 @@ git add docs/pr-assets/<slug> && git commit -m "docs(pr-assets): before/after sc
 Then write the body with that SHA and open the PR. Verify the images actually resolve rather than assuming — a broken screenshot in a PR body looks identical to no screenshot at all until someone opens the page:
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' https://raw.githubusercontent.com/EliRobinson/design-system/<sha>/docs/pr-assets/<slug>/dialog-after.png
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' https://raw.githubusercontent.com/EliRobinson/design-system/<sha>/docs/pr-assets/<slug>/dialog-after.png
 ```
 
-A human opening the PR in a browser can instead drag the PNGs into the description box, which uploads them to GitHub's `user-attachments` CDN and needs no commit at all. That is the nicer result — nothing enters the repo — but it cannot be scripted, so anything running headless uses the committed-asset path above.
+Check the content type, not just the status. A 404 from `github.com` redirects to a login page and answers `200 text/html`; only `image/png` means the link is good.
+
+### After merge, repoint to the squash commit
+
+**This repo squash-merges, which orphans every commit on the branch** — including the one the screenshots are pinned to. So the SHA you had to use when opening the PR is, by definition, not the SHA the record should keep.
+
+GitHub still serves blobs from unreachable commits, so nothing visibly breaks the moment it merges (verified on #107 after its branch commit was orphaned). But it is unreachable from any ref, nothing guarantees it stays served, and `git show <sha>` fails for anyone who fetches the repo fresh. Repoint the body once, right after merging:
+
+```bash
+gh pr view <pr> --json mergeCommit -q .mergeCommit.oid   # the squash commit, on main
+```
+
+Swap that SHA into the body's image URLs and `gh pr edit <pr> --body-file …`. Two SHAs total: the branch one to open with, the squash one to leave behind.
+
+A human opening the PR in a browser can skip all of this by dragging the PNGs into the description box, which uploads them to GitHub's `user-attachments` CDN — tied to no commit, so there is nothing to repoint and nothing enters the repo. That is the nicer result, but it cannot be scripted, so anything running headless uses the committed-asset path above.
 
 ### Capturing the pair
 
