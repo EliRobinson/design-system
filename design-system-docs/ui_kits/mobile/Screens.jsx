@@ -1,3 +1,5 @@
+/* global window -- a browser script: the kits publish their components onto
+   window for the sibling kit files loaded after them. See index.html. */
 // Mobile screen kit — modeled on the Kids Recipes / Maths sub-apps.
 // Two screens: Recipe list (Kids Recipes), Practice screen (Maths).
 

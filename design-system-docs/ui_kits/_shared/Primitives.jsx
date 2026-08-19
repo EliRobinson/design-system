@@ -1,3 +1,5 @@
+/* global window -- a browser script: the kits publish their components onto
+   window for the sibling kit files loaded after them. See index.html. */
 // Shared UI primitives for Miltinson UI kits.
 // Loaded as a Babel script. Exposes components on window.
 
