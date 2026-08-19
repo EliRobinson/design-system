@@ -53,6 +53,7 @@ system in an app**.
 | `ds-resync artifacts`                                                               | `ai-patterns` (`bin`)                  | A copy of the brand skill and a hand-written component cheatsheet per repo                                       |
 | `ds-resync migrate`                                                                 | `ai-patterns` (`bin`)                  | Deriving the same token find/replace out of changelog prose by hand, in every consuming repo, every release      |
 | `design-system-mcp` server                                                          | `design-system-mcp` (`bin`)            | An agent guessing props from memory instead of querying the installed package                                    |
+| Dial roster (`./dials`)                                                             | `tokens`                               | A copied table of palettes, themes and platforms, wrong on the next palette                                      |
 
 `ds-resync migrate` reads its instructions from a manifest the changed package ships —
 `src/migrations.json`, authored beside the stylesheets it describes and checked against them
@@ -116,3 +117,31 @@ and radius aliases have no such carve-out; those the bridge really does replace.
 - **A contract without a check is a comment.** Adding an entry to `contracts.json` means
   shipping its `verifiedBy` — a lint rule or a Playwright helper — or stating plainly that
   it is review-only.
+
+## The dials
+
+`tokens.css` resolves under three independent attributes on the root element, and a
+consumer who cannot query them is a consumer who writes them into their own docs — where
+a third palette makes every copy wrong at once and nothing fails. So the roster ships as
+data, and every surface reads it rather than restating it:
+
+| Surface                           | Answers                                                         |
+| --------------------------------- | --------------------------------------------------------------- |
+| `ds dials`                        | The three dials, the combinations, and what moves on a platform |
+| `ds tokens [filter]`              | A token's value in every combination it differs in              |
+| MCP `get_dials` / `search_tokens` | The same, for an agent mid-task                                 |
+| `@elirobinson/tokens/dials`       | The roster as a module, for anything that generates             |
+
+One list exists, in `packages/tokens/src/contrast.mjs`, and `dials.mjs` re-exports it.
+Adding a palette means a block in `palettes.css` and an entry in that list; every surface
+above widens with no further edit, and `dials.test.mjs` fails if the two ever disagree in
+either direction.
+
+Two rules for anything new that reports a token value:
+
+- **Name the combination.** A value is only meaningful inside one — `--accent` is amber in
+  `ember` and teal in `slate`. Combinations are written `<palette>/<theme>`, everywhere,
+  and `ember/light` is what a root element with no attributes renders.
+- **The platform is a third axis, not a fifth combination.** `mobile.css` declares no
+  colour, deliberately, so `data-platform` is orthogonal to the four colour combinations.
+  Report what it re-points as an override on top of them, never as more columns.

@@ -17,6 +17,8 @@
 | Theme    | `data-theme="light\|dark"`    | surfaces, and the re-picked values of everything above                                                      | `palettes.css` + `tokens.css` |
 | Platform | `data-platform="mobile"`      | radii, the small end of the type ramp, `--gutter`, control min-height                                       | `mobile.css`                  |
 
+The dials also ship **as data**, at `@elirobinson/tokens/dials` — `DIALS`, `PALETTES`, `THEMES`, `PLATFORMS`, `COMBINATIONS`, and `tokenDials()` for a token's value in each combination. The table above is orientation for a contributor; anything that _generates_ (the `ds` CLI, the MCP server, the guideline cards, a scaffolded app's bootstrap) reads that module instead, so a fourth dial or a third palette reaches all of them without an edit. `ds dials` is the same roster from a terminal.
+
 **Nothing may assume the value of a dial.** Not a component, not a docs page, not a test.
 
 - **Never name a ramp step outside `palettes.css`.** `--signal-500` exists under every palette and is a different colour in each — amber in ember, teal in slate. A rule that paints one is asserting which brand is mounted. `component-css.test.mjs` fails the build on a base-scale paint for exactly this reason.
@@ -40,9 +42,9 @@ Three families, three different answers to "does this change when the brand does
 
 1. Two blocks in `packages/tokens/src/palettes.css`, appended after the existing four: `[data-palette='<name>']` and `[data-palette='<name>'][data-theme='dark'], [data-palette='<name>'].dark`. Each declares the **complete** semantic set.
 2. Read the header of that file before you write them. The four blocks are decided by specificity and then source order, and the consequence is not obvious: on `<name>` + dark, the palette's _light_ block outranks the ember _dark_ block, because they tie at (0,1,0) and the palette block is later. So the dark block cannot be a thin diff — anything the light block declares that dark must change, the dark block restates. That is why every block declares everything.
-3. Add the palette to `PALETTES` in `packages/tokens/src/contrast.mjs`. That is the only registration; `COMBINATIONS` and the whole test suite widen from it.
+3. Add the palette to `PALETTES` in `packages/tokens/src/contrast.mjs`. That is the only registration; `COMBINATIONS`, the whole test suite, `ds dials`, `ds tokens`, the MCP server, the guideline cards and the scaffolded app's palette guard all widen from it. Each of those has a test that fails if it does not.
 4. Measure. Every ratio goes in a trailing comment, and `contrast.test.mjs` now has four measured columns per token instead of two. `unreadableSelectors()` fails the build on a block whose selector the resolver does not understand, so a palette added to the CSS and not to `PALETTES` cannot ship unmeasured.
-5. Nothing else changes. `tokens.css` never names a ramp step, and no component may assume which palette is mounted.
+5. Nothing else changes. `tokens.css` never names a ramp step, no component may assume which palette is mounted, and no surface that reports the dials carries a list of its own — `dials.test.mjs` pins `PALETTES` to the blocks `palettes.css` actually declares, in both directions, so a half-added palette fails rather than half-appearing.
 
 The neutral ramp is on the same dial: a palette sets `--n-h` and `--n-mult`, and `tokens.css` mixes every `--ink-*` step as `oklch(<L>% calc(<C> * var(--n-mult)) var(--n-h))`. Because neither dial touches lightness and lightness is what carries contrast, a palette can go from near-achromatic to charcoal and **not one measured neutral ratio moves** — asserted in `contrast.test.mjs`, not taken on trust. Declare `--n-h`/`--n-mult` in the palette block and nowhere else: `:root` and `[data-palette='…']` tie at (0,1,0), and `tokens.css` is @imported _after_, so a default written there would beat every palette and the dial would never turn.
 

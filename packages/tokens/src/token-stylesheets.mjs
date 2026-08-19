@@ -37,6 +37,23 @@ import { fileURLToPath } from 'node:url';
  */
 export const TOKEN_STYLESHEETS = ['palettes.css', 'tokens.css'];
 
+/**
+ * The PLATFORM stylesheets — the layer selected by `data-platform`.
+ *
+ * A separate roster rather than an entry in the one above, because the two
+ * answer different questions. `TOKEN_STYLESHEETS` is "what is a token's
+ * default value", and mobile.css is not in it for the reason spelled out
+ * above: every declaration it carries sits behind an attribute or a media
+ * query, so reading it as a default would report a phone's radius as the
+ * system's radius.
+ *
+ * But "what moves when `data-platform` is set" is a real question — it is what
+ * `ds dials` reports and what a consumer otherwise has to read the stylesheet
+ * to find out — and answering it needs the file. So it is named here, once,
+ * and `dials.mjs` reads it through this rather than spelling the filename.
+ */
+export const PLATFORM_STYLESHEETS = ['mobile.css'];
+
 /** This package's own `src/`, so a caller inside the repo needs no path. */
 export const TOKENS_SRC_DIR = dirname(fileURLToPath(import.meta.url));
 
@@ -51,4 +68,14 @@ export const TOKENS_SRC_DIR = dirname(fileURLToPath(import.meta.url));
  */
 export function readTokenStylesheets(srcDir = TOKENS_SRC_DIR) {
   return TOKEN_STYLESHEETS.map((name) => readFileSync(join(srcDir, name), 'utf8'));
+}
+
+/**
+ * The contents of every platform stylesheet, in cascade order.
+ *
+ * @param {string} [srcDir] defaults to this package's own `src/`.
+ * @returns {string[]}
+ */
+export function readPlatformStylesheets(srcDir = TOKENS_SRC_DIR) {
+  return PLATFORM_STYLESHEETS.map((name) => readFileSync(join(srcDir, name), 'utf8'));
 }

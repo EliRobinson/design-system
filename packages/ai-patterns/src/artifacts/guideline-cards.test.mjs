@@ -14,6 +14,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { COMBINATIONS, dialAttributeString } from '@elirobinson/tokens/dials';
 import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
 import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { describe, expect, it } from 'vitest';
@@ -162,17 +163,41 @@ describe('the palette card', () => {
   const html = cardAt('colors-palettes.html');
   const panels = html.match(/<section[^>]*>[\s\S]*?<\/section>/g) ?? [];
 
-  it('renders one panel per palette and theme', () => {
-    /* Two per palette, light and dark. The count is explicit rather than
-       derived because ai-patterns has no dependency on @elirobinson/tokens
-       to read PALETTES from — so this assertion is the thing that fails when
-       palettes.css grows a palette and PALETTE_PANELS is not grown with it. */
-    expect(panels).toHaveLength(6);
-    expect(html).toContain('data-theme="dark"');
-    expect(html).toContain('data-palette="slate"');
-    expect(html).toContain('data-palette="slate" data-theme="dark"');
-    expect(html).toContain('data-palette="miltinson"');
-    expect(html).toContain('data-palette="miltinson" data-theme="dark"');
+  /* Every assertion here counts against COMBINATIONS rather than against four.
+     A literal four is what the card itself used to carry, and it is the exact
+     shape of the bug: add a palette and the roster grows, the contrast sweep
+     grows, and the one card whose subject is the dial keeps showing two
+     palettes with a green suite. */
+  it('renders one panel per combination in the roster, never a fixed four', () => {
+    expect(panels).toHaveLength(COMBINATIONS.length);
+    for (const combination of COMBINATIONS) {
+      expect(html).toContain(combination.id);
+    }
+  });
+
+  it('labels each panel with the attributes that select it', () => {
+    /* Derived from dialAttributeString, not typed here: the card must not
+       invent a second spelling of the selection, and the default combination
+       must say it needs no attribute rather than showing an empty string. */
+    for (const combination of COMBINATIONS) {
+      const attrs = dialAttributeString(combination);
+      expect(html).toContain(`${combination.id} — ${attrs || 'no attributes'}`);
+      if (attrs) expect(html).toContain(`<section ${attrs} `);
+    }
+    // The old label spelling. One vocabulary for a combination, everywhere.
+    expect(html).not.toContain(' · ');
+  });
+
+  it('grows the viewport with the panel count', () => {
+    /* The fixed 700x1240 this replaces was four panels' worth. 310 is one
+       panel — label, two swatch rows, padding and the gap — and is pinned in
+       both places on purpose: change the panel and both move together, add a
+       palette and only the card moves. */
+    const [, height] = cards
+      .find((entry) => entry.path === 'colors-palettes.html')
+      .html.match(/viewport="(\d+)x(\d+)"/)
+      .slice(1);
+    expect(Number(height)).toBe(COMBINATIONS.length * 310);
   });
 
   it('repeats byte-identical markup and lets the cascade do the work', () => {

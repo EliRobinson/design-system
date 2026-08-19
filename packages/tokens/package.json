@@ -44,6 +44,10 @@
       "types": "./src/contrast.d.mts",
       "default": "./src/contrast.mjs"
     },
+    "./dials": {
+      "types": "./src/dials.d.mts",
+      "default": "./src/dials.mjs"
+    },
     "./tokens-data": {
       "types": "./dist/tokens-data.d.ts",
       "import": "./dist/tokens-data.js"

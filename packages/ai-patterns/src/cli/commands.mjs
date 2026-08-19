@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import {
   cssClasses,
   cssVariables,
+  loadDials,
   PATTERNS_PKG,
   REACT_PKG,
   readFile,
@@ -60,6 +61,7 @@ export function usage() {
   list              Components, hooks, typography classes, token groups (default)
   props <Name>      Full prop/variant types for one component
   tokens [filter]   Design tokens and their values
+  dials             The root-element attributes tokens resolve under
   classes [filter]  CSS classes the design system ships
   contracts         Machine-checkable rules your UI must satisfy
   patterns          AI product patterns
@@ -69,7 +71,11 @@ export function usage() {
 Shorthand: \`ds Button\` is \`ds props Button\`.
 Everything is read from node_modules at run time, so it matches the installed
 versions exactly — including the component directory layout, which is
-discovered rather than assumed.`);
+discovered rather than assumed.
+Tokens do not have one value each. They resolve under root-element attributes,
+so most carry one value per palette/theme combination and some move again per
+platform: \`ds dials\` is that map, and \`ds tokens\` labels every value that
+differs from the default.`);
 }
 
 export function list(env) {
@@ -194,9 +200,117 @@ export function props(env, name) {
   return ok(lines.join('\n'));
 }
 
-export function tokens(env, filter) {
+const TAILWIND_HINT = [
+  'Use as var(--token), a Tailwind arbitrary value — text-[var(--fg-2)] — or, with',
+  `@import '${TOKENS_PKG}/tailwind.css', the mapped utilities: bg-background, text-muted-foreground.`,
+];
+
+/**
+ * What to say when the installed tokens package has no dial roster to read.
+ *
+ * Named rather than inlined because two commands hit it and they must say the
+ * same thing: one of them still answers the question (with the default
+ * combination alone) and one cannot, and a consumer comparing the two should
+ * not have to work out whether they are the same problem.
+ */
+function predatesDials(env) {
+  const version = env.versions[TOKENS_PKG];
+  return [
+    `${TOKENS_PKG}@${version ?? '(unknown)'} predates the dial roster, so the values above are`,
+    '  the default combination only — the palette, theme and platform variants cannot be read',
+    `  from it. Upgrade it: pnpm add ${TOKENS_PKG}@latest`,
+  ].join('\n');
+}
+
+/* The selector a platform override is written under.
+ *
+ * Built from `dialAttributeString` rather than assembled here, so the
+ * attribute name comes from the roster like every other mention of it. An
+ * attribute selector with a double-quoted value is the same selector as the
+ * single-quoted one the stylesheet happens to use.
+ */
+function platformSelector(api, platform) {
+  return `[${api.dialAttributeString({ platform })}]`;
+}
+
+/**
+ * The printing rule, in one place: a token that does not vary prints one value
+ * and no combination labels, and a token that does prints one labelled row per
+ * combination in COMBINATIONS order. Platform overrides are appended either
+ * way — a uniform token with an override still moves, and a reader who filtered
+ * down to that one token would otherwise be told a value that is wrong on a
+ * phone.
+ */
+function tokenRows(api, entry, nameWidth, labelWidth) {
+  const rows = entry.varies
+    ? [
+        `  ${entry.name}`,
+        ...entry.values.map(
+          ({ combination, value }) =>
+            `    ${combination.padEnd(labelWidth)}  ${value ?? '(not declared)'}`,
+        ),
+      ]
+    : [`  ${entry.name.padEnd(nameWidth)}  ${api.defaultValueOf(entry)}`];
+
+  return [
+    ...rows,
+    ...entry.platforms.map(
+      ({ platform, value }) =>
+        `    ${platformSelector(api, platform).padEnd(labelWidth)}  ${value}`,
+    ),
+  ];
+}
+
+export async function tokens(env, filter) {
   if (!env.tokenStylesheets) return fail(installHint(TOKENS_PKG));
 
+  const loaded = await loadDials(env);
+  if (!loaded) return tokensOfDefaultCombination(env, filter);
+
+  const { dials: api, sources, platformCss } = loaded;
+
+  /* One filter over every value a token has, not just the default one: a token
+     whose slate value is the only place a colour appears would otherwise be
+     unfindable by that colour, which is the same class of miss as printing one
+     combination out of four. */
+  const matches = ({ name, values, platforms }) =>
+    !filter ||
+    name.includes(filter) ||
+    values.some(({ value }) => value?.includes(filter)) ||
+    platforms.some(({ value }) => value.includes(filter));
+
+  const entries = api.tokenDials(sources, { platformCss }).filter(matches);
+  if (!entries.length) return fail(`No tokens match "${filter}".`);
+
+  const nameWidth = Math.max(...entries.map(({ name }) => name.length));
+  const labelWidth = Math.max(
+    ...api.COMBINATIONS.map(({ id }) => id.length),
+    ...api.PLATFORMS.map((platform) => platformSelector(api, platform).length),
+  );
+
+  return ok(
+    [
+      ...entries.flatMap((entry) => tokenRows(api, entry, nameWidth, labelWidth)),
+      '',
+      `An unlabelled value is the same in all ${api.COMBINATIONS.length} combinations; a labelled one names its own.`,
+      `The default combination is ${api.defaultCombinationId()} — what a root element with no attributes`,
+      'renders — and `ds dials` is the map of the attributes that select the rest.',
+      'Values are resolved: a `var()` chain is followed to what it lands on.',
+      '',
+      ...TAILWIND_HINT,
+    ].join('\n'),
+  );
+}
+
+/**
+ * `ds tokens` against a tokens package too old to have a dial roster.
+ *
+ * Deliberately still answers. The default combination is what this reader has
+ * always printed and it is correct as far as it goes; the note is there so
+ * that "as far as it goes" is on screen rather than inferred from values that
+ * look complete.
+ */
+function tokensOfDefaultCombination(env, filter) {
   const variables = cssVariables(env.tokenStylesheets).filter(
     ({ name, value }) => !filter || name.includes(filter) || value.includes(filter),
   );
@@ -208,10 +322,116 @@ export function tokens(env, filter) {
     [
       ...variables.map(({ name, value }) => `  ${name.padEnd(width)}  ${value}`),
       '',
-      'Use as var(--token), a Tailwind arbitrary value — text-[var(--fg-2)] — or, with',
-      `@import '${TOKENS_PKG}/tailwind.css', the mapped utilities: bg-background, text-muted-foreground.`,
+      predatesDials(env),
+      '',
+      ...TAILWIND_HINT,
     ].join('\n'),
   );
+}
+
+/**
+ * `ds dials` — the attributes a token's value depends on.
+ *
+ * Every list, count and row below is read from the installed package's roster.
+ * There is no palette, theme, platform or combination named in this file: a
+ * third palette has to reach this output with no edit here, and cli.test.mjs
+ * asserts that by checking the output against the roster rather than against
+ * an expected string.
+ */
+export async function dials(env) {
+  if (!env.tokenStylesheets) return fail(installHint(TOKENS_PKG));
+
+  const loaded = await loadDials(env);
+  if (!loaded) return fail(predatesDials(env));
+
+  const { dials: api, sources, platformCss } = loaded;
+  const entries = api.tokenDials(sources, { platformCss });
+  const owned = api.dialOwnership(sources, platformCss);
+
+  const nameWidth = Math.max(...api.DIALS.map((dial) => dial.name.length));
+  const attributeWidth = Math.max(...api.DIALS.map((dial) => dial.attribute.length));
+
+  const lines = [
+    `DIALS  ${api.DIALS.length} attributes on the root element; an absent attribute is the default`,
+  ];
+
+  for (const dial of api.DIALS) {
+    const values = dial.values
+      .map((value) => (value === dial.default ? `${value} (default)` : value))
+      .join('  ');
+    lines.push(
+      '',
+      `  ${dial.name.padEnd(nameWidth)}  ${dial.attribute.padEnd(attributeWidth)}  ${values}`,
+      `  ${''.padEnd(nameWidth)}  ${owned[dial.name].length} tokens — ${dial.owns}`,
+    );
+  }
+
+  /* The axes a combination is made of, asked of a combination rather than
+     stated: the day contrast.mjs grows a third colour dial, this header and
+     the ids below widen together instead of this line becoming a lie. */
+  const axes = Object.keys(api.COMBINATIONS[0])
+    .filter((key) => key !== 'id')
+    .join(' x ');
+  const idWidth = Math.max(...api.COMBINATIONS.map(({ id }) => id.length));
+
+  lines.push('', `COMBINATIONS (${api.COMBINATIONS.length})  ${axes} — the dials that move colour`);
+
+  for (const combination of api.COMBINATIONS) {
+    const attributes = api.dialAttributeString(combination);
+    lines.push(
+      `  ${combination.id.padEnd(idWidth)}  ${attributes || '(no attributes — this is the default)'}`,
+    );
+  }
+
+  /* The platform is reported here, on top of the combinations, and never
+     folded into a combination id. The reason is load-bearing: the platform
+     stylesheet deliberately declares no colour — every measured contrast ratio
+     in the package depends on that — so the platform axis is orthogonal to the
+     four colour combinations. Multiplying them out would print eight columns,
+     four of them duplicates, and bury the handful of tokens that actually
+     move. */
+  for (const platform of api.PLATFORMS) {
+    const overrides = entries
+      .map((entry) => ({
+        entry,
+        override: entry.platforms.find((one) => one.platform === platform),
+      }))
+      .filter(({ override }) => override);
+
+    if (!overrides.length) continue;
+
+    const dial = api.dialNamed('platform');
+    const width = Math.max(...overrides.map(({ entry }) => entry.name.length));
+
+    lines.push(
+      '',
+      `PLATFORM  ${api.dialAttributeString({ platform })} re-points ${overrides.length} of ` +
+        `${entries.length} tokens, on top of all ${api.COMBINATIONS.length} combinations`,
+      `  each row is the ${dial.default} value -> the ${platform} value`,
+      '',
+    );
+
+    for (const { entry, override } of overrides) {
+      /* `<default> -> <platform>` is only the whole story while the token has
+         one default value; one that also varied by combination would need its
+         own rows, so it is sent to the command that prints them. */
+      const varies = entry.varies ? '  (and by combination — `ds tokens`)' : '';
+      lines.push(
+        `  ${entry.name.padEnd(width)}  ${api.defaultValueOf(entry)} -> ${override.value}${varies}`,
+      );
+    }
+  }
+
+  const varying = entries.filter((entry) => entry.varies).length;
+
+  lines.push(
+    '',
+    `${varying} of ${entries.length} tokens differ across combinations — \`ds tokens <name>\` for values.`,
+    `The default combination is ${api.defaultCombinationId()}: what a root element with no`,
+    'attributes renders, and what every unlabelled value in this CLI belongs to.',
+  );
+
+  return ok(lines.join('\n'));
 }
 
 export function classes(env, filter) {

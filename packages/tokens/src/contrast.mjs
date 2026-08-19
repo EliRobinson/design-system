@@ -162,9 +162,17 @@ function declarations(body) {
 /**
  * Every rule in the token stylesheets that declares a custom property.
  *
+ * Exported because the dial roster (./dials.mjs) needs the same scan over a
+ * stylesheet this file deliberately does not read — mobile.css, whose blocks
+ * carry `[data-platform]` and declare no colour. Sharing the scanner is the
+ * point: the comment-blanking and the brace-depth walk above are what make it
+ * correct, and a second copy of them next door would drift.
+ *
  * @param {string[]} sources stylesheets in cascade order
+ * @returns {Array<{selector: string, body: string, file: number, order: number,
+ *                  declarations: Array<[string, string]>}>}
  */
-function tokenBlocks(sources) {
+export function tokenBlocks(sources) {
   return sources
     .flatMap((css, file) => topLevelRules(css, file))
     .map((rule) => ({ ...rule, declarations: declarations(rule.body) }))

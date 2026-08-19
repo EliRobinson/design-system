@@ -13,7 +13,18 @@
  * Each card opens with the `@dsCard` marker the Design System pane reads to
  * build its index, so a generated card is indistinguishable from a hand-made
  * one at the far end.
+ *
+ * Build-time only, deliberately. Nothing in @elirobinson/ai-patterns' exports
+ * map reaches this file — its callers are scripts/build-design-project.mjs,
+ * brand-manifest.mjs (itself only reached from scripts/build-artifacts.mjs)
+ * and the tests — which is what makes the top-level `@elirobinson/tokens`
+ * import below safe: that package is a devDependency here, so a consumer who
+ * could reach this module at runtime would hit an unresolvable import. If this
+ * file ever becomes reachable from a published entry point, the roster has to
+ * be passed in from the build script instead of imported.
  */
+
+import { COMBINATIONS, dialAttributeString } from '@elirobinson/tokens/dials';
 
 /** Families are matched by prefix so a new step in tokens.css lands automatically. */
 const byPrefix = (tokens, prefix) => tokens.filter((token) => token.name.startsWith(prefix));
@@ -234,8 +245,8 @@ export function buildGuidelineCards(tokens) {
   });
 
   /* -- The palette dial --------------------------------------------------
-     One scale, rendered once per palette per theme — every palette against
-     every theme.
+     One scale, rendered once per combination — every palette against every
+     theme.
 
      This needs no rendering engine and gets none. The blocks in palettes.css
      are bare `[data-palette]` / `[data-theme]` selectors, not `:root`-anchored
@@ -256,18 +267,47 @@ export function buildGuidelineCards(tokens) {
      above it — so a neutral swatch in the slate panel would show ember's grey
      under a slate label. The panel background is the only neutral here, and it
      sits at the ends of the ramp where the two palettes are indistinguishable.
-     Neutrals belong on the ink card, which is honest about being one set. */
-  const PALETTE_PANELS = [
-    { label: 'ember · light', attrs: '' },
-    { label: 'ember · dark', attrs: ' data-theme="dark"' },
-    { label: 'slate · light', attrs: ' data-palette="slate"' },
-    { label: 'slate · dark', attrs: ' data-palette="slate" data-theme="dark"' },
-    { label: 'miltinson · light', attrs: ' data-palette="miltinson"' },
-    {
-      label: 'miltinson · dark',
-      attrs: ' data-palette="miltinson" data-theme="dark"',
-    },
-  ];
+     Neutrals belong on the ink card, which is honest about being one set.
+
+     The panels are read off `COMBINATIONS`, never listed. A hand-written list
+     of four was the ink bug wearing the palette dial's clothes: a third
+     palette lands in palettes.css, `unreadableSelectors` and the contrast
+     sweep both pick it up, and the one card whose whole subject is the dial
+     goes on showing the two palettes someone typed here. The attributes are
+     read off `dialAttributeString` for the same reason and one more — it is
+     the only implementation of "an absent attribute IS the default", so the
+     panel that shows a consumer what to type cannot disagree with what the
+     bootstrap writes. */
+  const palettePanels = COMBINATIONS.map((combination) => {
+    const attrs = dialAttributeString(combination);
+    /* The label is the canonical `<palette>/<theme>` id plus the attributes
+       that select it, so the card doubles as the answer to "how do I get
+       this one" — and says so explicitly for the default, where the honest
+       answer is that you type nothing. */
+    return {
+      label: `${combination.id} — ${attrs || 'no attributes'}`,
+      attrs: attrs && ` ${attrs}`,
+    };
+  });
+
+  /* Loud for the same reason `byName` and `numericRamp` are. An empty roster
+     would render a card with an empty grid in it — the palette dial gone from
+     the guidelines, the file still written to disk, and nothing failing. */
+  if (palettePanels.length === 0) {
+    throw new Error(
+      'buildGuidelineCards: colors-palettes.html renders one panel per combination, ' +
+        'and COMBINATIONS from @elirobinson/tokens/dials is empty. Read the roster — ' +
+        'it is derived from PALETTES x THEMES in @elirobinson/tokens/contrast.',
+    );
+  }
+
+  /* One panel's height: the label, two rows of swatches, the panel's own
+     padding and the grid gap between panels. The height is derived from the
+     count rather than fixed, because the fixed `700x1240` this replaces was
+     sized for exactly four panels — a third palette would have rendered six
+     panels into a viewport tall enough for four and the pane would have
+     screenshotted the last two off the bottom, silently. */
+  const PALETTE_PANEL_HEIGHT = 310;
 
   const paletteScale =
     row(ramp('--signal-', 'colors-palettes.html')) +
@@ -291,17 +331,19 @@ export function buildGuidelineCards(tokens) {
     path: 'colors-palettes.html',
     html: card({
       group: 'Colors',
-      viewport: '700x1240',
+      viewport: `700x${palettePanels.length * PALETTE_PANEL_HEIGHT}`,
       name: 'Palettes',
       subtitle: 'The same signal ramp and brand semantics under each palette and theme',
       body:
         '<div style="display:grid;gap:16px">' +
-        PALETTE_PANELS.map(
-          ({ label, attrs }) =>
-            `<section${attrs} style="background:var(--bg);color:var(--fg);padding:14px 16px;` +
-            'border:1px solid var(--border);border-radius:var(--radius-md);display:grid;gap:10px">' +
-            `<span class="lbl">${label}</span>${paletteScale}</section>`,
-        ).join('') +
+        palettePanels
+          .map(
+            ({ label, attrs }) =>
+              `<section${attrs} style="background:var(--bg);color:var(--fg);padding:14px 16px;` +
+              'border:1px solid var(--border);border-radius:var(--radius-md);display:grid;gap:10px">' +
+              `<span class="lbl">${label}</span>${paletteScale}</section>`,
+          )
+          .join('') +
         '</div>',
     }),
   });

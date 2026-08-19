@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { run } from './run.mjs';
 
 const selfDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const { text, exitCode, warning } = run(process.argv.slice(2), { selfDir });
+const { text, exitCode, warning } = await run(process.argv.slice(2), { selfDir });
 
 // stderr, and never folded into `text`: this output gets piped and parsed, and
 // a caveat that corrupts the answer it is warning about helps nobody. The

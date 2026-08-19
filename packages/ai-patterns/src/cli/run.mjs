@@ -13,6 +13,7 @@ const HANDLERS = {
   list: (env) => commands.list(env),
   props: (env, args) => commands.props(env, args[0]),
   tokens: (env, args) => commands.tokens(env, args[0]),
+  dials: (env) => commands.dials(env),
   classes: (env, args) => commands.classes(env, args[0]),
   contracts: (env) => commands.contracts(env),
   patterns: (env) => commands.patterns(env),
@@ -69,8 +70,14 @@ export function installWarning(cwd) {
  * @param {string} [options.cwd] consumer repo root, for `init`
  * @param {string} [options.selfDir] this package's root, for shipped templates
  */
-export function run(argv, options = {}) {
-  const result = dispatch(argv, options);
+/* Async because two handlers are: `ds tokens` and `ds dials` read the installed
+   tokens package's own dial modules through a dynamic import (see `loadDials`),
+   which is what lets them report all four combinations without this package
+   depending on that one. Everything else here stays synchronous — `dispatch`
+   returns whatever the handler returned, and awaiting a plain object is a
+   no-op. */
+export async function run(argv, options = {}) {
+  const result = await dispatch(argv, options);
   const warning = installWarning(options.cwd ?? process.cwd());
 
   return warning ? { ...result, warning } : result;
