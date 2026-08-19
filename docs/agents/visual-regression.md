@@ -8,6 +8,40 @@ Do these in order. Most cases stop at step 2.
 
 ---
 
+## Where the suite runs, and how to get back to green
+
+| trigger                                       | job(s)                                                                  | what runs                                                                                               |
+| --------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| pull request opened, synced, or reopened      | `scoped`                                                                | only the shots the change could have altered, plus any shot that has no baseline yet                    |
+| `visual-accept` label added to a pull request | `scoped` — a fresh run, since adding the label is itself a trigger      | the same scoped comparison, then regenerates and commits exactly the shots that failed                  |
+| push to `main`                                | `full`, then `recover` if it goes red                                   | the full sweep, 501 tests                                                                               |
+| nightly, 06:00 UTC                            | `full`, then `recover` if it goes red                                   | the full sweep                                                                                          |
+| `workflow_dispatch`                           | `full` (`recover` only fires if the ref is `main` and the sweep failed) | the full sweep — this dispatch takes no `--grep` input; use `visual-update.yml` for a scoped manual run |
+
+Any other label added to a pull request also re-triggers `scoped` — GitHub's `labeled` event can't be filtered to one label name in the workflow's `on:` block, so the job itself checks `github.event.label.name == 'visual-accept'` and no-ops for anything else. Worth knowing before you debug it twice: **adding any label cancels whatever scoped run is already in flight**, because the workflow-level `concurrency` group is evaluated before the job's `if:` — a `wip` or `needs-triage` label restarts the run and then does nothing with it.
+
+**A new shot is minted automatically, on the pull request branch.** The `scoped` job runs `scripts/visual-missing.mjs`, and for anything with no baseline runs Playwright with `--update-snapshots=missing` and commits the result before the comparison even starts. This can only ever _create_ a baseline — Playwright's `missing` mode refuses to touch a shot that already has one — so it cannot launder a regression into an accepted baseline. A component-adding pull request no longer needs a manual `visual-update` dispatch for its new shots.
+
+**Overwriting an existing baseline needs the `visual-accept` label.** That separation is the whole point: minting is automatic and can only create, accepting is opt-in and can overwrite. Add the label and the workflow starts a new run on its own — there is no need to re-run the job by hand. On that run, `scoped` regenerates exactly the shots that failed (`scripts/visual-failures.mjs` reads them from `test-results/report.json`) and commits them as `test(visual): accept N baselines`.
+
+**A red sweep on `main` opens its own recovery, split across two jobs.** The Playwright container ships `git` but not the `gh` CLI, so `full` (inside the container) does the mechanical half — rerun with `--update-snapshots=changed` against just the failing shots, upload the result as an artifact — and a separate, container-less `recover` job downloads that artifact, commits it to a `visual/baselines-<short-sha>` branch, and opens the pull request and the tracking issue. The tracking issue is found by a dedicated `visual-baseline` label, not the general `visual` label — `visual` is also what a human would naturally put on issue #65 itself, and a collision there would mean the recovery path finds #65 forever and never opens a real issue. Merging the pull request closes the issue automatically, via a `Closes #<N>` line in its body.
+
+**If the regeneration changes nothing, that's a flake, not a regression.** `full` reruns the failing shots to regenerate them; if that rerun produces byte-identical output, nothing was actually wrong with the baseline — the failure was #65's flake reproducing itself. No pull request or issue opens for it. The job stays red, so the flake is still visible, and its summary points here — specifically at step 2 below ("run the identical commit twice"), which is the right procedure for exactly this shape of failure.
+
+**A `workflow_dispatch` red sweep off `main` doesn't open a recovery either** — `recover` only ever targets `main`, since that's the only branch its pull request could be based against. The job summary names the fix instead: `gh workflow run visual-update.yml --ref <branch> --field grep=<pattern>`.
+
+**A fork's pull request is refused before it runs anything.** `GITHUB_TOKEN` can't push to a fork's branch, so every mint, accept, and commit step in `scoped` would fail partway through. The job checks this first and fails fast with the same `visual-update.yml --ref ... --field grep=...` remedy.
+
+### Adding or removing a component fails every docs baseline, and that is correct
+
+`apps/docs/src/lib/site-map.ts` derives the sidebar — and the header nav, homepage cards, and command palette — from the generated component manifest, and the sidebar renders on every docs page. So **adding or removing a component changes every docs shot**: measured on PR #88, which added six components (ChatMessage, ChatThread, DecisionCard, StreamingCaret, StubCard, VerdictBadge), all 142 pre-existing docs-wide screenshots failed comparison, and zero stories did.
+
+This is why `scripts/visual-scope.mjs` treats an added or deleted component file — and an added or deleted docs page file, and any change to `site-map.ts`, `manifest.ts`, the `(docs)` layout, `SiteHeader`, or `site.css` — as a docs-wide event rather than narrowing to that component's own page. Narrowing there would produce a green pull request and 142 stale baselines on `main`. A _modified_ component file doesn't trigger this: the registry is unchanged, so the sidebar is unchanged, and narrowing to that component's own shots stays safe.
+
+Meeting 142 red docs pages on a component-adding branch is expected, not a break. Add `visual-accept`, review the images in the diff, done.
+
+---
+
 ## 1. Establish what kind of failure it is, by size
 
 Run `pnpm visual:diff` on the artifact Playwright uploaded:
@@ -154,4 +188,4 @@ Each of these was tried on #65 and made things worse or hid the problem:
 - **`pnpm test:visual` on the host is a pre-flight, not a check.** It cannot write baselines by design, so every comparison fails identically on a missing snapshot — which makes hangs and structural breakage stand out in about two minutes instead of forty.
 - **A full container regeneration is ~30 minutes.** Do not start one casually, and do not start one while someone else is committing rendering changes to the same checkout: #65 lost three runs to commits landing mid-flight. Record the SHA at start and compare it at finish.
 - **CI is ~8 minutes and runs the image natively.** For any question about determinism it is both faster and more trustworthy than the local container. Reach for a rerun before reaching for a regeneration.
-- **`visual.yml` is advisory** (`continue-on-error`), so a red visual job does not block anything while you work. Note that this also means the workflow run reports success — read the job, not the run.
+- **`visual.yml` reports honestly.** `scoped` and `full` each wrap only their comparison _step_ in `continue-on-error: true` — not the job — so a later step can still run after a red comparison: `scoped`'s accept-and-commit step, or `full`'s regenerate-and-upload step. `scoped` then fails itself outright via its "Report the failing shots" step's `exit 1` (skipped only when `visual-accept` regenerated something that made the job green); `full` has an explicit "Fail the job" step for the same purpose. A red job is a red job. Nothing on `main` is branch-protected, so this changes what you see, not what merges.
