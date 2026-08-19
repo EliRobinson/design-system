@@ -108,8 +108,10 @@ function idPrefix(id) {
 }
 
 /**
- * The story-id prefix for a `*.stories.tsx` file's base name, searching every
- * namespace present in `allStoryIds` rather than assuming `components-`.
+ * The story-id prefix(es) for a `*.stories.tsx` file's base name, searching
+ * every namespace present in `allStoryIds` rather than assuming
+ * `components-`. Returns an array — zero, one, or (in the cross-namespace
+ * collision case) more than one prefix.
  *
  * A story file's title is free text (`title: 'Patterns/Marketing'`) and is
  * not required to match its filename exactly — `MarketingPattern.stories.tsx`
@@ -121,15 +123,23 @@ function idPrefix(id) {
  * exactly matches a `components-buttongroup--*` segment, and must not lose to
  * `components-button--*`, whose segment is merely a *prefix* of `buttongroup`
  * and would otherwise win or lose depending on which id the shot list happens
- * to enumerate first. When no exact match exists, the longest prefix match
- * wins, for the same reason — a shorter sibling's segment being a prefix of
- * the real match must never decide the answer by enumeration order. Either
- * way the result is independent of `allStoryIds`' order.
+ * to enumerate first. When no exact match exists, the *longest* prefix match
+ * wins — tracked via a running max, not "first encountered" — for the same
+ * reason: a shorter sibling's segment being a prefix of the real match must
+ * never decide the answer by enumeration order.
+ *
+ * Two different namespaces can legitimately share a leaf segment (no such
+ * pair exists today, but nothing rules it out structurally). Picking only
+ * the first exact match would make THAT case order-dependent too, so every
+ * exact match is collected and returned — never just the first — which is
+ * also the safe direction: selecting one extra namespace's shots costs
+ * minutes, silently dropping one costs a stale baseline. Either way — exact
+ * or fallback — the result is independent of `allStoryIds`' order.
  */
 function findStoryPrefix(name, allStoryIds) {
   const lower = name.toLowerCase();
 
-  let exactId = null;
+  const exactIds = [];
   let bestPrefixId = null;
   let bestPrefixLength = -1;
 
@@ -146,11 +156,8 @@ function findStoryPrefix(name, allStoryIds) {
     }
 
     if (segment === lower) {
-      /* Exact match is the maximum possible prefix length too (a segment
-         cannot be a prefix of `lower` and longer than `lower`), so no later
-         id in the loop can outrank it — safe to stop here. */
-      exactId = id;
-      break;
+      exactIds.push(id);
+      continue;
     }
 
     if (lower.startsWith(segment) && segment.length > bestPrefixLength) {
@@ -159,11 +166,23 @@ function findStoryPrefix(name, allStoryIds) {
     }
   }
 
-  const winner = exactId ?? bestPrefixId;
-  return winner ? idPrefix(winner) : null;
+  if (exactIds.length > 0) {
+    return exactIds.map(idPrefix);
+  }
+
+  return bestPrefixId ? [idPrefix(bestPrefixId)] : [];
 }
 
-export function scopeFor({ changes, affectedProjects, shots }) {
+/**
+ * `affectedBy(paths)` asks nx which of docs/storybook depend on exactly
+ * `paths` — narrower than `affectedProjects`, which answers for the whole
+ * changeset and so cannot say whether THIS path is why a project was
+ * affected or whether some other path in the same diff is. Required, with
+ * no silent no-op default: a default returning `[]` would look identical to
+ * "nx confirmed neither" and this file has no way to tell the two apart,
+ * which is exactly the class of bug this parameter exists to prevent.
+ */
+export function scopeFor({ changes, affectedProjects, shots, affectedBy }) {
   const affected = new Set(affectedProjects);
   const forcedBySuiteConfig = touchesSuiteConfig(changes);
   const docsAffected = affected.has(DOCS_PROJECT) || forcedBySuiteConfig;
@@ -275,55 +294,60 @@ export function scopeFor({ changes, affectedProjects, shots }) {
     }
 
     /* Not even recognized as belonging to either app or a shared package —
-       e.g. pnpm-lock.yaml, package.json, nx.json, tsconfig.base.json. Nx may
-       still have marked docs and/or storybook affected by it (a lockfile
-       changes what every consumer resolves to); this file cannot know what
-       changed inside it, so it cannot narrow.
-
-       Widening happens for THIS file right here — same as the isShared arms
-       above — rather than being deferred to a check at the end of the whole
-       changeset. Deferring it was the bug: gating it on "patterns is still
-       empty" meant an unmapped file's necessary widening silently vanished
-       the moment any other file in the same changeset happened to map
-       narrowly (a lockfile bump alongside a one-line docs edit, say), even
-       though nx had marked the project affected independently of that other
-       file. Widening per file, not per changeset, is what keeps the answer
-       right regardless of what else is in the diff. */
+       e.g. pnpm-lock.yaml, package.json, nx.json, tsconfig.base.json,
+       .changeset/*.md, README.md, docs/**, CHANGELOG.md, .github/**,
+       .prettierrc, CLAUDE.md, design-system-docs/**. This set is far bigger
+       than "things that touch every consumer" — most of it has NO edge to
+       docs or storybook at all, and every package-changing PR carries a
+       .changeset/*.md by policy (quality.yml's "Require a changeset"
+       step), so assuming otherwise here would run the full suite on nearly
+       every real PR. This file has no way to tell, from the aggregate
+       `affectedProjects` alone, whether nx marked a project affected
+       because of THIS path or because of some other path in the same diff —
+       so it must not guess. Only the path is recorded here; whether it
+       widens anything is answered once, after the loop, by asking nx about
+       these specific paths. */
     if (!inStorybookOrShared && !inDocsOrShared) {
       unmapped.push(change.path);
-
-      if (storybookNarrowable) {
-        storybookNarrowable = false;
-        for (const id of allStoryIds) {
-          patterns.add(idPrefix(id));
-        }
-        reasons.push(
-          `${change.path} cannot be mapped to any story or route, so every storybook shot runs`,
-        );
-      }
-
-      if (docsNarrowable) {
-        docsNarrowable = false;
-        for (const route of allRoutes) {
-          patterns.add(routePattern(route));
-        }
-        reasons.push(
-          `${change.path} cannot be mapped to any story or route, so every docs shot runs`,
-        );
-      }
     }
   }
 
-  /* Backstop only: with widening now happening per file above, this should be
-     unreachable whenever an affected project's shot set is non-empty. Left in
-     place for the degenerate edge case of an affected project with zero shots
-     of its own in `shots` (nothing to widen to), so an unmapped change still
-     surfaces its reason rather than falling through to the generic message
-     below with no explanation. */
-  if (patterns.size === 0 && unmapped.length > 0) {
-    reasons.push(
-      `${unmapped.join(', ')} cannot be mapped to any story or route, so every shot of the affected project(s) runs`,
-    );
+  /* Resolved once per changeset, not per file, and only for paths this file
+     truly could not classify — asking nx `--files=<these paths>` is the only
+     way to know whether THEY are why a project is affected, as opposed to
+     some other, already-classified path in the same diff. Skipped entirely
+     when there's nothing left that could still widen, so a changeset with no
+     unmapped paths (the common case) never pays for the extra nx call. */
+  if (unmapped.length > 0 && (storybookNarrowable || docsNarrowable)) {
+    if (typeof affectedBy !== 'function') {
+      throw new Error(
+        'visual-scope: affectedBy(paths) is required when the changeset contains files this module ' +
+          `cannot map to a story or route (${unmapped.join(', ')}). Refusing to guess whether nx has ` +
+          'an edge to them — that guess is exactly what ran the full suite on nearly every PR before.',
+      );
+    }
+
+    const unmappedAffected = new Set(affectedBy(unmapped));
+
+    if (unmappedAffected.has(STORYBOOK_PROJECT) && storybookNarrowable) {
+      storybookNarrowable = false;
+      for (const id of allStoryIds) {
+        patterns.add(idPrefix(id));
+      }
+      reasons.push(
+        `${unmapped.join(', ')} cannot be mapped to any story or route, and nx confirms storybook depends on them, so every storybook shot runs`,
+      );
+    }
+
+    if (unmappedAffected.has(DOCS_PROJECT) && docsNarrowable) {
+      docsNarrowable = false;
+      for (const route of allRoutes) {
+        patterns.add(routePattern(route));
+      }
+      reasons.push(
+        `${unmapped.join(', ')} cannot be mapped to any story or route, and nx confirms docs depends on them, so every docs shot runs`,
+      );
+    }
   }
 
   if (patterns.size === 0) {
@@ -388,8 +412,8 @@ export function scopeFor({ changes, affectedProjects, shots }) {
   }
 
   function addStories({ name, patterns: out, allStoryIds: ids, status }) {
-    const prefix = findStoryPrefix(name, ids);
-    if (!prefix) {
+    const prefixes = findStoryPrefix(name, ids);
+    if (prefixes.length === 0) {
       /* A deleted story file naturally matches no id in the post-change
          enumeration — that is the deletion working as intended, not drift. */
       if (status === 'D') {
@@ -400,7 +424,9 @@ export function scopeFor({ changes, affectedProjects, shots }) {
           "The file's title has drifted from its filename.",
       );
     }
-    out.add(prefix);
+    for (const prefix of prefixes) {
+      out.add(prefix);
+    }
   }
 
   function addRoute({ segment, patterns: out, allRoutes: routes, source, status }) {
@@ -474,6 +500,26 @@ export function affectedProjects(base, { cwd = process.cwd() } = {}) {
   return JSON.parse(stdout.trim());
 }
 
+/**
+ * `scopeFor`'s `affectedBy`: the projects nx reports affected by exactly
+ * `paths`, not by the whole diff. Same invocation shape as `affectedProjects`
+ * above, `--files=` in place of `--base=`. Only called by `scopeFor` when the
+ * changeset has at least one path it could not classify itself — one extra
+ * `nx show projects` call, paid only then, never on an ordinary PR that maps
+ * cleanly.
+ */
+export function affectedByPaths(paths, { cwd = process.cwd() } = {}) {
+  const stdout = execFileSync(
+    'pnpm',
+    ['exec', 'nx', 'show', 'projects', '--affected', `--files=${paths.join(',')}`],
+    {
+      cwd,
+      encoding: 'utf8',
+    },
+  );
+  return JSON.parse(stdout.trim());
+}
+
 /** The files changed between `base` and HEAD, as statuses and paths. */
 export function changedFiles(base, { cwd = process.cwd() } = {}) {
   const stdout = execFileSync('git', ['diff', '--name-status', `${base}...HEAD`], {
@@ -525,6 +571,7 @@ if (isEntrypoint) {
     changes: changedFiles(base),
     affectedProjects: affectedProjects(base),
     shots: listShots(),
+    affectedBy: (paths) => affectedByPaths(paths, { cwd: process.cwd() }),
   });
 
   process.stdout.write(JSON.stringify(plan));

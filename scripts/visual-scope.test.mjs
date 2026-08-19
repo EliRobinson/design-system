@@ -4,7 +4,7 @@
 // widens when it must — above all the sidebar fan-out, which is why PR #88's
 // 142 docs pages legitimately changed.
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { parseNameStatus, resolveBaseArg, scopeFor } from './visual-scope.mjs';
 
@@ -23,7 +23,37 @@ const shots = [
 
 const BOTH = ['docs', 'storybook', 'react'];
 
-const plan = (changes, affectedProjects = BOTH) => scopeFor({ changes, affectedProjects, shots });
+/* Every test below that reaches an unmapped path (pnpm-lock.yaml and
+   friends) needs SOME affectedBy stub, since scopeFor now refuses to guess.
+   Defaulting `plan()`'s stub to "nx confirms both" keeps every pre-existing
+   test's expectations (full widening) intact without threading a stub
+   through each call; tests that need a specific, asserted-on affectedBy
+   behaviour (the N3 tests below) call scopeFor directly with their own
+   vi.fn(). */
+const affectsBoth = () => ['docs', 'storybook'];
+
+const plan = (changes, affectedProjects = BOTH, affectedBy = affectsBoth) =>
+  scopeFor({ changes, affectedProjects, shots, affectedBy });
+
+/* Shared by both the round-2 per-file-widening tests and the round-3
+   affectedBy tests below — "every story prefix and every route in the base
+   fixture is present." */
+const fullStoryPrefixes = [
+  'components-button--',
+  'components-badge--',
+  'components-verdictbadge--',
+];
+const fullRoutePatterns = ['/components/button · ', '/components/badge · ', '/patterns/forms · '];
+
+function expectFullyWidened(result) {
+  expect(result.run).toBe(true);
+  for (const prefix of fullStoryPrefixes) {
+    expect(result.grep).toContain(prefix);
+  }
+  for (const pattern of fullRoutePatterns) {
+    expect(result.grep).toContain(pattern);
+  }
+}
 
 describe('layer 1: nx decides whether anything runs', () => {
   it('skips entirely when neither docs nor storybook is affected', () => {
@@ -196,6 +226,55 @@ describe('layer 2: narrowing', () => {
     expect(b.grep).not.toContain('components-button--primary');
   });
 
+  it('prefers the longest prefix match when there is no exact match, regardless of enumeration order', () => {
+    /* Mutation testing showed reverting "longest wins" to "first encountered"
+       killed no test — this pins it. 'buttongroupextra' has no exact id, but
+       is a prefix-match candidate for BOTH 'button' (len 6) and 'buttongroup'
+       (len 11); the longer one must win, in either order. */
+    const idsButtonFirst = [
+      { project: 'storybook-wide', storyId: 'components-button--primary', route: null },
+      { project: 'storybook-wide', storyId: 'components-buttongroup--default', route: null },
+    ];
+    const idsGroupFirst = [
+      { project: 'storybook-wide', storyId: 'components-buttongroup--default', route: null },
+      { project: 'storybook-wide', storyId: 'components-button--primary', route: null },
+    ];
+    const changes = [
+      { status: 'M', path: 'apps/storybook/src/stories/ButtonGroupExtra.stories.tsx' },
+    ];
+
+    const a = scopeFor({ changes, affectedProjects: BOTH, shots: idsButtonFirst });
+    const b = scopeFor({ changes, affectedProjects: BOTH, shots: idsGroupFirst });
+
+    expect(a.grep).toBe('components-buttongroup--');
+    expect(b.grep).toBe('components-buttongroup--');
+  });
+
+  it('returns every exact match across namespaces, not just the first, regardless of enumeration order', () => {
+    /* Latent: no two namespaces share a leaf segment in this repo today, but
+       nothing rules it out structurally, and picking only the first exact
+       match would make that case order-dependent — the same class of bug as
+       the prefix case, just at the exact-match tier. The safe resolution is
+       to select every exact match rather than pick one. */
+    const idsComponentsFirst = [
+      { project: 'storybook-wide', storyId: 'components-button--primary', route: null },
+      { project: 'storybook-wide', storyId: 'patterns-button--hero', route: null },
+    ];
+    const idsPatternsFirst = [
+      { project: 'storybook-wide', storyId: 'patterns-button--hero', route: null },
+      { project: 'storybook-wide', storyId: 'components-button--primary', route: null },
+    ];
+    const changes = [{ status: 'M', path: 'apps/storybook/src/stories/Button.stories.tsx' }];
+
+    const a = scopeFor({ changes, affectedProjects: BOTH, shots: idsComponentsFirst });
+    const b = scopeFor({ changes, affectedProjects: BOTH, shots: idsPatternsFirst });
+
+    for (const result of [a, b]) {
+      expect(result.grep).toContain('components-button--');
+      expect(result.grep).toContain('patterns-button--');
+    }
+  });
+
   it('maps a docs page to its own route', () => {
     const result = plan([
       { status: 'M', path: 'apps/docs/src/app/(docs)/patterns/forms/page.mdx' },
@@ -234,22 +313,25 @@ describe('the unnarrowable fallback is the project, never the world', () => {
     expect(result.grep).toContain('components-badge--');
   });
 
-  it('runs everything nx marked affected for a change this file cannot classify at all', () => {
+  it('runs everything nx marked affected for a change this file cannot classify at all, when affectedBy confirms it (case A)', () => {
     /* nx show projects --affected --files=pnpm-lock.yaml returns docs and
        storybook among its affected projects — verified against this repo.
        pnpm-lock.yaml matches none of COMPONENT_FILE/STORY_FILE/DOCS_PAGE/
        DEMO_FILE, is not under apps/storybook or apps/docs, and is not under
-       packages/ — so the *only* correct behaviour is to widen to both
-       projects' full sets, never to fall through to run:false while nx says
-       otherwise. Same failure mode for package.json, nx.json,
-       tsconfig.base.json, types/global.d.ts. */
-    const result = plan([{ status: 'M', path: 'pnpm-lock.yaml' }]);
-    expect(result.run).toBe(true);
-    expect(result.grep).toContain('components-button--');
-    expect(result.grep).toContain('components-badge--');
-    expect(result.grep).toContain('/components/button · ');
-    expect(result.grep).toContain('/components/badge · ');
-    expect(result.grep).toContain('/patterns/forms · ');
+       packages/ — so the *only* correct behaviour, once affectedBy confirms
+       nx has an edge to it specifically, is to widen to both projects' full
+       sets. Same failure mode for package.json, nx.json, tsconfig.base.json,
+       types/global.d.ts. */
+    const affectedByStub = vi.fn(() => ['docs', 'storybook']);
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'pnpm-lock.yaml' }],
+      affectedProjects: BOTH,
+      shots,
+      affectedBy: affectedByStub,
+    });
+    expectFullyWidened(result);
+    expect(affectedByStub).toHaveBeenCalledTimes(1);
+    expect(affectedByStub).toHaveBeenCalledWith(['pnpm-lock.yaml']);
   });
 });
 
@@ -259,24 +341,10 @@ describe('widening for an unmapped file is per file, not per changeset', () => {
      because the old fallback only fired when the whole changeset's patterns
      were still empty. nx said both projects were affected independently of
      what else was in the diff; the second file mapping narrowly must not
-     take that back. */
-  const fullStoryPrefixes = [
-    'components-button--',
-    'components-badge--',
-    'components-verdictbadge--',
-  ];
-  const fullRoutePatterns = ['/components/button · ', '/components/badge · ', '/patterns/forms · '];
-
-  function expectFullyWidened(result) {
-    expect(result.run).toBe(true);
-    for (const prefix of fullStoryPrefixes) {
-      expect(result.grep).toContain(prefix);
-    }
-    for (const pattern of fullRoutePatterns) {
-      expect(result.grep).toContain(pattern);
-    }
-  }
-
+     take that back. All these use the default affectsBoth stub via plan(),
+     since they're about per-file vs. per-changeset widening, not about what
+     affectedBy itself reports — that's covered in the affectedBy describe
+     block below. */
   it('case B: an unmapped file alongside a file under apps/docs still widens storybook fully', () => {
     const result = plan([
       { status: 'M', path: 'pnpm-lock.yaml' },
@@ -307,6 +375,90 @@ describe('widening for an unmapped file is per file, not per changeset', () => {
       { status: 'M', path: 'pnpm-lock.yaml' },
     ]);
     expectFullyWidened(result);
+  });
+});
+
+describe('affectedBy governs whether an unmapped file actually widens anything', () => {
+  /* The N3 regression: a blanket "nx marked some project affected, widen for
+     every unmapped file" rule fires on nearly every real PR, because
+     .changeset/*.md, README.md, docs/**, and friends are unmapped but have
+     NO edge to docs or storybook — and every package-changing PR carries a
+     .changeset/*.md by policy. affectedBy asks nx about the unmapped paths
+     specifically, and only what it confirms gets widened. */
+
+  it('does not call affectedBy at all when every path in the changeset maps', () => {
+    const affectedByStub = vi.fn(() => ['docs', 'storybook']);
+    scopeFor({
+      changes: [{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }],
+      affectedProjects: BOTH,
+      shots,
+      affectedBy: affectedByStub,
+    });
+    expect(affectedByStub).not.toHaveBeenCalled();
+  });
+
+  it('stays narrow when affectedBy says the unmapped file affects neither project (the .changeset regression)', () => {
+    /* Exactly the measured regression: a component edit narrows fine on its
+       own, but a .changeset/*.md file — required by policy on every
+       package-changing PR — used to force a full 492-shot run alongside it.
+       nx has no edge from docs or storybook to a changeset file, so
+       affectedBy reports []. */
+    const affectedByStub = vi.fn(() => []);
+    const result = scopeFor({
+      changes: [
+        { status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' },
+        { status: 'A', path: '.changeset/x.md' },
+      ],
+      affectedProjects: BOTH,
+      shots,
+      affectedBy: affectedByStub,
+    });
+    expect(result.grep).toBe('components-button--|/components/button · ');
+    expect(affectedByStub).toHaveBeenCalledTimes(1);
+    expect(affectedByStub).toHaveBeenCalledWith(['.changeset/x.md']);
+  });
+
+  it('widens both sides fully when affectedBy confirms both, even though another file already mapped narrowly (case C, re-asserted)', () => {
+    const affectedByStub = vi.fn(() => ['docs', 'storybook', 'react']);
+    const result = scopeFor({
+      changes: [
+        { status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' },
+        { status: 'M', path: 'pnpm-lock.yaml' },
+      ],
+      affectedProjects: BOTH,
+      shots,
+      affectedBy: affectedByStub,
+    });
+    expectFullyWidened(result);
+    expect(affectedByStub).toHaveBeenCalledTimes(1);
+    expect(affectedByStub).toHaveBeenCalledWith(['pnpm-lock.yaml']);
+  });
+
+  it('widens only the side affectedBy actually reports', () => {
+    const affectedByStub = vi.fn(() => ['docs']);
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'pnpm-lock.yaml' }],
+      affectedProjects: BOTH,
+      shots,
+      affectedBy: affectedByStub,
+    });
+    expect(result.run).toBe(true);
+    for (const pattern of fullRoutePatterns) {
+      expect(result.grep).toContain(pattern);
+    }
+    for (const prefix of fullStoryPrefixes) {
+      expect(result.grep).not.toContain(prefix);
+    }
+  });
+
+  it('throws rather than guessing when affectedBy is required but missing', () => {
+    expect(() =>
+      scopeFor({
+        changes: [{ status: 'M', path: 'pnpm-lock.yaml' }],
+        affectedProjects: BOTH,
+        shots,
+      }),
+    ).toThrow(/affectedBy/);
   });
 });
 
