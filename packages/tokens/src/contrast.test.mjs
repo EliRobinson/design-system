@@ -211,10 +211,24 @@ describe('--accent-ink is the amber you can read', () => {
 });
 
 describe('control edges are separable from decorative ones', () => {
+  /* A control goes everywhere body text goes — an input in a zebra row, a
+     switch on a nested card, a chip in an inset well — so the edge is measured
+     on every neutral surface, the way status text is. Clearing 3:1 against
+     --bg says nothing about --surface-3, which is the darkest ground a light
+     theme paints a control on: --border-control lands at 3.26:1 there, its
+     narrowest margin in either theme. */
+  const SURFACES = ['--bg', '--bg-subtle', '--bg-muted', '--surface', '--surface-2', '--surface-3'];
+
   for (const theme of THEMES) {
-    it(`${theme}: --border-control clears 3:1 where --border does not`, () => {
-      expect(ratio(theme, '--border-control', '--bg')).toBeGreaterThanOrEqual(3);
-      expect(ratio(theme, '--border-control', '--surface')).toBeGreaterThanOrEqual(3);
+    for (const surface of SURFACES) {
+      it(`${theme}: --border-control on ${surface} >= 3:1`, () => {
+        expect(Number(ratio(theme, '--border-control', surface).toFixed(2))).toBeGreaterThanOrEqual(
+          3,
+        );
+      });
+    }
+
+    it(`${theme}: the decorative pair stays below 3:1, which is why both exist`, () => {
       expect(ratio(theme, '--border', '--bg')).toBeLessThan(3);
       expect(ratio(theme, '--border-strong', '--bg')).toBeLessThan(3);
     });

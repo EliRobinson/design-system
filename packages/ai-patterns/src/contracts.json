@@ -40,6 +40,11 @@
       "check": "No rule that paints a control's own filled surface also declares text-decoration: underline (or its longhand) on that control.",
       "verifiedBy": "@elirobinson/eslint-config/css → @elirobinson-css/no-underlined-control-label, for a consumer's own stylesheets. Inside @elirobinson/react the same property is pinned twice: component-css.test.mjs sweeps every component stylesheet for an underline, and control-affordance.test.mjs resolves the real cascade over tokens.css + the component sheets and asserts the winning declaration is not one."
     },
+    "control-edge-contrast": {
+      "summary": "A control's edge comes from --border-control, not --border or --border-strong. The decorative pair measures 1.24:1 and 1.53:1 against --bg and is for surface seams — card edges, table rules, dividers, the edge of a floating panel — where nothing depends on seeing the line. --border-control is 3.64:1 light and 3.95:1 dark, the 3:1 SC 1.4.11 asks of the boundary that tells a user where an input, switch, chip, slider, stepper or segmented control is. Both tokens measure correctly on their own, so a per-token contrast sweep cannot see the mistake; it is a component reaching for the wrong one.",
+      "check": "No rule whose selector names a control paints a border (border, border-color, or any side/logical longhand) with var(--border) or var(--border-strong). The test: if the border were invisible, would the user lose the control?",
+      "verifiedBy": "@elirobinson/eslint-config/css → @elirobinson-css/no-decorative-control-edge, for a consumer's own stylesheets. Inside the system the same property is pinned twice: component-css.test.mjs sweeps every component stylesheet for a decorative token on a control edge, and packages/tokens' contrast.test.mjs re-measures --border-control against every neutral surface in both themes."
+    },
     "forward-ref": {
       "summary": "Every component that renders a focusable or interactive native element uses forwardRef, forwarding to the outermost interactive element the component owns.",
       "check": "The component is wrapped in React.forwardRef and the forwarded ref resolves to the interactive DOM node (or a documented handle, e.g. VirtualListHandle).",

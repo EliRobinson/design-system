@@ -42,6 +42,9 @@ SC 1.4.1 is separate from contrast and a passing ratio does not satisfy it. `Rat
 - `--border` (1.24:1) and `--border-strong` (1.53:1) are **decorative**. They separate one surface from another — card seams, table rules, dividers, the edge of a floating panel — where nothing depends on seeing the line.
 - `--border-control` (3.64:1 light, 3.95:1 dark) is for a **control boundary**: the edge that tells a user where an input, toggle, chip, or segmented control is. That edge is a meaningful non-text graphic under SC 1.4.11.
 - The test: if the border were invisible, would the user lose the control? Then it is `--border-control`.
+- The figures above are against `--bg`, and a control is not only drawn there. `contrast.test.mjs` measures `--border-control` on all five neutral surfaces in both themes; the narrowest is `--surface-3` in light at **3.26:1**, so there is roughly a quarter of a point of headroom and no room to dim the token.
+
+Two layers enforce this, and neither is prose. `component-css.test.mjs` sweeps every component stylesheet here, with a named-exemption list for the selectors that read as controls and are not (`.ds-dropdown__content` and friends). Consumers get the same constraint as `@elirobinson-css/no-decorative-control-edge` from `@elirobinson/eslint-config/css`, and as the `control-edge-contrast` entry in `@elirobinson/ai-patterns/contracts`.
 
 Same split on text: `--fg-4` (2.67:1) is a decorative, non-informational grey — a dimmed comparison series, a placeholder glyph. Text a user has to read uses `--fg-disabled` (4.85:1 light, 7.87:1 dark), including inside a disabled control.
 
