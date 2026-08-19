@@ -67,17 +67,38 @@
    pinned @fontsource-variable packages; importing this file is enough to load
    the faces from your own origin. No request leaves the page.
 
-   FIRST of the three imports, and it has to stay first. A bundler inlines an
-   @import in place rather than leaving it as a nested import, so with
-   palettes.css and mobile.css above it, real rules end up ahead of this line
-   in the flattened output — and an `@import` after a rule is invalid, so it
-   is discarded along with every @font-face it would have brought in. That is
-   silent under `next build` (a warning, no error) and a 500 under `next dev`.
-   The file is valid standalone either way, which is why nothing here caught
-   it; import-order.test.mjs flattens the imports and asserts the invariant
-   the bundler actually enforces. fonts.css declares nothing but @font-face,
-   so hoisting it moves no declaration relative to any other. */
-@import url('./fonts.css');
+   THE STRING FORM IS LOAD-BEARING. Not `url('./fonts.css')` — the bare
+   string. Lightning CSS, which is Turbopack's CSS pipeline, INLINES the bare
+   form (`at-import './x.css';`) and leaves the url() form
+   (`at-import url('./x.css');`) standing as a literal @import in its output.
+   Nothing else about the two spellings
+   differs, and that one difference is issue #76: a surviving @import is then
+   subject to the rule that an @import may not follow a rule, and a consumer's
+   entry stylesheet always has rules ahead of this file —
+
+     at-import 'tailwindcss'    <- v4 requires it first; it inlines its rules
+     at-import '@elirobinson/tokens/tokens.css'
+
+   — so the fonts import is stranded, dropped as invalid, and every @font-face
+   goes with it. Measured in a Next 16.3.1 + Tailwind v4.3.3 consumer: 0
+   @font-face rules in the built stylesheet with `url()`, 22 without it. It is
+   silent, too. `next build` prints the warning to stderr and exits 0; only
+   `next dev` fails loudly, with a 500. The two forms are interchangeable in
+   every other respect, which is why this survived review for four releases.
+
+   Being FIRST of the three imports is a SEPARATE, WEAKER invariant, and it is
+   deliberately kept rather than relied on. It is not what fixes #76 — the
+   string form alone fixes it with this import back below palettes.css, and
+   this position alone does not fix it with `url()` restored; both were
+   isolated against each other in that consumer. What the ordering buys is
+   defence in depth if some future bundler stops inlining the string form too,
+   at the cost of nothing: fonts.css declares nothing but @font-face, so
+   hoisting it moves no declaration relative to any other.
+
+   import-order.test.mjs asserts both, and is explicit about which one would
+   have caught the bug. Note that the file is valid standalone under either
+   spelling and in any order, which is why nothing in this package noticed. */
+@import './fonts.css';
 
 /* --- The two sibling stylesheets -----------------------------------------
    Declaration order, not cascade layers — the section at the top of the file

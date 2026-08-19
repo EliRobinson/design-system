@@ -1,19 +1,32 @@
-/* The invariant a bundler enforces and a standalone CSS file does not.
+/* Two invariants a bundler enforces and a standalone CSS file does not. Both
+ * are issue #76, and the second one is not the one that actually bit.
  *
- * tokens.css is valid on its own with its three @imports in any order, because
- * they are adjacent — nothing separates them from the top of the file. A
- * bundler does not see it that way. webpack, Turbopack, Vite and postcss-import
- * all INLINE an @import at its own position, so once palettes.css and
- * mobile.css have been substituted in, whatever import came after them is
- * preceded by several hundred real rules. `@import` is only valid before any
- * rule, so the parser drops it — and with it, when the dropped import is
- * fonts.css, every @font-face in the package. `next dev` 500s; `next build`
- * warns once and ships a page with no webfonts. Issue #76.
+ * 1. THE SPECIFIER FORM — this is the fix. Lightning CSS, which is Turbopack's
+ *    CSS pipeline, inlines `@import './x.css';` and leaves
+ *    `@import url('./x.css');` standing as a literal @import in its output.
+ *    That asymmetry is the whole bug. In a consumer's entry stylesheet
+ *    `@import 'tailwindcss'` comes first — v4 requires it, and
+ *    docs/agents/consumer-tooling.md documents exactly that order — so
+ *    Tailwind's rules are inlined ahead of tokens.css and a surviving `url()`
+ *    import is stranded after real rules however early it sits WITHIN
+ *    tokens.css. It is then invalid, dropped, and every @font-face goes with
+ *    it: 0 in the built stylesheet, measured. Silent, too — `next build`
+ *    prints the warning to stderr and exits 0. `next dev` 500s.
  *
- * So the test flattens the file the way a bundler would and asserts the thing
- * the flattened form has to satisfy: no @import after the first real rule.
- * Reordering the three imports in tokens.css is enough to break it again, and
- * that is exactly the edit this guards.
+ *    Isolated against the hoist below in a real Next 16.3.1 + Tailwind v4.3.3
+ *    consumer: the string form passes with the hoist reverted, and the hoist
+ *    fails with `url()` kept. The string form is necessary AND sufficient.
+ *
+ * 2. THE ORDERING. tokens.css is valid standalone with its three @imports in
+ *    any order — they are adjacent, nothing separates them from the top of the
+ *    file — but once palettes.css and mobile.css are inlined, an import that
+ *    came after them is preceded by several hundred real rules. Kept and
+ *    asserted because it is correct on its own terms and because it is what
+ *    saves us if a bundler ever stops inlining the string form too.
+ *
+ * Assertion 1 is the one that would have caught the shipped bug. Assertion 2
+ * passes on a tree that is still broken for consumers, which is precisely why
+ * it is not allowed to stand alone.
  */
 
 import { readFileSync } from 'node:fs';
@@ -29,6 +42,11 @@ const read = (name) => readFileSync(join(srcDir, name), 'utf8');
    into the real file — and so a `{` or the word `@import` written inside one of
    this stylesheet's long prose comments is not mistaken for code. */
 const maskComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+
+/* Every stylesheet this package publishes that could carry a local @import.
+   fonts.css is generated and imports nothing today, but it ships, so it is
+   swept too — a generator change that started emitting one would be caught. */
+const SHIPPED_STYLESHEETS = ['tokens.css', 'palettes.css', 'mobile.css', 'fonts.css'];
 
 /** `@import './x.css';` and `@import url('./x.css');`, both spellings. */
 const IMPORT = /@import\s+(?:url\(\s*)?['"]([^'"]+)['"]\s*\)?\s*;/g;
@@ -75,6 +93,35 @@ describe('tokens.css survives being flattened by a bundler', () => {
       'an @import that follows a rule is invalid CSS and is silently discarded, ' +
         'taking every @font-face it would have loaded with it — see issue #76',
     ).toEqual([]);
+  });
+
+  it('uses the string form for every local @import, never url()', () => {
+    /* THE assertion — the one that fails on the version of this branch that
+       only hoisted the import. `@import url('./fonts.css')` survives Lightning
+       CSS as a literal @import; `@import './fonts.css'` is inlined and ceases
+       to exist. Only the second can be stranded-proof, because a consumer's
+       entry stylesheet puts `@import 'tailwindcss'` ahead of tokens.css and no
+       position inside this file escapes that.
+
+       Swept across every stylesheet the package ships rather than tokens.css
+       alone: the same edit in palettes.css or mobile.css would fail the same
+       way in a consumer and nothing else in the suite would notice. Remote
+       imports are exempt — this is about local files a bundler inlines. */
+    for (const name of SHIPPED_STYLESHEETS) {
+      const urlImports = [
+        ...maskComments(read(name)).matchAll(/@import\s+url\(\s*['"]([^'"]+)['"]/g),
+      ]
+        .map((match) => match[1])
+        .filter((specifier) => !/^https?:/.test(specifier));
+
+      expect(
+        urlImports,
+        `${name} imports these with url(), which Lightning CSS leaves as a ` +
+          'literal @import instead of inlining. It is then stranded after the ' +
+          "consumer's Tailwind rules, dropped as invalid, and every @font-face " +
+          'goes with it. Use the bare string form — see issue #76.',
+      ).toEqual([]);
+    }
   });
 
   it('precedes its own imports with nothing but layer statements', () => {

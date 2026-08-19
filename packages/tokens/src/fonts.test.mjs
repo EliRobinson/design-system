@@ -50,7 +50,15 @@ describe('tokens.css loads fonts from the package, not a third party', () => {
   });
 
   it('imports ./fonts.css relatively, so every consumer of the file resolves it', () => {
-    expect(withoutComments(tokensCss)).toMatch(/@import\s+url\(\s*'\.\/fonts\.css'\s*\)\s*;/);
+    /* Relative, and in the BARE STRING form rather than url(). This assertion
+       pinned the url() spelling for four releases, which is part of why issue
+       #76 survived review: Lightning CSS inlines the bare form and leaves the
+       url() form standing as a literal @import, which a consumer's Tailwind
+       import then strands after real rules — dropping it, and every @font-face
+       with it. import-order.test.mjs owns that invariant across every shipped
+       stylesheet; this keeps the narrower fact that tokens.css reaches the
+       faces through a relative sibling path at all. */
+    expect(withoutComments(tokensCss)).toMatch(/@import\s+'\.\/fonts\.css'\s*;/);
   });
 });
 
