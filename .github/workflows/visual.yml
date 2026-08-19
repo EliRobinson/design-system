@@ -96,6 +96,170 @@ jobs:
       - id: resolve
         run: echo "ref=$(node scripts/visual-container.mjs --print-image)" >> "$GITHUB_OUTPUT"
 
+  # Both apps, built once for the whole run, plus the matrix the sweep fans out
+  # across.
+  #
+  # Every job below needs Storybook's index.json and the docs prerender
+  # manifest before Playwright can collect a single test — the specs enumerate
+  # from them. Building that in each job would spend ~27s of the critical path
+  # and ~2.5 machine-minutes per run re-deriving byte-identical output, so it
+  # happens here and travels as an artifact instead.
+  #
+  # In the container, like the jobs that consume it: the image ships the Node
+  # matched to its Playwright, and a docs site built on a different Node is not
+  # obviously the same bytes. Cheap to keep identical, expensive to debug if it
+  # ever is not.
+  build:
+    needs: image
+    # Not on pull_request, and that is what keeps "built at most once per run"
+    # true without putting a second job in front of the check people actually
+    # sit and wait for. The two paths through this workflow never overlap: a
+    # pull request runs `scoped` alone, which builds in its own job because it
+    # is the only consumer and waiting on this one would only add a whole job's
+    # container start and install to its critical path; every other event runs
+    # the `sweep` matrix, where several jobs share this one build. Either way
+    # exactly one build happens, and both paths restore the same Nx cache.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: ${{ needs.image.outputs.ref }}
+      options: --shm-size=1g
+    outputs:
+      matrix: ${{ steps.matrix.outputs.include }}
+    env:
+      HUSKY: 0
+      STORYBOOK_DISABLE_TELEMETRY: 1
+    steps:
+      - uses: actions/checkout@v7
+      # Same reason as `scoped`'s copy of this step, and needed earlier here
+      # than anywhere else: Nx shells out to git to hash the workspace for its
+      # own cache, so the very first `nx` invocation fails on a working copy
+      # git considers dubiously owned.
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Set up pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+      - name: Locate the pnpm store
+        id: pnpm_store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+      - run: pnpm install --frozen-lockfile
+
+      # The layer above the pnpm store, and until now the one nothing cached.
+      # `.nx/cache` is gitignored and was never restored by any workflow, so
+      # Nx recomputed both builds from cold on every run — a docs-only pull
+      # request still rebuilt Storybook from scratch.
+      #
+      # Keyed per commit rather than on a stable prefix, deliberately: a cache
+      # entry is write-once in GitHub Actions, so a stable key would freeze the
+      # very first run's cache and never pick up anything built after it. The
+      # `restore-keys` prefixes are what actually deliver the hit — the newest
+      # entry matching the prefix — and Nx re-derives its own content hashes
+      # from the restored cache, so a partial or stale hit degrades to a
+      # rebuild rather than to wrong output.
+      #
+      # An actions/cache step is the smallest part of making this work. Two
+      # other things had to be true, and each failed silently on its own — a
+      # green run with a cache that did nothing:
+      #
+      #   1. Nx caching is opt-in per target, and nothing here had ever set
+      #      `cache: true`, so `.nx/cache` was never WRITTEN. The step restored
+      #      nothing, saved nothing and cost 0s while looking like a working
+      #      cache. `nx.json` now sets it on the `build` targetDefault.
+      #      Measured: `pretest:visual` 14.4s cold, 0.9s replayed.
+      #   2. The artifacts alone are unusable without their metadata — see the
+      #      note on `path:` below.
+      #
+      # Both were caught only by reading step durations on a real run. Neither
+      # would ever have failed a check.
+      #
+      # Enabling it is only safe because every `build` target declares outputs
+      # its command actually writes. Audited all seven before turning it on:
+      # docs writes `.next` and storybook `storybook-static` (the latter fixed
+      # in 7e1947a — before that it inherited `{projectRoot}/dist`, a path the
+      # build never writes, so a cache hit would have skipped the build while
+      # restoring nothing and left no storybook-static/index.json for the specs
+      # to enumerate from); react, tokens and ai-patterns really do write
+      # `dist`; eslint-config and create-elirobinson-design-system are `echo`
+      # no-ops with nothing to restore. Verified by deleting every output with
+      # the cache warm and rebuilding: all five restored, both manifests back,
+      # and Playwright collected the identical suite off the restored tree.
+      #
+      # So a new project whose build writes somewhere its `outputs` does not
+      # name is now a silently under-selected sweep rather than a slow one.
+      # That is the standing cost of this line.
+      - uses: actions/cache@v6
+        with:
+          # BOTH paths, and that is not belt-and-braces. `.nx/cache` holds the
+          # task outputs; the metadata that says which task hash produced them
+          # lives in the database under `.nx/workspace-data`. Restore the
+          # artifacts without the metadata and Nx says "Unrecognized Cache
+          # Artifacts — Nx can only restore artifacts it has metadata about",
+          # then rebuilds everything: a 71MB download that buys nothing.
+          # Measured directly (run 32305974350: primary-key hit, 71MB restored,
+          # build still 25s), and confirmed both directions locally — cache
+          # plus metadata replays 5/5 tasks, cache alone rebuilds 5/5.
+          #
+          # The daemon's own directory is excluded: it holds a socket and a
+          # `server-process.json` naming a PID from another machine, which is
+          # state about a running process rather than a build result. Nx
+          # disables the daemon in CI anyway, so this only keeps stale
+          # process state from travelling between runs.
+          path: |
+            .nx/cache
+            .nx/workspace-data
+            !.nx/workspace-data/d
+          key: ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-
+            ${{ runner.os }}-nx-
+
+      - name: Build Storybook and the docs site
+        run: pnpm run pretest:visual
+
+      # After the build, because it enumerates through Playwright, which needs
+      # both builds to collect a test. See scripts/visual-matrix.mjs for why
+      # the matrix is derived from that enumeration rather than written down:
+      # `docs-wide` is currently commented out in playwright.config.ts, and
+      # uncommenting it is meant to be the only edit that gives it jobs.
+      - name: Plan the sweep matrix
+        id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          INCLUDE=$(node scripts/visual-matrix.mjs)
+          echo "include=$INCLUDE" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Sweep matrix"
+            echo
+            echo '```json'
+            echo "$INCLUDE"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Tarred rather than uploaded as a directory tree: `.next` alone is
+      # thousands of small files, and actions/upload-artifact pays per file.
+      #
+      # --exclude .next/cache: that is Next's own incremental BUILD cache, 79MB
+      # of the 120MB and no part of what `next start` serves — dropping it
+      # takes the artifact from 70MB to 9MB. Verified by serving the docs site
+      # with the directory removed; every route still returns 200.
+      - name: Pack the build outputs
+        run: tar -czf build-outputs.tar.gz --exclude='.next/cache' apps/storybook/storybook-static apps/docs/.next
+      - uses: actions/upload-artifact@v7
+        with:
+          name: visual-build
+          path: build-outputs.tar.gz
+          retention-days: 1
+
   # Only the shots the change could have altered. See
   # docs/superpowers/specs/2026-08-19-scoped-visual-ci-design.md for why this is
   # two layers, and why the sidebar fan-out overrides the narrowing.
@@ -242,6 +406,28 @@ jobs:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: ${{ runner.os }}-pnpm-store-
       - run: pnpm install --frozen-lockfile
+      # The same Nx cache `build` restores, and the reason this job does not
+      # need `build` at all. `.nx/cache` was gitignored and restored by
+      # nothing, so both builds were recomputed from cold on every pull
+      # request — a docs-only change still rebuilt Storybook from scratch.
+      # With it restored, an untouched build is a cache replay, and this job
+      # keeps its critical path to a single container start.
+      #
+      # Identical to `build`'s step, deliberately — the two jobs never run in
+      # the same event, so this is the same cache read by whichever path the
+      # run takes, not a second one. See `build` above for the key design, for
+      # why `cache: true` in nx.json is what makes any of it work, and for why
+      # both paths below are required rather than just the artifacts.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .nx/cache
+            .nx/workspace-data
+            !.nx/workspace-data/d
+          key: ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-
+            ${{ runner.os }}-nx-
       # The scoper and the missing-baseline detector both enumerate through
       # Playwright, which needs both builds to collect a single test. This has
       # to run before scope computation: visual-scope.mjs enumerates through
@@ -542,29 +728,46 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-  # The full sweep. A red run here means either an intended change nobody
-  # regenerated, or a real regression, and telling those apart is a visual
-  # judgement — so this job does only the mechanical half (run the sweep,
-  # then regenerate exactly the failing shots) and hands the result to
-  # `recover`, which opens the pull request and the tracking issue that put
-  # the judgement in front of a human. See `recover` below for why that is a
-  # separate job rather than more steps here.
-  full:
-    needs: image
-    runs-on: ubuntu-latest
-    # Not on pull_request — `scoped` above covers that. Without this, both
-    # jobs would run on every pull request.
+  # The sweep, fanned out. One job per project — sharded where a project is
+  # long enough to be the critical path — instead of 501 shots taken one at a
+  # time in a single job.
+  #
+  # `--workers=1` is unchanged in every invocation below, and that is the point
+  # this split has to survive. Worker contention is the largest single lever on
+  # this suite's flake rate (18 failures to 1 on the emulated host, issue #65),
+  # so a shard is a separate machine running its own serial browser — never a
+  # second browser on the same one. Parallelism is bought across VMs, never
+  # inside one.
+  #
+  # The matrix comes from `build` rather than being written here, so the set of
+  # jobs is whatever Playwright actually collected. See scripts/visual-matrix.mjs.
+  #
+  # This job takes the verdict but not the judgement: it writes a blob report
+  # and stops. Merging the reports, regenerating the failing shots and failing
+  # the run all happen once, downstream, in `full` — five jobs each pushing
+  # baselines or each opening a pull request would race each other.
+  sweep:
+    needs: [image, build]
+    # Not on pull_request — `scoped` above covers that.
     if: github.event_name != 'pull_request'
-    # No continue-on-error: a red sweep now has somewhere to go (this job's
-    # own regen step, then `recover`), so swallowing the red at the job level
-    # would hide the one signal that starts that path. Issue #65's ten-PR
-    # criterion for making this required is now moot — the job is meant to go
-    # red and be seen doing it.
-    #
-    # Well clear of a real run (492 tests serially, plus two app builds) and far
-    # under the 6-hour default. A webServer that never comes up otherwise burns
-    # six hours per PR to tell us nothing.
-    timeout-minutes: 90
+    # The check name in a pull request or on a commit is now the cheapest
+    # failure signal we have: "sweep (storybook-narrow)" says which half of the
+    # suite broke before anyone opens an artifact.
+    name: sweep (${{ matrix.job.name }})
+    strategy:
+      # fail-fast: false is load-bearing, not a default left in place. With it
+      # on, the first red project cancels every sibling still running — which
+      # would destroy exactly the failure isolation this split exists to buy,
+      # and would leave `full` merging a partial set of blob reports and
+      # regenerating baselines against shots that were never judged.
+      fail-fast: false
+      matrix:
+        job: ${{ fromJSON(needs.build.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    # Was 90 for the whole 501-shot serial suite; the largest job here is ~170
+    # shots. Still generous: a webServer that never comes up otherwise burns
+    # the timeout to tell us nothing.
+    timeout-minutes: 45
     container:
       image: ${{ needs.image.outputs.ref }}
       # Chromium exhausts Docker's default 64MB /dev/shm and crashes outright on
@@ -579,12 +782,13 @@ jobs:
       STORYBOOK_DISABLE_TELEMETRY: 1
     steps:
       - uses: actions/checkout@v7
-      # Same reason as `scoped`'s "Trust the checkout" step: this job also
-      # runs in the container, and its regen step below asks git what changed
-      # on disk (`git status --porcelain`) to tell a real baseline change from
-      # #65's flake. Without this, git refuses the working copy as dubiously
-      # owned and that check fails under `set -euo pipefail`. (`recover` needs
-      # no equivalent — it runs on a bare runner; see the note there.)
+        with:
+          # The exact commit `build` built, so the baselines on disk and the
+          # rendered pages come from the same tree.
+          ref: ${{ github.sha }}
+      # Same reason as `scoped`'s copy: this job runs in the container against
+      # a working copy made by the runner user, which is git's "dubious
+      # ownership" case for anything that shells out to git.
       - name: Trust the checkout
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       # The image ships its own Node, matched to the Playwright it carries.
@@ -606,69 +810,277 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # The specs enumerate from these builds — stories from Storybook's
       # index.json, routes from Next's prerender manifest — so both have to
-      # exist before Playwright collects a single test. Its own step, rather
-      # than pnpm's implicit `pretest:visual`, for the same reason
-      # visual-container.mjs splits them: the two phases fail for entirely
-      # different reasons, and a 40-minute job is much easier to read when a
-      # build break and a pixel diff are not in the same log section.
-      - name: Build Storybook and the docs site
-        run: pnpm run pretest:visual
-      # Same protection as `scoped`'s comparison step: the regen step below
-      # picks the shots to rewrite out of test-results/report.json, and that
-      # file must be the one THIS sweep wrote. Removing it first means a
-      # sweep that dies before its reporter flushes regenerates nothing,
-      # rather than regenerating against a report it did not produce.
-      - name: Discard any stale report
-        run: rm -f test-results/report.json
+      # exist before Playwright collects a single test. `build` made them once
+      # for the whole run; every job here downloads that instead of spending
+      # 27s of its own critical path rebuilding them.
+      #
+      # Both, even though a storybook-* job needs no `.next` and a docs-* job
+      # needs no `storybook-static`: playwright.config.ts declares both servers
+      # in one global `webServer` array and starts both regardless of the
+      # selected project. Making that array conditional would let each job skip
+      # half of this and one server boot — real, but small next to the build
+      # itself, and the most invasive change to the config. Deferred on purpose.
+      - name: Fetch the build outputs
+        uses: actions/download-artifact@v7
+        with:
+          name: visual-build
+      - name: Unpack the build outputs
+        run: tar -xzf build-outputs.tar.gz
+
       # Invoked through `pnpm exec`, not `pnpm test:visual`, so the flags reach
       # the binary verbatim — the same reason the container script does it this
       # way, and this keeps CI's invocation identical to the one that generated
       # the baselines.
       #
-      # Serial, deliberately. Worker contention is the largest single lever on
-      # this suite's flake — on the emulated host it moved a run from 18
-      # failures to 1 — so the first CI runs measure the calmest case. Raise it
-      # once native runs show real headroom.
-      #
       # DS_VISUAL_CONTAINER is deliberately NOT set: without it the config pins
       # updateSnapshots to 'none', so a missing baseline fails here instead of
       # being written and silently accepted.
       #
-      # continue-on-error at the step level, not the job level: this is what
-      # lets the regen step below run off steps.sweep.outcome, and lets the
-      # explicit "Fail the job" step at the end still fail the job overall.
+      # --reporter=blob overrides the config's list/html/json trio. Blob is the
+      # only report format that merges losslessly across jobs, and `full`
+      # rebuilds the html and json ones from these — including the -expected,
+      # -actual and -diff PNGs, which travel inside the zip.
+      #
+      # No continue-on-error, unlike the single-job sweep this replaces: a red
+      # job here SHOULD be red, immediately and by name. `full` reads
+      # `needs.sweep.result` rather than a step outcome, and the upload below
+      # carries `!cancelled()` so the evidence survives the failure.
       - name: Visual regression
-        id: sweep
-        continue-on-error: true
-        run: pnpm exec playwright test --workers=1
+        shell: bash
+        env:
+          PROJECTS: ${{ matrix.job.projects }}
+          SHARD_INDEX: ${{ matrix.job.shardIndex }}
+          SHARD_TOTAL: ${{ matrix.job.shardTotal }}
+          # Playwright would otherwise name this after a hash of the command
+          # line. Naming it after the job makes the merged artifact readable,
+          # and — more importantly — guarantees two jobs can never write the
+          # same filename into the merge directory, where the second would
+          # silently replace the first and its shots would vanish from the
+          # verdict. scripts/visual-matrix.mjs asserts the slugs are distinct.
+          PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.job.slug }}.zip
+        run: |
+          set -euo pipefail
+          # Routed through the environment and expanded into an array rather
+          # than interpolated into the command text, the same discipline the
+          # `scoped` job uses for branch names.
+          ARGS=(--workers=1 --reporter=blob)
+          for project in $PROJECTS; do
+            ARGS+=("--project=$project")
+          done
+          # Only when there is something to shard. `--shard=1/1` is a no-op but
+          # it also changes the blob report's default name, and an unsharded
+          # job saying "1/1" in its log reads as if something were split.
+          if [ "$SHARD_TOTAL" != "1" ]; then
+            ARGS+=("--shard=${SHARD_INDEX}/${SHARD_TOTAL}")
+          fi
+          echo "playwright test ${ARGS[*]}"
+          pnpm exec playwright test "${ARGS[@]}"
 
-      # A red sweep on main means either an intended change nobody
-      # regenerated or a real regression, and telling them apart is a visual
-      # judgement — so this step does only the mechanical half: regenerate
-      # exactly the failing shots so `recover` can put them in front of a
-      # human as a pull request.
+      # Per-job artifact name: five jobs uploading `visual-blob` would collide.
+      # `full` collects them all back with a `visual-blob-*` pattern.
       #
-      # github.ref == 'refs/heads/main' as well as the sweep having failed:
-      # `recover` below only ever opens a pull request against `main`, and
-      # only runs at all on that ref (see the "Auto-recovery is main-only"
-      # step below for the other case) — regenerating baselines nobody will
-      # use is wasted container time.
+      # !cancelled(), not `if: failure()`: a passing run is half the evidence
+      # this suite exists to produce — the merged report carries the timings
+      # and retry counts that say how close to the edge a green run was.
+      - name: Upload the blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-blob-${{ matrix.job.slug }}
+          path: blob-report/
+          retention-days: 14
+          if-no-files-found: error
+
+  # The verdict, and the mechanical half of recovery. Everything that must
+  # happen exactly once for the whole sweep lives here: merge the shards'
+  # reports into one, regenerate exactly the failing shots, publish the
+  # artifacts, and fail the run.
+  #
+  # Still named `full`, deliberately. release.yml gates publishing on the
+  # conclusion of the JOB called `full` in this workflow — "every expected job
+  # succeeded and all of them are present", with absent meaning stop. A matrix
+  # renames its jobs (`sweep (storybook-wide)`), which no fixed selector can
+  # match, so the gate needs a single job whose success means the whole sweep
+  # succeeded. That is exactly what this job is: it needs every `sweep` job,
+  # and GitHub gives `needs.sweep.result` the value 'success' only when every
+  # leg of the matrix succeeded — and 'skipped' when the matrix was empty or
+  # never ran, which fails the check below rather than passing it silently.
+  #
+  # Telling a red sweep's two causes apart — an intended change nobody
+  # regenerated, or a real regression — is a visual judgement, so this job does
+  # only the mechanical half and hands the result to `recover`, which opens the
+  # pull request and the tracking issue that put the judgement in front of a
+  # human. See `recover` below for why that is a separate job.
+  full:
+    needs: [image, build, sweep]
+    # !cancelled() rather than the implicit success(): this job has to run
+    # precisely when `sweep` went red, which is its whole recovery purpose. The
+    # explicit result checks in its final step are what decide the verdict.
+    # `github.event_name != 'pull_request'` mirrors `sweep` above — without it
+    # both this and `scoped` would run on every pull request.
+    if: >-
+      !cancelled() && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # Regeneration reruns only the failing shots, but "the failing shots" can be
+    # the whole suite after a token change.
+    timeout-minutes: 90
+    container:
+      image: ${{ needs.image.outputs.ref }}
+      options: --shm-size=1g
+    env:
+      HUSKY: 0
+      STORYBOOK_DISABLE_TELEMETRY: 1
+      # Read in several steps below; `needs` is not available inside a `run:`
+      # block without being routed through the environment first.
+      BUILD_RESULT: ${{ needs.build.result }}
+      SWEEP_RESULT: ${{ needs.sweep.result }}
+    steps:
+      - uses: actions/checkout@v7
+      # Same reason as `scoped`'s "Trust the checkout" step: this job also
+      # runs in the container, and its regen step below asks git what changed
+      # on disk (`git status --porcelain`) to tell a real baseline change from
+      # #65's flake. Without this, git refuses the working copy as dubiously
+      # owned and that check fails under `set -euo pipefail`. (`recover` needs
+      # no equivalent — it runs on a bare runner; see the note there.)
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Set up pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+      - name: Locate the pnpm store
+        id: pnpm_store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+      - run: pnpm install --frozen-lockfile
+
+      # Only the regeneration below needs these — merging blob reports touches
+      # neither app — so the download is guarded on exactly the condition that
+      # step carries, plus `build` having actually produced them. Worth keeping
+      # off the green path: this job is the last thing between a green sweep
+      # and a finished run, so every second it spends is wall clock a human is
+      # waiting on.
       #
-      # --update-snapshots=changed, explicit, never a bare --update-snapshots:
-      # bare defaults to "changed" in this Playwright version (see
-      # node_modules/.../playwright/lib/program.js, preset: "changed"), but
-      # spelling it out means no reader has to know that.
+      # Guarded rather than assumed, unlike the sweep jobs, which cannot run at
+      # all without the build: this job DOES run when `build` failed (that is
+      # what `!cancelled()` is for), and has to reach its "no report at all"
+      # path and its verdict rather than dying on a missing artifact.
+      - name: Fetch the build outputs
+        if: >-
+          needs.build.result == 'success' && needs.sweep.result == 'failure' &&
+          github.ref == 'refs/heads/main'
+        uses: actions/download-artifact@v7
+        with:
+          name: visual-build
+      - name: Unpack the build outputs
+        if: >-
+          needs.build.result == 'success' && needs.sweep.result == 'failure' &&
+          github.ref == 'refs/heads/main'
+        run: tar -xzf build-outputs.tar.gz
+
+      # continue-on-error for the same reason the download in `recover` has
+      # it: this job runs on paths where the sweep never produced anything —
+      # `build` failed, or the matrix never started — and a hard-failing
+      # download would replace the explanation below with an unhelpful red.
+      - name: Fetch every shard's blob report
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          pattern: visual-blob-*
+          merge-multiple: true
+          path: all-blob-reports
+
+      # The single report the rest of this workflow is written against.
+      # `visual-failures.mjs`, the regen step below and `recover`'s issue body
+      # all read one `test-results/report.json`, and a matrix produces N. Blob
+      # is the format that merges losslessly, and merging rebuilds the html
+      # report too — including the -expected/-actual/-diff PNGs, which travel
+      # inside the zips rather than as loose files in test-results/output.
       #
-      # No `|| true` here, unlike the `scoped` job's mint step. That step
-      # needs `|| true` because --update-snapshots=missing WRITES the
-      # baseline and then FAILS the test on purpose (a softError specific to
-      # "missing" mode — see the comment there). --update-snapshots=changed
-      # does not do that: it returns a plain pass for a shot it rewrote, so
-      # this command is expected to exit 0 on its own. Tolerating a non-zero
-      # exit here would hide a real crash instead of an expected soft-fail.
+      # PLAYWRIGHT_JSON_OUTPUT_FILE rather than a shell redirect: the json
+      # reporter writes to stdout when it has no output file, and the html
+      # reporter prints to stdout too, so redirecting would interleave a
+      # human-readable line into the JSON and make it unparseable.
+      #
+      # `|| true` on an expected exit code: merge-reports exits 1 when the
+      # merged result is 'failed' (see playwright/lib/cli/reportActions.js), so
+      # a red sweep would otherwise kill this step under `set -euo pipefail`
+      # before the report it just wrote could be used. Nothing is laundered —
+      # the verdict comes from `needs.sweep.result` in the final step, never
+      # from this exit code, and the file's own absence is handled below.
+      - name: Merge the shards into one report
+        id: merge
+        shell: bash
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: test-results/report.json
+          PLAYWRIGHT_HTML_OPEN: never
+        run: |
+          set -euo pipefail
+          if [ -z "$(ls -A all-blob-reports 2>/dev/null)" ]; then
+            echo "No shard produced a blob report."
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          ls -l all-blob-reports
+          # The same protection the single-job sweep's "Discard any stale
+          # report" step gave: everything downstream picks the shots to
+          # rewrite out of test-results/report.json, and that file must be the
+          # one THIS merge wrote. A fresh container makes a leftover unlikely
+          # rather than impossible, and the failure it would cause — baselines
+          # overwritten against a report no sweep in this run produced — is
+          # the one this workflow spends the most effort refusing.
+          rm -rf test-results playwright-report
+          mkdir -p test-results
+          pnpm exec playwright merge-reports --reporter=json,html all-blob-reports || true
+          if [ ! -f test-results/report.json ]; then
+            echo "::error::merge-reports produced no report.json from $(ls all-blob-reports | wc -l) blob report(s)."
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "merged=true" >> "$GITHUB_OUTPUT"
+
+      # Which project failed, said in the one place a human looks first. With
+      # the suite split, this is information the old single job could not
+      # produce at all, and it is the cheapest signal the run has: a docs-wide
+      # failure is almost always the sidebar fan-out, a storybook-* failure is
+      # almost always a component.
+      - name: Report which projects failed
+        if: needs.sweep.result != 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "### Visual sweep red"
+            echo
+            echo "| project | failing shots |"
+            echo "| ------- | ------------- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          # From the merged report rather than from the matrix's job results: a
+          # job can go red without any shot failing (a crash, a timeout, a
+          # webServer that never came up), and the two read differently to
+          # whoever is triaging. Both empty cases below say which one it was.
+          if [ ! -f test-results/report.json ]; then
+            echo "| _no merged report_ | the sweep never reached its reporter |" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          BY_PROJECT=$(node scripts/visual-failures.mjs --by-project test-results/report.json)
+          if [ -z "$BY_PROJECT" ]; then
+            echo "| _no failing shot in the merged report_ | a crash or a build break, not a baseline |" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # Tab-separated out of the script, rendered as a table here: the
+          # script stays a script and the Markdown stays in the workflow.
+          echo "$BY_PROJECT" | while IFS=$'\t' read -r project shots; do
+            echo "| \`${project}\` | ${shots} |"
+          done >> "$GITHUB_STEP_SUMMARY"
+
       # The regen step below re-invokes Playwright, which rewrites
-      # test-results/report.json, wipes its outputDir (test-results/output,
-      # where every -actual and -diff PNG lives) and clears
+      # test-results/report.json, wipes its outputDir and clears
       # playwright-report/. The upload step runs after it, so without this the
       # `visual-report` artifact would hold a post-regen, all-green report and
       # no diff images at all — while `recover` writes into the tracking issue
@@ -678,7 +1090,7 @@ jobs:
       # Guarded exactly like the regen step it protects against: nothing
       # destroys the evidence on any other path.
       - name: Preserve the failing report before regenerating
-        if: steps.sweep.outcome == 'failure' && github.ref == 'refs/heads/main'
+        if: needs.sweep.result == 'failure' && github.ref == 'refs/heads/main'
         shell: bash
         run: |
           set -euo pipefail
@@ -698,18 +1110,52 @@ jobs:
             echo "::warning::Preserving playwright-report before regeneration failed — pre-regen-report/playwright-report is missing, so the recovery pull request and tracking issue will point at a report that is not there."
           fi
 
+      # A red sweep on main means either an intended change nobody
+      # regenerated or a real regression, and telling them apart is a visual
+      # judgement — so this step does only the mechanical half: regenerate
+      # exactly the failing shots so `recover` can put them in front of a
+      # human as a pull request.
+      #
+      # In this job rather than in each `sweep` job, and that is not just
+      # tidiness: five jobs each regenerating and each uploading baselines
+      # would produce five partial baseline sets for `recover` to reconcile,
+      # and (on the `scoped` path's equivalent) five concurrent pushes to one
+      # branch, rejecting each other. One report, one regeneration, one commit.
+      #
+      # No --project or --shard here: the merged report's failing titles select
+      # the work, and a title that failed in two projects should be
+      # regenerated in both.
+      #
+      # github.ref == 'refs/heads/main' as well as the sweep having failed:
+      # `recover` below only ever opens a pull request against `main`, and
+      # only runs at all on that ref (see the "Auto-recovery is main-only"
+      # step below for the other case) — regenerating baselines nobody will
+      # use is wasted container time.
+      #
+      # --update-snapshots=changed, explicit, never a bare --update-snapshots:
+      # bare defaults to "changed" in this Playwright version (see
+      # node_modules/.../playwright/lib/program.js, preset: "changed"), but
+      # spelling it out means no reader has to know that.
+      #
+      # No `|| true` here, unlike the `scoped` job's mint step. That step
+      # needs `|| true` because --update-snapshots=missing WRITES the
+      # baseline and then FAILS the test on purpose (a softError specific to
+      # "missing" mode — see the comment there). --update-snapshots=changed
+      # does not do that: it returns a plain pass for a shot it rewrote, so
+      # this command is expected to exit 0 on its own. Tolerating a non-zero
+      # exit here would hide a real crash instead of an expected soft-fail.
       - name: Regenerate the failing baselines
-        if: steps.sweep.outcome == 'failure' && github.ref == 'refs/heads/main'
+        if: needs.sweep.result == 'failure' && github.ref == 'refs/heads/main'
         id: regen
         shell: bash
         env:
           DS_VISUAL_CONTAINER: '1'
         run: |
           set -euo pipefail
-          # Same reason as the `scoped` job's Accept step: the stale report is
-          # deleted before the sweep, so no file here means the sweep never
-          # reached its reporter. That is the crash case this step already
-          # handles below, so it takes the same exit — not an ENOENT trace.
+          # No merged report means no shard ever reached its reporter — a
+          # crash, a build break, or a matrix that never started. That is the
+          # case this step already handles below, so it takes the same exit,
+          # not an ENOENT trace.
           if [ ! -f test-results/report.json ]; then
             echo "The sweep produced no report.json at all — a crash or a build break, not a baseline. Nothing to regenerate."
             echo "recovered=false" >> "$GITHUB_OUTPUT"
@@ -771,7 +1217,7 @@ jobs:
       # branch would otherwise fail silently with no explanation of why no
       # pull request follows.
       - name: Auto-recovery is main-only
-        if: steps.sweep.outcome == 'failure' && github.ref != 'refs/heads/main'
+        if: needs.sweep.result == 'failure' && github.ref != 'refs/heads/main'
         env:
           REF_NAME: ${{ github.ref_name }}
         run: |
@@ -802,6 +1248,13 @@ jobs:
       # flake in #65 survives off an emulated host, and a *passing* run is half
       # of that evidence — the HTML report carries the timings and the retry
       # counts that say how close to the edge a green run was.
+      #
+      # `all-blob-reports/` is deliberately NOT included, even though it is the
+      # per-shard record a `merge-reports` rerun would need: each `sweep` job
+      # already uploads its own zip as `visual-blob-<slug>` with the same
+      # retention, and `merge-reports` unpacks the zips in place, so adding the
+      # directory here would ship each shard's report twice — once zipped, once
+      # extracted — inside an artifact whose point is the merged view.
       - name: Upload report and diffs
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
@@ -814,13 +1267,68 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      # The step itself tolerated the failure so the steps above could run;
-      # this is what makes that failure count against the job — which is
-      # what `recover`'s `needs.full.result == 'failure'` guard below reacts
-      # to, on `main`.
+      # "Every expected job succeeded" and "every expected job ran" are
+      # different claims, and only the second is safe to publish on. Job
+      # results cannot make the second one: a leg whose blob report failed to
+      # upload, or failed to download into the merge above, leaves every other
+      # leg green and the merged report short — a run that looks entirely clean
+      # while a whole project was never compared. So it is checked against the
+      # merged report, project by project, against the matrix that planned it.
+      #
+      # !cancelled(): this has to run on a green sweep, which is exactly the
+      # case it protects. It is skipped only when there is no merged report to
+      # check, which the verdict step below owns instead.
+      - name: Every project in the matrix reported
+        if: ${{ !cancelled() && steps.merge.outputs.merged == 'true' }}
+        shell: bash
+        env:
+          MATRIX: ${{ needs.build.outputs.matrix }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$MATRIX" > /tmp/matrix.json
+          if MISSING=$(node scripts/visual-matrix.mjs --verify /tmp/matrix.json test-results/report.json); then
+            echo "Every project the matrix planned is present in the merged report."
+            exit 0
+          fi
+          {
+            echo "### Visual sweep — a project never reported"
+            echo
+            echo "The matrix planned these projects, and the merged report has no trace of them. Their shots were not compared, so this run cannot be read as a pass."
+            echo
+            echo '```'
+            echo "$MISSING"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::Projects planned but never reported: $(echo "$MISSING" | tr '\n' ' ')"
+          exit 1
+
+      # The verdict, and the thing release.yml reads. Every upstream job has to
+      # have succeeded AND be present — `needs.<job>.result` is 'skipped' for a
+      # job that never ran, which fails here rather than passing silently, and
+      # for a matrix `needs.sweep.result` is 'success' only when every leg
+      # succeeded. That is the "absent means stop" property the release gate
+      # depends on, preserved across the split.
+      #
+      # !cancelled(), so this still renders its verdict when the presence check
+      # above failed — the two report different facts and a reader triaging a
+      # red run wants both.
+      #
+      # This is also what `recover`'s `needs.full.result == 'failure'` guard
+      # below reacts to, on `main`.
       - name: Fail the job
-        if: steps.sweep.outcome == 'failure'
-        run: exit 1
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$BUILD_RESULT" != "success" ]; then
+            echo "::error::The build job concluded '${BUILD_RESULT}'. Nothing was swept."
+            exit 1
+          fi
+          if [ "$SWEEP_RESULT" != "success" ]; then
+            echo "::error::The sweep concluded '${SWEEP_RESULT}'. See the individual sweep jobs for which project failed."
+            exit 1
+          fi
+          echo "Every sweep job passed."
 
   # `full` runs inside the Playwright container image, which ships git
   # (2.43.0) but not the `gh` CLI — nothing else in this repo shells out to

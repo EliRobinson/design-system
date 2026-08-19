@@ -46,11 +46,44 @@ export function formatPlain(titles) {
   return titles.join('\n');
 }
 
-/* CLI: two modes.
-     node visual-failures.mjs <report.json>          a --grep pattern
-     node visual-failures.mjs --plain <report.json>   plain titles, one per line
-   Either prints nothing at all when nothing failed, so a workflow step can
-   test the output for emptiness rather than parsing it.
+/**
+ * How many shots failed, per project, most failures first.
+ *
+ * Which project went red is the cheapest diagnosis the split sweep produces —
+ * a `docs-wide` failure is almost always the sidebar fan-out, a `storybook-*`
+ * failure is almost always a component — and it is worth saying in the job
+ * summary before anyone opens an artifact.
+ *
+ * Counted per PROJECT rather than per title, unlike `failedTitles`, which
+ * de-duplicates across them: one title failing in two projects is one shot to
+ * regenerate but two red pixels-on-disk, and here the second number is the
+ * point. An empty array is the honest answer for a red run with no failing
+ * shot in it — a crash or a build break — and reads differently to whoever is
+ * triaging than a project name would.
+ */
+export function failuresByProject(report) {
+  const counts = new Map();
+
+  for (const spec of collectSpecs(report)) {
+    if (spec.ok !== false) {
+      continue;
+    }
+    for (const test of spec.tests ?? []) {
+      counts.set(test.projectName, (counts.get(test.projectName) ?? 0) + 1);
+    }
+  }
+
+  return [...counts]
+    .map(([project, shots]) => ({ project, shots }))
+    .sort((a, b) => b.shots - a.shots || a.project.localeCompare(b.project));
+}
+
+/* CLI: three modes.
+     node visual-failures.mjs <report.json>              a --grep pattern
+     node visual-failures.mjs --plain <report.json>       plain titles, one per line
+     node visual-failures.mjs --by-project <report.json>  "<project>\t<count>" rows
+   Every one of them prints nothing at all when nothing failed, so a workflow
+   step can test the output for emptiness rather than parsing it.
 
    realpathSync rather than a bare string compare: process.argv[1] can reach
    this file through a symlink (or a relative `./name` / bare-name
@@ -62,12 +95,22 @@ const isEntrypoint = process.argv[1] && realpathSync(process.argv[1]) === import
 if (isEntrypoint) {
   const args = process.argv.slice(2);
   const plain = args.includes('--plain');
-  const path = args.find((arg) => arg !== '--plain');
+  const byProject = args.includes('--by-project');
+  const path = args.find((arg) => !arg.startsWith('--'));
   if (!path) {
     throw new Error('visual-failures: a path to report.json is required');
   }
 
-  const titles = failedTitles(JSON.parse(readFileSync(path, 'utf8')));
+  const report = JSON.parse(readFileSync(path, 'utf8'));
+
+  if (byProject) {
+    for (const { project, shots } of failuresByProject(report)) {
+      process.stdout.write(`${project}\t${shots}\n`);
+    }
+    process.exit(0);
+  }
+
+  const titles = failedTitles(report);
 
   if (plain) {
     const output = formatPlain(titles);

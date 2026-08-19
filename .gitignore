@@ -34,7 +34,14 @@ design-system-docs/uploads/*
 !design-system-docs/uploads/.gitkeep
 
 # Playwright run output. Baselines under tests/visual/__screenshots__ are
-# committed on purpose (issue #65) — these three are per-run artifacts.
+# committed on purpose (issue #65) — these are per-run artifacts.
 playwright-report/
 test-results/
 blob-report/
+# Where visual.yml's `full` job collects every shard's blob report before
+# merging them into one; `merge-reports` also extracts them in place.
+all-blob-reports/
+# The Storybook and docs builds, packed once per run by visual.yml's `build`
+# job and unpacked in every job that sweeps. It lands in the repo root of a
+# checkout that also commits baselines from that same working tree.
+build-outputs.tar.gz

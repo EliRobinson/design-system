@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { failedTitles, formatPlain } from './visual-failures.mjs';
+import { failedTitles, failuresByProject, formatPlain } from './visual-failures.mjs';
 
 const report = {
   suites: [
@@ -52,6 +52,62 @@ describe('failedTitles', () => {
 
   it('is empty for a clean report', () => {
     expect(failedTitles({ suites: [] })).toEqual([]);
+  });
+});
+
+describe('failuresByProject', () => {
+  const byProject = {
+    suites: [
+      {
+        specs: [
+          {
+            title: 'components-button--primary · light',
+            ok: true,
+            tests: [{ projectName: 'storybook-wide' }, { projectName: 'storybook-narrow' }],
+          },
+          {
+            title: 'components-badge--default · dark',
+            ok: false,
+            tests: [{ projectName: 'storybook-wide' }, { projectName: 'storybook-narrow' }],
+          },
+        ],
+        suites: [
+          {
+            specs: [
+              { title: '/ · dark', ok: false, tests: [{ projectName: 'docs-wide' }] },
+              { title: '/tokens · dark', ok: false, tests: [{ projectName: 'docs-wide' }] },
+              { title: '/brand · light', ok: false, tests: [{ projectName: 'docs-wide' }] },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it('counts failing shots per project, most first', () => {
+    expect(failuresByProject(byProject)).toEqual([
+      { project: 'docs-wide', shots: 3 },
+      { project: 'storybook-narrow', shots: 1 },
+      { project: 'storybook-wide', shots: 1 },
+    ]);
+  });
+
+  it('counts a title that failed in two projects once in each', () => {
+    /* The opposite of failedTitles' de-duplication, and deliberately so: one
+       title is one shot to regenerate but two red baselines on disk, and this
+       summary is about the second number. */
+    const titles = failedTitles(byProject);
+    const shots = failuresByProject(byProject).reduce((sum, row) => sum + row.shots, 0);
+    expect(titles).toHaveLength(4);
+    expect(shots).toBe(5);
+  });
+
+  it('recurses into nested suites', () => {
+    expect(failuresByProject(byProject).map((row) => row.project)).toContain('docs-wide');
+  });
+
+  it('is empty for a clean report, so a red run with no failing shot reads as one', () => {
+    expect(failuresByProject({ suites: [] })).toEqual([]);
   });
 });
 
