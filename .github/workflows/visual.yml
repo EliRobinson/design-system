@@ -511,11 +511,21 @@ jobs:
           # #65's flake, not a baseline to regenerate: --update-snapshots=changed
           # only rewrites a file when the rerun's pixels actually differ from
           # what's checked in, so no diff here means the original failure did
-          # not reproduce. `git diff`, not `git status --porcelain`: every
-          # file this step could touch is already tracked (this rewrites
-          # existing baselines; it never creates one), so there is nothing
-          # untracked for `status` to catch that `diff` would miss.
-          if git diff --quiet -- tests/visual/__screenshots__; then
+          # not reproduce.
+          #
+          # `git status --porcelain`, NOT `git diff --quiet`: this step does
+          # not only rewrite existing baselines. A missing baseline (a new
+          # story or route added on `main`, which isn't branch-protected) is
+          # exactly the kind of failure this step regenerates, and
+          # --update-snapshots=changed WRITES a missing baseline and passes
+          # for it (expect.js's softError is specific to "missing" mode, same
+          # fact the `scoped` job's mint step documents) — producing a brand
+          # new, UNTRACKED file. `git diff` only ever looks at tracked files,
+          # so an all-new-baseline regeneration would show no diff at all and
+          # get mislabelled a flake here. `git status --porcelain` sees both
+          # tracked changes and untracked new files, same idiom the `scoped`
+          # job's mint and accept steps already use for this exact reason.
+          if [ -z "$(git status --porcelain -- tests/visual/__screenshots__)" ]; then
             echo "recovered=false" >> "$GITHUB_OUTPUT"
             {
               echo "### Visual sweep red — did not reproduce on regeneration"
@@ -600,8 +610,8 @@ jobs:
   # this job's own PR/issue step fails.
   recover:
     needs: full
-    # always(), not the bare `failure()` this started as: `failure()` on a
-    # job checks its ENTIRE dependency chain, not just its direct `needs` —
+    # !cancelled(), not the bare `failure()` this started as: `failure()` on
+    # a job checks its ENTIRE dependency chain, not just its direct `needs` —
     # so if `image` fails, `full` gets skipped (its own condition implicitly
     # requires `image` to have succeeded), but `failure()` still sees `image`
     # failing and would fire `recover` anyway, including on a pull request,
@@ -610,14 +620,20 @@ jobs:
     # itself actually failing (which only happens by the explicit "Fail the
     # job" step, i.e. only when the sweep was red) — but a plain `if:` that
     # doesn't call a status function gets `success()` prepended by GitHub,
-    # which would always be false here since `full` failed; `always()` is
-    # what removes that implicit prefix so the explicit check below governs.
+    # which would always be false here since `full` failed; a status function
+    # is what removes that implicit prefix so the explicit check below
+    # governs. `!cancelled()`, not `always()`: `always()` would also fire
+    # this job when a human cancels the run after `full` has already
+    # concluded `failure` — `!cancelled()` excludes exactly that case while
+    # still removing the implicit `success()` prefix.
     #
     # github.ref == 'refs/heads/main': the pull request this job opens is
     # always based on `main`, so it only runs there. A `workflow_dispatch`
     # red sweep on any other ref gets an explanation instead, from `full`'s
     # own "Auto-recovery is main-only" step — see there.
-    if: always() && needs.full.result == 'failure' && github.ref == 'refs/heads/main'
+    if: >-
+      !cancelled() && needs.full.result == 'failure' &&
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -660,7 +676,7 @@ jobs:
           {
             echo "### Visual sweep red — no recovery opened"
             echo
-            echo "\`full\` failed without a failing-shot list to regenerate from. That covers more than a build break: an npm install failure, a Storybook or docs build failure, the container never starting, and the job timing out all land here too — none of them are a baseline problem. See the \`full\` job's own log, and the \`visual-report\` artifact on that run, for what actually happened."
+            echo "\`full\` didn't leave anything here to act on. Two different causes land in this same place: a failure with no failing-shot list at all (an npm install failure, a Storybook or docs build failure, the container never starting, the job timing out — none of them a baseline problem), or a failing shot that passed clean when \`full\` reran it to regenerate — the flake in #65's signature, which \`full\`'s own job summary calls out specifically. Either way, check the \`full\` job's own log, and its job summary, for which one this was."
           } >> "$GITHUB_STEP_SUMMARY"
 
       # Everything below is idempotent on purpose: a nightly schedule can
@@ -686,10 +702,18 @@ jobs:
           BRANCH="visual/baselines-${SHORT}"
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
+          # `visual-baseline`, a dedicated label, NOT the general `visual`
+          # label the tracking issue used to carry: `visual` is also the most
+          # natural label a human would put on issue #65 itself (the
+          # visual-regression flake issue this whole workflow references) —
+          # if anyone ever did that, this lookup would find #65 forever and
+          # never open a real tracking issue again. A label used nowhere else
+          # in this repo can't collide with anything.
+          #
           # Looked up before anything is created, so the pull request body
           # below can name a tracking issue that genuinely already exists,
           # rather than a promise that might not hold if a later step fails.
-          EXISTING_ISSUE_URL=$(gh issue list --label visual --state open --limit 1 --json url --jq '.[0].url // empty')
+          EXISTING_ISSUE_URL=$(gh issue list --label visual-baseline --state open --limit 1 --json url --jq '.[0].url // empty')
 
           git checkout -b "$BRANCH"
           git add tests/visual/__screenshots__
@@ -726,13 +750,18 @@ jobs:
           # asking `gh pr create` to fail on a head that already has one.
           EXISTING_PR_URL=$(gh pr list --head "$BRANCH" --base main --state open --limit 1 --json url --jq '.[0].url // empty')
 
+          # No tracking-issue line here, even when EXISTING_ISSUE_URL is
+          # already known: this body only matters if it's used for a fresh
+          # `gh pr create` below, and either way the pull request gets its
+          # authoritative body — including the issue link — from the
+          # unconditional `gh pr edit` after the issue is settled. Keeping
+          # one body-writing block downstream of that, instead of two,
+          # is what stops the first-red case from silently omitting the
+          # link the way it used to.
           {
             printf '%s\n\n' "The full sweep went red on \`main\` at \`${SHORT}\` and these ${COUNT} baseline file(s) were regenerated on the runner."
             printf '%s\n' '**Merge** if this is the look you intended — these become the baselines.'
             printf '%s\n\n' '**Close** if it is a regression; the tracking issue stays open with the evidence.'
-            if [ -n "$EXISTING_ISSUE_URL" ]; then
-              printf -- '- Tracking issue: %s\n' "$EXISTING_ISSUE_URL"
-            fi
             printf -- '- Failing run: %s\n' "$RUN_URL"
           } > /tmp/pr-body.md
 
@@ -778,9 +807,33 @@ jobs:
             } > /tmp/issue-body.md
             ISSUE_URL=$(gh issue create \
               --title "Visual sweep red on main (${SHORT})" \
-              --label visual \
+              --label visual-baseline \
               --body-file /tmp/issue-body.md)
           fi
+          # A GitHub issue URL's trailing path segment is its number — true
+          # for both a freshly created issue and one found via the API, so
+          # this works uniformly for either branch above without a separate
+          # --json number lookup.
+          ISSUE_NUMBER="${ISSUE_URL##*/}"
+
+          # Unconditional, run whether the pull request was just created or
+          # reused: on a first red sweep it had no issue to link at creation
+          # time (EXISTING_ISSUE_URL was empty), so this is what actually
+          # attaches the link — in both directions, since the issue side
+          # already names the pull request above. `Closes #<N>`, not a bare
+          # URL: a closing keyword is what makes merging this pull request
+          # close its tracking issue automatically, which is what keeps the
+          # EXISTING_ISSUE_URL lookup above self-terminating instead of
+          # wedging open on one old issue forever.
+          {
+            printf '%s\n\n' "The full sweep went red on \`main\` at \`${SHORT}\` and these ${COUNT} baseline file(s) were regenerated on the runner."
+            printf '%s\n' '**Merge** if this is the look you intended — these become the baselines.'
+            printf '%s\n\n' '**Close** if it is a regression; the tracking issue stays open with the evidence.'
+            printf -- '- Tracking issue: %s\n' "$ISSUE_URL"
+            printf -- '- Failing run: %s\n\n' "$RUN_URL"
+            printf 'Closes #%s\n' "$ISSUE_NUMBER"
+          } > /tmp/pr-body-final.md
+          gh pr edit "$PR_URL" --body-file /tmp/pr-body-final.md
 
           {
             echo "### Visual sweep red — recovery opened"
