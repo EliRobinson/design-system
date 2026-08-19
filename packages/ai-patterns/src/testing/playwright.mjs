@@ -48,7 +48,7 @@ export const PRIMARY_CONTROL_SELECTOR = [
 ].join(', ');
 
 /**
- * contracts.json → touch-target-dense. Inline affordances that follow the
+ * contracts.json → touch-target-dense. Controls the system holds to the
  * shadcn/MUI scale instead of 44px. Mark your own with
  * `data-touch-target="dense"` rather than growing this list.
  *
@@ -59,9 +59,29 @@ export const PRIMARY_CONTROL_SELECTOR = [
  * control is `button.ds-rating__button`, so the exemption never fired. New
  * design-system affordances declare themselves with the data attribute instead
  * of being added here, which cannot drift the same way.
+ *
+ * `.ds-button--sm` is the deliberate exception to that last sentence, and the
+ * reason is the same clause it appears to break — the class is on the element
+ * that receives the click, so it cannot drift the way `.ds-rating__star` did.
+ * The data attribute would not have helped here: the reported failure (#113)
+ * was `a.ds-button.ds-button--accent.ds-button--sm`, an anchor carrying the
+ * classes, not the React <Button>, so anything emitted from the component
+ * would have missed it. Keying off the class covers both shapes.
+ *
+ * Why `--sm` is exempt rather than resized: 36px clears WCAG 2.2 AA (SC 2.5.8,
+ * Target Size Minimum, 24x24) with margin. 44x44 is AAA (SC 2.5.5) and this
+ * system's own stricter floor, not the standard. Raising `--sm` to 44 would
+ * leave it differing from `md` only in font size and horizontal padding — a
+ * typography variant, not a size variant — which removes the reason `sm`
+ * exists and pushes anyone who needs a compact control into hand-rolling one
+ * outside the system. The cost, recorded so it is not discovered twice: a
+ * consumer who uses `size="sm"` for a primary mobile CTA now gets a silent
+ * pass. Measuring dense controls against a dense floor rather than exempting
+ * them is the fix for that, and is not built here.
  */
 export const DENSE_AFFORDANCE_SELECTOR = [
   '[data-touch-target="dense"]',
+  '.ds-button--sm',
   '.ds-chip__remove',
   '.ds-search-field__clear',
   '.ds-rating__button',
@@ -224,7 +244,10 @@ export async function checkTouchTargets(page, options = {}) {
             (label ? `, and its label is only ~${label.width}x${label.height}` : '') +
             `. Expand it with padding or a bounded overlay — do not inflate the visible control` +
             (label ? `; giving the label the full row height is usually the fix` : '') +
-            `. If this is a dense inline affordance, mark it data-touch-target="dense".`,
+            `. A deliberately compact control — a dense inline affordance, or a` +
+            ` variant whose whole point is being small — declares itself with` +
+            ` data-touch-target="dense" instead; the design system's own compact` +
+            ` variants (size="sm" and friends) already do.`,
         });
       }
 
