@@ -291,8 +291,12 @@ jobs:
       # needed to add the visual-accept label in the first place. Preserve
       # them first; the final upload step includes this copy alongside the
       # post-accept state.
+      #
+      # github.event.action == 'labeled', not label presence: see "Accept the
+      # changed baselines" below for why a standing label must not keep
+      # accepting on every later push.
       - name: Preserve the failing report before accepting
-        if: steps.check.outcome == 'failure' && contains(github.event.pull_request.labels.*.name, 'visual-accept')
+        if: steps.check.outcome == 'failure' && github.event.action == 'labeled'
         shell: bash
         run: |
           set -euo pipefail
@@ -309,12 +313,31 @@ jobs:
       # the visual-accept label is what gates this step, so neither behavior
       # runs without a human asking for it.)
       #
+      # github.event.action == 'labeled', NOT
+      # contains(github.event.pull_request.labels.*.name, 'visual-accept'):
+      # the label stays on the pull request after this run, so testing for
+      # its mere presence would turn every later push into a silent accept —
+      # a contributor labels a PR to accept an intended docs change, then
+      # pushes an unrelated commit that regresses Button, and that regression
+      # gets committed as an accepted baseline with no second human look. That
+      # is exactly the "launder a regression into an accepted baseline"
+      # failure the zero-tolerance comparison and the label both exist to
+      # prevent. `github.event.action` is the event THIS run fired on, not
+      # the label's standing state, so it is true only on the run where the
+      # label was actually just applied — one decision, one accept. The
+      # job-level `if:` above already guarantees a `labeled` action carries
+      # the `visual-accept` label specifically (it only lets the job proceed
+      # for other labels when the event isn't `labeled` at all), so no
+      # separate label-name check is needed here. Accepting again on the same
+      # pull request means removing and re-adding the label — that friction
+      # is the point, not an oversight.
+      #
       # --update-snapshots=changed, explicit: overwriting IS the intent of
       # this step, but the mode is spelled out so no reader has to know that a
       # bare --update-snapshots defaults to "changed" — see the mint step
       # above for why that default is dangerous when left implicit elsewhere.
       - name: Accept the changed baselines
-        if: steps.check.outcome == 'failure' && contains(github.event.pull_request.labels.*.name, 'visual-accept')
+        if: steps.check.outcome == 'failure' && github.event.action == 'labeled'
         shell: bash
         env:
           DS_VISUAL_CONTAINER: '1'
@@ -343,15 +366,36 @@ jobs:
           git push origin "HEAD:$HEAD_REF"
           echo "Accepted ${COUNT} baselines." >> "$GITHUB_STEP_SUMMARY"
 
+      # github.event.action != 'labeled', the mirror of the Accept step's
+      # condition above: mutually exclusive and exhaustive over the failure
+      # case, so exactly one of Report/Accept runs on any red `check`. A push
+      # that fails while the visual-accept label is already sitting on the
+      # pull request lands HERE, not in Accept — the label only fires an
+      # accept on the run where it was just applied.
       - name: Report the failing shots
-        if: steps.check.outcome == 'failure' && !contains(github.event.pull_request.labels.*.name, 'visual-accept')
+        if: steps.check.outcome == 'failure' && github.event.action != 'labeled'
         shell: bash
+        env:
+          # Whether `visual-accept` is already sitting on the pull request
+          # from an earlier, different accept — distinct from the step's own
+          # `if:` above, which asks whether THIS run is the one that just
+          # applied it. Both can be true on different runs of the same pull
+          # request, and the message below needs to tell them apart: "add
+          # the label" is the wrong instruction to a pull request that
+          # already carries it and needs the label removed and re-added
+          # instead.
+          LABEL_ALREADY_PRESENT: ${{ contains(github.event.pull_request.labels.*.name, 'visual-accept') }}
         run: |
           set -euo pipefail
+          if [ "$LABEL_ALREADY_PRESENT" = "true" ]; then
+            ACCEPT_INSTRUCTION="These changes were not auto-accepted, even though \`visual-accept\` is already on this pull request — the label accepts once, on the run where it is applied, not on every later push. If they are intended, remove and re-add the \`visual-accept\` label to accept this run's failures; that re-add starts a new run on its own."
+          else
+            ACCEPT_INSTRUCTION="If these changes are intended, add the \`visual-accept\` label — that starts a new run on its own; there is no need to re-run this one."
+          fi
           {
             echo "### Visual regression"
             echo
-            echo "If these changes are intended, add the \`visual-accept\` label — that starts a new run on its own; there is no need to re-run this one."
+            echo "$ACCEPT_INSTRUCTION"
             echo
             echo '```'
             # --plain: failedTitles() already returns plain titles: the
