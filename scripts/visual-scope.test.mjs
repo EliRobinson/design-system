@@ -920,7 +920,7 @@ const BUILDS_PRESENT =
   existsSync('../apps/docs/.next/prerender-manifest.json');
 
 describe.skipIf(!BUILDS_PRESENT)('the emitted pattern, applied by Playwright itself', () => {
-  it('selects exactly the 30 tests a modified Button.tsx could have changed', () => {
+  it('selects exactly the 28 tests a modified Button.tsx could have changed', () => {
     const plan = scopeFor({
       changes: [{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }],
       affectedProjects: ['docs', 'storybook', 'react'],
@@ -939,6 +939,10 @@ describe.skipIf(!BUILDS_PRESENT)('the emitted pattern, applied by Playwright its
     /* A missing Total line would otherwise read as "0 tests" — the silent
          under-selection answer this module exists to refuse. */
     expect(total, `no "Total: N tests" line in --list output:\n${listed}`).not.toBeNull();
-    expect(Number(total[1])).toBe(30);
+    /* 28, not 30: Button's two `/components/button` docs shots (light and
+       dark) are gone while `docs-wide` is disabled — see
+       docs/agents/visual-regression.md. Re-enabling that project takes this
+       back to 30, which is the point of asserting an exact number here. */
+    expect(Number(total[1])).toBe(28);
   }, 120_000);
 });

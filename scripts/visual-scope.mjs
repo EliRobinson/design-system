@@ -484,7 +484,22 @@ export function scopeFor({ changes, affectedProjects, shots, affectedBy }) {
       out.add(routePattern(route));
       docsMatched = true;
     }
-    const docsOk = !docsAffected || !docsNarrowable || docsMatched || status === 'D';
+    /* When the shot list contains no `/components/*` route at all, component
+       docs pages are not being screenshotted by any enabled project — today
+       because `docs-wide` is commented out in playwright.config.ts (see
+       docs/agents/visual-regression.md, "Why docs-wide is disabled"). A
+       missing route is then the normal state, not drift, and the guard below
+       would hard-fail every modified component.
+
+       Scoped to the whole class on purpose, not to a flag: if `docs-wide`
+       comes back, `/components/*` routes reappear in the shot list and the
+       guard re-arms by itself. And while it is off, one component whose slug
+       drifted still cannot hide — there is nothing for it to hide from, since
+       no component route is shot. The guard only relaxes when the entire
+       class is absent, never for an individual miss. */
+    const docsCoversComponents = routes.some((r) => r.startsWith('/components/'));
+    const docsOk =
+      !docsAffected || !docsNarrowable || !docsCoversComponents || docsMatched || status === 'D';
 
     /* Loud on purpose. A component renamed without its story or its docs slug
        following would otherwise stop being tested, and the run would be

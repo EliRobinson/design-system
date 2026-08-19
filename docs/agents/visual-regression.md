@@ -44,7 +44,20 @@ This is why `scripts/visual-scope.mjs` treats an added or deleted component file
 
 `design-system-docs/` is a docs-wide event as well, and one Nx cannot see: the directory belongs to no project, so `nx show projects --affected --files=design-system-docs/…` answers `[]`. It is read at build time to generate `brand-manifest.json`, which becomes the UI Kits sidebar section on every docs page and the content of the `/brand/*` shots. The scoper forces the `docs` side whole for it, the same way it does for `playwright.config.ts`. The general rule to check any new path against: **a path Nx cannot map is a path the scoper cannot see** — if it can change a pixel, it has to be named in `visual-scope.mjs`.
 
-Meeting 142 red docs pages on a component-adding branch is expected, not a break. Add `visual-accept`, review the images in the diff, done.
+Meeting 142 red docs pages on a component-adding branch is expected, not a break — but see the next section: `docs-wide` is currently disabled precisely because "expected, not a break" still costs a 14-minute run and a label on every component PR.
+
+### Why `docs-wide` is disabled
+
+`docs-wide` is commented out in `playwright.config.ts` and its 142 baselines are deleted. `docs-narrow`, `storybook-wide` and `storybook-narrow` all still run.
+
+The reason is the section above. Because the sidebar renders on every docs page and derives from one registry, a single added component invalidates all 142 shots at once. That is not a bug in the scoper — the scoper is right to force the docs side whole — but it means the project is reliably red on exactly the pull requests this system exists to protect, and the signal is one bit ("the sidebar moved") repeated 142 times. The storybook projects, which isolate a component's own rendering, caught zero false positives across the same change and are where the real regression signal lives.
+
+Re-enable when **both** are true:
+
+- **A. A scoping answer that survives a sidebar change.** Options worth weighing: screenshot the page's content region rather than the full page; stub the registry to a fixed fixture set so the sidebar is invariant; or mask the sidebar in the comparison. Each trades some coverage for a signal that means one thing.
+- **B. Sharding and a CI matrix.** 142 wide-viewport page shots is the bulk of the suite's runtime. Sharded across a matrix it fails in minutes rather than 14, which is what makes a re-run cheap enough that a noisy project is tolerable in the first place.
+
+To re-enable, uncomment the `docs-wide` block in `playwright.config.ts`. Nothing else changes: `docs-wide` is deliberately still in `SPEC_FILE_BY_PROJECT`, and the mint step in `visual.yml` regenerates the baselines on the runner automatically on the first pull request that runs it. Do not regenerate them locally — see the top of this file for why the host is the variable.
 
 ---
 
