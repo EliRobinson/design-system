@@ -21,6 +21,16 @@ export default defineConfig(
   defineVisualConfig({
     testDir: './tests/visual',
 
+    /* The HTML report is for a person; this one is for the workflow. The
+       `visual-accept` label and the recovery on main both need the exact set of
+       failing shots, and reading it from a report beats parsing 14 minutes of
+       log output. */
+    reporter: [
+      ['list'],
+      ['html', { open: 'never' }],
+      ['json', { outputFile: 'test-results/report.json' }],
+    ],
+
     /* The Storybook build is served, not rebuilt per test. It has to exist
        before the specs are collected, because they enumerate stories from its
        index.json — which is why the build runs in `pretest:visual` rather than
