@@ -51,6 +51,12 @@ const SUBPATHS = [
     load: () => import('./visual-sweep.mjs'),
     callable: 'sweepStorybook',
   },
+  {
+    subpath: '@elirobinson/ai-patterns/testing/preflight-sweep',
+    file: 'preflight-sweep.mjs',
+    load: () => import('./preflight-sweep.mjs'),
+    callable: 'findPreflightSensitiveElements',
+  },
 ];
 
 describe.each(SUBPATHS)('$subpath resolves from CommonJS', ({ subpath, file, load, callable }) => {
