@@ -56,6 +56,11 @@
       "types": "./src/testing/visual-sweep.d.ts",
       "import": "./src/testing/visual-sweep.mjs",
       "require": "./src/testing/visual-sweep.mjs"
+    },
+    "./testing/preflight-sweep": {
+      "types": "./src/testing/preflight-sweep.d.ts",
+      "import": "./src/testing/preflight-sweep.mjs",
+      "require": "./src/testing/preflight-sweep.mjs"
     }
   },
   "engines": {
