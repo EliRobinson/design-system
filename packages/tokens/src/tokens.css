@@ -717,13 +717,28 @@ a.ds-pagination__item:hover {
    and mobile.css declares custom properties; a `--target` that changed under
    the query instead would move every explicit `min-height: var(--target)` in
    the component library at a breakpoint, which is a much larger claim than
-   "a phone-sized coarse-pointer viewport gets 44px controls". */
+   "a phone-sized coarse-pointer viewport gets 44px controls".
+
+   `:root:not([data-platform='mobile'])` is what makes it *the same* floor, and
+   it is a specificity fix, not a scoping one. This half used to lead with a
+   bare `button` — (0,0,1), which loses to `.ds-chip` and `.ds-button--sm`
+   (0,1,0) — while the attribute half above is (0,2,1) and wins. So the two
+   halves of a rule whose own comment calls them the same floor disagreed: a
+   responsive coarse-pointer phone got a 32px `button.ds-chip` and a 36px
+   `--sm` button, and the same page with data-platform="mobile" set got 44px
+   for both. `:root` (0,1,0) + `:not([data-platform='mobile'])` (0,1,0) +
+   `button` (0,0,1) is (0,2,1) — parity by construction rather than by a
+   count that has to be re-done every time a component adds a class. The
+   `:not()` is what supplies the second (0,1,0) and it also states the division
+   of labour: this half covers the pages that have not set the attribute, and
+   the half above covers the ones that have. Nothing matches both, and nothing
+   matches neither. */
 @media (max-width: 480px) and (pointer: coarse) {
-  button,
-  [role='button'],
-  a.ds-button,
-  input:not([type='range']),
-  select {
+  :root:not([data-platform='mobile']) button,
+  :root:not([data-platform='mobile']) [role='button'],
+  :root:not([data-platform='mobile']) a.ds-button,
+  :root:not([data-platform='mobile']) input:not([type='range']),
+  :root:not([data-platform='mobile']) select {
     min-height: var(--target);
   }
 }

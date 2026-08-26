@@ -15,7 +15,14 @@
   color: var(--fg);
 }
 
+/* 22px painted, on purpose: MUI's Chip delete icon is 22px and that is the
+   scale a chip's remove glyph belongs to. The hit area is a different question
+   from the paint, and it was the same 22x22 until #116 — 2px under
+   --target-min in both axes, the one thing the system shipped below the WCAG
+   2.2 AA floor (SC 2.5.8). ::after below closes that without touching the
+   glyph. */
 .ds-chip__remove {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -29,6 +36,29 @@
   cursor: pointer;
   font-size: var(--fs-sm);
   line-height: 1;
+}
+
+/* The hit area, reaching --target-min without growing the painted circle.
+   Sized, not inset: `inset: -1px` would be the symmetric negative inset that
+   hit-area-no-overlap exists to warn about, and it would also grow with the
+   button — under data-platform="mobile" the remove button is floored to 44px
+   tall, and a symmetric inset would then hang 1px past a chip it has already
+   stretched. A fixed --target-min box centred on the control cannot: it is
+   24x24 in every condition, which is exactly the floor and nothing more.
+
+   Overlap headroom, measured on <Chip onRemove>Design</Chip>: the label's
+   centre is 34.07px from this control's centre and this overlay reaches 12px,
+   so it clears the label by 22px. Both halves — the 24x24 reach and the
+   absence of an overlap — are asserted against the shipped stylesheet in
+   packages/ai-patterns/src/testing/playwright.test.mjs. */
+.ds-chip__remove::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--target-min);
+  height: var(--target-min);
+  transform: translate(-50%, -50%);
 }
 
 .ds-chip__remove:hover {

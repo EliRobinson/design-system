@@ -86,10 +86,11 @@ Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
 - Every component that renders a focusable/interactive native element uses `forwardRef`, forwarding to the outermost interactive/native element the component owns.
 - Touch targets are scoped by control role, not one blanket size:
   - **Primary interactive controls at their default size** — buttons, pagination items, segmented-control options, nav items, and other button-like controls — have a minimum 44x44 touch target. Where visual density matters, keep the painted glyph small and expand the hit area (padding, or a bounded overlay) rather than inflating the visible control.
-  - **Dense inline affordances** — a chip's remove glyph, a search field's clear button, rating stars, calendar day cells — follow shadcn/MUI-scale sizing instead, not 44px. Reference values: MUI Chip is 32px tall (24px `small`) with a 22px (16px `small`) delete icon; shadcn Badge is ~20px tall with 12px icons and ships no remove affordance at all.
-  - **An explicitly compact size variant follows the dense scale too.** `Button`'s `size="sm"` is 36px and is meant to be — see "Why `size=\"sm\"` is 36px" below. `checkTouchTargets()` exempts `.ds-button--sm` by class, so both `<Button size="sm">` and a hand-written `<a class="ds-button ds-button--sm">` pass without anyone hand-adding `data-touch-target="dense"`.
+  - **Dense inline affordances** — a chip's remove glyph, a search field's clear button, rating stars, calendar day cells — follow shadcn/MUI-scale sizing instead, and are measured against a **24x24** floor rather than 44x44. Reference values: MUI Chip is 32px tall (24px `small`) with a 22px (16px `small`) delete icon; shadcn Badge is ~20px tall with 12px icons and ships no remove affordance at all.
+  - **An explicitly compact size variant follows the dense scale too.** `Button`'s `size="sm"` is 36px and is meant to be — see "Why `size=\"sm\"` is 36px" below. `checkTouchTargets()` tiers `.ds-button--sm` by class, so both `<Button size="sm">` and a hand-written `<a class="ds-button ds-button--sm">` land on the dense floor without anyone hand-adding `data-touch-target="dense"`. The same is true of `.ds-chip`: a chip that is a control (`<a class="ds-chip">`, `<button class="ds-chip">`) is 32px, which is MUI's Chip exactly.
+  - **Dense is a second floor, not an exemption.** A control matching the dense tier is still measured; it is measured against 24x24 (WCAG 2.2 **AA**, SC 2.5.8 Target Size Minimum) and a miss is reported under `touch-target-dense`. There is no tier below that and no `data-touch-target="none"` — see "Why there is no third tier" below.
   - **A decorative mark is not a touch target at all.** An `aria-hidden`, unfocusable mark — a chat avatar, a status dot, an eyebrow glyph — has no hit area to size, so neither rule applies to it and it takes the ordinary size scale for its kind. Avatars are 32/40/56 (`Avatar`'s `sm`/`md`/`lg`) and nothing else. `ChatMessage` once hand-rolled a 44px avatar on the claim that "44x44 is the floor for an avatar in this system"; there is no such floor, and the 44px above is scoped to primary interactive controls. If a mark ever does need a new size, add the step to `Avatar` — do not draw one beside it.
-  - **In both cases**, an expanded hit area must never overlap sibling content. A 44x44 overlay on a chip once covered the chip's own label, so clicking the label's tail fired the remove handler — bound the hit area (e.g. stretch to the container's height, not a symmetric negative inset) so this can't recur.
+  - **In every case**, an expanded hit area must never overlap sibling content. A 44x44 overlay on a chip once covered the chip's own label, so clicking the label's tail fired the remove handler — bound the hit area (e.g. stretch to the container's height, not a symmetric negative inset) so this can't recur. `.ds-chip__remove` is the worked example: it paints 22px and reaches 24x24 through a `--target-min`-sized `::after` centred on the glyph, which clears the label's centre by 22px.
 - **A filled variant restates `color` in every state.** If a rule sets `background-color`, the rule for each of its states (`:hover`, `:active`, `:focus`, `:disabled`) sets `color` too — even when the colour does not change.
 - **Never paint `--ink-*`, `--signal-*` or `--anchor-*`.** The scales are fixed and do not respond to `[data-theme="dark"]`; use the semantic token that flips. `component-css.test.mjs` enforces this.
 - **A background and the text on it come from the same world** — both themed, or both fixed. One of each inverts in dark mode.
@@ -125,10 +126,35 @@ element that failed in the wild was `a.ds-button.ds-button--accent.ds-button--sm
 — an anchor carrying the classes, which is a supported usage — so anything
 `Button.tsx` emitted for `size="sm"` would have missed it entirely.
 
-The cost, stated so it is not rediscovered: a consumer who reaches for
-`size="sm"` for a page's primary mobile action now gets a silent pass. Holding
-dense controls to a _dense floor_ (WCAG's 24px) rather than exempting them from
-measurement is the real answer to that, and is not built.
+The cost #113 stated so it would not be rediscovered — a consumer who reaches
+for `size="sm"` for a page's primary mobile action gets a silent pass — is what
+issue #116 answered: dense controls are now held to a _dense floor_ (WCAG's
+24px) rather than exempted from measurement. `size="sm"` is still not measured
+against 44x44, and whether a 36px control is the right thing for a page's
+primary action is still a judgement the contract cannot make; what changed is
+that `data-touch-target="dense"` on an 8x8 glyph no longer passes as cleanly as
+a 36px button does.
+
+#### Why there is no third tier
+
+Issue #116 asked whether a `data-touch-target="none"` escape hatch should exist
+for controls that genuinely cannot be measured. It does not, and should not:
+
+1. **24x24 is the standard's own floor.** Below it there is no principled
+   number left to hold a control to, so an opt-out would not be a third tier —
+   it would be the absence of one.
+2. **A marker that means "stop looking" is the suppression habit #113 was filed
+   about.** That is the failure this floor exists to end; shipping the escape
+   hatch alongside it would hand back what the floor just took away, and it
+   would be reached for first because it is the quickest way to a green build.
+3. **Both motivating cases are already handled by measurement.** A control
+   nothing routes to is reported as `touch-target-unmeasurable` — a stated gap
+   in the check, not a pass. A control whose hit area lives on its `<label>` is
+   measured on the label.
+
+A page with a genuine exception narrows `selector` or widens `exempt` at the
+call site, where the exception is visible in the test and gets reviewed, rather
+than in an attribute on an element nobody reads again.
 
 #### Why a filled variant restates `color`
 
@@ -170,7 +196,7 @@ That last sentence is a check, not advice. `component-css.test.mjs` sweeps every
 | `Spinner`                       | atoms     | `role="status"` loading indicator; `size` (`sm`/`md`/`lg`) and `label` (default `"Loading"`).                                                                                                                                                                                                                                                                                             |
 | `Slider`                        | atoms     | Labelled native `<input type="range">`; `label` is required, matching `Input`/`Textarea`/`Select`.                                                                                                                                                                                                                                                                                        |
 | `Kbd`                           | atoms     | Styled `<kbd>` for keyboard-shortcut hints; used by `CommandPalette`.                                                                                                                                                                                                                                                                                                                     |
-| `Chip`                          | molecules | Optional `onRemove` renders a dense inline remove button sized to the shadcn/MUI scale, not 44px — see Constraints above.                                                                                                                                                                                                                                                                 |
+| `Chip`                          | molecules | Optional `onRemove` renders a dense inline remove button: 22px painted, 24x24 hit area. A chip that is a control (`<a class="ds-chip">`) is dense too — see Constraints above.                                                                                                                                                                                                            |
 | `FormField`                     | molecules | See "FormField vs Input" above.                                                                                                                                                                                                                                                                                                                                                           |
 | `SearchField`                   | molecules | `type="search"` input with a built-in clear button; `value`/`onValueChange` (controlled) or `defaultValue` (uncontrolled).                                                                                                                                                                                                                                                                |
 | `Pagination`                    | molecules | `page`/`pageCount`/`onPageChange`; renders one button per page — no windowing for very large page counts (fine for typical use, flagged as a follow-up for 100+ pages).                                                                                                                                                                                                                   |

@@ -31,8 +31,10 @@ about severity, free of nitpicks dressed up as blockers.
 3. **Contrast** — compute WCAG ratios for text/background pairings introduced by the
    page; AA is the floor (4.5:1 normal text, 3:1 large).
 4. **Touch targets** — `touch-target-primary` (44×44px) for buttons/pagination/nav
-   items; `touch-target-dense` for chip-remove/clear/stars/day-cells;
-   `hit-area-no-overlap` everywhere (check computed geometry, not intent).
+   items; `touch-target-dense` (24×24px, WCAG 2.2 AA SC 2.5.8) for
+   chip-remove/clear/stars/day-cells, `size="sm"` buttons and chip controls —
+   a floor, not an exemption, so measure them too; `hit-area-no-overlap`
+   everywhere (check computed geometry, not intent).
 5. **Keyboard and focus** — tab reach and order, visible `:focus-visible` on every
    control, Escape/arrow behavior matching each component's documented contract, focus
    return on overlay close, no `outline: none`.

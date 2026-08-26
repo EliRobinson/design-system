@@ -31,6 +31,20 @@
 /** contracts.json → uiContracts.minimumTouchTarget */
 export const MINIMUM_TOUCH_TARGET = 44;
 
+/**
+ * contracts.json → uiContracts.minimumTouchTargetDense, and the `--target-min`
+ * token. The floor a control matching `DENSE_AFFORDANCE_SELECTOR` is measured
+ * against instead of `MINIMUM_TOUCH_TARGET`.
+ *
+ * 24 is not this system's number — it is WCAG 2.2 **AA**, SC 2.5.8 (Target Size
+ * Minimum). 44 is AAA (SC 2.5.5) and this system's stricter default. That is
+ * what makes a second floor principled rather than a discount: a dense control
+ * still has to clear the standard, it is only excused from clearing the
+ * system's own ambition. There is deliberately no third tier below this one —
+ * see the `DENSE_AFFORDANCE_SELECTOR` docblock.
+ */
+export const MINIMUM_TOUCH_TARGET_DENSE = 24;
+
 /** contracts.json → touch-target-primary. Controls a finger is expected to hit. */
 export const PRIMARY_CONTROL_SELECTOR = [
   'button',
@@ -51,6 +65,13 @@ export const PRIMARY_CONTROL_SELECTOR = [
  * contracts.json → touch-target-dense. Controls the system holds to the
  * shadcn/MUI scale instead of 44px. Mark your own with
  * `data-touch-target="dense"` rather than growing this list.
+ *
+ * Matching this selector is **not** an exemption from measurement. It selects
+ * which floor a control is measured against: `MINIMUM_TOUCH_TARGET_DENSE`
+ * (24x24, WCAG 2.2 AA SC 2.5.8) instead of `MINIMUM_TOUCH_TARGET` (44x44, AAA
+ * SC 2.5.5 and this system's default). A dense control that misses 24x24 is
+ * reported under `touch-target-dense`, and there is no marker below this one to
+ * escape into — which is the point. See "Why there is no third tier" below.
  *
  * Every class below names the element that *receives the click*. An exemption
  * written against an inner span silently matches nothing, which reads as a
@@ -74,14 +95,46 @@ export const PRIMARY_CONTROL_SELECTOR = [
  * leave it differing from `md` only in font size and horizontal padding — a
  * typography variant, not a size variant — which removes the reason `sm`
  * exists and pushes anyone who needs a compact control into hand-rolling one
- * outside the system. The cost, recorded so it is not discovered twice: a
- * consumer who uses `size="sm"` for a primary mobile CTA now gets a silent
- * pass. Measuring dense controls against a dense floor rather than exempting
- * them is the fix for that, and is not built here.
+ * outside the system. The cost #113 recorded so it would not be discovered
+ * twice — a consumer who uses `size="sm"` for a primary mobile CTA gets a
+ * silent pass — is what the dense floor answers (#116). `size="sm"` is still
+ * not measured against 44x44, and a 36px CTA is still a judgement the contract
+ * cannot make for you; what changed is that `data-touch-target="dense"` on an
+ * 8x8 glyph no longer passes as cleanly as a 36px button does.
+ *
+ * `.ds-chip` is the entry the floor made possible, and it closes #114. A chip
+ * that is a control — `<a class="ds-chip">`, `<button class="ds-chip">`, both
+ * sanctioned hand-written usages the React <Chip> deliberately cannot emit — is
+ * 32px tall and was failing the 44px floor latently, unseen because every
+ * fixture in this repo goes through <Chip>, which renders a <span>. 32px is
+ * MUI's Chip exactly, which is the reference scale this tier already names, so
+ * "a chip is dense" was always the right answer; what made it unwritable was
+ * that adding it here used to mean *stopping measuring it*, which is what #114
+ * objected to. Now it means measuring it at 24, which it clears at 64x32 and
+ * 63x32. It is the only container in this list rather than a leaf control — and
+ * that is deliberate: `closest` then holds everything inside a chip to the
+ * dense floor, including an inline link in a chip's label (#114 case e), which
+ * is a 20px-tall tap target that ought to clear AA and did not.
+ *
+ * Why there is no third tier
+ * --------------------------
+ * #116 asked whether a `data-touch-target="none"` escape hatch should exist for
+ * the genuinely un-measurable. It does not, and should not: 24x24 is the
+ * standard's own floor, so anything below it has no principled number left to
+ * be held to, and a marker that means "stop looking" is the suppression habit
+ * #113 was filed about — the exact failure this floor exists to end. The two
+ * cases that motivated the question are already handled by measurement rather
+ * than by a marker: a control nothing routes to is reported as
+ * `touch-target-unmeasurable` (a gap in the check, said out loud, not a pass),
+ * and a control whose hit area lives on its `<label>` is measured on the label.
+ * A page with a genuine exception narrows `selector` or widens `exempt` at the
+ * call site, where the exception is visible in the test and reviewable, instead
+ * of hiding in an attribute on the element.
  */
 export const DENSE_AFFORDANCE_SELECTOR = [
   '[data-touch-target="dense"]',
   '.ds-button--sm',
+  '.ds-chip',
   '.ds-chip__remove',
   '.ds-search-field__clear',
   '.ds-rating__button',
@@ -127,12 +180,21 @@ function assertPage(page) {
  * afterwards. Without that, nothing below the fold was ever measured at all —
  * see the note on `measure` below.
  *
+ * Every control is measured. `exempt` does not skip one; it picks which of two
+ * floors it is measured against, and a control that misses the dense floor is
+ * reported under `touch-target-dense` rather than `touch-target-primary`. Read
+ * `contract` on a violation rather than parsing the message for the prefix.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {object} [options]
  * @param {string} [options.selector] which controls to measure
- * @param {string} [options.exempt] controls held to the dense scale instead
+ * @param {string} [options.exempt] controls measured against the dense floor
+ *   instead of `minimum`. Pass `''` to hold everything to `minimum`.
  * @param {number} [options.minimum] px, defaults to the contract's 44
- * @returns {Promise<Array<{ element: string, width: number, height: number, effectiveWidth?: number, effectiveHeight?: number, labelWidth?: number, labelHeight?: number, unmeasurable?: true, message: string }>>}
+ * @param {number} [options.denseMinimum] px, defaults to the contract's 24.
+ *   Clamped to `minimum`: the dense floor is a relaxation, so it can never come
+ *   out stricter than the floor it relaxes.
+ * @returns {Promise<Array<{ element: string, contract: 'touch-target-primary' | 'touch-target-dense' | 'touch-target-unmeasurable', minimum: number, width: number, height: number, effectiveWidth?: number, effectiveHeight?: number, labelWidth?: number, labelHeight?: number, unmeasurable?: true, message: string }>>}
  */
 export async function checkTouchTargets(page, options = {}) {
   assertPage(page);
@@ -141,10 +203,11 @@ export async function checkTouchTargets(page, options = {}) {
     selector = PRIMARY_CONTROL_SELECTOR,
     exempt = DENSE_AFFORDANCE_SELECTOR,
     minimum = MINIMUM_TOUCH_TARGET,
+    denseMinimum = MINIMUM_TOUCH_TARGET_DENSE,
   } = options;
 
   return page.evaluate(
-    ({ selector, exempt, minimum }) => {
+    ({ selector, exempt, minimum, denseMinimum }) => {
       const describe = (element) => {
         const id = element.id ? `#${element.id}` : '';
         const classes =
@@ -183,7 +246,16 @@ export async function checkTouchTargets(page, options = {}) {
       // control below the fold passed without being checked, so a genuinely
       // undersized one was indistinguishable from a compliant one. Either way
       // the check only ever saw the first screenful of a page.
-      const measure = (surface) => {
+      //
+      // `floor` is the minimum this particular surface is being held to — 44
+      // for a primary control, 24 for a dense one. It is a parameter rather
+      // than a closure over one number because the walk below stops after
+      // `floor` steps: once a surface has reached the floor there is nothing
+      // left to learn, and a 24-run therefore reports a *lower bound* (at most
+      // 24 + 24 + 1 = 49) rather than a width. That is harmless — the only
+      // question asked of the result is `>= floor` — but it is why two runs at
+      // different floors can report different numbers for the same box.
+      const measure = (surface, floor) => {
         // Scrolling is synchronous with respect to layout, so the box read back
         // immediately afterwards is already in the coordinate space the probes
         // below will use. `instant` because a page with `scroll-behavior:
@@ -238,7 +310,7 @@ export async function checkTouchTargets(page, options = {}) {
 
         const reach = (dx, dy) => {
           let distance = 0;
-          for (let step = 1; step <= minimum; step += 1) {
+          for (let step = 1; step <= floor; step += 1) {
             const answer = probe(centreX + dx * step, centreY + dy * step);
             if (answer === BLIND) return { distance, blind: true };
             if (answer === MISS) break;
@@ -271,7 +343,14 @@ export async function checkTouchTargets(page, options = {}) {
         };
       };
 
-      const meets = (area) => area.measured && area.width >= minimum && area.height >= minimum;
+      const meets = (area, floor) => area.measured && area.width >= floor && area.height >= floor;
+
+      // The dense floor relaxes the primary one, so it can never be the
+      // stricter of the two. A caller who passes `minimum: 20` is loosening the
+      // whole contract for a reason of their own; leaving `denseMinimum` at 24
+      // there would hold a chip's remove glyph to a higher bar than the page's
+      // primary CTA, which is not a floor anyone asked for.
+      const denseFloor = Math.min(minimum, denseMinimum);
 
       // `.labels` covers both `<label for>` and a wrapping `<label>`, and is
       // only defined on the elements that can actually be labelled — an <a> or
@@ -296,11 +375,23 @@ export async function checkTouchTargets(page, options = {}) {
 
       try {
         for (const element of document.querySelectorAll(selector)) {
-          if (exempt && element.closest(exempt)) continue;
           if (element.disabled) continue;
           if (!isRendered(element)) continue;
 
-          const own = measure(element);
+          // The whole of #116, in three lines. This used to be a `continue`:
+          // a dense control was not measured at all, so an 8x8 glyph carrying
+          // data-touch-target="dense" passed exactly as cleanly as a 36px
+          // button. Now the match selects a floor instead of skipping the
+          // measurement, and missing that floor is its own violation kind.
+          //
+          // `closest` rather than `matches` because the click can land on an
+          // inner glyph inside a dense affordance; the ancestor carrying the
+          // marker is what declares the tier.
+          const dense = Boolean(exempt && element.closest(exempt));
+          const floor = dense ? denseFloor : minimum;
+          const contract = dense ? 'touch-target-dense' : 'touch-target-primary';
+
+          const own = measure(element, floor);
 
           if (!own.measured) {
             // Occluded and off-canvas surfaces are skipped, as they always
@@ -311,29 +402,31 @@ export async function checkTouchTargets(page, options = {}) {
             if (own.blind) {
               violations.push({
                 element: describe(element),
+                contract: 'touch-target-unmeasurable',
+                minimum: floor,
                 width: Math.round(own.rect.width),
                 height: Math.round(own.rect.height),
                 unmeasurable: true,
                 message:
                   `touch-target-unmeasurable: the browser routed no element to this control's` +
                   ` centre, so its hit area could not be measured and it has not been checked` +
-                  ` against ${minimum}x${minimum}. This is a gap in the check, not a size` +
-                  ` violation — look for pointer-events, a clipping ancestor, or a transform` +
-                  ` that moves the control away from its box.`,
+                  ` against ${floor}x${floor} (the ${dense ? 'dense' : 'primary'} floor).` +
+                  ` This is a gap in the check, not a size violation — look for pointer-events,` +
+                  ` a clipping ancestor, or a transform that moves the control away from its box.`,
               });
             }
             continue;
           }
 
-          if (meets(own)) continue;
+          if (meets(own, floor)) continue;
 
           // Too small on its own. If a label that activates it is big enough by
           // itself, that label is the surface being aimed at.
           const labelAreas = labelsOf(element)
             .filter(isRendered)
-            .map(measure)
+            .map((element) => measure(element, floor))
             .filter((area) => area.measured);
-          if (labelAreas.some(meets)) continue;
+          if (labelAreas.some((area) => meets(area, floor))) continue;
 
           // Report the roomiest label considered, so the message says what was
           // measured rather than leaving the reader to guess why 18x18 was not
@@ -344,22 +437,40 @@ export async function checkTouchTargets(page, options = {}) {
             null,
           );
 
+          // Both messages name the floor that was applied, because the same
+          // ~22x22 reads as a bug or as a non-event depending on which one it
+          // was measured against, and a reader who cannot tell will go looking
+          // for the wrong fix.
+          const size =
+            `hit area is ~${own.width}x${own.height}, below ${floor}x${floor}` +
+            (label ? `, and its label is only ~${label.width}x${label.height}` : '');
+          const expand =
+            `Expand the hit area with padding or a bounded overlay — do not inflate the` +
+            ` painted control` +
+            (label ? `; giving the label the full row height is usually the fix` : '');
+
           violations.push({
             element: describe(element),
+            contract,
+            minimum: floor,
             width: Math.round(own.rect.width),
             height: Math.round(own.rect.height),
             effectiveWidth: own.width,
             effectiveHeight: own.height,
             ...(label ? { labelWidth: label.width, labelHeight: label.height } : {}),
-            message:
-              `touch-target-primary: hit area is ~${own.width}x${own.height}, below ${minimum}x${minimum}` +
-              (label ? `, and its label is only ~${label.width}x${label.height}` : '') +
-              `. Expand it with padding or a bounded overlay — do not inflate the visible control` +
-              (label ? `; giving the label the full row height is usually the fix` : '') +
-              `. A deliberately compact control — a dense inline affordance, or a` +
-              ` variant whose whole point is being small — declares itself with` +
-              ` data-touch-target="dense" instead; the design system's own compact` +
-              ` variants (size="sm" and friends) already do.`,
+            message: dense
+              ? `touch-target-dense: ${size}. This control is held to the dense floor` +
+                ` (${floor}x${floor}, WCAG 2.2 AA SC 2.5.8 Target Size Minimum) rather than the` +
+                ` ${minimum}x${minimum} primary floor, because it matches the dense selector —` +
+                ` and it misses that too. ${expand}. There is no marker below this one:` +
+                ` ${floor}x${floor} is the standard's own floor, so declaring the control denser` +
+                ` is not available as a fix.`
+              : `touch-target-primary: ${size}. ${expand}. A deliberately compact control` +
+                ` — a dense inline affordance, or a variant whose whole point is being small —` +
+                ` declares itself with data-touch-target="dense"; the design system's own compact` +
+                ` variants (size="sm" and friends) already do. That moves it to the` +
+                ` ${denseFloor}x${denseFloor} dense floor, which it still has to clear — it is not` +
+                ` a way to stop the control being measured.`,
           });
         }
       } finally {
@@ -372,7 +483,7 @@ export async function checkTouchTargets(page, options = {}) {
 
       return violations;
     },
-    { selector, exempt, minimum },
+    { selector, exempt, minimum, denseMinimum },
   );
 }
 
