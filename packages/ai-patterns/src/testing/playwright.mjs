@@ -262,6 +262,11 @@ export async function checkTouchTargets(page, options = {}) {
  * neighbour: if a sibling's own centre routes to this control, it has been
  * covered.
  *
+ * Only siblings a user can actually see count. A visually-hidden sibling has no
+ * visual presence and no hit area of its own, so covering it deprives nobody of
+ * anything — see `isVisuallyRendered` below for why the zero-size guard alone
+ * could not tell the two apart.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {object} [options]
  * @param {string} [options.selector]
@@ -284,6 +289,36 @@ export async function checkHitAreaOverlap(page, options = {}) {
         return `${element.tagName.toLowerCase()}${id}${classes}${label ? ` "${label}"` : ''}`;
       };
 
+      // Is this sibling something a user could see and aim at? Anything else
+      // cannot be "covered" in any sense the contract cares about.
+      //
+      // The load-bearing clause is the size one. `sr-only` is deliberately
+      // 1x1 rather than 0x0 — a genuinely zero-sized element is dropped from
+      // the accessibility tree in some browsers — so the old
+      // `width === 0 || height === 0` guard missed the canonical pattern by
+      // exactly one pixel, and every `sr-only` label sitting at its control's
+      // static origin was reported as a swallowed neighbour. Measuring the box
+      // rather than enumerating the recipes covers every variant in the wild
+      // (`clip: rect(0 0 0 0)`, `clip-path: inset(50%)`, `1px` + `overflow:
+      // hidden`): a 1x1 element is not something a user can be prevented from
+      // touching. The original collapsed-in-either-axis guard is kept rather
+      // than folded in: a 0x570 sibling has no centre to probe, and widening
+      // that to `<= 1` in either axis would start skipping real 1px rules and
+      // dividers. The computed-style clauses sit alongside both for hidden
+      // siblings that are full-sized — a `visibility: hidden` placeholder
+      // holding layout space is equally untouchable.
+      const isVisuallyRendered = (element, rect) => {
+        if (rect.width === 0 || rect.height === 0) return false;
+        if (rect.width <= 1 && rect.height <= 1) return false;
+
+        const style = getComputedStyle(element);
+        if (style.visibility === 'hidden' || style.display === 'none') return false;
+        if (style.opacity === '0') return false;
+        if (style.clipPath === 'inset(50%)') return false;
+
+        return true;
+      };
+
       const violations = [];
 
       for (const control of document.querySelectorAll(selector)) {
@@ -291,7 +326,7 @@ export async function checkHitAreaOverlap(page, options = {}) {
           if (sibling === control || control.contains(sibling)) continue;
 
           const rect = sibling.getBoundingClientRect();
-          if (rect.width === 0 || rect.height === 0) continue;
+          if (!isVisuallyRendered(sibling, rect)) continue;
 
           const hit = document.elementFromPoint(
             rect.left + rect.width / 2,

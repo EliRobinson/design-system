@@ -429,6 +429,54 @@ describeBrowser('browser contract checks', () => {
 
       expect(await checkHitAreaOverlap(page)).toEqual([]);
     });
+
+    /* `sr-only` is 1x1, not 0x0 — a genuinely zero-sized element is dropped
+       from the accessibility tree in some browsers — so it slipped the old
+       `width === 0 || height === 0` guard by exactly one pixel. Sitting at its
+       control's static origin, its centre lands on the control, and every
+       accessible-name-only label on the page came back as a swallowed
+       neighbour. 23 such pairs on one consumer page. */
+    it('passes a control whose only sibling is an sr-only label', async () => {
+      await render(`<style>
+          .sr-only {
+            position: absolute;
+            width: 1px; height: 1px;
+            padding: 0; margin: -1px;
+            overflow: hidden;
+            clip-path: inset(50%);
+            white-space: nowrap; border: 0;
+          }
+          .row { position: relative; display: flex; align-items: center; }
+          .box { width: 18px; height: 18px; }
+        </style>
+        <div class="row">
+          <input class="box" id="done" type="checkbox" />
+          <label class="sr-only" for="done">Mark task done</label>
+        </div>`);
+
+      expect(await checkHitAreaOverlap(page)).toEqual([]);
+    });
+
+    /* The property worth protecting: skipping invisible siblings must not
+       blunt the check for a real one. Same symmetric negative-inset overlay as
+       the first case, with a sibling the user can actually see. */
+    it('still flags a symmetric negative-inset overlay covering a visible sibling', async () => {
+      await render(`<style>
+          .row { position: relative; display: flex; gap: 4px; align-items: center; }
+          .grabby { position: relative; width: 20px; height: 20px; border: 0; }
+          .grabby::after { content: ''; position: absolute; inset: -40px; }
+          .label { width: 60px; height: 20px; }
+        </style>
+        <div class="row">
+          <button class="grabby"></button>
+          <span class="label">Visible label</span>
+        </div>`);
+
+      const violations = await checkHitAreaOverlap(page);
+
+      expect(violations).toHaveLength(1);
+      expect(violations[0].covers).toContain('span.label');
+    });
   });
 
   describe('checkFocusVisible', () => {
