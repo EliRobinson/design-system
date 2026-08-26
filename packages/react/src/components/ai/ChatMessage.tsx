@@ -29,11 +29,25 @@ export const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(function
       className={cn('ds-chat-message', `ds-chat-message--${variant}`, className)}
       {...props}
     >
-      {/* The avatar is always aria-hidden. It is a decorative restatement of the
+      {/* The frame is an `Avatar` at its `md` step, taken by class rather than
+          hand-drawn here: `ds-avatar ds-avatar--md` is the same 40px circle,
+          `--bg-muted` fill and pill radius `Avatar.css` gives every other
+          avatar in the system, so there is one avatar scale and this is on it.
+          What is ChatMessage's own is the hairline `--border-control` edge and
+          the mark colour, and that is all `ChatMessage.css` still declares.
+
+          It is a class and not an <Avatar> element because `avatar` is an
+          arbitrary node — a glyph, a mark, a consumer's own <Avatar> — and
+          `Avatar` renders an <img> or derived initials, with nothing to hand a
+          node to. Composing the stylesheet is the composition available; a
+          second 40px circle declared here would be the duplication.
+
+          It stays aria-hidden. The avatar is a decorative restatement of the
           speaker, so `name` is the single thing that identifies a turn to a
           screen reader — that keeps one turn from being announced twice, and
-          keeps identification off a node the consumer may pass as a bare glyph. */}
-      <div className="ds-chat-message__avatar" aria-hidden="true">
+          keeps identification off a node the consumer may pass as a bare
+          glyph. */}
+      <div className="ds-avatar ds-avatar--md ds-chat-message__avatar" aria-hidden="true">
         <span className="ds-chat-message__mark">{avatar}</span>
       </div>
       <div className="ds-chat-message__body">

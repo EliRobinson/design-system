@@ -2,28 +2,34 @@
    ChatMessage
    ========================================================================== */
 
+/* `auto` and not a number: the avatar column is whatever the avatar frame is,
+   and the avatar frame is an Avatar. Writing the size here would be a second
+   place the avatar scale lives, which is the bug this column used to have. */
 .ds-chat-message {
   align-items: start;
   display: grid;
   gap: var(--space-3);
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
-/* 44x44 is the floor for an avatar in this system. The circle is an outline
-   over --surface-2 rather than a solid fill: a pure-ink fill is the same colour
-   as a dark page and the mark inside it disappears, while an outline survives
-   both themes. */
+/* The frame carries `ds-avatar ds-avatar--md` as well as this class, so the
+   circle — 40px, --bg-muted, pill radius, centred, clipped — comes from
+   Avatar.css and is not restated here. Only two things are ChatMessage's own:
+   the hairline edge, and (below) the mark colour.
+
+   This avatar used to hand-roll a 44px box, on the claim that "44x44 is the
+   floor for an avatar in this system". There is no such floor. The 44px floor
+   in docs/agents/components.md is scoped to PRIMARY INTERACTIVE CONTROLS; this
+   frame is aria-hidden and not focusable, so it is a decorative mark and sits
+   on the ordinary Avatar scale (32/40/56) like every other avatar.
+
+   The edge is an outline over the fill rather than a solid ink fill: a pure-ink
+   fill is the same colour as a dark page and the mark inside it disappears,
+   while an outline survives both themes. --border-control, because the edge is
+   what says where the circle is: 3.26:1 light / 4.00:1 dark on --bg-muted. */
 .ds-chat-message__avatar {
-  align-items: center;
-  background: var(--surface-2);
   border: 1px solid var(--border-control);
-  border-radius: var(--radius-pill);
-  display: flex;
   flex: none;
-  height: 44px;
-  justify-content: center;
-  overflow: hidden;
-  width: 44px;
 }
 
 .ds-chat-message__mark {
@@ -41,8 +47,8 @@
    token cleared for text and not a fill: --accent is 2.53:1 against the page
    under ember, which is a fill floor, not a text one.
 
-   The fallback is --status-warning-fg (6.66:1 light, 11.51:1 dark on
-   --surface-2), NOT the brand's readable amber. That looks like a near-miss
+   The fallback is --status-warning-fg (6.24:1 light, 11.51:1 dark on the
+   frame's --bg-muted), NOT the brand's readable amber. That looks like a near-miss
    and is deliberate. --accent-ink would be legible too, but it swaps with the
    palette — amber under ember, teal under slate — so the assistant's mark
    would silently re-hue with the brand, and the mark is an identity, not a

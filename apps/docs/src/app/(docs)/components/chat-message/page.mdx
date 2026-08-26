@@ -50,8 +50,11 @@ that: you pass the buttons you already have.
   attribution at all. Pass `name` on any thread where speakers alternate.
 - `timestamp` is a pre-formatted string. Formatting is the product's call — locale,
   relative versus absolute, seconds or not — so the system never parses or reformats it.
-- The avatar column is 44px, drawn as an outline over `--surface-2` rather than a solid
-  fill, so the mark inside survives both themes.
+- The avatar frame is an `Avatar` at its `md` step — it carries `ds-avatar ds-avatar--md`
+  so the 40px circle comes from `Avatar.css` and the system has one avatar scale. It is
+  drawn as a `--border-control` outline over that fill rather than a solid ink fill, so the
+  mark inside survives both themes. It is not 44px: the 44px floor is scoped to primary
+  interactive controls, and this frame is `aria-hidden` and not focusable.
 - **Keyboard:** the turn itself is not focusable. Anything tabbable comes from the node
   you pass as `actions`.
 - The ref forwards to the outer `<div>`.

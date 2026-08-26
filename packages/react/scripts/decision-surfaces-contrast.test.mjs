@@ -193,7 +193,12 @@ describe('the assistant avatar mark is legible on its own circle, in both themes
     '.ds-chat-message--received .ds-chat-message__mark',
     'color',
   );
-  const circle = systemToken('ai/ChatMessage.css', '.ds-chat-message__avatar', 'background');
+  /* Read from Avatar.css, not ChatMessage.css, because the frame IS an Avatar:
+     ChatMessage's avatar element carries `ds-avatar ds-avatar--md` and declares
+     no fill of its own. Following the class to the sheet that paints it is the
+     point — if the shared avatar fill is ever re-pointed, this measures the new
+     one instead of quietly measuring a copy ChatMessage kept for itself. */
+  const circle = systemToken('atoms/Avatar.css', '.ds-avatar', 'background');
 
   /* The draft drew this mark in --accent. It is 14px semibold text, so it is
      text under SC 1.4.3 and not a graphic under 1.4.11 — the 3:1 exemption
@@ -230,6 +235,43 @@ describe('the assistant avatar mark is legible on its own circle, in both themes
       (entry) => entry.selector === '.ds-chat-message__avatar',
     );
     expect(rule.body).toMatch(/border:[^;]*var\(--border-control\)/);
+  });
+
+  /* And the edge is measured, not just named. The circle's fill moved from
+     --surface-2 to Avatar's --bg-muted when the frame stopped being hand-rolled,
+     which is exactly the kind of move that can leave an edge that names the
+     right token and still disappears. */
+  for (const { id } of COMBINATIONS) {
+    it(`${id}: the avatar edge --border-control on ${circle} clears 3:1 (SC 1.4.11)`, () => {
+      expect(Number(ratio(id, '--border-control', circle).toFixed(2))).toBeGreaterThanOrEqual(3);
+    });
+  }
+
+  /* The frame is an Avatar, so ChatMessage does not get to redraw one. It used
+     to hand-roll a 44px circle on the claim that "44x44 is the floor for an
+     avatar in this system" — there is no such floor. docs/agents/components.md
+     scopes 44px to PRIMARY INTERACTIVE CONTROLS, and this frame is aria-hidden
+     and unfocusable. Geometry now comes from `ds-avatar ds-avatar--md`, and
+     this asserts ChatMessage.css does not quietly grow a second copy of it. */
+  it('does not restate the avatar geometry Avatar.css already owns', () => {
+    const rule = rules(sheet('ai/ChatMessage.css')).find(
+      (entry) => entry.selector === '.ds-chat-message__avatar',
+    );
+    for (const property of ['width', 'height', 'background', 'border-radius']) {
+      expect(
+        rule.body,
+        `.ds-chat-message__avatar declares ${property}. That is Avatar's, via ` +
+          '`ds-avatar ds-avatar--md` on the element — one avatar scale, one sheet.',
+      ).not.toMatch(new RegExp(`(?:^|[;\\s])${property}:`));
+    }
+  });
+
+  /* The size the frame is actually on, named once, so a rename of the step in
+     Avatar.css cannot leave ChatMessage pointing at a class that paints nothing. */
+  it('rides an Avatar size step that Avatar.css actually declares', () => {
+    expect(
+      rules(sheet('atoms/Avatar.css')).some((entry) => entry.selector === '.ds-avatar--md'),
+    ).toBe(true);
   });
 });
 

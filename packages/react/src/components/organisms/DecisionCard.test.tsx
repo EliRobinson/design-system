@@ -22,6 +22,37 @@ describe('DecisionCard', () => {
     expect(container.querySelector('.ds-decision__subject')).toHaveTextContent('Option A');
   });
 
+  /* #81's acceptance criteria: "headingLevel renders the real heading element;
+     it does not style a <div>." The headline shipped as a <p>, so a screen
+     reader's heading navigation skipped every DecisionCard on the page. */
+  it('renders the headline as a real h2 by default', () => {
+    render(<DecisionCard {...base} />);
+
+    const heading = screen.getByRole('heading', { level: 2 });
+    expect(heading.tagName).toBe('H2');
+    expect(heading).toHaveTextContent('This one is worth taking.');
+    expect(heading).toHaveClass('ds-decision__headline');
+  });
+
+  for (const level of [2, 3, 4, 5, 6] as const) {
+    it(`renders an h${level} when headingLevel is ${level}`, () => {
+      render(<DecisionCard {...base} headingLevel={level} />);
+
+      const heading = screen.getByRole('heading', { level });
+      expect(heading.tagName).toBe(`H${level}`);
+      expect(heading).toHaveTextContent('This one is worth taking.');
+    });
+  }
+
+  /* Same runtime guard Accordion carries: a consumer outside the type boundary
+     can hand this any number, and HEADING_TAGS[7] is `undefined`, which React
+     throws on hard and takes the whole tree down with it. */
+  it('falls back to h2 on an out-of-range level rather than crashing the tree', () => {
+    render(<DecisionCard {...base} headingLevel={7 as unknown as 2} />);
+
+    expect(screen.getByRole('heading', { level: 2 }).tagName).toBe('H2');
+  });
+
   it('renders each figure and tags it with data-kind when a kind is given', () => {
     const { container } = render(
       <DecisionCard

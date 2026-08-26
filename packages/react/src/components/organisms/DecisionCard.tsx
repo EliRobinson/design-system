@@ -7,10 +7,46 @@ import { VerdictBadge } from '../molecules/VerdictBadge.js';
 
 export type DecisionFigure = { label: string; value: string; kind?: string };
 
+export type DecisionCardHeadingLevel = 2 | 3 | 4 | 5 | 6;
+
+const HEADING_TAGS = {
+  2: 'h2',
+  3: 'h3',
+  4: 'h4',
+  5: 'h5',
+  6: 'h6',
+} as const satisfies Record<DecisionCardHeadingLevel, string>;
+
+const DEFAULT_HEADING_LEVEL: DecisionCardHeadingLevel = 2;
+
+// Same normalization Accordion does, and for the same reason: `headingLevel`
+// is typed 2-6, but this is a published library, and a consumer outside the
+// type boundary (plain JS, `as any`, a CMS-driven prop) can hand it any number
+// at runtime. `HEADING_TAGS[headingLevel]` on an out-of-range value resolves to
+// `undefined`, which React throws on hard ("Element type is invalid... got:
+// undefined") -- taking down the whole tree, not just the card.
+//
+// `1` is deliberately out of range here where Accordion allows it. An accordion
+// can be the only thing on a page; a DecisionCard is a card, and a card that
+// claims the document's <h1> is claiming to be the page. 2 is the floor and the
+// default, which is also what the card's type ramp is drawn for.
+function resolveHeadingLevel(level: DecisionCardHeadingLevel): DecisionCardHeadingLevel {
+  return level in HEADING_TAGS ? level : DEFAULT_HEADING_LEVEL;
+}
+
 export type DecisionCardProps = HTMLAttributes<HTMLDivElement> & {
   verdict: Verdict;
   verdictLabel: string;
   headline: string;
+  /**
+   * Heading level (2-6) for `headline`, which renders as the real heading
+   * element rather than a styled paragraph. There is no single correct level
+   * for an arbitrary document outline, so this is exposed rather than
+   * hardcoded — a card sitting under a page `<h1>` leaves the default
+   * (`headingLevel={2}`), one inside an `<h2>` section passes
+   * `headingLevel={3}`. Defaults to 2.
+   */
+  headingLevel?: DecisionCardHeadingLevel;
   subject?: string;
   figures?: DecisionFigure[];
   total?: { label: string; value: string };
@@ -27,6 +63,7 @@ export const DecisionCard = forwardRef<HTMLDivElement, DecisionCardProps>(functi
     verdict,
     verdictLabel,
     headline,
+    headingLevel = DEFAULT_HEADING_LEVEL,
     subject,
     figures,
     total,
@@ -38,6 +75,8 @@ export const DecisionCard = forwardRef<HTMLDivElement, DecisionCardProps>(functi
   },
   ref,
 ) {
+  const HeadingTag = HEADING_TAGS[resolveHeadingLevel(headingLevel)];
+
   return (
     <div ref={ref} className={cn('ds-decision', className)} {...props}>
       <div className="ds-decision__head">
@@ -46,7 +85,13 @@ export const DecisionCard = forwardRef<HTMLDivElement, DecisionCardProps>(functi
       </div>
 
       <div className="ds-decision__body">
-        <p className="ds-decision__headline">{headline}</p>
+        {/* A real heading element, not a styled <p> and not a <div
+            role="heading">. The headline is the card's title in the document
+            outline, so it has to be reachable by a screen reader's heading
+            navigation — which is the whole reason `headingLevel` exists. The
+            type ramp is carried by the class, so every level looks identical
+            and only the outline changes. */}
+        <HeadingTag className="ds-decision__headline">{headline}</HeadingTag>
 
         {figures && figures.length > 0 ? (
           <dl className="ds-decision__figures">
