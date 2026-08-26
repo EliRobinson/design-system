@@ -7,7 +7,7 @@
    The directive is here because ds-resync writes this file into a consuming
    repo's .claude/skills/, a directory most projects lint, where the same code
    is indistinguishable from a module with missing imports. Scoped to the one
-   rule so everything else about these samples is still linted. #119 */
+   rule so everything else about these samples is still linted. See issue 119 for context. */
 /* global window -- a browser script: the kits publish their components onto
    window for the sibling kit files loaded after them. See index.html. */
 const Sidebar = ({ active = 'Dashboard' }) => {

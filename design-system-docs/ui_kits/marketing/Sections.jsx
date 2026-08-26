@@ -7,7 +7,7 @@
    The directive is here because ds-resync writes this file into a consuming
    repo's .claude/skills/, a directory most projects lint, where the same code
    is indistinguishable from a module with missing imports. Scoped to the one
-   rule so everything else about these samples is still linted. #119 */
+   rule so everything else about these samples is still linted. See issue 119 for context. */
 /* global window -- a browser script: the kits publish their components onto
    window for the sibling kit files loaded after them. See index.html. */
 const Hero = () => (
@@ -193,7 +193,7 @@ const CoachingBand = () => (
       }}
     >
       <div>
-        <Eyebrow color="oklch(100% 0 0 / 0.6)">Coaching Guides</Eyebrow>
+        <Eyebrow color="var(--fg-inverse-3)">Coaching Guides</Eyebrow>
         <h2
           style={{
             fontFamily: 'Geist, sans-serif',
@@ -210,7 +210,7 @@ const CoachingBand = () => (
           style={{
             fontFamily: 'Geist, sans-serif',
             fontSize: 18,
-            color: 'oklch(100% 0 0 / 0.7)',
+            color: 'var(--fg-inverse-2)',
             lineHeight: 1.6,
             margin: '0 0 32px',
             maxWidth: 560,
@@ -233,7 +233,7 @@ const CoachingBand = () => (
               background: i === 1 ? 'var(--signal-100)' : 'var(--ink-50)',
               borderRadius: 4,
               transform: `rotate(${(i - 1) * 4}deg) translateY(${i === 1 ? -8 : 0}px)`,
-              boxShadow: '0 18px 40px -12px oklch(0% 0 0 / 0.5)',
+              boxShadow: 'var(--shadow-xl)',
               padding: 16,
               display: 'flex',
               flexDirection: 'column',

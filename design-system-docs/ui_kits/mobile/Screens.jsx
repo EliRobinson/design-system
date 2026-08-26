@@ -12,7 +12,7 @@ const PhoneFrame = ({ children, label }) => (
         borderRadius: 44,
         background: 'var(--ink-1000)',
         padding: 10,
-        boxShadow: '0 24px 60px -16px oklch(0% 0 0 / 0.3)',
+        boxShadow: 'var(--shadow-xl)',
       }}
     >
       <div
