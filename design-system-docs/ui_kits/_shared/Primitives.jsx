@@ -11,12 +11,12 @@ const Wordmark = ({ size = 22, dark = false }) => (
       fontSize: size,
       letterSpacing: '-0.025em',
       lineHeight: 1,
-      color: dark ? '#fff' : '#0a0a0a',
+      color: dark ? 'var(--ink-0)' : 'var(--ink-1000)',
       display: 'inline-flex',
       alignItems: 'baseline',
     }}
   >
-    Miltinson<span style={{ color: 'oklch(72.5% 0.175 65)' }}>.</span>
+    Miltinson<span style={{ color: 'var(--accent)' }}>.</span>
   </span>
 );
 

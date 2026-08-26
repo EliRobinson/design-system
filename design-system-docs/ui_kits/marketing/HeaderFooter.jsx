@@ -7,7 +7,7 @@
    The directive is here because ds-resync writes this file into a consuming
    repo's .claude/skills/, a directory most projects lint, where the same code
    is indistinguishable from a module with missing imports. Scoped to the one
-   rule so everything else about these samples is still linted. #119 */
+   rule so everything else about these samples is still linted. See issue 119 for context. */
 /* global window -- a browser script: the kits publish their components onto
    window for the sibling kit files loaded after them. See index.html. */
 const Header = ({ active = 'Home' }) => {
@@ -18,7 +18,7 @@ const Header = ({ active = 'Home' }) => {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        background: 'oklch(100% 0 0 / 0.92)',
+        background: 'color-mix(in oklch, var(--surface) 92%, transparent)',
         backdropFilter: 'blur(8px)',
         borderBottom: '1px solid var(--border)',
         padding: '14px max(20px, 4vw)',
@@ -70,7 +70,7 @@ const Footer = () => (
         alignItems: 'flex-start',
         gap: 32,
         paddingBottom: 28,
-        borderBottom: '1px solid oklch(100% 0 0 / 0.18)',
+        borderBottom: '1px solid var(--border-inverse)',
       }}
     >
       <div>
@@ -80,7 +80,7 @@ const Footer = () => (
             fontFamily: 'JetBrains Mono, monospace',
             fontSize: 11,
             letterSpacing: '0.08em',
-            color: 'oklch(100% 0 0 / 0.55)',
+            color: 'var(--fg-inverse-2)',
             marginTop: 12,
             textTransform: 'uppercase',
           }}
@@ -114,7 +114,7 @@ const Footer = () => (
         marginTop: 18,
         fontFamily: 'JetBrains Mono, monospace',
         fontSize: 11,
-        color: 'oklch(100% 0 0 / 0.45)',
+        color: 'var(--fg-inverse-3)',
         letterSpacing: '0.04em',
       }}
     >
