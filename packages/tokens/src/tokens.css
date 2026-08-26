@@ -598,6 +598,85 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+
+/* Native form controls do not inherit `font-family`. The UA stylesheet gives
+   them Arial (monospace for <textarea>), so every control that sets
+   `font-size` and nothing else typesets REAL WORDS in a different face from
+   the label beside it. Five shipped controls did: .ds-search-field__input —
+   which is what the user TYPES — .ds-pagination__item,
+   .ds-segmented-control__item, .ds-accordion__trigger and
+   .ds-date-picker__day. #167, found from the measurement in #146 that put a
+   chip's label and its control on baselines 1.91px apart in two different
+   typefaces.
+
+   THE LONGHAND, AND THE LAYER, ARE BOTH DELIBERATE. Measured in a browser in
+   form-font-cascade.test.mjs; the short version:
+
+   Layered, for exactly the reason the `a` rule below is. An UNLAYERED
+   `button { font-family: inherit }` is (0,0,1) but unlayered beats every
+   layer, so it silently ate a consumer's `font-mono` and rendered the button
+   in Geist — issue #112 again in a new spelling. A bare-element rule that
+   paints must lose to anything stating an intent. In `base` it does, and our
+   own component rules still win because @elirobinson/react ships them
+   unlayered.
+
+   `font-family`, NOT the `font` shorthand, and this is a deliberate departure
+   from Tailwind's preflight rather than an oversight. The shorthand also
+   resets line-height, which none of these controls declares — so it reaches
+   every native control in the system, not just the five with the wrong face.
+   Measured on the real components: .ds-input and .ds-select 44 -> 49.09px,
+   .ds-textarea 64 -> 72.19px, .ds-accordion__trigger 44 -> 47.09px. This rule
+   changes the FACE and nothing else; the only box that moves at all is
+   .ds-segmented-control__item, 0.53px wider because Geist sets its label
+   slightly differently from Arial.
+
+   WHAT THAT COSTS, STATED PLAINLY: preflight resets these elements with the
+   shorthand, so a consumer wired the way tailwind.css prescribes renders these
+   controls with the inherited line-height while this repo's own docs — which
+   ship no preflight — do not. That divergence is real, it predates this rule,
+   and this rule does not close it. It is accepted knowingly: the five wrong
+   typefaces are the bug, and buying the line-height too would move layout
+   across most of the library for something nobody reported.
+   form-font-cascade.test.mjs measures exactly where the two still differ, so
+   the divergence is recorded rather than forgotten.
+
+   The selector coverage is preflight's — <textarea>, <optgroup> and
+   ::file-selector-button included, though none is among the audited five —
+   because "which elements fail to inherit" has one answer and it is not the
+   subset that happened to have a bug filed. Textarea and Select are shipped
+   components.
+
+   Every control listed sets its own `font-size` (and Accordion its own
+   `font-weight`) in an unlayered component rule, so this changes face and
+   nothing else — never the type ramp. */
+@layer base {
+  button,
+  input,
+  optgroup,
+  select,
+  textarea {
+    font-family: inherit;
+  }
+
+  /* SPLIT FROM THE LIST ABOVE ON PURPOSE, and it must stay split. An
+     unrecognised selector invalidates the ENTIRE rule it appears in, not just
+     its own entry in the list — measured in Chromium: with one bogus
+     pseudo-element added to the list, a <button> went back to the UA's Arial
+     while `body` was Georgia. So on any engine that does not parse
+     ::file-selector-button, keeping it in the list above would silently take
+     all five audited controls down with it, with no error anywhere. Tailwind's
+     preflight ships it in one list because a build step compiles preflight
+     against declared targets; this file is raw CSS handed to whatever engine a
+     consumer has.
+
+     The cost of the split is nothing — two rules, identical effect — and the
+     failure it removes is the silent-total kind this package has already been
+     bitten by once, in the fonts.css @import story at the top of this file. */
+  ::file-selector-button {
+    font-family: inherit;
+  }
+}
+
 /* The selection highlight is the brand fill, and it has to be *the* brand
    fill. Hardcoding --signal-500 made it Miltinson Amber under every palette,
    including the one whose signal ramp is teal — and it pinned the foreground

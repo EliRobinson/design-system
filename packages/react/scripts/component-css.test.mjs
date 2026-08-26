@@ -38,6 +38,12 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+/* Reached through the exports map rather than by walking up to packages/tokens.
+   Section 5 reads tokens.css, and button-contrast.test.mjs's header explains at
+   length why a hand-spelled path into that package is how a reader and the
+   thing it reads come to disagree. */
+import { TOKENS_SRC_DIR } from '@elirobinson/tokens/token-stylesheets';
+
 const componentsDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'components');
 
 /** Every `<tier>/<Name>.css` under src/components, as {file, css}. */
@@ -282,5 +288,160 @@ describe('Button, where the bug was reported', () => {
 
   it('drops the underline so an <a class="ds-button"> reads as a control', () => {
     expect(button.css).toMatch(/\.ds-button\s*\{[\s\S]*?text-decoration:\s*none/);
+  });
+});
+
+/* ------------------------------------------------------------------------ *
+ * 5. Every native form control a component renders inherits the page's font
+ * ------------------------------------------------------------------------ */
+
+/* Issue #167. `<button>`, `<input>`, `<select>` and `<textarea>` do not inherit
+ * `font`, so the UA stylesheet supplies Arial (monospace for `<textarea>`), and
+ * a component rule that sets `font-size` and nothing else typesets REAL WORDS
+ * in it. Five shipped controls did — .ds-search-field__input, which is the text
+ * the user TYPES, plus .ds-pagination__item, .ds-segmented-control__item,
+ * .ds-accordion__trigger and .ds-date-picker__day.
+ *
+ * The fix is one rule in tokens.css, so the check is about that rule rather
+ * than about the component sheets: a per-component sweep for "sets font-size
+ * without font-family" would now match all five and be RIGHT to, because the
+ * reset is what supplies the family. Checking the reset is what has teeth.
+ *
+ * Three claims, and why each is here rather than in packages/tokens'
+ * form-font-cascade.test.mjs:
+ *
+ *   COVERAGE is a cross-package question. It asks whether the element set the
+ *   reset names still covers what THIS package renders, and the answer changes
+ *   when a component lands, not when tokens.css does. Today that is <button>
+ *   and <input>; a Textarea or Select component is what makes it fire.
+ *
+ *   LAYERED and SHORTHAND are measured properly in a browser next door, and
+ *   that file skips itself when no Chromium is present — which is the bare CI
+ *   image. These two static restatements are what runs everywhere. They are
+ *   deliberately weaker: they assert the rule's shape, never its effect.
+ */
+
+const tokensCss = readFileSync(join(TOKENS_SRC_DIR, 'tokens.css'), 'utf8').replace(
+  /\/\*[\s\S]*?\*\//g,
+  '',
+);
+
+/** The text inside every `@layer base { … }` block, brace-matched. */
+function layerBaseBlocks(css) {
+  const blocks = [];
+  const opener = /@layer\s+base\s*\{/g;
+  while (opener.exec(css) !== null) {
+    let depth = 1;
+    let index = opener.lastIndex;
+    while (index < css.length && depth > 0) {
+      if (css[index] === '{') depth += 1;
+      else if (css[index] === '}') depth -= 1;
+      index += 1;
+    }
+    blocks.push(css.slice(opener.lastIndex, index - 1));
+  }
+  return blocks;
+}
+
+/** Every rule resetting the font to `inherit`, with whether it used the shorthand. */
+function fontResets(css) {
+  return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter((match) => /(?:^|[;\s])font(?:-family)?\s*:\s*inherit/.test(match[2]))
+    .map((match) => ({
+      selector: match[1].trim().replace(/\s+/g, ' '),
+      shorthand: /(?:^|[;\s])font\s*:\s*inherit/.test(match[2]),
+    }));
+}
+
+/** Native form elements a component renders, read from the TSX, not the CSS. */
+function renderedFormElements(dir = componentsDir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return renderedFormElements(path);
+    if (!entry.name.endsWith('.tsx')) return [];
+    const tsx = readFileSync(path, 'utf8');
+    return [...tsx.matchAll(/<(button|input|select|textarea|optgroup)[\s/>]/g)].map((m) => m[1]);
+  });
+}
+
+const LAYERED_RESETS = fontResets(layerBaseBlocks(tokensCss).join('\n'));
+const ALL_RESETS = fontResets(tokensCss);
+const RENDERED = [...new Set(renderedFormElements())].sort();
+
+/* Two rules, not one list. ::file-selector-button is split off deliberately:
+   an unrecognised selector invalidates the whole rule it sits in, so keeping it
+   in the list would silently take the four real elements down with it on any
+   engine that does not parse it. tokens.css carries the measurement. */
+const ELEMENT_RESET = 'button, input, optgroup, select, textarea';
+const PSEUDO_RESET = '::file-selector-button';
+
+describe('the form-control font reset in tokens.css', () => {
+  it('is exactly the two rules it should be — #167', () => {
+    /* A reset outside the layer, or a third one, would be two answers to one
+       question, and every assertion below would be checking whichever this
+       happened to find first. */
+    expect(ALL_RESETS).toHaveLength(2);
+    expect(ALL_RESETS.map((reset) => reset.selector).sort()).toEqual(
+      [ELEMENT_RESET, PSEUDO_RESET].sort(),
+    );
+  });
+
+  it('keeps ::file-selector-button out of the element list', () => {
+    /* Measured in Chromium: one bogus pseudo-element added to the list sent a
+       <button> back to the UA's Arial while `body` was Georgia — the entire
+       rule is dropped, not just the unparsed entry. Merging these two rules
+       back together would make the whole fix silently conditional on the
+       engine knowing one pseudo-element. */
+    const elementReset = ALL_RESETS.find((reset) => reset.selector === ELEMENT_RESET);
+    expect(elementReset, 'the element reset is no longer a rule of its own').toBeDefined();
+    expect(elementReset.selector).not.toContain('::');
+  });
+
+  it('is inside @layer base, so a consumer utility still outranks it', () => {
+    /* Unlayered it is (0,0,1) and still beats `.font-mono` and `.text-2xl` in
+       @layer utilities, because unlayered wins over every layer regardless of
+       specificity — a consumer who asked in markup for a monospace button got
+       Geist and had no stylesheet of their own that could say otherwise. That
+       is issue #112 in a new spelling, and it is measured in a browser in
+       packages/tokens' form-font-cascade.test.mjs. */
+    expect(LAYERED_RESETS.map((reset) => reset.selector).sort()).toEqual(
+      [ELEMENT_RESET, PSEUDO_RESET].sort(),
+    );
+  });
+
+  it('uses `font-family`, not the `font` shorthand', () => {
+    /* A deliberate departure from preflight, not an oversight, and the thing
+       most likely to be "corrected" by someone matching Tailwind. The shorthand
+       also resets line-height, which none of these controls declares — so it
+       reaches every native control in the system rather than the five with the
+       wrong face: .ds-input and .ds-select 44 -> 49.09px, .ds-textarea
+       64 -> 72.19px, .ds-accordion__trigger 44 -> 47.09px, all measured.
+
+       The face is the bug. The line-height is a layout change across most of
+       the library that nobody reported, so it is not bought here. The
+       divergence from a preflight consumer that this leaves open is measured
+       and recorded in packages/tokens' form-font-cascade.test.mjs. */
+    for (const reset of LAYERED_RESETS) {
+      expect(reset.shorthand, `${reset.selector} uses the font shorthand`).toBe(false);
+    }
+  });
+
+  it('covers every native form element a component renders', () => {
+    /* Anti-vacuous: a TSX path change that emptied this list would make the
+       loop below pass without checking anything. */
+    expect(RENDERED).toContain('button');
+    expect(RENDERED).toContain('input');
+
+    const covered = LAYERED_RESETS.flatMap((reset) =>
+      reset.selector.split(',').map((entry) => entry.trim()),
+    );
+    for (const element of RENDERED) {
+      expect(
+        covered,
+        `components render <${element}>, which the tokens.css font reset does not name. ` +
+          'It will typeset in the UA font while everything around it is --font-sans — ' +
+          'issue #167. Add it to the reset rather than patching the component.',
+      ).toContain(element);
+    }
   });
 });

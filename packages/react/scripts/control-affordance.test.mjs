@@ -138,10 +138,46 @@ describe('a filled control never renders its own label underlined', () => {
     expect(specificity('.ds-button')).toEqual([0, 1, 0]);
     expect(specificity('a.ds-button')).toEqual([0, 1, 1]);
 
+    /* Normalised: jsdom keeps the source's own newlines in selectorText, so a
+       multi-line selector list reads as one string with them still in it. */
     const layered = [...styleRules(document.styleSheets)]
       .filter((candidate) => candidate.layered)
-      .map(({ rule }) => rule.selectorText);
-    expect(layered).toEqual(['a', 'a:hover']);
+      .map(({ rule }) => rule.selectorText.replace(/\s+/g, ' ').trim());
+
+    /* The link pair is still layered. A de-layering is one of the two defects
+       this pins, and it stays asserted on its own. */
+    expect(layered).toContain('a');
+    expect(layered).toContain('a:hover');
+
+    /* The other half: the layer has not quietly become the place to put
+       anything that paints a control. It has been widened once — #167 put the
+       form-control `font: inherit` reset there, for the same #112 reason the
+       link rule is there — and that rule declares no text-decoration, so the
+       underline story is unchanged by it. Compared as a set; source order is
+       not the invariant. */
+    expect([...layered].sort()).toEqual(
+      [
+        'a',
+        'a:hover',
+        'button, input, optgroup, select, textarea',
+        /* Split from the list on purpose — an unrecognised selector invalidates
+           the whole rule it appears in. See tokens.css. */
+        '::file-selector-button',
+      ].sort(),
+    );
+
+    /* And the claim that actually matters here, stated directly rather than
+       inferred from the roster above: nothing in a layer draws an underline
+       except the bare `a` rule. */
+    const layeredUnderliners = [...styleRules(document.styleSheets)]
+      .filter((candidate) => candidate.layered)
+      .filter(({ rule }) =>
+        `${rule.style.getPropertyValue('text-decoration')} ${rule.style.getPropertyValue('text-decoration-line')}`.includes(
+          'underline',
+        ),
+      )
+      .map(({ rule }) => rule.selectorText.replace(/\s+/g, ' ').trim());
+    expect(layeredUnderliners).toEqual(['a']);
   });
 
   for (const theme of THEMES) {
