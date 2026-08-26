@@ -4,7 +4,7 @@
  * Primitives.jsx painted the wordmark's period `oklch(72.5% 0.175 65)` — --signal-500
  * under ember, written as a constant — and the wordmark stayed amber under every other
  * palette. The kits are static JSX with no build step, so un-ignoring them would cascade;
- * the guard is a test instead.
+ * a test guards the kits instead.
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
@@ -33,7 +33,11 @@ function kitFiles(dir = kitsDir) {
    apart from a `https://` URL inside a string needs string-literal tracking that a
    plain regex scan doesn't do, and none of the current kits put a colour literal or an
    oklch()/rgba() call after `//` on the same line — so leaving line comments in place
-   costs nothing today and avoids a more fragile parser. */
+   costs nothing today and avoids a more fragile parser. The block-comment and HTML-comment
+   stripping above carries the same weakness — a plain regex scan can't tell a `/* ` or
+   `<!--` delimiter sitting inside a string literal from a real comment either — and is
+   accepted for the same reason: none of the current kits put those delimiters inside a
+   string, so nothing is silently swallowed today. */
 function withoutComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
 }
