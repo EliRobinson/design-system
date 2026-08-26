@@ -31,6 +31,15 @@
   font-size: var(--fs-sm);
 }
 
+/* Only the nav buttons paint a mark; .ds-pagination__item above shares their
+   box but carries a real page number, so its type stays its own concern (#167).
+   --mark-size from the same ramp step the shared rule sets font-size to, so the
+   chevron is the size the character it replaces was asked to be. */
+.ds-pagination__nav {
+  --mark-size: var(--fs-sm);
+  font-family: var(--font-sans);
+}
+
 .ds-pagination__nav:disabled {
   opacity: 0.4;
   cursor: not-allowed;

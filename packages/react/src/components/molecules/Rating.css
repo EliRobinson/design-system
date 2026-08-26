@@ -8,9 +8,16 @@
 }
 
 .ds-rating__star {
+  /* inline-flex so the star is centred by a flex box rather than seated on a
+     text baseline — see the same note on .ds-date-picker__header button. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   /* An empty star still has to be countable — it carries the rating as much
      as a filled one does. 3.64:1 under SC 1.4.11, not the 1.53:1 hairline. */
   color: var(--border-control);
+  --mark-size: var(--fs-lg);
+  font-family: var(--font-sans);
   font-size: var(--fs-lg);
 }
 
@@ -31,6 +38,8 @@
   /* An empty star still has to be countable — it carries the rating as much
      as a filled one does. 3.64:1 under SC 1.4.11, not the 1.53:1 hairline. */
   color: var(--border-control);
+  --mark-size: var(--fs-lg);
+  font-family: var(--font-sans);
   font-size: var(--fs-lg);
   cursor: pointer;
 }

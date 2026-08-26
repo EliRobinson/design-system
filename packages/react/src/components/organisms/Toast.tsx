@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 
 import { useHasMounted } from '../../hooks/useHasMounted.js';
 import { cn } from '../../lib/cn.js';
+import { Mark } from '../../lib/marks.js';
 
 export type ToastVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
 
@@ -116,7 +117,7 @@ export function Toast({
           aria-label="Dismiss notification"
           onClick={onDismiss}
         >
-          ×
+          <Mark name="cross" />
         </button>
       ) : null}
     </div>

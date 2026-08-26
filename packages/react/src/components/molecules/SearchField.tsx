@@ -2,6 +2,7 @@ import type { InputHTMLAttributes } from 'react';
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 
 import { cn } from '../../lib/cn.js';
+import { Mark } from '../../lib/marks.js';
 
 export type SearchFieldProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -53,7 +54,7 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
             innerRef.current?.focus();
           }}
         >
-          ×
+          <Mark name="cross" />
         </button>
       ) : null}
     </div>

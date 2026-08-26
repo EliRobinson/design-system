@@ -2,6 +2,7 @@ import type { HTMLAttributes } from 'react';
 import { forwardRef } from 'react';
 
 import { cn } from '../../lib/cn.js';
+import { Mark } from '../../lib/marks.js';
 
 export type PaginationProps = Omit<HTMLAttributes<HTMLElement>, 'onChange'> & {
   page: number;
@@ -28,7 +29,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(function Pagi
         disabled={page <= 1}
         onClick={() => goTo(page - 1)}
       >
-        ‹
+        <Mark name="chevron-left" />
       </button>
       <ul className="ds-pagination__list">
         {pages.map((pageNumber) => (
@@ -55,7 +56,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(function Pagi
         disabled={page >= pageCount}
         onClick={() => goTo(page + 1)}
       >
-        ›
+        <Mark name="chevron-right" />
       </button>
     </nav>
   );

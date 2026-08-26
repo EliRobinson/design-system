@@ -49,6 +49,14 @@
   background: transparent;
   color: var(--fg-3);
   cursor: pointer;
+  /* --mark-size is read from the type ramp directly rather than as `1em`, so
+     the mark keeps its size even if a consumer restyles this control's text.
+     font-family and font-size stay for hand-written markup carrying a text
+     node of its own — nothing this component renders needs them now, and if
+     something ever does it should be Geist at the ramp's step rather than the
+     UA default again. Same reasoning as .ds-chip__remove. */
+  --mark-size: var(--fs-md);
+  font-family: var(--font-sans);
   font-size: var(--fs-md);
 }
 
