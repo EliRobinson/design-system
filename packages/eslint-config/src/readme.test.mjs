@@ -26,7 +26,9 @@ describe('README', () => {
     );
 
     expect(files.map((file) => file.path)).toContain('README.md');
-  });
+    /* `npm pack` on a cold CI runner is well past vitest's 5s default —
+       pack-integrity.test.mjs in ai-patterns budgets the same way. */
+  }, 300_000);
 
   it('documents that copy.severity does not follow the top-level severity', () => {
     const readme = readFileSync(join(PACKAGE_DIR, 'README.md'), 'utf8');
