@@ -106,7 +106,7 @@ describe('llms-full.txt corpus', () => {
     /* An agent asked to build a Miltinson page used to get prop tables and
        tokens and no voice guidance at all. */
     expect(full).toContain('## Brand');
-    expect(full).toContain('Never the royal "we."');
+    expect(full).toContain('The voice is Miltinson Technologies.');
     expect(full).toContain('ui_kits/webapp/index.html');
   });
 
