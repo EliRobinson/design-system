@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { themeValues } from '@elirobinson/tokens/contrast';
 import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { codeToHtml } from 'shiki';
@@ -114,5 +117,82 @@ describe('the markup highlight() emits', () => {
        beats the custom property the stylesheet selects with — the dark theme
        would be in the markup and still never reach the screen. */
     expect(html).not.toMatch(/(?<!-)\bcolor:#[0-9a-fA-F]{6}/);
+  });
+});
+
+/* The last unguarded link.
+
+   Everything above measures the two themes and the markup that carries them.
+   None of it touches the stylesheet that decides which of the pair reaches a
+   span — and that decision is where the original bug lived: the colours were
+   correct, the markup was fine, and the page still rendered ink on ink because
+   nothing re-pointed them when the root element flipped.
+
+   Delete the `[data-theme='dark']` block from site.css today and every other
+   test in this file still passes while dark theme regresses to exactly what
+   #143 reported. These assertions are what make that impossible. */
+describe('the stylesheet that chooses between the two themes', () => {
+  const css = readFileSync(join(import.meta.dirname, '../app/site.css'), 'utf8');
+
+  /* Comments stripped first: the file explains itself at length, and a rule
+     quoted inside a comment would satisfy a naive search for it. */
+  const rules = css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  const blockFor = (selector: string) => {
+    const at = rules.indexOf(selector);
+    if (at === -1) return null;
+    const open = rules.indexOf('{', at);
+    return open === -1 ? null : rules.slice(open, rules.indexOf('}', open));
+  };
+
+  it('paints the light column by default', () => {
+    const block = blockFor('.code-block__body .shiki span');
+    expect(block, 'no unscoped rule targets highlighted spans').not.toBeNull();
+    expect(block).toContain('color: var(--shiki-light)');
+  });
+
+  it('re-points the dark column under [data-theme="dark"]', () => {
+    const block = blockFor("[data-theme='dark'] .code-block__body .shiki span");
+    expect(block, 'nothing re-points the colour when the root flips — this is #143').not.toBeNull();
+    expect(block).toContain('color: var(--shiki-dark)');
+  });
+
+  it('puts the dark rule after the light one, so it wins', () => {
+    /* Same specificity would be a coin toss decided by order; the dark
+       selector carries an extra attribute and outranks it either way. Both
+       facts are asserted because either one alone is a rule that works by
+       accident. */
+    const light = rules.indexOf('.code-block__body .shiki span');
+    const dark = rules.indexOf("[data-theme='dark'] .code-block__body .shiki span");
+    expect(dark).toBeGreaterThan(light);
+  });
+
+  it('leaves no plain background !important to fight the theme', () => {
+    /* The override that caused the pairing to break in the first place: it
+       forced a theme-aware background under theme-blind foregrounds. */
+    const pre = blockFor('.code-block__body pre');
+    expect(pre).not.toBeNull();
+    expect(pre).not.toMatch(/background:[^;]*!important/);
+  });
+
+  it('scopes every wrapper of highlighted markup to the class the rules match', () => {
+    /* The rules key off `.code-block__body`. A third wrapper that renders
+       highlight() output under any other class would be matched by neither
+       rule and inherit its colour — legible in light by luck, and the #143
+       failure again in dark. Asserted against the components rather than
+       against a list, so adding one cannot quietly opt out. */
+    const dir = join(import.meta.dirname, '../components');
+    const wrappers = readdirSync(dir, { recursive: true, encoding: 'utf8' })
+      .filter((f) => f.endsWith('.tsx') && !f.includes('.test.'))
+      .map((f) => ({ file: f, source: readFileSync(join(dir, f), 'utf8') }))
+      .filter(({ source }) => /\bhighlight\s*\(/.test(source));
+
+    expect(wrappers.length, 'no component calls highlight() — has it moved?').toBeGreaterThan(0);
+
+    for (const { file, source } of wrappers) {
+      expect(source, `${file} renders highlighted markup outside .code-block__body`).toContain(
+        'code-block__body',
+      );
+    }
   });
 });
