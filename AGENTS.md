@@ -20,6 +20,7 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 - [Components](docs/agents/components.md)
 - [Layout patterns](docs/agents/layout-patterns.md)
 - [Product token layer](docs/agents/product-token-layer.md) — the optional `--product-*` override convention
+- [Brand boundary](docs/agents/brand-boundary.md) — what is the system's and what is a consumer's, and the test that enforces it
 - [AI patterns](docs/agents/ai-patterns.md) — the `ds` discovery CLI, contracts, agent templates
 - [Consumer tooling](docs/agents/consumer-tooling.md) — what a consuming app installs, and why each piece lives here
 - [Publishing](docs/agents/publishing.md)
