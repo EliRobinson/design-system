@@ -8,6 +8,14 @@ export type DatePickerProps = {
   label: string;
   value?: Date;
   onValueChange: (date: Date) => void;
+  /**
+   * Renders with the calendar already open. Uncontrolled, like the same prop
+   * on Popover, DropdownMenu, Dialog and Sheet: it seeds the initial state and
+   * then stops mattering, so the picker still opens and closes on its own.
+   * There is no controlled `open` counterpart — after the first render the
+   * picker owns its own open state.
+   */
+  defaultOpen?: boolean;
   className?: string;
 };
 
@@ -64,17 +72,17 @@ function buildWeeks(year: number, month: number): (number | null)[][] {
   return weeks;
 }
 
-// DatePickerProps is a closed set (label/value/onValueChange/className) with
-// no HTML-attribute passthrough and therefore no trailing `{...props}`
-// spread anywhere below -- every attribute placed on the input and on the
-// grid/row/gridcell/day elements is computed internally, so there is no
-// open surface for a consumer to silently clobber a computed prop with a
-// later spread.
+// DatePickerProps is a closed set (label/value/onValueChange/defaultOpen/
+// className) with no HTML-attribute passthrough and therefore no trailing
+// `{...props}` spread anywhere below -- every attribute placed on the input
+// and on the grid/row/gridcell/day elements is computed internally, so there
+// is no open surface for a consumer to silently clobber a computed prop with
+// a later spread.
 export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(function DatePicker(
-  { label, value, onValueChange, className },
+  { label, value, onValueChange, defaultOpen = false, className },
   ref,
 ) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const [viewDate, setViewDate] = useState(() => value ?? new Date());
   const containerRef = useRef<HTMLDivElement>(null);
 

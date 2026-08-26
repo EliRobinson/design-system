@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { DatePicker } from './DatePicker.js';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from './Dialog.js';
 import {
   DropdownMenu,
@@ -14,8 +15,12 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from './Sheet.js';
 
 // `defaultOpen` is the uncontrolled counterpart of `open`: it seeds the initial
 // state and then stops mattering, so the component still opens and closes on
-// its own afterwards. All four overlay components declare the prop, so all four
-// have to honour it.
+// its own afterwards. Every component that declares the prop is tested here, so
+// the convention is one thing rather than five separate spellings of it.
+//
+// DatePicker owns its open state outright — it has no controlled `open` prop to
+// defer to — so it takes the seeding half of the convention and not the
+// deferral half.
 describe('defaultOpen', () => {
   describe('Popover', () => {
     it('starts open', () => {
@@ -53,6 +58,38 @@ describe('defaultOpen', () => {
       );
 
       expect(screen.queryByText('panel body')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('DatePicker', () => {
+    it('starts open', () => {
+      render(
+        <DatePicker
+          label="Start date"
+          value={new Date(2026, 0, 15)}
+          onValueChange={vi.fn()}
+          defaultOpen
+        />,
+      );
+
+      expect(screen.getByRole('grid')).toBeInTheDocument();
+    });
+
+    it('still closes after starting open', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <DatePicker
+          label="Start date"
+          value={new Date(2026, 0, 15)}
+          onValueChange={vi.fn()}
+          defaultOpen
+        />,
+      );
+
+      await user.click(screen.getByLabelText('Start date'));
+
+      expect(screen.queryByRole('grid')).not.toBeInTheDocument();
     });
   });
 

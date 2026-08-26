@@ -7,8 +7,18 @@
   display: inline-block;
 }
 
+/* `top`/`left` are pinned rather than left to the static position, which is
+   only "just below the input" while `.ds-date-picker` is the inline-block this
+   sheet ships. Give the wrapper a `display` of `flex` or `grid` -- a consumer
+   class constraining its width is enough, and the docs site's `.demo-col` did
+   exactly that -- and an absolutely positioned child's static position becomes
+   the container's content-box corner instead, dropping the whole calendar on
+   top of the field it belongs under. Anchoring to the wrapper's bottom edge
+   renders identically under the shipped `display` and survives any other. */
 .ds-date-picker__popover {
   position: absolute;
+  top: 100%;
+  left: 0;
   z-index: var(--z-overlay);
   margin-top: var(--space-1);
   padding: var(--space-3);
