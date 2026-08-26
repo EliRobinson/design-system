@@ -84,9 +84,10 @@ describe('planMatrix', () => {
   });
 
   it('leaves an absent project out of the matrix entirely', () => {
-    /* The live case: docs-wide is commented out in playwright.config.ts, so it
-       never appears in the enumeration and must produce no job — a job would
-       fail with "Project(s) 'docs-wide' not found". */
+    /* A project commented out in playwright.config.ts never appears in the
+       enumeration and must produce no job — a job would fail with "Project(s)
+       'docs-wide' not found". This is how `docs-wide` behaved between #101 and
+       #105, and how any project switched off in future will. */
     const names = planMatrix(projects).map((job) => job.name);
     expect(names.some((name) => name.startsWith('docs-wide'))).toBe(false);
   });

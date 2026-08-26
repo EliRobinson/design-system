@@ -21,6 +21,8 @@ import {
   routeSlug,
   storyUrl,
   storybookStories,
+  regionBox,
+  sweepChrome,
   sweepPages,
   sweepStorybook,
 } from './visual-sweep.mjs';
@@ -57,6 +59,40 @@ function recorder() {
   });
 
   return { test, expect: expectStub, titles, bodies };
+}
+
+/* A `page` that satisfies everything a page sweep drives, and records the
+   options the screenshot assertion was called with — which is where `region`
+   either became a clip or silently did nothing. `measured` is what the region
+   measurement in the browser would have returned. */
+function fakePage(measured = { count: 1, x: 10.4, y: 20.2, width: 100.1, height: 200.9 }) {
+  const captured = { screenshot: null };
+  const frame = { equals: () => true };
+
+  const page = {
+    clock: { setFixedTime: async () => {} },
+    addInitScript: async () => {},
+    addStyleTag: async () => {},
+    goto: async () => {},
+    waitForLoadState: async () => {},
+    waitForFunction: async () => {},
+    locator: (selector) => ({ selector }),
+    screenshot: async () => frame,
+    /* The region measurement is the only evaluate a sweep passes an argument
+       to; the settle loop's font wait passes none. */
+    evaluate: async (_fn, arg) => (arg === undefined ? undefined : measured),
+  };
+
+  const expectStub = Object.assign(
+    () => ({
+      toHaveScreenshot: async (_name, options) => {
+        captured.screenshot = options;
+      },
+    }),
+    { poll: () => ({ toBe: async () => {} }) },
+  );
+
+  return { page, expect: expectStub, captured };
 }
 
 describe('storybookStories', () => {
@@ -261,6 +297,128 @@ describe('sweepPages', () => {
     expect(() =>
       sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: [] }),
     ).toThrow(/registers no tests/);
+  });
+
+  it('frames the whole page when no region is named', async () => {
+    const { test, bodies } = recorder();
+    const { page, expect: expectStub, captured } = fakePage();
+
+    sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+    await bodies[0]({ page });
+
+    expect(captured.screenshot.fullPage).toBe(true);
+    expect(captured.screenshot.clip).toBeUndefined();
+  });
+
+  /* The load-bearing claim of the whole clipping decision: chrome outside the
+     region cannot fail a page shot, because it is outside the frame. A `region`
+     that quietly resolved to no clip would leave the fan-out exactly where it
+     was, and every page shot would still pass its own comparison — nothing
+     downstream would report it. */
+  it('clips to the named region, in document space and whole pixels', async () => {
+    const { test, bodies } = recorder();
+    const { page, expect: expectStub, captured } = fakePage();
+
+    sweepPages({
+      test,
+      expect: expectStub,
+      baseUrl: 'http://docs',
+      routes: ['/'],
+      region: 'main',
+    });
+    await bodies[0]({ page });
+
+    expect(captured.screenshot.fullPage).toBe(true);
+    /* Rounded outward from { x: 10.4, y: 20.2, width: 100.1, height: 200.9 }. */
+    expect(captured.screenshot.clip).toEqual({ x: 10, y: 20, width: 101, height: 202 });
+  });
+});
+
+describe('regionBox', () => {
+  const page = (measured) => ({ evaluate: async () => measured });
+
+  it('rounds outward, so a fractional length cannot crop the region', async () => {
+    const box = await regionBox(
+      page({ count: 1, x: 10.4, y: 20.2, width: 100.1, height: 200.9 }),
+      'main',
+    );
+
+    expect(box).toEqual({ x: 10, y: 20, width: 101, height: 202 });
+  });
+
+  /* Both of these would otherwise degrade into a shot that passes: no match
+     captures the whole page (the fan-out back, silently), and a zero-sized
+     match captures nothing and compares clean forever. */
+  it('refuses a selector that matches nothing', async () => {
+    await expect(regionBox(page({ count: 0 }), '.gone')).rejects.toThrow(/matched 0 elements/);
+  });
+
+  it('refuses a selector that matches several', async () => {
+    await expect(regionBox(page({ count: 3 }), 'section')).rejects.toThrow(/matched 3 elements/);
+  });
+
+  it('refuses a region with no area', async () => {
+    await expect(
+      regionBox(page({ count: 1, x: 0, y: 0, width: 0, height: 0 }), '.site-sidebar'),
+    ).rejects.toThrow(/no area/);
+  });
+});
+
+describe('sweepChrome', () => {
+  const regions = [
+    { name: 'header', selector: '.site-header' },
+    { name: 'sidebar', selector: '.site-sidebar' },
+  ];
+
+  it('names its shots in the route namespace, so they map like a page does', () => {
+    const { test, expect: expectStub, titles } = recorder();
+
+    sweepChrome({ test, expect: expectStub, baseUrl: 'http://docs', regions });
+
+    expect(titles).toEqual([
+      '/chrome/header · light',
+      '/chrome/header · dark',
+      '/chrome/sidebar · light',
+      '/chrome/sidebar · dark',
+    ]);
+  });
+
+  it('clips to the region it was given', async () => {
+    const { test, bodies } = recorder();
+    const { page, expect: expectStub, captured } = fakePage();
+
+    sweepChrome({
+      test,
+      expect: expectStub,
+      baseUrl: 'http://docs',
+      route: '/components/button',
+      regions: [regions[0]],
+      themes: ['light'],
+    });
+    await bodies[0]({ page });
+
+    expect(captured.screenshot.clip).toEqual({ x: 10, y: 20, width: 101, height: 202 });
+  });
+
+  it('refuses an empty region list', () => {
+    const { test, expect: expectStub } = recorder();
+
+    expect(() =>
+      sweepChrome({ test, expect: expectStub, baseUrl: 'http://docs', regions: [] }),
+    ).toThrow(/registers no tests/);
+  });
+
+  it('refuses a region missing its name or its selector', () => {
+    const { test, expect: expectStub } = recorder();
+
+    expect(() =>
+      sweepChrome({
+        test,
+        expect: expectStub,
+        baseUrl: 'http://docs',
+        regions: [{ selector: '.site-header' }],
+      }),
+    ).toThrow(/needs both a `name` and a `selector`/);
   });
 });
 

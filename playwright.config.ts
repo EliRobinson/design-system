@@ -70,37 +70,27 @@ export default defineConfig(
         testMatch: /storybook\.spec\.ts$/,
         use: { viewport: NARROW_VIEWPORT },
       },
-      /* DISABLED — `docs-wide` is temporarily not run. See
-         docs/agents/visual-regression.md, "Why docs-wide is disabled".
+      /* Off between #101 and #105, and back on now that both of that issue's
+         conditions hold. See docs/agents/visual-regression.md, "How docs-wide
+         is framed".
 
-         The sidebar renders on every docs page and derives from one registry,
-         so adding or removing a single component invalidates all 142 shots at
-         once (measured on #88: 142 docs failures, 0 story failures). That makes
-         the project a near-permanent red on exactly the pull requests this
-         system exists to protect — the ones that add components — while the
-         storybook projects, which actually isolate a component's rendering,
-         stay green and informative.
-
-         Re-enable when BOTH are true:
-           A. a scoping answer that survives a sidebar change — comparing a
-              page's content region rather than the full page, stubbing the
-              registry to a fixed set, or masking the sidebar.
-           B. sharding + a CI matrix, so the suite fails in minutes instead of
-              14 and a re-run is cheap.
-
-         Uncomment this block to re-enable; the baselines are regenerated
-         automatically by the mint step in visual.yml, on the runner. Nothing
-         else needs changing — `docs-wide` is deliberately left in
-         SPEC_FILE_BY_PROJECT so the path mapping is still there. */
-      // {
-      //   name: 'docs-wide',
-      //   testMatch: /docs\.spec\.ts$/,
-      //   use: { viewport: WIDE_VIEWPORT },
-      // },
-      /* Only the pages whose subject is responsive layout. They tag themselves
-         @responsive, so the set is decided once, next to the routes it
-         describes, rather than by a second list here that could disagree with
-         it. */
+         (A) The page shots are clipped to the content element, so the sidebar
+         that derives from the component registry is outside every page frame
+         and cannot fan one added component out across all of them; the chrome
+         gets its own handful of shots instead. (B) The sweep is a matrix and
+         this project is sharded, so it runs concurrently with the storybook
+         projects rather than being the bulk of a serial run. */
+      {
+        name: 'docs-wide',
+        testMatch: /docs\.spec\.ts$/,
+        use: { viewport: WIDE_VIEWPORT },
+      },
+      /* Only the shots whose subject is responsive layout: the pattern pages,
+         plus the header and footer chrome. They tag themselves @responsive, so
+         the set is decided once, next to the routes and regions it describes,
+         rather than by a second list here that could disagree with it. The
+         sidebar is display:none under 960px and is deliberately untagged — a
+         region with no area is a hard error, not a shot that compares nothing. */
       {
         name: 'docs-narrow',
         testMatch: /docs\.spec\.ts$/,

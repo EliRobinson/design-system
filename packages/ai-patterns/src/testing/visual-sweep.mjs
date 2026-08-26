@@ -290,13 +290,94 @@ export function sweepStorybook({
 }
 
 /**
- * Registers one test per route per theme, each capturing the whole page.
+ * The document-space box of the one element `selector` matches, rounded
+ * outward to whole pixels.
+ *
+ * Document space, not viewport space, because the box is handed to a
+ * `fullPage` capture: the full-page image is the document, so a viewport-
+ * relative rect would be off by the scroll offset. The scroll is reset first
+ * for the same reason a sticky header exists — a `position: sticky` element's
+ * rect follows the scroll, and measuring it anywhere but the top would name a
+ * box the full-page image does not paint it into.
+ *
+ * Throws unless exactly one element matches, and throws on a zero-sized one.
+ * A selector that has stopped matching — a renamed class, a region hidden at
+ * this viewport — would otherwise silently degrade to "compare the whole page"
+ * or "compare nothing", and both report as a pass.
+ */
+export async function regionBox(page, selector) {
+  const measured = await page.evaluate((sel) => {
+    /* `instant`: a site with `scroll-behavior: smooth` would still be gliding
+       when the rect below is read. */
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
+    const found = document.querySelectorAll(sel);
+    if (found.length !== 1) {
+      return { count: found.length };
+    }
+
+    const rect = found[0].getBoundingClientRect();
+    return {
+      count: 1,
+      x: rect.x + window.scrollX,
+      y: rect.y + window.scrollY,
+      width: rect.width,
+      height: rect.height,
+    };
+  }, selector);
+
+  if (measured.count !== 1) {
+    throw new Error(
+      `Capture region '${selector}' matched ${measured.count} elements; it has to match exactly one. ` +
+        'A region that matches nothing would capture the whole page, and one that matches several ' +
+        'would capture whichever the DOM happens to list first — both pass silently.',
+    );
+  }
+
+  if (measured.width === 0 || measured.height === 0) {
+    throw new Error(
+      `Capture region '${selector}' has no area (${measured.width}×${measured.height}). ` +
+        'A zero-sized region captures nothing and compares clean on every run.',
+    );
+  }
+
+  /* Outward, so the box can never crop a subpixel edge of the region: a `%` or
+     `vw` length lands on a fraction routinely (4vw at 1280px is 51.2px), and
+     rounding to nearest would drop the last row of pixels on half of them. */
+  const left = Math.floor(measured.x);
+  const top = Math.floor(measured.y);
+
+  return {
+    x: left,
+    y: top,
+    width: Math.ceil(measured.x + measured.width) - left,
+    height: Math.ceil(measured.y + measured.height) - top,
+  };
+}
+
+/**
+ * Registers one test per route per theme.
  *
  * Full-page rather than viewport-sized: this is the sweep that covers what a
  * component sweep structurally cannot — components composed next to each other,
  * the site chrome around them, and token ramps at page scale — and most of that
- * is below the fold. Cropping would leave exactly the details it exists to
- * catch outside the frame.
+ * is below the fold. Cropping to the fold would leave exactly the details it
+ * exists to catch outside the frame.
+ *
+ * `region` narrows the frame the other way, and is the option a site with
+ * persistent chrome wants. A sidebar derived from a registry renders on every
+ * page, so one added entry moves pixels in every full-page shot at once and the
+ * suite reports one fact N times. Naming the content element instead puts the
+ * chrome outside the frame, which makes that fan-out structurally impossible
+ * rather than merely tolerated — and leaves the chrome to `sweepChrome`, where
+ * it is compared once. It does NOT weaken what the page shots catch: the
+ * content region is where composed components and token ramps are.
+ *
+ * The capture stays `fullPage` with a clip rather than becoming an element
+ * screenshot. Playwright scrolls an element into view before shooting it, and a
+ * sticky header then paints across the top of the very region being captured —
+ * measured on this repo's docs site, which lost its `<h1>` behind the header on
+ * every page. Clipping the full-page image has no scroll to be caught by.
  */
 export function sweepPages({
   test,
@@ -306,6 +387,7 @@ export function sweepPages({
   themes = THEMES,
   themeStorageKey,
   fullPage = true,
+  region,
   mask = DEFAULT_MASK,
   title = (route, theme) => `${route} · ${theme}`,
   name = (route, theme) => `${routeSlug(route)}-${theme}.png`,
@@ -325,14 +407,94 @@ export function sweepPages({
            domcontentloaded. Waiting for the pixels beats waiting for any
            particular framework signal. */
         await page.waitForLoadState('load');
+
+        /* Settled against the whole page even when the capture is a region of
+           it. The region is a subset, so this is the conservative direction —
+           and layout outside it can still push the region around, which a
+           region-only settle would watch happen and call stable. */
         await waitForStablePixels(page, { expect, fullPage });
 
         await expect(page).toHaveScreenshot(name(route, theme), {
           fullPage,
+          /* Measured after the settle: before it, the box is whatever the
+             pre-hydration layout happened to be. */
+          ...(region ? { clip: await regionBox(page, region) } : {}),
           mask: mask.map((selector) => page.locator(selector)),
         });
 
         await afterCapture?.(page, { route, theme });
+      });
+    }
+  }
+}
+
+/**
+ * Registers one test per chrome region per theme, all on a single route.
+ *
+ * The other half of `sweepPages`' `region`. Clipping page shots to the content
+ * element takes the header, sidebar, nav and footer out of every frame, and
+ * chrome that nothing shoots is chrome nothing checks. This shoots each piece
+ * once instead of once per page — which is the coverage those pieces actually
+ * warrant, rather than the number a full-page frame happened to produce.
+ *
+ * `route` is the page the chrome is rendered on. One is enough by definition:
+ * a region that renders differently per page is page content, not chrome.
+ *
+ * The default subject is a path (`/chrome/<name>`), so a chrome shot is
+ * route-shaped everywhere downstream — a scoper that widens "every docs route"
+ * picks it up, and a baseline-path mapping written for routes needs no case for
+ * it.
+ *
+ * A namespace with no punctuation to mark it apart, deliberately: Playwright
+ * sanitises a snapshot name down to `[A-Za-z0-9-]`, rewriting `_` and `@` and
+ * the rest to `-`. A subject spelled `/_chrome/header` therefore lands on disk
+ * as `-chrome-header-…`, which no route-to-path mapping would predict — the
+ * kind of drift that shows up as a baseline nothing claims. So the collision
+ * with a real `/chrome/*` page is ruled out where the routes are known: pass
+ * `subject` if the site has one.
+ */
+export function sweepChrome({
+  test,
+  expect,
+  baseUrl,
+  route = '/',
+  regions,
+  themes = THEMES,
+  themeStorageKey,
+  mask = DEFAULT_MASK,
+  subject = (chrome) => `/chrome/${chrome.name}`,
+  title = (chrome, theme) => `${subject(chrome)} · ${theme}`,
+  name = (chrome, theme) => `${routeSlug(subject(chrome))}-${theme}.png`,
+  afterCapture,
+}) {
+  assertSweepable({ test, expect, baseUrl, subjects: regions, subjectName: 'regions' });
+
+  for (const chrome of regions) {
+    if (!chrome?.name || !chrome?.selector) {
+      throw new TypeError(
+        `A chrome region needs both a \`name\` and a \`selector\`; got ${JSON.stringify(chrome)}. ` +
+          "The name is the shot's identity and the selector is what it frames — neither has a " +
+          'safe default.',
+      );
+    }
+  }
+
+  for (const chrome of regions) {
+    for (const theme of themes) {
+      test(title(chrome, theme), async ({ page }) => {
+        await applyFixedClock(page);
+        await applyTheme(page, theme, { storageKey: themeStorageKey });
+        await page.goto(`${baseUrl}${route}`);
+        await page.waitForLoadState('load');
+        await waitForStablePixels(page, { expect, fullPage: true });
+
+        await expect(page).toHaveScreenshot(name(chrome, theme), {
+          fullPage: true,
+          clip: await regionBox(page, chrome.selector),
+          mask: mask.map((selector) => page.locator(selector)),
+        });
+
+        await afterCapture?.(page, { region: chrome, theme });
       });
     }
   }
