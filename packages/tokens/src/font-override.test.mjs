@@ -139,18 +139,34 @@ describe('the cascade rule the hook relies on', () => {
     },
   );
 
-  it('keeps tokens.css’s one layer block down to the link rule it was opened for', () => {
+  it('keeps tokens.css’s layer blocks down to the two rules they were opened for', () => {
     // A guard on scope rather than on tokens: `@layer base { … }` is an easy
     // thing to keep adding rules to, and every rule moved into it silently
     // becomes overridable by any unlayered consumer CSS. Widening it should be
     // a decision, not a drive-by.
+    //
+    // It has been widened once, deliberately. The second block is the form
+    // control `font: inherit` reset (#167): native controls do not inherit
+    // `font`, so five shipped components typeset real words in the UA's Arial.
+    // It belongs in the layer for the same reason the `a` rule does — unlayered
+    // it beat a consumer's `font-mono` and `text-2xl` utilities, which is #112
+    // in a new spelling. Being overridable by unlayered consumer CSS is the
+    // POINT of both, not a cost.
+    //
+    // Neither block declares a custom property, so the guarantee the test above
+    // protects — no `--token: …` inside a layer — is untouched by either.
+    // Compared as a set: which rules are layered is the invariant, where the
+    // blocks sit in the file is not, and asserting the order would make this go
+    // red on a move that changes no cascade.
     const blocks = layerBlocks(withoutComments(tokensCss));
-
-    expect(blocks).toHaveLength(1);
-    const selectors = [...blocks[0].matchAll(/([^{}]+)\{/g)].map((match) =>
-      match[1].replace(/\s+/g, ' ').trim(),
+    const selectors = blocks.flatMap((block) =>
+      [...block.matchAll(/([^{}]+)\{/g)].map((match) => match[1].replace(/\s+/g, ' ').trim()),
     );
-    expect(selectors).toEqual(['a', 'a:hover']);
+
+    expect(blocks).toHaveLength(2);
+    expect([...selectors].sort()).toEqual(
+      ['a', 'a:hover', 'button, input, optgroup, select, textarea, ::file-selector-button'].sort(),
+    );
   });
 
   it('never declares an override property, which is why setting one applies from any layer', () => {
