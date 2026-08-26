@@ -14,6 +14,12 @@
      - Declare them inside your own `[data-product]` scope, never on `:root`.
        Scoping is what keeps the override a product decision rather than a
        silent fork of the system for everything on the page.
+     - Keep this file UNLAYERED. tokens.css is unlayered, and an unlayered
+       declaration beats anything inside a cascade layer regardless of order —
+       so wrapping the block below in `@layer base` (where a Next.js
+       globals.css conventionally puts base styles) means it never applies at
+       all. Nothing errors and the page still renders, in the system palette,
+       which is what makes that the expensive one to find.
      - The theme attribute usually sits on `<html>`, above your product scope,
        so the dark block needs the descendant selectors below — a bare
        `[data-product][data-theme='dark']` matches nothing in the common case.

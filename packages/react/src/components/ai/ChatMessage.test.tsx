@@ -12,6 +12,18 @@ describe('ChatMessage', () => {
     expect(screen.getByText('Hello there')).toBeInTheDocument();
   });
 
+  /* The frame is an Avatar at an existing step, not a circle ChatMessage draws
+     for itself. It used to hand-roll a 44px box; 44px is the floor for primary
+     interactive controls, and this frame is aria-hidden and unfocusable. */
+  it('frames the avatar with Avatar md rather than a size of its own', () => {
+    const { container } = render(<ChatMessage avatar="A">Hello there</ChatMessage>);
+    const frame = container.querySelector('.ds-chat-message__avatar');
+
+    expect(frame).toHaveClass('ds-avatar');
+    expect(frame).toHaveClass('ds-avatar--md');
+    expect(frame).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('is a received turn by default', () => {
     const { container } = render(<ChatMessage avatar="A">Hello there</ChatMessage>);
     expect(container.querySelector('.ds-chat-message')).toHaveClass('ds-chat-message--received');

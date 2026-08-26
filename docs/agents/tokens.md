@@ -132,6 +132,7 @@ There are two kinds of entry, and the difference matters. Most are "this token n
 
 - Families get the hook because the value is the framework's to supply at runtime — `next/font` generates a hashed family name (`__Geist_e8ce0c`) and exposes it only through a CSS variable, so the literal `'Geist'` matches nothing it loaded. Everything else is ours to own; do not extend the hook without that justification.
 - Adding a family means adding its `--ds-font-*-override` hook and a case to `font-override.test.mjs`.
+- **A product that wants to own one signal rather than one token should reach for the product token layer instead of overriding here.** `--product-*` is a small fixed set of variables the components read _through_ a fallback to a system token, declared inside the consumer's own `[data-product]` scope — so the override is scoped to the product's subtree and a consumer that declares none of it gets the system palette unchanged. See [Product token layer](product-token-layer.md). The unlayered rule above applies there too, and for the same reason.
 
 ## Tailwind bridge
 

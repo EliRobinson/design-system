@@ -1,4 +1,19 @@
-const { ChatThread, ChatMessage, ChatComposer, PromptSuggestions, Button, Badge, Avatar, Eyebrow, Separator, EmptyState, Sheet } = window.MiltinsonDesignSystem_e160cb;
+const { ChatThread, ChatMessage, StreamingCaret, ChatComposer, PromptSuggestions, Button, Badge, Avatar, Eyebrow, Separator, EmptyState, Sheet } = window.MiltinsonDesignSystem_e160cb;
+
+/* ChatThread / ChatMessage / StreamingCaret are @elirobinson/react's `ai` tier,
+   and this kit calls them with their shipped props. ChatComposer and
+   PromptSuggestions are still the project's own — see PROJECT_OWNED_COMPONENTS
+   in packages/ai-patterns/scripts/build-design-project.mjs.
+
+   The shipped ChatMessage has no `role`. Identity is `name` plus a required
+   `avatar` node, so this kit keeps `role` in its OWN state (it is the kit's
+   domain model) and maps it to `variant` / `name` / `avatar` at the call site.
+   `variant` is presentation — which side of the conversation a turn is on — and
+   is deliberately not an author enum. */
+const AUTHOR = {
+  user: { variant: 'sent', name: 'Eli', avatar: 'E' },
+  assistant: { variant: 'received', name: 'Assistant', avatar: '◆' },
+};
 
 const STARTERS = ['Draft a 45-minute U10s session', 'Summarise my sales this month', 'Explain what an LLM actually does', 'Rewrite this email to be shorter'];
 
@@ -28,7 +43,7 @@ const ThreadList = ({ active, onSelect }) => {
         ))}
       </nav>
       <div style={{ marginTop: 'auto', padding: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <Avatar name="Eli Robinson" size="sm" />
+        <Avatar alt="Eli Robinson" fallback="ER" size="sm" />
         <span style={{ fontSize: 13 }}>Eli Robinson</span>
       </div>
     </aside>
@@ -93,14 +108,38 @@ const Assistant = () => {
             </div>
           </div>
         ) : (
-          <ChatThread>
-            {messages.map((m, i) => (
-              <ChatMessage key={i} role={m.role} streaming={m.streaming}
-                citations={m.role === 'assistant' && !m.streaming ? [{ href: '#', title: 'Session Plans for U10s' }, { href: '#', title: 'Practice Drills Vol. 1' }] : []}
-                actions={m.role === 'assistant' && !m.streaming ? [{ label: 'Copy' }, { label: 'Retry' }, { label: 'Sources', onClick: () => setSources(true) }] : []}>
-                {m.text}
-              </ChatMessage>
-            ))}
+          <ChatThread label="Assistant transcript">
+            {messages.map((m, i) => {
+              const settled = m.role === 'assistant' && !m.streaming;
+              return (
+                <ChatMessage key={i} {...AUTHOR[m.role]}
+                  /* `actions` is a node, not an [{ label, onClick }] array: the
+                     system does not own the control, so it does not own the
+                     label or the handler either. Absent when there is nothing
+                     to offer — ChatMessage renders no actions element at all. */
+                  actions={settled ? (
+                    <React.Fragment>
+                      <Button variant="ghost" size="sm">Copy</Button>
+                      <Button variant="ghost" size="sm">Retry</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setSources(true)}>Sources</Button>
+                    </React.Fragment>
+                  ) : undefined}>
+                  {m.text}
+                  {/* No `streaming` prop and no `citations` prop. The caret is a
+                      real component the caller mounts and unmounts, and the
+                      citation chips are this kit's own markup — which is what
+                      keeps product copy out of the component. */}
+                  {m.streaming ? <StreamingCaret label="Still writing" /> : null}
+                  {settled ? (
+                    <span style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      {['Session Plans for U10s', 'Practice Drills Vol. 1'].map((title, n) => (
+                        <a key={title} href="#" className="ds-chat-citation" title={title} onClick={(e) => { e.preventDefault(); setSources(true); }}>{n + 1}</a>
+                      ))}
+                    </span>
+                  ) : null}
+                </ChatMessage>
+              );
+            })}
           </ChatThread>
         )}
         <ChatComposer value={draft} onValueChange={setDraft} onSend={() => send()} busy={busy} />

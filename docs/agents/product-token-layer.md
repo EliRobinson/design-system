@@ -51,18 +51,18 @@ documents, so the table cannot drift away from the code.
 
 ## The variables
 
-| Variable                    | System fallback           | Role                                                                                                                                                                                                                   |
-| --------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--product-signal`          | `--accent-press`          | A non-text state graphic — a caret, a rule, a dot. Needs 3:1 under SC 1.4.11. Not `--accent`, which is 2.53:1.                                                                                                         |
-| `--product-signal-fg`       | `--status-warning-fg`     | A mark, glyph or label a user **reads**. 6.66:1 light, 11.51:1 dark on `--surface-2`. Deliberately not `--accent-ink`: that swaps hue with `data-palette`, and an assistant's mark is an identity, not a brand accent. |
-| `--product-verdict-go`      | `--status-success-tint`   | Affirmative verdict fill.                                                                                                                                                                                              |
-| `--product-verdict-go-fg`   | `--status-success-fg`     | The foreground on that fill.                                                                                                                                                                                           |
-| `--product-verdict-no`      | `--status-danger-tint`    | Negative verdict fill.                                                                                                                                                                                                 |
-| `--product-verdict-no-fg`   | `--status-danger-fg`      | The foreground on that fill.                                                                                                                                                                                           |
-| `--product-verdict-hold`    | `--status-warning-tint`   | Conditional verdict fill.                                                                                                                                                                                              |
-| `--product-verdict-hold-fg` | `--status-warning-fg`     | The foreground on that fill.                                                                                                                                                                                           |
-| `--product-caveat-rule`     | `--status-warning-border` | The rule marking a paragraph as a caution. **Not** `--status-warning`: the bare warning fill is 1.87:1 and cannot carry the 3:1 SC 1.4.11 asks of it. 3.76:1 light, 11.17:1 dark.                                      |
-| `--product-caveat-fg`       | `--status-warning-fg`     | That caveat's text. The second channel, so the caution is not carried by one thin rule alone (SC 1.4.1). 6.97:1 light, 11.86:1 dark.                                                                                   |
+| Variable                    | System fallback           | Role                                                                                                                                                                                                                  |
+| --------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--product-signal`          | `--accent-press`          | A non-text state graphic — a caret, a rule, a dot. Needs 3:1 under SC 1.4.11. Not `--accent`, which is 2.53:1.                                                                                                        |
+| `--product-signal-fg`       | `--status-warning-fg`     | A mark, glyph or label a user **reads**. 6.24:1 light, 11.51:1 dark on `--bg-muted`. Deliberately not `--accent-ink`: that swaps hue with `data-palette`, and an assistant's mark is an identity, not a brand accent. |
+| `--product-verdict-go`      | `--status-success-tint`   | Affirmative verdict fill.                                                                                                                                                                                             |
+| `--product-verdict-go-fg`   | `--status-success-fg`     | The foreground on that fill.                                                                                                                                                                                          |
+| `--product-verdict-no`      | `--status-danger-tint`    | Negative verdict fill.                                                                                                                                                                                                |
+| `--product-verdict-no-fg`   | `--status-danger-fg`      | The foreground on that fill.                                                                                                                                                                                          |
+| `--product-verdict-hold`    | `--status-warning-tint`   | Conditional verdict fill.                                                                                                                                                                                             |
+| `--product-verdict-hold-fg` | `--status-warning-fg`     | The foreground on that fill.                                                                                                                                                                                          |
+| `--product-caveat-rule`     | `--status-warning-border` | The rule marking a paragraph as a caution. **Not** `--status-warning`: the bare warning fill is 1.87:1 and cannot carry the 3:1 SC 1.4.11 asks of it. 3.76:1 light, 11.17:1 dark.                                     |
+| `--product-caveat-fg`       | `--status-warning-fg`     | That caveat's text. The second channel, so the caution is not carried by one thin rule alone (SC 1.4.1). 6.97:1 light, 11.86:1 dark.                                                                                  |
 
 Which components read which is derivable — `grep -r 'var(--product-' packages/react/src`
 — so it is not restated here. Today it is `ai/ChatMessage`, `ai/StreamingCaret` and
@@ -88,7 +88,34 @@ a component that composes another should not re-read that component's variables.
 </html>
 ```
 
-## Two things that will bite
+## Three things that will bite
+
+**The scope must be unlayered, or it silently loses.** `tokens.css` is unlayered on
+purpose, and an unlayered declaration beats anything inside a cascade layer regardless of
+order — so a `[data-product]` block written inside `@layer base`, which is where a Next.js
+`globals.css` conventionally puts base styles, **never applies**. Not "applies weakly":
+never. Every `--product-*` read falls back to a system token, so the page renders correctly
+in the system palette and nothing errors, which is what makes this the expensive one to
+find.
+
+This is already stated for tokens generally in [Tokens](tokens.md#overriding-a-token-in-a-consumer-app),
+and it is restated here because a scoped block _looks_ like a place where layering would be
+safe. It is not: the scope narrows which elements the declarations reach, and changes
+nothing about which cascade layer they sit in.
+
+```css
+/* wrong — inside a layer, so tokens.css wins and the product layer does nothing */
+@layer base {
+  [data-product='atlas'] {
+    --product-signal-fg: var(--anchor-600);
+  }
+}
+
+/* right — unlayered, like tokens.css itself */
+[data-product='atlas'] {
+  --product-signal-fg: var(--anchor-600);
+}
+```
 
 **The theme attribute sits above your scope.** `[data-theme='dark']` is normally on
 `<html>` and `[data-product]` is somewhere inside `<body>`, so a dark override written as

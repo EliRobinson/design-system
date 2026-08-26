@@ -63,12 +63,28 @@ If you need a control near a "no" — "remind me later," "see other options" —
 outside the card, where it can be labelled for what it actually does and can't inherit the
 card's authority.
 
+## Heading level
+
+`headline` renders as a real heading element, not a styled paragraph — it is the card's
+title in the document outline, so a screen reader's heading navigation has to be able to
+find it. There is no single correct level for an arbitrary outline, so `headingLevel` is
+exposed rather than hardcoded: leave the default (`headingLevel={2}`, an `<h2>`) for a card
+sitting under the page's own `<h1>`, and pass `headingLevel={3}` for one inside an `<h2>`
+section. An out-of-range value falls back to 2 rather than crashing the tree.
+
+The range starts at 2 where `Accordion`'s starts at 1. An accordion can legitimately be the
+only thing on a page; a card that claimed the document's `<h1>` would be claiming to be the
+page. The type ramp is carried by the class, so every level looks identical and only the
+outline changes.
+
 ## Props
 
 <PropsTables slug="decision-card" />
 
 ## Accessibility
 
+- `headline` is a real `<h2>`–`<h6>` (see "Heading level" above), so the card has a title in
+  the document outline and heading navigation lands on it.
 - The figures render as a real `<dl>`: each figure's `label` is a `<dt>` and its `value` a
   `<dd>`, so the pairing holds without the grid.
 - Figures are keyed by `kind` and `label` together, so the same label can appear under two
