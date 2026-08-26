@@ -28,9 +28,15 @@ export type ReporterEntry = readonly [string] | readonly [string, Record<string,
 
 export interface ScreenshotDeterminism {
   animations: 'disabled';
+  /** 0. A colour tolerance would hide a one-step shift inside a token ramp. */
   threshold: number;
+  /** A small budget for rasteriser nondeterminism. See the comment in visual-config.mjs. */
   maxDiffPixels: number;
-  maxDiffPixelRatio: number;
+  /**
+   * Left `undefined` on purpose: Playwright takes `Math.min` of the two budgets,
+   * so a ratio of 0 here would cancel `maxDiffPixels` back to 0.
+   */
+  maxDiffPixelRatio: number | undefined;
 }
 
 /** What the preset contributes on top of whatever the caller passes. */

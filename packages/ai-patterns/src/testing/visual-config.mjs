@@ -192,18 +192,64 @@ export function defineVisualConfig(overrides = {}, guard = {}) {
            faster, not stop. */
         animations: 'disabled',
 
-        /* Zero tolerance, in all three senses Playwright offers.
+        /* Zero tolerance on *how wrong a pixel may be*, a small budget on *how
+           many pixels may be wrong at all*. Those are two different levers, and
+           the reason this used to be three zeroes is that they read like one.
 
            `threshold` is the one that is easy to get wrong: it defaults to 0.2,
            a per-pixel YIQ colour distance under which two pixels are called
            equal. A one-step shift within a token ramp lands inside that default
            and passes, which is exactly the regression this suite exists to
-           catch. Exact comparison is only viable because the renderer is pinned
-           to a container; on native runners this would fail on font
-           antialiasing alone. */
+           catch. It stays at 0 and is not negotiable — it is the single setting
+           that would leave this suite green and hollow. Exact per-pixel
+           comparison is only viable because the renderer is pinned to a
+           container; on native runners this would fail on font antialiasing
+           alone.
+
+           `maxDiffPixels` is the other lever, and the container premise is
+           narrower than it looks under it. The image pins software. It does not
+           pin the host CPU, and Skia's rasterisation of anti-aliased curves and
+           glyph edges is not bit-identical across GitHub's heterogeneous runner
+           fleet. Measured, on issue #125: the storybook-wide sweep went red on a
+           commit that changed only package.json and CHANGELOG.md, on one story
+           (components-chatthread--default-dark), against a baseline nobody had
+           touched, from a container digest identical to the passing runs either
+           side of it. 42 pixels differed byte-for-byte, all of them inside the
+           two avatar circles, deltas of ±2 to ±32 on dark greys — arcs and
+           initial glyphs, no layout shift and no colour change. Playwright
+           counted 3 of those 42, because pixelmatch discounts pixels it
+           identifies as anti-aliasing before comparing against this budget.
+
+           8 is a real number rather than a shrug because the two failure classes
+           are orders of magnitude apart. A token-ramp shift, a spacing change, a
+           font swap, a layout regression: each moves *thousands* of pixels and
+           every one of them still fails at 8. Rasteriser nondeterminism on
+           curves and glyph edges moves *tens*, and 3 after the comparator's own
+           AA discount — so 8 clears the measured event with room and still
+           leaves the guarantee the paragraph above is defending.
+
+           The counter-argument, recorded because it is the genuine cost and not
+           a formality: any non-zero budget can hide a genuinely tiny regression.
+           A 1px border that lost its colour, one glyph nudged a pixel, a focus
+           ring gone from a small control — those are real regressions that fit
+           inside 8. That is precisely why the number stays small, why it is
+           chosen against noise that was measured rather than against whatever
+           went red most recently, and why raising it a second time is a signal
+           to go and fix the nondeterminism instead of raising it again. If this
+           line ever reads 32, something has gone wrong upstream of this file.
+
+           `maxDiffPixelRatio` is deliberately left unset, and that is load
+           bearing rather than tidying. Playwright resolves the two budgets with
+           `Math.min` when both are given (comparators.ts): a ratio of 0 over a
+           1280x800 shot is a budget of 0 pixels, so keeping it at 0 alongside
+           `maxDiffPixels: 8` would silently reduce the pair back to 0 and this
+           whole change would do nothing. One cap, and at these image sizes a
+           pixel count is the legible one — a failure message says "42 pixels",
+           not a ratio to four decimal places. A consumer who sets a ratio still
+           gets it, and Playwright will take whichever of the two is stricter. */
         threshold: 0,
-        maxDiffPixels: 0,
-        maxDiffPixelRatio: 0,
+        maxDiffPixels: 8,
+        maxDiffPixelRatio: undefined,
 
         ...expect?.toHaveScreenshot,
       },

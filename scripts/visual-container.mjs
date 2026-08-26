@@ -9,10 +9,11 @@
    Usage:
      node scripts/visual-container.mjs [--fresh] [playwright args...]
      node scripts/visual-container.mjs --print-image
+     node scripts/visual-container.mjs --update-digest
 */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
@@ -50,7 +51,121 @@ function playwrightVersion() {
   }
 }
 
-const IMAGE = `mcr.microsoft.com/playwright:v${playwrightVersion()}-noble`;
+const REGISTRY = 'mcr.microsoft.com';
+const REPOSITORY = 'playwright';
+
+/* The tag the lockfile implies. Not the image reference — see below. */
+function imageTag() {
+  return `${REGISTRY}/${REPOSITORY}:v${playwrightVersion()}-noble`;
+}
+
+const DIGEST_LOCK = join(root, 'scripts', 'visual-image.lock.json');
+const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
+const REFRESH_COMMAND = 'pnpm visual:digest';
+
+/* The tag above is mutable. Microsoft republishes `v1.62.1-noble` in place when
+   the base image is rebuilt — new fontconfig, new freetype, new anything — and
+   a suite whose entire premise is a pinned renderer would follow it silently.
+   That has not bitten us yet (issue #125 checked, and the digests on the runs
+   either side of the failure were identical), but it is the one drift this
+   design cannot detect after the fact: every baseline would move at once, and
+   the diff would look like a real regression across the whole sweep.
+
+   So: derive the tag, then pin the digest that tag resolved to, and check the
+   two against each other on every run.
+
+   A digest cannot be derived, only recorded, and the recording has to survive a
+   constraint the rest of this file already lives under — `--print-image` runs on
+   a bare checkout with nothing installed, because a GitHub job's `container:` is
+   resolved before any step of that job runs. It cannot call the network (the
+   resolve step is a plain `node scripts/...` with no daemon and no login) and it
+   cannot fail slowly. Hence a checked-in lockfile, keyed by the tag it was taken
+   for: reading it is a file read, and a stale one is a loud error rather than a
+   quiet fallback to the mutable tag.
+
+   Keyed by tag, specifically. Bumping @playwright/test moves the derived tag,
+   the two stop matching, and the run stops with the refresh command in the
+   message — which is correct, because a Playwright bump invalidates baselines by
+   construction and should never be able to half-happen.
+
+   The reference is emitted as tag@digest rather than bare repo@digest. Docker
+   resolves it by digest and ignores the tag, so the pin is exact either way, and
+   keeping the tag means a CI log still says which Playwright this was. */
+function pinnedImage() {
+  const tag = imageTag();
+  let lock;
+
+  try {
+    lock = JSON.parse(readFileSync(DIGEST_LOCK, 'utf8'));
+  } catch (error) {
+    fail(
+      `Could not read the pinned container digest from ${DIGEST_LOCK}:\n` +
+        `${error.message}\n\n` +
+        `Run \`${REFRESH_COMMAND}\` to regenerate it.`,
+    );
+  }
+
+  if (lock.tag !== tag) {
+    fail(
+      'The pinned container digest is stale.\n\n' +
+        `  pnpm-lock.yaml implies:  ${tag}\n` +
+        `  visual-image.lock.json:  ${lock.tag}\n\n` +
+        `Run \`${REFRESH_COMMAND}\` and commit the result.\n` +
+        'A Playwright bump invalidates every baseline, so regenerate them in the\n' +
+        'same change (`pnpm test:visual:update`, or the Visual update workflow).',
+    );
+  }
+
+  if (!DIGEST_PATTERN.test(lock.digest ?? '')) {
+    fail(
+      `${DIGEST_LOCK} does not contain a sha256 digest (found ${JSON.stringify(lock.digest)}).\n` +
+        `Run \`${REFRESH_COMMAND}\` to regenerate it.`,
+    );
+  }
+
+  return `${tag}@${lock.digest}`;
+}
+
+/* Asks the registry what the tag points at right now, over the plain
+   distribution API rather than through Docker: this has to work on a machine
+   with no daemon running, and pulling ~2GB of image to learn 32 bytes is a poor
+   trade. MCR serves manifests anonymously, so there is no token exchange; if
+   that ever changes, this fails loudly instead of pinning something wrong.
+
+   HEAD, not GET — the digest is a response header, and the body is not needed.
+   Accept lists both the index and single-manifest media types, because a
+   registry that is not told which it may serve can answer with a converted
+   manifest whose digest is not the one everyone else sees. */
+async function fetchDigest(tag) {
+  const reference = tag.slice(tag.lastIndexOf(':') + 1);
+  const url = `https://${REGISTRY}/v2/${REPOSITORY}/manifests/${reference}`;
+
+  const response = await fetch(url, {
+    method: 'HEAD',
+    headers: {
+      accept: [
+        'application/vnd.oci.image.index.v1+json',
+        'application/vnd.docker.distribution.manifest.list.v2+json',
+        'application/vnd.oci.image.manifest.v1+json',
+        'application/vnd.docker.distribution.manifest.v2+json',
+      ].join(', '),
+    },
+  }).catch((error) => {
+    fail(`Could not reach ${url}:\n${error.message}`);
+  });
+
+  if (!response.ok) {
+    fail(`${url} answered ${response.status} ${response.statusText}.`);
+  }
+
+  const digest = response.headers.get('docker-content-digest');
+
+  if (!DIGEST_PATTERN.test(digest ?? '')) {
+    fail(`${url} returned no usable Docker-Content-Digest (got ${JSON.stringify(digest)}).`);
+  }
+
+  return digest;
+}
 
 /* Pinned, not inferred from the host.
 
@@ -127,6 +242,23 @@ function run(command, args, options = {}) {
 }
 
 const args = process.argv.slice(2);
+
+/* Deliberately ahead of pinnedImage(): refreshing the lockfile is the one thing
+   that has to work while the lockfile is stale. */
+if (args.includes('--update-digest')) {
+  const tag = imageTag();
+  const digest = await fetchDigest(tag);
+
+  writeFileSync(
+    DIGEST_LOCK,
+    `${JSON.stringify({ refreshWith: REFRESH_COMMAND, tag, digest }, null, 2)}\n`,
+  );
+
+  process.stdout.write(`${tag}@${digest}\n`);
+  process.exit(0);
+}
+
+const IMAGE = pinnedImage();
 
 if (args.includes('--print-image')) {
   /* For the CI workflow, which needs the ref before any step has run. */

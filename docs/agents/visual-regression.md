@@ -1,6 +1,10 @@
 # Visual regression: diagnosing a baseline that passes locally and fails in CI
 
-The suite compares screenshots at zero tolerance (`threshold: 0`, `maxDiffPixels: 0`) from a pinned container. That is what lets it catch a one-step colour shift. It also means any nondeterminism anywhere in the stack surfaces as a failing check rather than as noise you can ignore.
+The suite compares screenshots at zero colour tolerance (`threshold: 0`) from a container pinned by digest. That is what lets it catch a one-step colour shift, and it means nondeterminism anywhere in the stack surfaces as a failing check rather than as noise you can ignore.
+
+**`maxDiffPixels` is 8, not 0** (issue #125, and `packages/ai-patterns/src/testing/visual-config.mjs` argues it at length). The container pins software, not the host CPU: Skia's rasterisation of anti-aliased curves and glyph edges is not bit-identical across GitHub's runner fleet, and the measured event was 42 differing pixels — 3 of them counted by the comparator — on two avatar arcs, from an identical container digest, on a commit that changed only `package.json` and `CHANGELOG.md`. A real regression moves thousands of pixels and still fails at 8. `threshold` is a different lever and stays at 0; the budget cannot absorb a colour shift, only a handful of re-rasterised edge pixels. `maxDiffPixelRatio` is left unset on purpose — Playwright resolves the two budgets with `Math.min`, so a ratio of 0 would cancel the pixel budget outright.
+
+If this ever needs raising a second time, that is a signal to go and fix the nondeterminism, not to raise it again.
 
 This is the procedure for the failure that costs the most time: **a baseline that passes where it was generated and fails in CI, by a small number of pixels, on a different set of pages each run.** Issue #65 spent about a day on one instance of it. The procedure below is roughly forty minutes.
 
@@ -19,6 +23,8 @@ Do these in order. Most cases stop at step 2.
 | `workflow_dispatch`                           | the same four (`recover` only fires if the ref is `main` and the sweep failed) | the full sweep — this dispatch takes no `--grep` input; use `visual-update.yml` for a scoped manual run |
 
 **The full sweep is a matrix, one job per project.** `build` builds Storybook and the docs site once, uploads them as an artifact, and asks Playwright which projects it collected; each `sweep (<project>)` job downloads that build and compares only its own project's shots. The check name is the diagnosis: `sweep (docs-wide 1/2)` going red while `sweep (storybook-wide)` stays green says the sidebar fanned out, not that a component regressed — before anyone opens an artifact. A project long enough to be the critical path is split across shards as well (`scripts/visual-matrix.mjs` holds the shard counts).
+
+**The image is pinned by digest, and the pin is checked on every run.** `scripts/visual-container.mjs` still derives the tag from `pnpm-lock.yaml` — bumping `@playwright/test` is a baseline-invalidating change by construction — and then resolves it against `scripts/visual-image.lock.json` to emit `…:v1.62.1-noble@sha256:…`. MCR republishes a tag in place when its base is rebuilt (fontconfig, freetype), which would move every baseline at once and look like a sweep-wide regression. If the derived tag and the recorded one disagree, the `image` job fails there with the fix in the message: run `pnpm visual:digest`, commit the lockfile, and regenerate baselines in the same change.
 
 **Every invocation is still `--workers=1`.** Sharding is not raising the worker count. Worker contention is the largest single lever on this suite's flake rate (18 failures to 1, issue #65), so a shard is a separate machine running its own serial browser — parallelism is bought across VMs, never inside one.
 
@@ -249,7 +255,7 @@ The fix is not in the page, it is in where the baseline came from: regenerate on
 
 Each of these was tried on #65 and made things worse or hid the problem:
 
-- **Do not raise `maxDiffPixels` to absorb it.** The flake reached ~1200px under emulation and a Badge's entire fill is ~1400px. A budget wide enough to steady the suite is wide enough to hide the regression class it exists to catch. A green, hollow suite is worse than one that needs a re-run.
+- **Do not raise `maxDiffPixels` to absorb it.** It is 8, sized against 3 counted pixels of runner-side antialiasing (#125), and that is where it stays. The #65 flake reached ~1200px under emulation and a Badge's entire fill is ~1400px: a budget wide enough to steady _that_ is wide enough to hide the regression class this suite exists to catch. A green, hollow suite is worse than one that needs a re-run. A second raise means the nondeterminism grew — go and find it.
 - **Do not raise `expect.timeout`.** The same budget governs retries on failure. Going 20s → 60s let one failing comparison monopolise the machine and roughly **quadrupled** the flake rate.
 - **Do not add workers to speed up diagnosis.** Serial → 3 workers took a run from 1 failure to 18. Contention is the largest single amplifier.
 - **Do not regenerate repeatedly and hope.** If the cause is nondeterminism, regenerating produces baselines that pass where they were made and fail where they are checked. #65 burned three ~30-minute cycles this way.
