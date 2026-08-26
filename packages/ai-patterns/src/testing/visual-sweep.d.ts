@@ -110,6 +110,11 @@ export interface SweepPagesOptions<TPage> extends SweepOptions<TPage> {
   routes: readonly string[];
   /** Defaults to true. */
   fullPage?: boolean;
+  /**
+   * Selector for the content element each page shot is clipped to. Omit to
+   * frame the whole page. Must match exactly one element on every route.
+   */
+  region?: string;
   /** Selectors masked out of every capture. Defaults to DEFAULT_MASK. */
   mask?: readonly string[];
   title?: (route: string, theme: Theme) => string;
@@ -117,6 +122,36 @@ export interface SweepPagesOptions<TPage> extends SweepOptions<TPage> {
   afterCapture?: (
     page: TPage,
     subject: { route: string; theme: Theme },
+  ) => Promise<unknown> | unknown;
+}
+
+/** One piece of site chrome: the shot's identity, and what it frames. */
+export interface ChromeRegion {
+  name: string;
+  selector: string;
+}
+
+/** A capture region in document space, in whole pixels. */
+export interface RegionBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface SweepChromeOptions<TPage> extends SweepOptions<TPage> {
+  regions: readonly ChromeRegion[];
+  /** The page the chrome is rendered on. Defaults to `/`. */
+  route?: string;
+  /** Selectors masked out of every capture. Defaults to DEFAULT_MASK. */
+  mask?: readonly string[];
+  /** The shot's route-shaped subject. Defaults to `/chrome/<name>`. */
+  subject?: (region: ChromeRegion) => string;
+  title?: (region: ChromeRegion, theme: Theme) => string;
+  name?: (region: ChromeRegion, theme: Theme) => string;
+  afterCapture?: (
+    page: TPage,
+    subject: { region: ChromeRegion; theme: Theme },
   ) => Promise<unknown> | unknown;
 }
 
@@ -154,7 +189,15 @@ export declare function sweepStorybook<TPage extends SweepPage>(
   options: SweepStorybookOptions<TPage>,
 ): void;
 
+/** The document-space box of the one element `selector` matches. */
+export declare function regionBox(page: SweepPage, selector: string): Promise<RegionBox>;
+
 /** Registers one test per route per theme. */
 export declare function sweepPages<TPage extends SweepPage>(
   options: SweepPagesOptions<TPage>,
+): void;
+
+/** Registers one test per chrome region per theme, all on a single route. */
+export declare function sweepChrome<TPage extends SweepPage>(
+  options: SweepChromeOptions<TPage>,
 ): void;

@@ -715,6 +715,50 @@ describe('the guard fails loudly rather than narrowing quietly', () => {
   });
 });
 
+/* #101 widened this guard so it relaxes only while the shot list contains no
+   `/components/*` route at all, and claimed it would re-arm by itself when
+   `docs-wide` came back rather than needing a code change. #105 brought the
+   project back; these pin both halves of that claim on the boundary, and the
+   live-enumeration test at the bottom of this file pins it on real data. */
+describe('the /components/* drift guard relaxes and re-arms on the shot list alone', () => {
+  const drifted = [{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }];
+
+  it('relaxes while no component route is shot at all', () => {
+    const noComponentRoutes = shots.filter((s) => !s.route?.startsWith('/components/'));
+
+    expect(() =>
+      scopeFor({ changes: drifted, affectedProjects: BOTH, shots: noComponentRoutes }),
+    ).not.toThrow();
+  });
+
+  it('re-arms as soon as one component route is back, with no code change', () => {
+    /* One OTHER component's route present is the whole difference: the guard
+       relaxes for the absence of the class, never for an individual miss. */
+    const onlyBadgeRoute = shots.filter((s) => s.route !== '/components/button');
+
+    expect(onlyBadgeRoute.some((s) => s.route?.startsWith('/components/'))).toBe(true);
+    expect(() =>
+      scopeFor({ changes: drifted, affectedProjects: BOTH, shots: onlyBadgeRoute }),
+    ).toThrow(/no route '\/components\/button'/);
+  });
+
+  it('counts a chrome shot in the route namespace as a route, not as a component route', () => {
+    /* Chrome shots are route-shaped on purpose (`/chrome/<name>`), which is
+       what lets the scoper widen over them without a special case. They must
+       not also be mistaken for component coverage: a shot list that had only
+       chrome left would then look armed while nothing checked a component
+       page. */
+    const chromeOnly = [
+      ...shots.filter((s) => !s.route?.startsWith('/components/')),
+      { project: 'docs-wide', storyId: null, route: '/chrome/sidebar' },
+    ];
+
+    expect(() =>
+      scopeFor({ changes: drifted, affectedProjects: BOTH, shots: chromeOnly }),
+    ).not.toThrow();
+  });
+});
+
 describe('deletions are exempt from the coverage guard', () => {
   it('does not throw when a story file is deleted and its ids are gone', () => {
     const noBadgeStory = shots.filter((s) => s.storyId !== 'components-badge--default');
@@ -920,7 +964,7 @@ const BUILDS_PRESENT =
   existsSync('../apps/docs/.next/prerender-manifest.json');
 
 describe.skipIf(!BUILDS_PRESENT)('the emitted pattern, applied by Playwright itself', () => {
-  it('selects exactly the 28 tests a modified Button.tsx could have changed', () => {
+  it('selects exactly the 30 tests a modified Button.tsx could have changed', () => {
     const plan = scopeFor({
       changes: [{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }],
       affectedProjects: ['docs', 'storybook', 'react'],
@@ -939,10 +983,35 @@ describe.skipIf(!BUILDS_PRESENT)('the emitted pattern, applied by Playwright its
     /* A missing Total line would otherwise read as "0 tests" — the silent
          under-selection answer this module exists to refuse. */
     expect(total, `no "Total: N tests" line in --list output:\n${listed}`).not.toBeNull();
-    /* 28, not 30: Button's two `/components/button` docs shots (light and
-       dark) are gone while `docs-wide` is disabled — see
-       docs/agents/visual-regression.md. Re-enabling that project takes this
-       back to 30, which is the point of asserting an exact number here. */
-    expect(Number(total[1])).toBe(28);
+    /* 30: Button's four storybook shots (wide and narrow, two themes each…
+       and one story per variant), plus its two `/components/button` docs
+       shots, which came back with `docs-wide` at #105. It was 28 while that
+       project was off, which is the point of asserting an exact number. */
+    expect(Number(total[1])).toBe(30);
+  }, 120_000);
+
+  /* #101 relaxed the `/components/*` drift guard while `docs-wide` was off,
+     and argued it would re-arm by itself when the project returned, since the
+     relaxation keys on the shot list rather than on a flag. That is exactly
+     the kind of claim that is true right up until it isn't, so it is asserted
+     against Playwright's real enumeration rather than a fixture: a component
+     whose docs route has drifted out of the LIVE shot list must hard-fail. */
+  it('re-arms the /components/* drift guard against the live shot list', () => {
+    const live = listShots({ cwd: '..' });
+
+    expect(
+      live.some((shot) => shot.route?.startsWith('/components/')),
+      'no /components/* route is shot at all, so the drift guard is still relaxed',
+    ).toBe(true);
+
+    const buttonRouteDrifted = live.filter((shot) => shot.route !== '/components/button');
+
+    expect(() =>
+      scopeFor({
+        changes: [{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }],
+        affectedProjects: ['docs', 'storybook', 'react'],
+        shots: buttonRouteDrifted,
+      }),
+    ).toThrow(/no route '\/components\/button'/);
   }, 120_000);
 });

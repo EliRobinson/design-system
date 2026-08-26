@@ -1,13 +1,11 @@
 /* The CI matrix: which sweep jobs exist, and what each one runs.
  *
  * Derived from Playwright's own enumeration, never from a list written down
- * here. That is the whole point. `docs-wide` is currently commented out in
- * playwright.config.ts (see docs/agents/visual-regression.md, "Why docs-wide
- * is disabled"); because this reads the projects Playwright actually collected,
- * uncommenting that block is the only edit needed to give it two sharded jobs —
- * and nothing here has to be kept in sync by hand in the meantime. A hardcoded
- * matrix would either name a project that does not exist (every job failing
- * with "Project(s) 'docs-wide' not found") or silently omit one that does.
+ * here. That is the whole point, and #105 is what demonstrated it: re-enabling
+ * `docs-wide` in playwright.config.ts gave it two sharded jobs of its own with
+ * no edit to this file or to visual.yml. A hardcoded matrix would either name a
+ * project that does not exist (every job failing with "Project(s) 'docs-wide'
+ * not found") or silently omit one that does.
  *
  * Same payload as visual-shots.mjs — `playwright test --list --reporter=json` —
  * read for a different fact. That file maps a test title to its baseline path;
@@ -21,10 +19,18 @@ import { readFileSync, realpathSync } from 'node:fs';
 /* How many machines a project is split across. Absent means one.
  *
  * Only the projects long enough to be the critical path belong here. Measured
- * on run 32287834685: docs-wide is 142 full-page wide captures at 1.37s each
- * (194s), against 107s for the largest storybook project — two shards puts it
- * under them and off the critical path. A third only helps once the ~80s
- * prologue shrinks, so it would buy nothing today.
+ * on run 32287834685: docs-wide was 142 wide captures at 1.37s each (194s),
+ * against 107s for the largest storybook project — two shards puts it level
+ * with them rather than above them.
+ *
+ * Still two after #105, which brought the project back clipped to the content
+ * region and added the chrome shots: 160 tests now, not 142, so ~219s serial
+ * and ~110s a shard. Clipping does not make a shot cheaper — timed on the same
+ * 16 docs shots on one host, clipped 24.0s against full-page 23.0s — because
+ * the settle loop still captures the whole page, deliberately, and that is the
+ * expensive half. A third shard would take a leg to ~73s and the run's wall
+ * clock nowhere, since storybook-wide's 107s is then the critical path: it
+ * would buy about three seconds for a machine-minute.
  *
  * Sharding is not raising the worker count. Every job still runs
  * `--workers=1`: worker contention is the largest single lever on this suite's
