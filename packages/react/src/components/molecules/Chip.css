@@ -11,6 +11,12 @@
   border-radius: var(--radius-pill);
   background: var(--bg-subtle);
   border: 1px solid var(--border-control); /* control edge — SC 1.4.11 */
+  /* A <span class="ds-chip"> inherits the family and this changes nothing for
+     it. <button class="ds-chip"> is the reason it is here: a button does not
+     inherit font-family — the UA stylesheet sets it — so the button form of a
+     chip painted its label in Arial while the span form painted it in Geist,
+     at the same declared font-size. See the note on __remove below. */
+  font-family: var(--font-sans);
   font-size: var(--fs-xs);
   color: var(--fg);
 }
@@ -34,6 +40,40 @@
   background: transparent;
   color: var(--fg-3);
   cursor: pointer;
+  /* Load-bearing, and it was missing. font-family is one of the properties a
+     <button> does not inherit: the UA stylesheet sets it, so declaring only a
+     font-size here left the × painted in the UA default — Arial — beside a
+     label painted in Geist. Nothing in this repo ships a `font: inherit`
+     reset (tokens.css, styles.css and the docs site were all checked), so
+     there was nothing else to catch it.
+
+     Two families is a visible difference in the glyph itself — Arial's × and
+     Geist's × are different shapes at different stroke weights — and that is
+     what this line fixes.
+
+     What it does not fix, stated because the number moved the wrong way.
+     Measured as painted ink (canvas.measureText's actualBoundingBox against a
+     Range for the layout position), on <Chip onRemove>Design</Chip>:
+
+                        before (Arial)   after (Geist)
+       × ink mid          centre +0.05     centre +0.87
+       label ink mid      centre -0.20     centre -0.20
+       label → × delta          0.25            1.07
+
+     The geometry, so this is not mistaken for a regression this line
+     introduced. `align-items: center` centres the *line box*, and the baseline
+     sits (ascent - descent) / 2 below that box's centre — 5.00px here, for both
+     families, because both report 14/4 at this size. So the × baseline does not
+     move at all. What moves is where the glyph's ink sits above its baseline:
+     Arial 4.95px, Geist 4.13px. 5.00 - 4.95 = 0.05; 5.00 - 4.13 = 0.87.
+     Arial's near-perfect centring was a coincidence of Arial's metrics, not
+     something anyone designed, and it came at the price of the wrong typeface.
+
+     Centring a glyph's *ink* rather than its line box needs the font's metrics,
+     which CSS cannot read, so the remaining 0.87px is not fixable here without
+     a hard-coded nudge tied to Geist — which would break for any consumer who
+     overrides --font-sans. Left as measured rather than papered over. */
+  font-family: var(--font-sans);
   font-size: var(--fs-sm);
   line-height: 1;
 }
@@ -50,7 +90,24 @@
    centre is 34.07px from this control's centre and this overlay reaches 12px,
    so it clears the label by 22px. Both halves — the 24x24 reach and the
    absence of an overlap — are asserted against the shipped stylesheet in
-   packages/ai-patterns/src/testing/playwright.test.mjs. */
+   packages/ai-patterns/src/testing/playwright.test.mjs.
+
+   Centred with negative margins rather than `transform: translate(-50%,-50%)`,
+   which is the usual way to write this and was how it was written first. A
+   transform on an element creates a containing block and hands the subtree to
+   the compositor, and Chromium then drops the × from subpixel (LCD) to
+   grayscale antialiasing — the overlay is transparent, but the glyph it sits
+   on top of is composited differently because of it. That is a real, visible
+   change in how the text is painted, and it is not noise: it moved 184 pixels
+   in four 8x8 clusters, one centred on each × in the chip row, with the
+   expected pixels carrying the colour fringes of subpixel AA (rgb(0,10,36),
+   rgb(116,75,36)) and the actual ones the neutral greys of grayscale
+   (rgb(0,1,1), rgb(67,68,70)).
+
+   The margins are `--target-min / -2`, so they track the token the box is
+   sized from and cannot drift from it. No transform, no stacking context, and
+   the glyph is painted exactly as it was before this overlay existed —
+   verified byte-for-byte against main's baseline rather than assumed. */
 .ds-chip__remove::after {
   content: '';
   position: absolute;
@@ -58,7 +115,8 @@
   left: 50%;
   width: var(--target-min);
   height: var(--target-min);
-  transform: translate(-50%, -50%);
+  margin-top: calc(var(--target-min) / -2);
+  margin-left: calc(var(--target-min) / -2);
 }
 
 .ds-chip__remove:hover {

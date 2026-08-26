@@ -54,9 +54,24 @@ already meant to.
   in both axes. The painted glyph stays 22px — MUI's own delete-icon scale — and
   the hit area now comes from a `--target-min`-sized `::after` centred on the
   control. Sized rather than negatively inset, so it is 24x24 in every condition
-  including the 44px mobile floor, and clears the chip label's centre by 22px.
-  `checkHitAreaOverlap()` reports nothing on it, asserted alongside the reach on
-  both a normal and a one-character chip.
+  including under `data-platform="mobile"`, and clears the chip label's centre by
+  22px. `checkHitAreaOverlap()` reports nothing on it, asserted alongside the
+  reach on both a normal and a one-character chip. The overlay is centred with
+  negative margins rather than `transform: translate(-50%, -50%)`, so it creates
+  no stacking context and hands nothing to the compositor: an overlay that
+  changes how the glyph beneath it is rasterised is not a transparent overlay.
+
+- **`.ds-chip` and `.ds-chip__remove` declare a `font-family`, which they never
+  did.** A `<button>` does not inherit `font-family` — the UA stylesheet sets it
+  — so declaring only a `font-size` left the remove glyph painted in Arial beside
+  a label painted in Geist, and left `<button class="ds-chip">` with an Arial
+  label while `<span class="ds-chip">` had a Geist one. **This changes rendered
+  output**: the × is a different shape and weight, and it sits 0.87px below the
+  chip's centre where Arial's happened to sit 0.05px below it. That residual is
+  the font's own metrics — `align-items: center` centres the line box, not the
+  ink — and it is reported rather than nudged away, because a nudge would be a
+  constant tied to Geist and would break for a consumer who re-points
+  `--font-sans`.
 
 - **`.ds-table__sort` gets `min-height: var(--target-min)`.** It is the only
   element in the repo carrying `data-touch-target="dense"`, and it cleared 24 by
@@ -66,17 +81,32 @@ already meant to.
   fallback font resolved differently, would have turned it red and looked like a
   contract regression. Painted height 23.09px → 24px.
 
-- **The two halves of the mobile touch floor now agree.** `tokens.css` floors
-  controls to 44px twice — under `:root[data-platform="mobile"]` (0,2,1) and
-  under `@media (max-width: 480px) and (pointer: coarse)`, which led with a bare
-  `button` at (0,0,1) and _lost_ to `.ds-chip` and `.ds-button--sm` (0,1,0). So a
-  responsive coarse-pointer phone got a 32px `button.ds-chip` and a 36px `--sm`
-  button, while the same page with the attribute set got 44px for both — a real
-  divergence between two rules whose own comment calls them "the same floor". The
-  media-query half is now `:root:not([data-platform='mobile']) …`, which is
-  (0,2,1) by construction rather than by a specificity count that has to be
-  re-done whenever a component adds a class. **This changes rendered output on
-  coarse-pointer phones under 480px**, and moves visual baselines.
+- **The two halves of the mobile touch floor now agree, and they agree by
+  excluding the dense affordances rather than inflating them.** `tokens.css`
+  floors controls to 44px twice — under `:root[data-platform="mobile"]` (0,2,1)
+  and under `@media (max-width: 480px) and (pointer: coarse)`, which led with a
+  bare `button` at (0,0,1) and _lost_ to `.ds-chip` and `.ds-button--sm` (0,1,0).
+  So a responsive coarse-pointer phone got a 32px `button.ds-chip` and a 36px
+  `--sm` button, while the same page with the attribute set got 44px for both — a
+  real divergence between two rules whose own comment calls them "the same
+  floor".
+
+  Both halves now carry the same exclusion list, naming exactly the selectors in
+  `DENSE_AFFORDANCE_SELECTOR`, so a control the contract measures against 24x24
+  is no longer simultaneously stretched to 44px on a phone. A chip stays 32px and
+  a `size="sm"` button stays 36px in every condition. Inflating them would have
+  discarded the scale they were drawn at (MUI's Chip, shadcn's `sm`) and bought
+  nothing the dense floor was not already buying — the dense tier is a
+  measurement, not an exemption, and that is the whole premise of this release.
+
+  **This changes rendered output under `data-platform="mobile"` and on
+  coarse-pointer phones under 480px**: every dense affordance — a chip's remove
+  glyph, a search field's clear, a rating star, a calendar day, a `--sm` button,
+  and anything marked `data-touch-target="dense"` — keeps its own height there
+  instead of being floored to 44px. Responsive rendering for a chip and a `--sm`
+  button is unchanged from before this release; what changed is that the
+  `data-platform="mobile"` half now matches it. The two halves are pinned to one
+  another, and to `DENSE_AFFORDANCE_SELECTOR`, by tests that fail on drift.
 
 `.ds-chip` joins `DENSE_AFFORDANCE_SELECTOR`, which closes the separate finding
 that a chip which is a control — `<a class="ds-chip">`, `<button class="ds-chip">`,

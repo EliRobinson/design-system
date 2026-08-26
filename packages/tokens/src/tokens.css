@@ -204,13 +204,17 @@
      Hit areas, as tokens rather than as a number retyped in thirty
      stylesheets. Touch targets are scoped, not blanket: --target-min is the
      absolute AA floor SC 2.5.8 sets and is what a dense inline affordance (a
-     chip's remove button, a calendar day, a rating star) may shrink to;
-     --target is what a primary control gets, and what everything gets under
-     data-platform="mobile"; --target-lg is for the one action a thumb reaches
-     for without looking. An expanded hit area must never overlap a sibling.
+     chip's remove button, a calendar day, a rating star) may shrink to, and
+     is the floor it is *measured* against there and everywhere else;
+     --target is what a primary control gets, and what every primary control
+     gets under data-platform="mobile" — the dense affordances are excluded
+     from that floor by name rather than inflated to it, because they are
+     already held to --target-min (see the floor at the foot of this file);
+     --target-lg is for the one action a thumb reaches for without looking.
+     An expanded hit area must never overlap a sibling.
      ---------------------------------------------------------------------- */
-  --target-min: 24px; /* absolute AA floor, SC 2.5.8 */
-  --target: 44px; /* primary controls, and everything on mobile */
+  --target-min: 24px; /* absolute AA floor, SC 2.5.8 — the dense tier, on every platform */
+  --target: 44px; /* primary controls, and every primary control on mobile */
   --target-lg: 56px; /* thumb-zone primary action */
 
   /* --- Safe areas --------------------------------------------------------
@@ -688,20 +692,66 @@ a.ds-pagination__item:hover {
   border-radius: var(--radius-xs);
 }
 
-/* Every control clears 44px on a phone, whatever the component sized it at.
-   SC 2.5.8 asks 24px of any pointer target and the system meets that with
-   --target-min; a finger is not a mouse, and the components that shrink to a
-   dense inline affordance on a desktop — a chip's remove button, a calendar
-   day — are exactly the ones that get missed at arm's length. This is a floor,
-   not a size: min-height leaves a control free to be taller.
+/* Every control clears 44px on a phone, whatever the component sized it at —
+   every control the system did not deliberately draw dense. SC 2.5.8 asks 24px
+   of any pointer target; a finger is not a mouse, and a control sized for a
+   mouse is the one that gets missed at arm's length. This is a floor, not a
+   size: min-height leaves a control free to be taller.
 
    `input:not([type='range'])` because a range input draws its own track and
-   thumb, and a min-height on it stretches the track rather than the thumb. */
-:root[data-platform='mobile'] button,
-:root[data-platform='mobile'] [role='button'],
-:root[data-platform='mobile'] a.ds-button,
-:root[data-platform='mobile'] input:not([type='range']),
-:root[data-platform='mobile'] select {
+   thumb, and a min-height on it stretches the track rather than the thumb.
+
+   Why the dense affordances are excluded rather than floored
+   ----------------------------------------------------------
+   The trailing `:not()` names the system's dense inline affordances — a chip,
+   a chip's remove glyph, a search field's clear, a rating star, a calendar
+   day, a `size="sm"` button, and anything a page marks
+   `data-touch-target="dense"` — and holds them out of this floor entirely.
+
+   That is not an exemption from the contract, because the contract has a floor
+   for them: @elirobinson/ai-patterns measures everything matching
+   DENSE_AFFORDANCE_SELECTOR against 24x24 (--target-min, SC 2.5.8 AA) and
+   reports a miss as `touch-target-dense`. A dense control is *measured*, and it
+   is measured against the standard's own number. Stretching it to 44px here
+   would be the third thing — neither the dense scale it was drawn at nor the
+   measurement that keeps it honest, just a taller box. A chip is 32px because
+   that is MUI's Chip; a remove glyph is 22px painted because that is MUI's
+   delete icon, and it reaches 24x24 through a bounded overlay rather than by
+   growing. Inflating either on a phone throws away the scale and buys nothing
+   the dense floor was not already buying.
+
+   So the two floors divide cleanly, and this is the whole of it: a control the
+   system draws at the primary scale gets 44px on a phone, and a control the
+   system draws dense gets measured at 24x24 everywhere. Nothing is unmeasured
+   in either case.
+
+   The exclusion list is duplicated from DENSE_AFFORDANCE_SELECTOR, which is
+   JavaScript and cannot be imported into a stylesheet. The two are pinned
+   together by a test — packages/ai-patterns/src/testing/dense-selector-parity.test.mjs
+   reads this file and fails if a class is added to one and not the other —
+   because a silent drift here is a control that is floored to 44px on a phone
+   while the contract measures it at 24, which is exactly the disagreement the
+   parity note below is about.
+
+   `:not(:where(…))` and not a bare `:not(…)`: `:where()` has zero specificity,
+   so the exclusion contributes none. That matters because this list will grow.
+   A bare `:not()` would take the weight of its heaviest argument, so adding a
+   class to it would silently re-weight the floor against every component rule
+   it competes with — a specificity change disguised as a list edit. Wrapped in
+   `:where()`, the exclusion changes only *which* elements match and provably
+   nothing about how the rule competes. */
+:root[data-platform='mobile']
+  :is(button, [role='button'], a.ds-button, input:not([type='range']), select):not(
+    :where(
+      [data-touch-target='dense'],
+      .ds-button--sm,
+      .ds-chip,
+      .ds-chip__remove,
+      .ds-search-field__clear,
+      .ds-rating__button,
+      .ds-date-picker__day
+    )
+  ) {
   min-height: var(--target);
 }
 
@@ -722,23 +772,60 @@ a.ds-pagination__item:hover {
    `:root:not([data-platform='mobile'])` is what makes it *the same* floor, and
    it is a specificity fix, not a scoping one. This half used to lead with a
    bare `button` — (0,0,1), which loses to `.ds-chip` and `.ds-button--sm`
-   (0,1,0) — while the attribute half above is (0,2,1) and wins. So the two
-   halves of a rule whose own comment calls them the same floor disagreed: a
-   responsive coarse-pointer phone got a 32px `button.ds-chip` and a 36px
-   `--sm` button, and the same page with data-platform="mobile" set got 44px
-   for both. `:root` (0,1,0) + `:not([data-platform='mobile'])` (0,1,0) +
-   `button` (0,0,1) is (0,2,1) — parity by construction rather than by a
-   count that has to be re-done every time a component adds a class. The
-   `:not()` is what supplies the second (0,1,0) and it also states the division
-   of labour: this half covers the pages that have not set the attribute, and
-   the half above covers the ones that have. Nothing matches both, and nothing
-   matches neither. */
+   (0,1,0) — while the attribute half above led with `:root[data-platform=
+   'mobile'] button`, (0,2,1), and won. So the two halves of a rule whose own
+   comment calls them the same floor disagreed, and disagreed about exactly the
+   dense affordances: a responsive coarse-pointer phone got a 32px
+   `button.ds-chip` and a 36px `--sm` button, and the same page with
+   data-platform="mobile" set got 44px for both.
+
+   Both halves now carry the same dense exclusion, so they agree by matching the
+   same elements rather than by out-weighing the same rules — which is the
+   sturdier kind of agreement, and the one that survives a component adding a
+   class. The responsive half is the one that was already right about the dense
+   controls; the attribute half is the one that changed to match it.
+
+   Parity, worked rather than asserted. Both halves are one compound selector
+   with an identical suffix, so the whole question is the two prefixes:
+
+     :root[data-platform='mobile']       (0,1,0) + (0,1,0) = (0,2,0)
+     :root:not([data-platform='mobile']) (0,1,0) + (0,1,0) = (0,2,0)
+
+   `:root` is a pseudo-class, so it is (0,1,0) and not (0,0,1) — the note on
+   #116 counted the attribute half as (0,1,1) for that reason, and it is
+   (0,2,1). `:not()` takes the specificity of its most specific argument, and
+   `[data-platform='mobile']` is an attribute selector, (0,1,0). The suffix adds
+   `:is(button, [role='button'], a.ds-button, input:not([type='range']),
+   select)` — `:is()` likewise takes its heaviest argument, which is `a.ds-button`
+   at (0,1,1) — and `:not(:where(…))`, which is (0,0,0) by construction. So each
+   half is (0,2,0) + (0,1,1) + (0,0,0) = **(0,3,1)**, identical, and verified in
+   a browser rather than counted: packages/tokens/src/mobile-floor.test.mjs
+   resolves both halves against a synthetic competitor of known weight and
+   asserts they land on the same rung.
+
+   `:is()` also levels the five subjects, which the old form did not: `button`
+   and `select` were (0,2,1) while `a.ds-button` and the `input` were (0,3,1),
+   so "the rule's specificity" was really five numbers. One is easier to keep
+   honest, and the leveling was measured to change no computed min-height
+   anywhere in the library.
+
+   The `:not([data-platform='mobile'])` also states the division of labour: this
+   half covers the pages that have not set the attribute, and the half above
+   covers the ones that have. Nothing matches both, and nothing matches
+   neither. */
 @media (max-width: 480px) and (pointer: coarse) {
-  :root:not([data-platform='mobile']) button,
-  :root:not([data-platform='mobile']) [role='button'],
-  :root:not([data-platform='mobile']) a.ds-button,
-  :root:not([data-platform='mobile']) input:not([type='range']),
-  :root:not([data-platform='mobile']) select {
+  :root:not([data-platform='mobile'])
+    :is(button, [role='button'], a.ds-button, input:not([type='range']), select):not(
+      :where(
+        [data-touch-target='dense'],
+        .ds-button--sm,
+        .ds-chip,
+        .ds-chip__remove,
+        .ds-search-field__clear,
+        .ds-rating__button,
+        .ds-date-picker__day
+      )
+    ) {
     min-height: var(--target);
   }
 }

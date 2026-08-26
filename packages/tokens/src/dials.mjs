@@ -193,9 +193,9 @@ export function declaredPlatforms(css) {
  * (pointer: coarse)` twin is deliberately not read: `tokenBlocks` skips
  * at-rules whole, and the media block is the same values reached without
  * JavaScript rather than a second set. tokens.css's own
- * `:root[data-platform='mobile'] button, …` block declares no custom property
- * and so contributes nothing here — it raises control min-heights, which is
- * not a token.
+ * `:root[data-platform='mobile'] :is(button, …)` touch-target floor declares no
+ * custom property and so contributes nothing here — it raises control
+ * min-heights, which is not a token.
  *
  * @param {string | string[]} css the platform stylesheet(s) — `readPlatformStylesheets()`
  * @param {string} platform
