@@ -360,6 +360,90 @@
   z-index: var(--z-raised);
 }
 
+/* --- Prompt templates ----------------------------------------------------- */
+
+/* A prompt template is a document, not a snippet, so it renders as prose in a
+   card rather than as a code block. The bar carries the filename and the copy
+   button — the button is positioned by .code-block__copy, which is why the
+   card is the positioning context. */
+.prompt-template {
+  position: relative;
+  margin: 0 0 var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.prompt-template__bar {
+  display: flex;
+  align-items: center;
+  min-height: var(--space-10);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.prompt-template__file {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--fg-3);
+}
+
+.prompt-template__body {
+  padding: var(--space-5) var(--space-6) var(--space-1);
+}
+
+/* Prompt headings are demoted (see PromptTemplate.tsx): the file's h1 arrives
+   as h4, its h2s as h5. h5/h6 are unstyled in .prose because MDX pages never
+   go that deep, so they are given a scale here. */
+.prose .prompt-template h4 {
+  margin-top: 0;
+}
+
+.prose .prompt-template h5 {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  margin: var(--space-6) 0 var(--space-2);
+}
+
+.prose .prompt-template h6 {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-wide);
+  text-transform: uppercase;
+  color: var(--fg-2);
+  margin: var(--space-5) 0 var(--space-2);
+}
+
+/* The rule between a template's preamble and the prompt body. .prose hr is
+   sized to separate page sections; inside a card that is a chasm. */
+.prose .prompt-template hr {
+  margin: var(--space-5) 0;
+}
+
+/* GFM task lists — the verification checklist at the foot of every template.
+   Hanging indent via text-indent rather than flex or grid: a checklist item is
+   a run of inline content, and both of those promote every inline child to a
+   box of its own, which shatters items containing `code` spans. */
+.prose .prompt-template .contains-task-list {
+  list-style: none;
+  padding-left: var(--space-6);
+}
+
+.prose .prompt-template .task-list-item {
+  text-indent: calc(-1 * var(--space-6));
+}
+
+.prompt-template .task-list-item input[type='checkbox'] {
+  width: var(--space-4);
+  height: var(--space-4);
+  margin-right: var(--space-2);
+  vertical-align: -0.15em;
+  accent-color: var(--accent);
+}
+
 /* --- Component doc pages -------------------------------------------------- */
 
 .component-header__meta {
