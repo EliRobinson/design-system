@@ -59,5 +59,25 @@
   background-position: right var(--space-3) center;
   background-repeat: no-repeat;
   cursor: pointer;
+  /* A <select>'s preferred width is its widest <option>, and in WebKit that
+     width reaches the document: the control's own box still obeys width:100%
+     and the <option> boxes still measure 0x0, yet documentElement.scrollWidth
+     grows and the page scrolls sideways. Chromium's UA sheet computes
+     overflow:clip here and is immune; WebKit computes `visible`, so iOS --
+     WebKit only -- is the platform that shows it. Option text is user data
+     (addresses, names), so no copy discipline bounds it.
+
+     Measured in a consumer (house-warm, /app/open-houses/new, Mobile Safari at
+     350x740, production build, a 58-character address): without this
+     declaration the document is 439/350 while the <select> itself is 310px --
+     width:100% plainly obeyed, no consumer width override, .ds-field grid
+     intact. The one computed value that differs is this one. With it, 350/350.
+
+     Note what that rules out: width:100% does NOT neutralise this, and a
+     reading of it as belt-and-braces over that width is wrong. The leak is not
+     downstream of the control's used width at all. See
+     select-intrinsic-width.test.mjs, whose header records what that guard can
+     and cannot reach. */
+  overflow: hidden;
   padding-right: var(--space-8);
 }
