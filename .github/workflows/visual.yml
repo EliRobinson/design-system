@@ -260,8 +260,24 @@ jobs:
       # of the 120MB and no part of what `next start` serves — dropping it
       # takes the artifact from 70MB to 9MB. Verified by serving the docs site
       # with the directory removed; every route still returns 200.
+      #
+      # apps/docs/public/brand is the third path, and it is easy to miss because
+      # it is neither built into `.next` nor committed. `stage-brand.mjs` writes
+      # it during `docs:build`, `next start` serves public/ off disk at request
+      # time, and apps/docs/.gitignore ignores it — so a job that downloads this
+      # tarball instead of building has no copy from any source. The `scoped`
+      # job builds in-job and never noticed; the `sweep` jobs download, and every
+      # /brand/* route rendered there is missing its artifacts.
+      #
+      # It went unseen until #144 re-enabled `docs-wide`, because no sweep job
+      # had ever rendered one of those routes. The baselines on main are correct
+      # (minted by `scoped`, which had the directory), so the symptom was never a
+      # wrong baseline — it was the full sweep about to fail those shots against
+      # right ones, permanently, with no change causing it and no change fixing
+      # it. 416K across 55 files against a 9MB artifact; the size argument that
+      # justifies the exclude above does not apply here.
       - name: Pack the build outputs
-        run: tar -czf build-outputs.tar.gz --exclude='.next/cache' apps/storybook/storybook-static apps/docs/.next
+        run: tar -czf build-outputs.tar.gz --exclude='.next/cache' apps/storybook/storybook-static apps/docs/.next apps/docs/public/brand
       - uses: actions/upload-artifact@v7
         with:
           name: visual-build
@@ -834,6 +850,32 @@ jobs:
           name: visual-build
       - name: Unpack the build outputs
         run: tar -xzf build-outputs.tar.gz
+
+      # A missing served-off-disk asset does not fail a screenshot — it renders
+      # as a stable empty box, and a stable empty box compares equal to itself
+      # forever. So the guard cannot be a shot; it has to be this, before
+      # Playwright starts, where the failure can still name its own cause.
+      #
+      # apps/docs/public/brand is checked by name because it is the one that was
+      # actually missing (#149) and the one nothing else would report: it is
+      # gitignored, so the checkout does not supply it, and it lives outside
+      # `.next`, so unpacking a valid tarball proves nothing about it.
+      - name: Check the build outputs are complete
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for path in \
+            apps/storybook/storybook-static/index.json \
+            apps/docs/.next/prerender-manifest.json \
+            apps/docs/public/brand
+          do
+            if [ ! -e "$path" ]; then
+              echo "::error::$path is missing from the build tarball. The specs enumerate from the first two, and /brand/* routes are served off disk from the third — a sweep without it renders those routes empty and fails them against baselines that are correct."
+              missing=1
+            fi
+          done
+          exit "$missing"
 
       # Invoked through `pnpm exec`, not `pnpm test:visual`, so the flags reach
       # the binary verbatim — the same reason the container script does it this
