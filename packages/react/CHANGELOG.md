@@ -1,5 +1,12 @@
 # @elirobinson/react
 
+## 2.3.5
+
+### Patch Changes
+
+- Updated dependencies [8dc024f]
+  - @elirobinson/tokens@0.12.1
+
 ## 2.3.4
 
 ### Patch Changes

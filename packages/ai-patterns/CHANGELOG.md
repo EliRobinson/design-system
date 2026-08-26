@@ -1,5 +1,108 @@
 # @elirobinson/ai-patterns
 
+## 0.21.0
+
+### Minor Changes
+
+- f86456a: Page sweeps can be clipped to a content region, and site chrome gets its own sweep.
+
+  A site whose chrome derives from a registry — a sidebar built from a component list, a nav built from a page map — has a fan-out problem that a full-page sweep turns into noise: one added entry moves pixels on every page at once, so the suite reports one fact N times and every one of those baselines has to be accepted. This repo's own docs project was switched off for it.
+
+  Two additions:
+  - `sweepPages` takes `region`, a selector for the content element each page shot is clipped to. The chrome is then outside the frame, so it cannot fail a page shot — the fan-out is removed rather than suppressed. The capture stays a `fullPage` screenshot with a clip rather than an element screenshot, because Playwright scrolls an element into view before shooting it and a sticky header then paints over the top of the region.
+  - `sweepChrome` shoots the pieces that left the frame — one test per region per theme, on one route — and names them in a route-shaped `/chrome/*` namespace so they map to a baseline path exactly as a page does.
+
+  `regionBox` is exported alongside them. It throws when a selector matches no element, matches several, or matches one with no area: each of those would otherwise degrade into a shot that passes while comparing the wrong thing, or nothing.
+
+  No behaviour changes for an existing caller — omitting `region` frames the whole page as before.
+
+- a67b499: `defineVisualConfig` budgets 8 differing pixels for rasteriser nondeterminism, and keeps `threshold: 0`.
+
+  The container pins software, not the host CPU. Skia's rasterisation of anti-aliased curves and glyph edges is not bit-identical across GitHub's runner fleet, and the measured case (issue #125) was a sweep going red on a commit that changed only `package.json` and `CHANGELOG.md` — 42 pixels differing byte-for-byte on two avatar arcs, 3 of them counted by the comparator, from a container digest identical to the passing runs either side of it.
+
+  `threshold` stays at 0: a colour tolerance is what would hide a one-step shift inside a token ramp, and it is not on the table. The pixel budget is a different lever — a token-ramp shift, a spacing change, a font swap or a layout regression each move thousands of pixels and still fail at 8.
+
+  `maxDiffPixelRatio` is now left unset rather than 0. Playwright resolves the two budgets with `Math.min`, so a ratio of 0 alongside `maxDiffPixels: 8` would have cancelled the budget back to 0 and made this change a no-op.
+
+  Minor rather than patch: this is not a bug fix, it changes a shipped default in a way a consumer's suite will feel. A suite built on this preset now tolerates up to 8 differing pixels per shot where it previously tolerated none, and that is worth a version bump someone notices in a changelog. Overriding it is unchanged — `expect.toHaveScreenshot` still merges two levels deep, so `{ expect: { toHaveScreenshot: { maxDiffPixels: 0 } } }` restores the old behaviour and keeps the rest of the contract.
+
+### Patch Changes
+
+- c7e1c22: Stop the agent templates stating the copy rule's severity as a fact, and document
+  `designSystem()`'s options where a consumer can reach them.
+
+  `no-padded-ui-copy` ships at `warn`, and three of the four templates `ds init --agents`
+  writes said so flatly — "`@elirobinson/eslint-config` warns on the literal phrases". For a
+  repo that has taken the documented graduation step, `designSystem({ copy: { severity:
+'error' } })`, that sentence is false, and it is not the consumer's to fix: the `AGENTS.md`
+  copy lives inside the `design-system:begin/end` markers and the other three are whole-file
+  writes, so `--force` discards any correction. All four now describe what the rule _reports_,
+  name `warn` as the shipped default rather than as the effective level, and carry the raise —
+  which also puts the graduation step on four surfaces instead of one.
+
+  `patch` on `@elirobinson/ai-patterns`: `src/agents/*` and `src/patterns.md` are published
+  files behind the `./agents/*` and `./patterns` exports, so `ds init --agents --force` and
+  `pnpm ds patterns` print different text after this.
+
+  `patch` on `@elirobinson/eslint-config`: the package had no README, so the option surface —
+  including that `copy.severity` is destructured separately from the top-level `severity` and
+  therefore does not inherit it — existed only as JSDoc a consumer reads by opening
+  `node_modules`. The new README ships in the tarball and is what the registry page renders.
+  No rule, option, or default changed.
+
+- 5ab5370: Stop `checkHitAreaOverlap` reporting an `sr-only` sibling as a swallowed
+  neighbour.
+
+  The canonical `sr-only` element is `1px x 1px` — deliberately not `0x0`, because
+  a genuinely zero-sized element is dropped from the accessibility tree in some
+  browsers — and the check's only size guard was `rect.width === 0 || rect.height
+=== 0`. It missed by exactly one pixel. Sitting at its control's static origin,
+  such a label's centre lands on the control, so `elementFromPoint` returned the
+  control and every accessible-name-only label came back as a violation: 23 pairs
+  on a single consumer page, none of them actionable, and the message's advice
+  ("bound the overlay") unfollowable for a control that has no overlay.
+
+  Siblings that are not visually rendered are now skipped: `visibility: hidden`,
+  `display: none`, `opacity: 0`, `clip-path: inset(50%)`, and — the general clause
+  that covers every `sr-only` variant in the wild — anything measuring `1px` or
+  less in both axes. A control that genuinely covers a _visible_ sibling is still
+  reported.
+
+- 8dc024f: Stop the browser test suites failing on teardown alone.
+
+  `preflight-sweep.test.mjs` mirrored `playwright.test.mjs`'s browser bootstrap by
+  hand and lost two things in the copy: the explicit budget on `afterAll`, which
+  left `browser.close()` on Vitest's 10s default and failed the file roughly one
+  run in three under load with all four of its tests already passing, and the
+  loud skip, which meant a browser that never launched skipped the suite silently
+  and orphaned a late-arriving Chromium.
+
+  Both suites now boot from one `browser.test-helper.mjs`, which owns the budget
+  and registers the teardown itself, so a suite cannot forget it. The helper is
+  excluded from the published package. No consumer-facing behaviour changes; the
+  `@elirobinson/tokens` bump is a comment in `link-cascade.test.mjs` that pointed
+  at where the budget's reasoning used to live.
+
+- bad5a02: Fix `checkTouchTargets` never measuring anything below the fold.
+
+  `document.elementFromPoint` only answers for the visible viewport, and the hit
+  probe never scrolled, so every probe on a control below the fold returned
+  `null`. Originally that produced a literal `~1x1` violation on compliant
+  controls — arithmetic from a failed probe rather than a measurement — and since
+  the occlusion guard landed it produced silence instead: every primary control
+  below the fold was skipped without ever being checked, so a genuinely undersized
+  one passed. `expectDesignSystemContracts` was therefore only ever checking the
+  first screenful of a page.
+
+  Each surface is now scrolled into view before it is probed, its box re-read in
+  the resulting coordinate space, and the page put back exactly where the check
+  found it — window and scrollable containers both — so nothing downstream in the
+  same test sees a moved page. A surface larger than the window cannot be walked
+  to its edge, so it passes on its painted geometry instead of failing for being
+  too big to probe. And a `null` from `elementFromPoint` is now distinguished from
+  "something else is there": it is reported as `touch-target-unmeasurable`, a
+  stated gap in the check, never as a size the check did not obtain.
+
 ## 0.20.0
 
 ### Minor Changes
