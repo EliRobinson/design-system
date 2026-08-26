@@ -37,7 +37,6 @@
    chevron is the size the character it replaces was asked to be. */
 .ds-pagination__nav {
   --mark-size: var(--fs-sm);
-  font-family: var(--font-sans);
 }
 
 .ds-pagination__nav:disabled {
