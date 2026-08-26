@@ -3,11 +3,11 @@
 '@elirobinson/react': patch
 ---
 
-Native form controls inherit the page's font, so a control's own words stop
+Native form controls inherit the page's typeface, so a control's own words stop
 rendering in the UA's Arial.
 
-`<button>`, `<input>`, `<select>` and `<textarea>` do not inherit `font`. The UA
-stylesheet supplies Arial — monospace for `<textarea>` — and five shipped
+`<button>`, `<input>`, `<select>` and `<textarea>` do not inherit `font-family`.
+The UA stylesheet supplies Arial — monospace for `<textarea>` — and five shipped
 controls set `font-size` and nothing else, so each typeset **real words** in a
 different face from the label beside it:
 
@@ -27,33 +27,49 @@ One rule in `tokens.css` fixes all five:
   input,
   optgroup,
   select,
-  textarea,
+  textarea {
+    font-family: inherit;
+  }
   ::file-selector-button {
-    font: inherit;
+    font-family: inherit;
   }
 }
 ```
 
-**The shorthand and the layer are both load-bearing, and both are measured**
-rather than argued — in a browser, in `packages/tokens/src/form-font-cascade.test.mjs`.
+**Rendered output changes by one typeface and, measured on the real components,
+essentially nothing else.** The only box that moves is
+`.ds-segmented-control__item`, 0.53px wider, because Geist sets its label
+slightly differently from Arial. `.ds-input`, `.ds-textarea`, `.ds-select`,
+`.ds-search-field__input`, `.ds-pagination__item` and `.ds-date-picker__day` are
+unchanged in both axes.
 
 **Layered**, for the same reason the bare `a` rule is. Unlayered this rule is
 (0,0,1), and unlayered beats every layer regardless of specificity — so it ate a
-consumer's `font-mono` (rendered Geist) and, as the shorthand, their `text-2xl`
-(rendered 16px, not 24px). That is issue #112 in a new spelling: a bare-element
-rule that paints must lose to anything stating an intent. Our own component rules
-still win, because `@elirobinson/react` ships them unlayered.
+consumer's `font-mono` and rendered their button in Geist with no stylesheet of
+their own able to say otherwise. That is issue #112 in a new spelling: a
+bare-element rule that paints must lose to anything stating an intent. Our own
+component rules still win, because `@elirobinson/react` ships them unlayered.
 
-**The shorthand**, because it is what the consumer already has. Tailwind v4's
-preflight resets these same elements with `font: inherit`. So this change does
-not _introduce_ the rendering below — it **adopts** it, and closes a divergence
-that has been shipping: a consumer wired the way `tailwind.css` prescribes has
-been seeing one rendering while this repo's own docs, which ship no preflight,
-minted baselines from another. Rendered before/after with the real components
-and the real stylesheet graph, our "after" page and a "today, with preflight"
-page are **byte-identical PNGs** (`18181f93…` light, `bbba09d5…` dark).
-`font-family: inherit` alone would have fixed the five faces and left the two
-renderings diverged on line-height for good.
+**`font-family`, not the `font` shorthand, and that is a deliberate departure
+from Tailwind's preflight.** The shorthand also resets `line-height`, which none
+of these controls declares, so it reaches every native control in the system
+rather than the five with the wrong face — measured on the real components:
+`.ds-input` and `.ds-select` 44 → 49.09px, `.ds-textarea` 64 → 72.19px,
+`.ds-accordion__trigger` 44 → 47.09px. The face is the reported bug; the
+line-height is a layout change across most of the library that nobody asked for.
+
+**What that costs, stated plainly:** preflight resets these elements with the
+shorthand, so a consumer wired the way `tailwind.css` prescribes renders these
+controls with the inherited line-height while this repo's own docs — which ship
+no preflight — do not. That divergence is real, it predates this rule, and this
+rule does not close it. It is accepted knowingly, and
+`form-font-cascade.test.mjs` measures exactly where the two still differ so it
+is recorded rather than forgotten: for a control that states its own font-size —
+which every audited one does — the difference is exactly one property deep, same
+face, same size, same weight, different line-height. For a control that states
+nothing, the shorthand resets size and weight too, so a consumer's bare
+`<textarea>` renders at the UA's 13.33px under our rule and the inherited 16px
+under preflight.
 
 `::file-selector-button` is a **rule of its own**, not a sixth entry in the
 element list, and it has to stay that way. An unrecognised selector invalidates
@@ -66,50 +82,32 @@ controls down with it with no error anywhere — the same silent-total shape as 
 compiles it against declared targets; this package hands raw CSS to whatever
 engine a consumer has. The split costs two rules and changes nothing else.
 
-The selector coverage is preflight's — including `<textarea>`, `<optgroup>` and
-`::file-selector-button`, which are outside the audited five.
-Narrowing it to the five would re-open the divergence on precisely those
-elements, and both `Textarea` and `Select` are shipped components. Only `font` is
-taken from preflight; its colour and background resets are a different change and
-are not made here.
+The selector coverage is preflight's — `<textarea>`, `<optgroup>` and
+`::file-selector-button` included, though none is among the audited five —
+because "which elements fail to inherit" has one answer and it is not the subset
+that happened to have a bug filed. `Textarea` and `Select` are shipped
+components.
 
-**This changes rendered output, and by more than the five controls above.** The
-family change affects only them; the shorthand's line-height reset reaches every
-native control that never declared one. Measured on the real components at
-`--fs-sm`, light theme:
-
-| control                       | face          | box                        |
-| ----------------------------- | ------------- | -------------------------- |
-| `.ds-search-field__input`     | Arial → Geist | unchanged (44px)           |
-| `.ds-pagination__item`        | Arial → Geist | unchanged (44×44)          |
-| `.ds-date-picker__day`        | Arial → Geist | unchanged (32px)           |
-| `.ds-segmented-control__item` | Arial → Geist | +0.53px wide (text reflow) |
-| `.ds-accordion__trigger`      | Arial → Geist | 44 → **47.09px** tall      |
-| `.ds-input`                   | already Geist | 44 → **49.09px** tall      |
-| `.ds-select`                  | already Geist | 44 → **49.09px** tall      |
-| `.ds-textarea`                | already Geist | 64 → **72.19px** tall      |
-
-`.ds-input` is the widest-reaching of these — `Input`, `FormField`, `Combobox`,
-`CommandPalette` and the `DatePicker` trigger all wear it — so visual baselines
-move across a good deal of the library. Every pixel of that growth is growth a
-Tailwind consumer already had; what moves is this repo's own rendering, into
-agreement with theirs.
-
-`minor` rather than `patch` because it changes rendered output and layout for
-anyone upgrading: on a 0.x package, `minor` is the breaking lane.
+`minor` rather than `patch` because it changes rendered output for anyone
+upgrading: on a 0.x package, `minor` is the breaking lane.
 
 **Two checks stop this recurring**, and each was confirmed to fail before it was
 trusted green:
 
 - `packages/tokens/src/form-font-cascade.test.mjs` measures the cascade in a real
-  browser — the five faces, the two consumer utilities, the component rules'
-  own `font-size` and `font-weight` surviving the shorthand, and the
-  preflight-parity claim itself. It skips loudly where no Chromium exists.
+  browser — the five faces, the consumer utility that decides the layer, the
+  component rules' own `font-size` and `font-weight`, the bounded box movement,
+  and the preflight divergence itself. It skips loudly where no Chromium exists.
 - `packages/react/scripts/component-css.test.mjs` adds a static section that runs
-  everywhere: the reset exists exactly once, sits in `@layer base`, uses the
-  shorthand, and **covers every native form element the components actually
-  render** — read from the TSX, so a future `<select>`-based component that the
-  reset does not name fails the build rather than shipping in Arial.
+  everywhere: the reset is exactly two rules, sits in `@layer base`, uses the
+  longhand, keeps the element list free of pseudo-elements, and **covers every
+  native form element the components actually render** — read from the TSX, so a
+  future `<select>`-based component the reset does not name fails the build
+  rather than shipping in Arial.
+
+A regression to the shorthand now fails in both, which is the point: matching
+preflight is a reasonable-looking edit, and it is one that should be argued
+rather than merged quietly.
 
 Two existing tests pinned the old layer contents and are updated deliberately
 rather than relaxed: `font-override.test.mjs`'s scope guard now records two

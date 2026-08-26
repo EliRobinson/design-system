@@ -599,53 +599,63 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Native form controls do not inherit `font`. The UA stylesheet gives them
-   Arial (monospace for <textarea>), so every control that sets `font-size`
-   and nothing else typesets REAL WORDS in a different face from the label
-   beside it. Five shipped controls did: .ds-search-field__input — which is
-   what the user TYPES — .ds-pagination__item, .ds-segmented-control__item,
-   .ds-accordion__trigger and .ds-date-picker__day. #167, found from the
-   measurement in #146 that put a chip's label and its control on baselines
-   1.91px apart in two different typefaces.
+/* Native form controls do not inherit `font-family`. The UA stylesheet gives
+   them Arial (monospace for <textarea>), so every control that sets
+   `font-size` and nothing else typesets REAL WORDS in a different face from
+   the label beside it. Five shipped controls did: .ds-search-field__input —
+   which is what the user TYPES — .ds-pagination__item,
+   .ds-segmented-control__item, .ds-accordion__trigger and
+   .ds-date-picker__day. #167, found from the measurement in #146 that put a
+   chip's label and its control on baselines 1.91px apart in two different
+   typefaces.
 
-   THE SHORTHAND, AND THE LAYER, ARE BOTH LOAD-BEARING. Measured in a browser
-   in form-font-cascade.test.mjs; the short version:
+   THE LONGHAND, AND THE LAYER, ARE BOTH DELIBERATE. Measured in a browser in
+   form-font-cascade.test.mjs; the short version:
 
    Layered, for exactly the reason the `a` rule below is. An UNLAYERED
-   `button { font: inherit }` is (0,0,1) but unlayered beats every layer, so
-   it silently ate a consumer's `font-mono` (rendered Geist) and their
-   `text-2xl` (rendered 16px, not 24px). That is issue #112 again in a new
-   spelling — a bare-element rule that paints must lose to anything stating
-   an intent. In `base` it does, and our own component rules still win because
-   @elirobinson/react ships them unlayered.
+   `button { font-family: inherit }` is (0,0,1) but unlayered beats every
+   layer, so it silently ate a consumer's `font-mono` and rendered the button
+   in Geist — issue #112 again in a new spelling. A bare-element rule that
+   paints must lose to anything stating an intent. In `base` it does, and our
+   own component rules still win because @elirobinson/react ships them
+   unlayered.
 
-   The shorthand rather than `font-family`, because it is what the consumer
-   already has. Tailwind v4's preflight resets these same elements with
-   `font: inherit`, so a Tailwind consumer's accordion trigger is already
-   51.09px tall while our own docs — which ship no preflight — mint baselines
-   at 44px. This rule does not introduce that divergence, it CLOSES it: on
-   font-family, size, weight, line-height and box geometry, this file's
-   rendering with this rule is identical to preflight's, and identical again
-   with both applied. `font-family: inherit` alone would leave line-height at
-   the UA's `normal` and keep us rendering differently from every Tailwind
-   consumer for good.
+   `font-family`, NOT the `font` shorthand, and this is a deliberate departure
+   from Tailwind's preflight rather than an oversight. The shorthand also
+   resets line-height, which none of these controls declares — so it reaches
+   every native control in the system, not just the five with the wrong face.
+   Measured on the real components: .ds-input and .ds-select 44 -> 49.09px,
+   .ds-textarea 64 -> 72.19px, .ds-accordion__trigger 44 -> 47.09px. This rule
+   changes the FACE and nothing else; the only box that moves at all is
+   .ds-segmented-control__item, 0.53px wider because Geist sets its label
+   slightly differently from Arial.
 
-   The selector list is preflight's, for that same reason — dropping <textarea>,
-   <optgroup> or ::file-selector-button because they were not in the audited
-   five would re-open the divergence on precisely those elements. Only `font`
-   is taken from preflight; its colour and background resets are a different
-   change and are not made here.
+   WHAT THAT COSTS, STATED PLAINLY: preflight resets these elements with the
+   shorthand, so a consumer wired the way tailwind.css prescribes renders these
+   controls with the inherited line-height while this repo's own docs — which
+   ship no preflight — do not. That divergence is real, it predates this rule,
+   and this rule does not close it. It is accepted knowingly: the five wrong
+   typefaces are the bug, and buying the line-height too would move layout
+   across most of the library for something nobody reported.
+   form-font-cascade.test.mjs measures exactly where the two still differ, so
+   the divergence is recorded rather than forgotten.
+
+   The selector coverage is preflight's — <textarea>, <optgroup> and
+   ::file-selector-button included, though none is among the audited five —
+   because "which elements fail to inherit" has one answer and it is not the
+   subset that happened to have a bug filed. Textarea and Select are shipped
+   components.
 
    Every control listed sets its own `font-size` (and Accordion its own
    `font-weight`) in an unlayered component rule, so this changes face and
-   line-height, never the type ramp. */
+   nothing else — never the type ramp. */
 @layer base {
   button,
   input,
   optgroup,
   select,
   textarea {
-    font: inherit;
+    font-family: inherit;
   }
 
   /* SPLIT FROM THE LIST ABOVE ON PURPOSE, and it must stay split. An
@@ -663,7 +673,7 @@ body {
      failure it removes is the silent-total kind this package has already been
      bitten by once, in the fonts.css @import story at the top of this file. */
   ::file-selector-button {
-    font: inherit;
+    font-family: inherit;
   }
 }
 

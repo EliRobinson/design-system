@@ -409,14 +409,20 @@ describe('the form-control font reset in tokens.css', () => {
     );
   });
 
-  it('uses the `font` shorthand, matching Tailwind preflight', () => {
-    /* Not a style preference. Preflight resets these same elements with
-       `font: inherit`, so a Tailwind consumer already renders that way while
-       our own docs — which ship no preflight — mint baselines from the unreset
-       rendering. `font-family: inherit` alone leaves line-height at the UA's
-       `normal` and keeps the two diverged for good. */
+  it('uses `font-family`, not the `font` shorthand', () => {
+    /* A deliberate departure from preflight, not an oversight, and the thing
+       most likely to be "corrected" by someone matching Tailwind. The shorthand
+       also resets line-height, which none of these controls declares — so it
+       reaches every native control in the system rather than the five with the
+       wrong face: .ds-input and .ds-select 44 -> 49.09px, .ds-textarea
+       64 -> 72.19px, .ds-accordion__trigger 44 -> 47.09px, all measured.
+
+       The face is the bug. The line-height is a layout change across most of
+       the library that nobody reported, so it is not bought here. The
+       divergence from a preflight consumer that this leaves open is measured
+       and recorded in packages/tokens' form-font-cascade.test.mjs. */
     for (const reset of LAYERED_RESETS) {
-      expect(reset.shorthand, `${reset.selector} does not use the shorthand`).toBe(true);
+      expect(reset.shorthand, `${reset.selector} uses the font shorthand`).toBe(false);
     }
   });
 

@@ -1,26 +1,29 @@
-/* The form-control `font: inherit` reset's cascade position, measured in a
- * browser. Sibling of link-cascade.test.mjs, and it exists for the same reason:
- * nothing you can read in tokens.css tells you whether a Tailwind utility beats
- * a rule in `@layer base`, because layer order is fixed by first declaration
- * across every stylesheet in the document. jsdom does not model layers at all.
+/* The form-control `font-family: inherit` reset's cascade position, measured in
+ * a browser. Sibling of link-cascade.test.mjs, and it exists for the same
+ * reason: nothing you can read in tokens.css tells you whether a Tailwind
+ * utility beats a rule in `@layer base`, because layer order is fixed by first
+ * declaration across every stylesheet in the document. jsdom does not model
+ * layers at all.
  *
- * Issue #167. Native form controls do not inherit `font`, so the UA stylesheet
- * supplies Arial — and five shipped controls that set `font-size` and nothing
- * else typeset real words in it: .ds-search-field__input (the text the user
- * TYPES), .ds-pagination__item, .ds-segmented-control__item,
+ * Issue #167. Native form controls do not inherit `font-family`, so the UA
+ * stylesheet supplies Arial — and five shipped controls that set `font-size`
+ * and nothing else typeset real words in it: .ds-search-field__input (the text
+ * the user TYPES), .ds-pagination__item, .ds-segmented-control__item,
  * .ds-accordion__trigger and .ds-date-picker__day.
  *
  * Two decisions in that fix are only defensible as measurements, and this file
  * is where they are recorded:
  *
- *   the LAYER — an unlayered `button { font: inherit }` is (0,0,1), but
+ *   the LAYER — an unlayered `button { font-family: inherit }` is (0,0,1), but
  *   unlayered beats every layer, so it silently ate a consumer's `font-mono`
- *   and their `text-2xl`. That is issue #112 in a new spelling.
+ *   and rendered the button in Geist. That is issue #112 in a new spelling.
  *
- *   the SHORTHAND — Tailwind v4's preflight already resets these elements with
- *   `font: inherit`. Matching it makes our rendering identical to what a
- *   Tailwind consumer already has; `font-family: inherit` alone would leave
- *   line-height at the UA's `normal` and diverge from them permanently.
+ *   the LONGHAND — Tailwind v4's preflight resets these elements with the
+ *   `font` shorthand, which also resets line-height and therefore moves every
+ *   native control in the system, not just the five with the wrong face. The
+ *   narrow fix was chosen; the resulting divergence from a preflight consumer
+ *   is real, accepted, and measured in "the longhand, and the divergence from
+ *   preflight it leaves open" below rather than left to memory.
  *
  * Skipped, loudly, when no browser is available — same contract as
  * link-cascade.test.mjs. The bare CI image has no Chromium and this must not be
@@ -103,6 +106,29 @@ const PREFLIGHT = `
 /* Kept as ONE list here on purpose, unlike tokens.css's own split: this
    constant is preflight as Tailwind really ships it, and editing it to match
    our arrangement would stop it being the thing we are comparing against. */
+
+/* Puts the controls back in the UA face, so "before this rule" can be measured
+   in the same page rather than remembered as a number.
+
+   Unlayered, which is what makes it work: tokens.css's reset lives in
+   `@layer base`, and unlayered beats every layer regardless of specificity —
+   the same fact this file measures elsewhere, used here as a tool. Arial is
+   what the UA supplies for form controls in the engine these tests run in, so
+   this reproduces the pre-#167 rendering rather than approximating it.
+
+   `line-height: normal` as well as the family, and that is not belt-and-braces.
+   Pinning only the family made the box comparison blind to the exact
+   regression it exists to catch: under a `font: inherit` reset, BOTH the
+   before and after pages would inherit the body's line-height — the override
+   does not touch it — so the two heights moved together and the delta came out
+   zero. Restoring both properties makes "before" mean the UA's rendering
+   whatever the layered rule declares. */
+const DEFEAT_RESET = `
+  button, input, optgroup, select, textarea {
+    font-family: Arial;
+    line-height: normal;
+  }
+`;
 
 /* The five audited rules as @elirobinson/react ships them: UNLAYERED, with
    `font-size` set and `font-family` never. Trimmed to the properties under
@@ -310,35 +336,142 @@ describeBrowser('a Tailwind v4 consumer, wired the way the docs prescribe', () =
   });
 });
 
-describeBrowser('the shorthand, against what Tailwind preflight already gives', () => {
-  /* The argument for `font` over `font-family` is not that it is conventional.
-     It is that preflight resets these same elements the same way, so a Tailwind
-     consumer ALREADY renders this way while our own docs — which ship no
-     preflight — mint baselines from the unreset rendering. The divergence
-     exists today; this rule closes it rather than creating it.
+describeBrowser('the longhand, and the divergence from preflight it leaves open', () => {
+  /* This file used to assert the opposite. The rule was `font: inherit`, which
+     matched preflight exactly and made our rendering identical to a Tailwind
+     consumer's — and the price was the shorthand's line-height reset reaching
+     every native control in the system, not just the five with the wrong face:
+     .ds-input and .ds-select 44 -> 49.09px, .ds-textarea 64 -> 72.19px,
+     .ds-accordion__trigger 44 -> 47.09px.
 
-     Asserted three ways: our rule alone, preflight alone, and both together
-     must agree on every measured property of every element. */
+     The narrow fix was chosen instead. The face is the reported bug; the
+     line-height is a layout change across most of the library that nobody
+     asked for. So the divergence from a preflight consumer stays open, and
+     this block exists to keep it MEASURED rather than forgotten — the failure
+     mode of a knowingly-accepted difference is that nobody can later say what
+     it was.
 
-  const identical = (a, b) => {
-    for (const id of IDS) {
-      expect(a[id], `#${id}`).toEqual(b[id]);
-    }
-  };
+     What follows is therefore an inventory, not a complaint: the face agrees
+     with preflight everywhere, and line-height is where the two part. */
 
-  it('renders exactly as preflight does, on every audited control', async () => {
+  const withAndWithoutPreflight = async () => {
     const ours = await consumer(TAILWIND);
     const oursComputed = await measure(ours);
     await ours.close();
 
-    /* tokens.css is in this page too — there is no arrangement of this repo
-       that removes it — so what this compares is "our rule" against "our rule
-       plus preflight", i.e. that adding preflight on top changes nothing. */
+    /* tokens.css is in this page too — no arrangement of this repo removes it
+       — so this is "our rule" against "our rule plus preflight", i.e. what a
+       consumer following tailwind.css's own Usage section actually renders. */
     const withPreflight = await consumer(TAILWIND, PREFLIGHT);
     const withPreflightComputed = await measure(withPreflight);
     await withPreflight.close();
 
-    identical(oursComputed, withPreflightComputed);
+    return { ours: oursComputed, preflight: withPreflightComputed };
+  };
+
+  it('agrees with preflight on the typeface, everywhere', async () => {
+    /* The half this rule does buy, and the whole of the reported bug. */
+    const { ours, preflight } = await withAndWithoutPreflight();
+    for (const id of IDS) {
+      expect(ours[id].family, `#${id}`).toBe(preflight[id].family);
+    }
+  });
+
+  it('differs from preflight on line-height, and only on line-height', async () => {
+    /* The accepted cost, pinned. If a future edit closes this — by moving to
+       the shorthand — this test is where it is supposed to fail, so that the
+       layout change across .ds-input, .ds-select and .ds-textarea is a decision
+       someone makes rather than a side effect they ship. */
+    const { ours, preflight } = await withAndWithoutPreflight();
+
+    for (const id of IDS) {
+      /* The UA leaves these at `normal`; preflight inherits the body's. */
+      expect(ours[id].lineHeight, `#${id} line-height`).toBe('normal');
+
+      /* <select> is the exception, and it is the engine's, not ours: Chromium
+         computes `normal` for a select's line-height whatever is declared, so
+         this one element renders identically under both arrangements. Listed
+         rather than skipped, because "select never diverges" is a fact worth
+         keeping — if it ever starts to, that is a browser change and this is
+         where it should surface. */
+      if (id === 'select') {
+        expect(preflight[id].lineHeight, '#select under preflight').toBe('normal');
+        continue;
+      }
+      expect(preflight[id].lineHeight, `#${id} preflight line-height`).not.toBe('normal');
+    }
+
+    /* For a control that STATES its own font-size — which every audited one
+       does, through an unlayered component rule — the divergence is exactly one
+       property deep: same face, same size, same weight, different line-height. */
+    for (const id of AUDITED) {
+      expect(ours[id].family, `#${id} family`).toBe(preflight[id].family);
+      expect(ours[id].size, `#${id} size`).toBe(preflight[id].size);
+      expect(ours[id].weight, `#${id} weight`).toBe(preflight[id].weight);
+    }
+
+    /* For a control that states NOTHING, it is deeper, and this is the honest
+       boundary of the claim above. The shorthand resets size and weight as well,
+       so a bare <textarea> renders at the UA's 13.33px under our rule and at the
+       inherited 16px under preflight.
+
+       It does not reach the shipped components — .ds-textarea and .ds-select
+       both build on .ds-input, which declares `font-size: var(--fs-sm)` — but it
+       is exactly what a consumer's own unstyled <textarea> gets, so it belongs
+       in the record rather than in a footnote. */
+    expect(ours.textarea.size).not.toBe(preflight.textarea.size);
+    expect(ours.textarea.family, 'the face still agrees').toBe(preflight.textarea.family);
+  });
+
+  it('moves only the two boxes a typeface change cannot avoid', async () => {
+    /* The point of choosing the longhand. Measured on the REAL components, the
+       only box that moves at all is .ds-segmented-control__item, 0.53px wider
+       because Geist sets its label differently from Arial; every other audited
+       control is unchanged, .ds-input and .ds-textarea included.
+
+       READ THE BOUNDS, NOT THE EXACT NUMBERS. The rules below are this file's
+       own trimmed copies — geometry only, no heading wrapper, no `::after` —
+       and the accordion's height does not resolve identically here and in the
+       shipped component: this fixture grows ~2px where the real trigger stays
+       at 44. Rather than pin a number that is a property of the fixture, the
+       assertions bound the movement, which is what actually distinguishes this
+       rule from the one it replaced: under the `font` shorthand the same
+       trigger went to 47.09px on the real component, and .ds-input, .ds-select
+       and .ds-textarea moved 5-8px with it.
+
+       Asserted against the SAME page with the reset defeated, so it measures
+       this rule's own effect rather than a remembered number. */
+    const withReset = await consumer(TAILWIND);
+    const after = await measure(withReset);
+    await withReset.close();
+
+    const withoutReset = await consumer(TAILWIND, DEFEAT_RESET);
+    const before = await measure(withoutReset);
+    await withoutReset.close();
+
+    /* The face really did change, or the comparison below proves nothing. */
+    expect(before.search.family).not.toBe(after.search.family);
+
+    /* The controls whose height is pinned — min-height with no vertical
+       padding, or an explicit height — do not move at all, in either axis. */
+    for (const id of ['search', 'pagination', 'day']) {
+      expect(after[id].height, `#${id} height moved`).toBe(before[id].height);
+      expect(after[id].width, `#${id} width moved`).toBe(before[id].width);
+    }
+
+    /* The segmented control reflows its label and keeps its height. */
+    expect(after.segmented.height).toBe(before.segmented.height);
+    expect(Math.abs(after.segmented.width - before.segmented.width)).toBeLessThan(2);
+
+    /* The accordion is the only audited control whose height is content-derived
+       rather than pinned — `min-height` plus vertical padding, so the line box
+       decides — which is why it is the one the two arrangements separate. Any
+       movement here is the face's own metrics; the shorthand's line-height
+       reset is what pushes it past this bound. */
+    const grew = after.accordion.height - before.accordion.height;
+    expect(grew, 'the accordion grew like the shorthand, not the longhand').toBeLessThan(3);
+    expect(grew, 'the accordion shrank, which no face change should do').toBeGreaterThanOrEqual(0);
+    expect(after.accordion.width).toBe(before.accordion.width);
   });
 
   it('includes <textarea> and <select> deliberately', async () => {
