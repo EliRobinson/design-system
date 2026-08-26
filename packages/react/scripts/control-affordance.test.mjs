@@ -156,7 +156,14 @@ describe('a filled control never renders its own label underlined', () => {
        underline story is unchanged by it. Compared as a set; source order is
        not the invariant. */
     expect([...layered].sort()).toEqual(
-      ['a', 'a:hover', 'button, input, optgroup, select, textarea, ::file-selector-button'].sort(),
+      [
+        'a',
+        'a:hover',
+        'button, input, optgroup, select, textarea',
+        /* Split from the list on purpose — an unrecognised selector invalidates
+           the whole rule it appears in. See tokens.css. */
+        '::file-selector-button',
+      ].sort(),
     );
 
     /* And the claim that actually matters here, stated directly rather than

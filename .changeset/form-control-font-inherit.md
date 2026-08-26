@@ -55,8 +55,19 @@ page are **byte-identical PNGs** (`18181f93…` light, `bbba09d5…` dark).
 `font-family: inherit` alone would have fixed the five faces and left the two
 renderings diverged on line-height for good.
 
-The selector list is preflight's, verbatim — including `<textarea>`,
-`<optgroup>` and `::file-selector-button`, which are outside the audited five.
+`::file-selector-button` is a **rule of its own**, not a sixth entry in the
+element list, and it has to stay that way. An unrecognised selector invalidates
+the _entire_ rule it appears in — measured in Chromium: one bogus pseudo-element
+added to a `button, input, …` list sent the button back to the UA's Arial while
+`body` was Georgia. Written as one list, this fix would be silently conditional
+on the engine knowing that one pseudo-element, and would take all five audited
+controls down with it with no error anywhere — the same silent-total shape as the
+`fonts.css` `@import` bug. Preflight ships it in one list because a build step
+compiles it against declared targets; this package hands raw CSS to whatever
+engine a consumer has. The split costs two rules and changes nothing else.
+
+The selector coverage is preflight's — including `<textarea>`, `<optgroup>` and
+`::file-selector-button`, which are outside the audited five.
 Narrowing it to the five would re-open the divergence on precisely those
 elements, and both `Textarea` and `Select` are shipped components. Only `font` is
 taken from preflight; its colour and background resets are a different change and

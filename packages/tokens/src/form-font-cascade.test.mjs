@@ -100,6 +100,9 @@ const PREFLIGHT = `
     }
   }
 `;
+/* Kept as ONE list here on purpose, unlike tokens.css's own split: this
+   constant is preflight as Tailwind really ships it, and editing it to match
+   our arrangement would stop it being the thing we are comparing against. */
 
 /* The five audited rules as @elirobinson/react ships them: UNLAYERED, with
    `font-size` set and `font-family` never. Trimmed to the properties under
@@ -350,6 +353,54 @@ describeBrowser('the shorthand, against what Tailwind preflight already gives', 
 
     expect(computed.textarea.family).toBe(computed.body);
     expect(computed.select.family).toBe(computed.body);
+  });
+});
+
+describeBrowser('why ::file-selector-button is a rule of its own', () => {
+  /* Not a test of tokens.css — a test of the reasoning tokens.css encodes, in
+     the same shape as link-cascade.test.mjs's "why the layer is named `base`".
+     It has to be, because the risk is invisible in the only engine available
+     here: Chromium parses ::file-selector-button, so a one-list arrangement
+     measures identically to the split one RIGHT HERE and differs only on an
+     engine that does not. What can be measured is the CSS rule that makes the
+     split necessary — an unrecognised selector invalidates the ENTIRE rule it
+     appears in, not just its own entry in the list.
+
+     The structural half — that tokens.css really does keep the element list
+     free of pseudo-elements — is asserted in @elirobinson/react's
+     component-css.test.mjs, which is where the reset's shape is checked. */
+
+  const resolve = async (reset) => {
+    const page = await browser.newPage();
+    await page.setContent(
+      `<style>body { font-family: Georgia; } ${reset}</style><button id="b">x</button>`,
+    );
+    const family = await page.evaluate(() =>
+      getComputedStyle(document.getElementById('b')).fontFamily.split(',')[0].replace(/['"]/g, ''),
+    );
+    await page.close();
+    return family;
+  };
+
+  it('drops the whole rule when one selector in the list is unparsed', () => {
+    return expect(
+      resolve('button, input, ::totally-not-a-real-pseudo { font: inherit; }'),
+    ).resolves.not.toBe('Georgia');
+  });
+
+  it('keeps the element rule when the pseudo-element is split off', () => {
+    return expect(
+      resolve('button, input { font: inherit; } ::totally-not-a-real-pseudo { font: inherit; }'),
+    ).resolves.toBe('Georgia');
+  });
+
+  it('is a real risk only because the pseudo-element is the unknown one', () => {
+    /* Chromium knows ::file-selector-button, so the one-list form works here —
+       which is exactly why this cannot be caught by measuring our own CSS, and
+       why the split is defence against an engine we do not have. */
+    return expect(
+      resolve('button, input, ::file-selector-button { font: inherit; }'),
+    ).resolves.toBe('Georgia');
   });
 });
 

@@ -630,11 +630,11 @@ body {
    the UA's `normal` and keep us rendering differently from every Tailwind
    consumer for good.
 
-   The selector list is preflight's, verbatim, for that same reason — dropping
-   <textarea>, <optgroup> or ::file-selector-button because they were not in
-   the audited five would re-open the divergence on precisely those elements.
-   Only `font` is taken from preflight; its colour and background resets are a
-   different change and are not made here.
+   The selector list is preflight's, for that same reason — dropping <textarea>,
+   <optgroup> or ::file-selector-button because they were not in the audited
+   five would re-open the divergence on precisely those elements. Only `font`
+   is taken from preflight; its colour and background resets are a different
+   change and are not made here.
 
    Every control listed sets its own `font-size` (and Accordion its own
    `font-weight`) in an unlayered component rule, so this changes face and
@@ -644,7 +644,24 @@ body {
   input,
   optgroup,
   select,
-  textarea,
+  textarea {
+    font: inherit;
+  }
+
+  /* SPLIT FROM THE LIST ABOVE ON PURPOSE, and it must stay split. An
+     unrecognised selector invalidates the ENTIRE rule it appears in, not just
+     its own entry in the list — measured in Chromium: with one bogus
+     pseudo-element added to the list, a <button> went back to the UA's Arial
+     while `body` was Georgia. So on any engine that does not parse
+     ::file-selector-button, keeping it in the list above would silently take
+     all five audited controls down with it, with no error anywhere. Tailwind's
+     preflight ships it in one list because a build step compiles preflight
+     against declared targets; this file is raw CSS handed to whatever engine a
+     consumer has.
+
+     The cost of the split is nothing — two rules, identical effect — and the
+     failure it removes is the silent-total kind this package has already been
+     bitten by once, in the fonts.css @import story at the top of this file. */
   ::file-selector-button {
     font: inherit;
   }

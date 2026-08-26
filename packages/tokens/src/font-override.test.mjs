@@ -165,7 +165,16 @@ describe('the cascade rule the hook relies on', () => {
 
     expect(blocks).toHaveLength(2);
     expect([...selectors].sort()).toEqual(
-      ['a', 'a:hover', 'button, input, optgroup, select, textarea, ::file-selector-button'].sort(),
+      [
+        'a',
+        'a:hover',
+        'button, input, optgroup, select, textarea',
+        // Its own rule rather than a sixth entry in the list above: an
+        // unrecognised selector invalidates the whole rule it appears in, so
+        // merging these would make the reset conditional on the engine knowing
+        // one pseudo-element. tokens.css carries the measurement.
+        '::file-selector-button',
+      ].sort(),
     );
   });
 

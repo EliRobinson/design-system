@@ -368,12 +368,33 @@ const LAYERED_RESETS = fontResets(layerBaseBlocks(tokensCss).join('\n'));
 const ALL_RESETS = fontResets(tokensCss);
 const RENDERED = [...new Set(renderedFormElements())].sort();
 
+/* Two rules, not one list. ::file-selector-button is split off deliberately:
+   an unrecognised selector invalidates the whole rule it sits in, so keeping it
+   in the list would silently take the four real elements down with it on any
+   engine that does not parse it. tokens.css carries the measurement. */
+const ELEMENT_RESET = 'button, input, optgroup, select, textarea';
+const PSEUDO_RESET = '::file-selector-button';
+
 describe('the form-control font reset in tokens.css', () => {
-  it('exists, and is the only one — #167', () => {
-    /* A second reset elsewhere in the file would be two answers to one
+  it('is exactly the two rules it should be — #167', () => {
+    /* A reset outside the layer, or a third one, would be two answers to one
        question, and every assertion below would be checking whichever this
        happened to find first. */
-    expect(ALL_RESETS).toHaveLength(1);
+    expect(ALL_RESETS).toHaveLength(2);
+    expect(ALL_RESETS.map((reset) => reset.selector).sort()).toEqual(
+      [ELEMENT_RESET, PSEUDO_RESET].sort(),
+    );
+  });
+
+  it('keeps ::file-selector-button out of the element list', () => {
+    /* Measured in Chromium: one bogus pseudo-element added to the list sent a
+       <button> back to the UA's Arial while `body` was Georgia — the entire
+       rule is dropped, not just the unparsed entry. Merging these two rules
+       back together would make the whole fix silently conditional on the
+       engine knowing one pseudo-element. */
+    const elementReset = ALL_RESETS.find((reset) => reset.selector === ELEMENT_RESET);
+    expect(elementReset, 'the element reset is no longer a rule of its own').toBeDefined();
+    expect(elementReset.selector).not.toContain('::');
   });
 
   it('is inside @layer base, so a consumer utility still outranks it', () => {
@@ -383,7 +404,9 @@ describe('the form-control font reset in tokens.css', () => {
        Geist and had no stylesheet of their own that could say otherwise. That
        is issue #112 in a new spelling, and it is measured in a browser in
        packages/tokens' form-font-cascade.test.mjs. */
-    expect(LAYERED_RESETS).toHaveLength(1);
+    expect(LAYERED_RESETS.map((reset) => reset.selector).sort()).toEqual(
+      [ELEMENT_RESET, PSEUDO_RESET].sort(),
+    );
   });
 
   it('uses the `font` shorthand, matching Tailwind preflight', () => {
@@ -392,7 +415,9 @@ describe('the form-control font reset in tokens.css', () => {
        our own docs — which ship no preflight — mint baselines from the unreset
        rendering. `font-family: inherit` alone leaves line-height at the UA's
        `normal` and keeps the two diverged for good. */
-    expect(LAYERED_RESETS[0].shorthand).toBe(true);
+    for (const reset of LAYERED_RESETS) {
+      expect(reset.shorthand, `${reset.selector} does not use the shorthand`).toBe(true);
+    }
   });
 
   it('covers every native form element a component renders', () => {
@@ -401,7 +426,9 @@ describe('the form-control font reset in tokens.css', () => {
     expect(RENDERED).toContain('button');
     expect(RENDERED).toContain('input');
 
-    const covered = LAYERED_RESETS[0].selector.split(',').map((entry) => entry.trim());
+    const covered = LAYERED_RESETS.flatMap((reset) =>
+      reset.selector.split(',').map((entry) => entry.trim()),
+    );
     for (const element of RENDERED) {
       expect(
         covered,
