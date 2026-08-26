@@ -19,7 +19,8 @@
     "src",
     "dist",
     "CHANGELOG.md",
-    "!src/**/*.test.mjs"
+    "!src/**/*.test.mjs",
+    "!src/**/*.test-helper.mjs"
   ],
   "exports": {
     "./patterns": "./src/patterns.md",

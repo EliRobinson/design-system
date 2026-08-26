@@ -98,6 +98,15 @@ describe.each(SUBPATHS)('$subpath resolves from CommonJS', ({ subpath, file, loa
 });
 
 describe('the testing export map', () => {
+  /* Which suffixes are internal is package.json's call, not this file's: `files`
+     already un-ships them, and a module that does not ship must not be demanded
+     of the export map below. Derived rather than restated so that adding an
+     exclusion there cannot leave this check quietly wrong in either direction —
+     a suffix added here alone would hide a genuinely unexported module. */
+  const internalSuffixes = require('../../package.json')
+    .files.filter((entry) => entry.startsWith('!'))
+    .map((entry) => entry.replace(/^!src\/\*\*\/\*/, ''));
+
   /* A module added under src/testing without an `exports` entry is invisible to
      consumers, and the only symptom is an import that fails in their repo. */
   it('publishes every testing module', async () => {
@@ -106,9 +115,22 @@ describe('the testing export map', () => {
 
     const directory = dirname(fileURLToPath(import.meta.url));
     const modules = readdirSync(directory).filter(
-      (file) => file.endsWith('.mjs') && !file.endsWith('.test.mjs'),
+      (file) => file.endsWith('.mjs') && !internalSuffixes.some((suffix) => file.endsWith(suffix)),
     );
 
     expect(modules.sort()).toEqual(SUBPATHS.map(({ file }) => file).sort());
+  });
+
+  /* The derivation above is only as good as the shape it assumes. If a future
+     exclusion is written some other way — a bare directory, a different glob —
+     the `replace` yields something that ends nothing, and every module would
+     start looking publishable again. */
+  it('reads every `files` exclusion as a suffix, which is the shape it assumes', () => {
+    expect(internalSuffixes.length).toBeGreaterThan(0);
+    for (const suffix of internalSuffixes) {
+      expect(suffix, 'a `files` exclusion is not a `!src/**/*<suffix>` glob').toMatch(
+        /^\.[\w.-]+\.mjs$/,
+      );
+    }
   });
 });
