@@ -79,15 +79,136 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-
             ${{ runner.os }}-nx-
-      # Build before typecheck: apps/docs consumes @elirobinson/react and
-      # @elirobinson/tokens through their package exports maps (./dist/*),
-      # not source aliases, so on a clean checkout its type-only imports
-      # don't resolve until the packages it depends on are built.
-      - run: pnpm build
+      # Which build and test to run — the whole repo, or only what the pull
+      # request could have reached. Push to `main` never reaches this step and
+      # never scopes: that run is the net under everything the affected graph
+      # might have mis-selected, and it is worth nothing if it inherits the
+      # same blind spots.
+      #
+      # Merge-base rather than `nrwl/nx-set-shas`, which was the other option
+      # on #86. nx-set-shas resolves the base to the last SUCCESSFUL run on
+      # main, which is strictly better for a push workflow and irrelevant here
+      # because pushes do not scope at all. Against that it adds a third-party
+      # action, an API call, and a second definition of "base" in a repo where
+      # `visual.yml` already resolves one by merge-base and `changeset status`
+      # below already reads `base.ref`. One definition, no new dependency.
+      #
+      # `set -u`, deliberately NOT `set -e`: every failure below has to fall
+      # through to FULL=true. A shallow clone, a force-push that orphans the
+      # old base, a branch cut from another branch — each makes the merge base
+      # unresolvable, and `nx affected` handed a bad base does not error, it
+      # under-selects and goes green having run nothing. Failing open costs one
+      # slow run. Failing closed costs a broken main.
+      - name: Resolve the affected base
+        if: github.event_name == 'pull_request'
+        id: affected
+        shell: bash
+        env:
+          # Through the environment, not `${{ }}` interpolation into the run
+          # text — same reasoning as visual.yml's copy: a base branch name is
+          # attacker-controlled text and git permits `$()`, backticks and `;`
+          # in one.
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -u
+          FULL=true
+          REASON=""
+
+          if ! git fetch --no-tags origin "$BASE_REF"; then
+            REASON="could not fetch origin/$BASE_REF"
+          elif ! MERGE_BASE=$(git merge-base HEAD FETCH_HEAD) || [ -z "$MERGE_BASE" ]; then
+            REASON="git merge-base produced no result against origin/$BASE_REF"
+          elif ! CHANGED=$(git diff --name-only "$MERGE_BASE" HEAD); then
+            REASON="could not diff against $MERGE_BASE"
+          else
+            # Paths Nx cannot map to a project are invisible to `nx affected`,
+            # and the failure is silent: the job goes green having run nothing.
+            # #93 hit this on the visual suite and had to force three paths.
+            # Same audit, run again for build/test — every one of these was
+            # measured with `nx show projects --affected --files=<path>`:
+            #
+            #   design-system-docs/**  -> []  and it feeds FIVE projects. docs
+            #     stages it into public/brand and reads it again at request
+            #     time; ai-patterns walks it for brand-manifest.json and
+            #     asserts over it in five test files; tokens tests parse its
+            #     stylesheets; storybook's MarketingPattern stories import it.
+            #     No import edge Nx can see. This is the one that matters.
+            #   templates/**           -> []  and manifest-versions.test.mjs
+            #     walks every templates/*/package.json asserting it has not
+            #     drifted from the workspace. `pnpm sync:deps` exists because
+            #     that drift is real.
+            #   .github/workflows/**   -> []  the scoping logic must not be the
+            #     one thing that ships unvalidated by the suite it scopes.
+            #   .nvmrc, .npmrc         -> []  toolchain, not code. A Node bump
+            #     affects every project and names none.
+            #
+            # Confirmed mapped, so deliberately NOT listed: package.json,
+            # pnpm-lock.yaml, nx.json and tsconfig.base.json each already fan
+            # out to all nine projects on their own.
+            #
+            # Correctly empty, and left that way: README.md and docs/**. A
+            # docs-only pull request SHOULD select nothing and pass green.
+            if printf '%s\n' "$CHANGED" | grep -qE '^(design-system-docs/|templates/|\.github/workflows/|\.nvmrc$|\.npmrc$)'; then
+              REASON="a path outside the project graph changed"
+            else
+              FULL=false
+              echo "base=$MERGE_BASE" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+          echo "full=$FULL" >> "$GITHUB_OUTPUT"
+          if [ "$FULL" = true ]; then
+            printf '### Quality scope\n\nWhole repo — %s.\n' "$REASON" >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf '### Quality scope\n\nAffected only, base `%s`.\n' "$MERGE_BASE" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # An empty affected set is a PASS. `nx affected` with nothing to do
+      # prints "No tasks were run" and exits 0 — verified locally against a
+      # README-only diff — so a docs-only pull request gets a green check
+      # rather than a contrived skip.
+      - name: Build and test (affected)
+        if: github.event_name == 'pull_request' && steps.affected.outputs.full != 'true'
+        run: pnpm exec nx affected -t build,test --base=${{ steps.affected.outputs.base }} --head=HEAD
+
+      - name: Build and test (whole repo)
+        if: github.event_name != 'pull_request' || steps.affected.outputs.full == 'true'
+        run: |
+          pnpm build
+          pnpm test
+
+      # These three stay whole-repo on pull requests, on purpose, and the
+      # affected graph does not apply to any of them:
+      #
+      #   lint         is root `eslint .`. It is not an Nx target — six of the
+      #                nine projects define `lint` as `echo 'No lint
+      #                configured'`, so `nx affected -t lint` would check
+      #                almost nothing while looking like it checked something.
+      #                6s.
+      #   format:check is root `prettier --check .`. Not project-scoped at all,
+      #                and 7s.
+      #   typecheck    is ONE root `tsc --noEmit -p ./tsconfig.typecheck.json`
+      #                spanning the workspace. Scoping it means splitting it
+      #                into project references, which is a different piece of
+      #                work. 22s.
+      #
+      # 35s combined. They are not the problem #86 is about.
+      #
+      # `pnpm typecheck` also settles the trap that blocked this change: it
+      # fires `pretypecheck`, which is `nx run-many -t build` for the WHOLE
+      # repo. Verified empirically rather than assumed — #86 expected pnpm 10+
+      # to skip pre/post scripts without `enable-pre-post-scripts`, and this
+      # repo sets none, but pnpm 11.21.0 runs them anyway. So root typecheck
+      # always has every package's dist/ present, including the ones the
+      # affected step above skipped, and it cannot fail on a clean runner for
+      # want of one. What makes that affordable is the caching in the parent
+      # PR: the unaffected half of that full build is a cache replay, and the
+      # affected half was already built one step above, so it is also a replay.
+      # Without that cache this step would rebuild the whole repo and erase the
+      # win entirely.
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck
-      - run: pnpm test
       - name: Require a changeset for package changes
         if: github.event_name == 'pull_request'
         run: pnpm changeset status --since=origin/${{ github.event.pull_request.base.ref }}
