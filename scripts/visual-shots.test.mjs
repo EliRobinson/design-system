@@ -132,5 +132,16 @@ describe.skipIf(!BUILDS_PRESENT)('computed baseline paths vs the ones on disk', 
     /* Sorted arrays rather than set equality: on a failure the diff names the
        paths, which is the whole value of running this. */
     expect([...computed].sort()).toEqual([...onDisk].sort());
-  });
+    /* `listShots` spawns `playwright test --list`, so vitest's 5s default was
+       never this test's budget — it was the budget for a process start, a
+       config load and an enumeration of every route in the docs build. It runs
+       in well under a second locally and between 3.5s and 4.6s on a GitHub
+       runner, which is 70-91% of the default: passing, until the runner has a
+       slow minute. Three branches tipped over it within one hour on 2026-08-26
+       (runs 32953635367, 32952490856, 32951324375), every one of them on a
+       change that touches nothing this test reads. Timing out is also the
+       least useful way for this to fail, because it reports a clock rather
+       than the paths that disagree. 30s is picked to be far outside the
+       spread, not to be a near miss in the other direction. */
+  }, 30_000);
 });
