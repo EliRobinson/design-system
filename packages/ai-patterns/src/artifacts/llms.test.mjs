@@ -278,7 +278,7 @@ describe('llmsFull', () => {
       '',
       '### Voice',
       '',
-      '- Never the royal "we."',
+      '- The voice is Miltinson Technologies.',
       '',
       '---',
       '',
@@ -312,7 +312,7 @@ describe('llmsFull', () => {
 
     it('carries the voice rules, the caller note, and the artifact inventory', () => {
       expect(withBrand).toContain('## Brand');
-      expect(withBrand).toContain('Never the royal "we."');
+      expect(withBrand).toContain('The voice is Miltinson Technologies.');
       expect(withBrand).toContain('The brand source lives here.');
       expect(withBrand).toContain(
         '- ui_kits/webapp/index.html — Web App UI Kit (components: Sidebar, TopBar)',
@@ -327,7 +327,7 @@ describe('llmsFull', () => {
     });
 
     it('does not leak the visual foundations section in as voice', () => {
-      expect(brandVoice(readme)).toContain('Never the royal');
+      expect(brandVoice(readme)).toContain('Miltinson Technologies');
       expect(brandVoice(readme)).not.toContain('Not voice.');
     });
 

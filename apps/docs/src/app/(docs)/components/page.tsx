@@ -12,8 +12,9 @@ export default function ComponentsIndexPage() {
       <h1>Components</h1>
       <p className="lead">
         All {components.length} components, grouped by atomic tier. Every page carries live demos, a
-        generated props table, the exact import subpath, and the keyboard contract you inherit. The{' '}
-        <Link href="/guidelines/tiers">tier boundary</Link> is a rule, not a vibe.
+        generated props table, the exact import subpath, and the keyboard contract you inherit.
+        Which tier a component lands in is decided by the{' '}
+        <Link href="/guidelines/tiers">tier boundary</Link>, four questions asked in order.
       </p>
       {TIERS.map((tier) => {
         const tierComponents = componentsByTier(tier);

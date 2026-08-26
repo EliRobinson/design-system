@@ -2,52 +2,84 @@ export const metadata = { title: 'Voice and content', order: 1 };
 
 # Voice and content
 
-Miltinson copy sounds like one person who builds things and tells you the truth about them. Every
-string in a product — button labels, empty states, error messages — is brand surface.
+Two different kinds of text get written against this system, and only one of them is the
+system's business.
 
-## The voice
+**Chrome** is the functional text a component renders: labels, hints, placeholders, errors,
+empty states, toasts, confirmations, validation. It tells the reader what a thing is, what just
+happened, or what to do next. The system has rules for it, they apply to every app built on the
+system, and `@elirobinson/eslint-config` enforces part of them.
 
-- **I speak as myself.** First person singular — "I build software, teach AI, and
-  create resources for coaches." Never the royal "we"; this isn't a company of many.
-- **The reader is "you."** Direct address, no buffer.
-- **Confident but unguarded.** The field is full of nonsense and the brand explicitly
-  opts out: "No jargon, no judgment — just practical solutions."
+**Content** is everything a product says in its own voice — marketing prose, editorial pages,
+conversational surfaces, written deliverables. That voice is a design decision belonging to the
+product, and the system has nothing to say about it.
 
-## Tone, in order of weight
+Where one surface carries both, the chrome follows the rule below and the content is left alone.
 
-1. **Practical** — what's actually useful, what saves real time.
-2. **Honest** — call out hype, show real prices, admit limitations.
-3. **Warm** — patient with non-technical readers; a trusted hand, not a gatekeeper.
-4. **Quietly confident** — never flex credentials; let the work speak.
+## The chrome rule
 
-## Mechanics
+State the fact, then the consequence, then the action — and stop.
 
-- **Sentence case** for headings — "Need help with AI or tech?", never ALL CAPS body
-  content. Title Case only for product names and the tagline.
-- **Em-dashes** are the favored break — like this one.
-- **Oxford commas**, yes.
-- **Pricing prefixed with "From"** — "From $150/hr", never a single firm number.
-- **The wordmark takes its period.** "Miltinson." — the dot is part of the mark, in
-  amber.
+```
+❌ You have not been charged. This is almost always a passing blip on their
+   side, so try again in a moment. If it keeps happening, reply to your
+   receipt email and we'll sort it out.
 
-## Words
+✅ You have not been charged. Try again.
+```
 
-Use: build, ship, practical, honest, no-fluff, hands-on, real, useful, clear, simple.
+Both are true. The second respects the reader. The failure mode is padding a true message with
+reassurance until it reads like marketing: frequency claims you have no data for, blame
+attribution, filler pacing, unprompted apology, escalation paths nobody asked for, exclamation
+marks.
 
-Avoid: synergy, leverage, unlock, empower, robust, cutting-edge, revolutionary,
-world-class, seamless, frictionless, reimagine, 10x, ninja, rockstar — and "we" when I
-mean "I".
+Length is the tell. Past two short sentences, functional copy is explaining, reassuring, or
+selling.
 
-## Emoji and icons
+The full rule, with every phrase it forbids, is in the package rather than on this page — it
+changes with the lint rule, and a copy here would go stale:
 
-No decorative emoji in headings, body copy, or system UI. A checkmark (✓) is fine in
-plain-text checklists. When UI needs a small mark, use a Lucide icon at 1.5px stroke,
-inheriting `currentColor`, paired with a text label in navigation and primary actions.
+```bash
+pnpm ds patterns    # the rule, with worked examples
+pnpm ds contracts   # the functional-copy constraint, its check and what verifies it
+```
+
+`@elirobinson/eslint-config` warns on the literal phrases, scoped to copy props (`title`,
+`description`, `label`, `placeholder`, and friends) and the children of chrome components
+(`Alert`, `Toast`, `EmptyState`). It never reads ordinary prose. It ships as a warning because
+every repo upgrading into it has copy written before it existed; tighten it once that copy is
+clean:
+
+```js
+designSystem({ copy: { severity: 'error' } });
+```
 
 ## In components
 
-- Button labels are verbs: "Save changes", "Send message".
-- Empty states say what goes here and how to add it — see
-  [EmptyState](/components/empty-state).
-- Error messages name the problem and the fix, in that order, without blame.
-- Alerts and toasts get one sentence; if it needs two, it needs a page.
+- Button labels are verbs — "Save changes", "Send message". A label that names a noun leaves the
+  reader guessing what the button does to it.
+- Empty states say what goes here and how to add it, and give the reader the control that does
+  it — see [EmptyState](/components/empty-state).
+- Error messages name the problem and the fix, in that order, without assigning fault.
+- An `Alert` is for a sentence, a `Badge` for a word. If a message needs a third sentence, it
+  needs a page.
+- Icon-only controls still need a name in text: `aria-label` is chrome too, and it is read aloud
+  in place of the label a sighted reader never needed.
+- No decorative emoji in chrome. Where a mark carries meaning, use an icon with a text label; a
+  screen reader announces an emoji by its Unicode name, which is rarely the word you meant.
+
+## The product's own voice
+
+The system does not set it, and reading the chrome rule as an instruction to flatten it does more
+damage than the padding it removes.
+
+That includes person. Whether a product writes "I" or "we" is a decision about what the product
+is — one name can cover a single person's site and a company's product — so the system does not
+fix it. Choose per product, then hold it: the tell of a voice nobody decided is one that switches
+partway down a page.
+
+Miltinson's own brand voice — how it addresses a reader, its casing and punctuation conventions,
+its word lists, its iconography — lives in `design-system-docs/README.md` under **CONTENT
+FUNDAMENTALS**, rendered on [brand guidelines](/brand/guidelines) and shipped to agents inside
+[/llms-full.txt](/llms-full.txt). It is not reproduced here: it is brand-specific rather than
+system-wide, and a second copy on this page would be a second copy to keep in step.

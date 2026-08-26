@@ -64,7 +64,7 @@ How Miltinson copy is written. Read this before writing for the brand.
 
 ### Voice
 
-- **Eli speaks as himself.** First person singular: _"I'm Eli Robinson — I build software, teach AI…"_, _"I'll show you what's actually useful, what's hype…"_. Never the royal "we." This is not a company-of-many; it's a human.
+- **The voice is Miltinson Technologies.** Whether that reads as one person — _"I'm Eli Robinson — I build software, teach AI…"_ — or as a company depends on what the product is, and both are the brand: the same name covers a personal site and a company product. Pick the person from the product, not from a rule, and hold it. The failure is a surface that switches partway through, not a surface that chose "we".
 - **Reader is "you."** Direct address, no buffer.
 - **Confident but unguarded.** _"No jargon, no judgment — just practical solutions."_ The brand admits the field is full of nonsense and explicitly opts out.
 
@@ -90,7 +90,7 @@ build, ship, practical, honest, no-fluff, hands-on, real, useful, trusted, patie
 
 ### Words to avoid
 
-synergy, leverage, unlock, empower, robust, cutting-edge, revolutionary, world-class, seamless, frictionless, reimagine, AI-powered (used flatly), 10x, ninja, rockstar, "we" (when Eli means "I")
+synergy, leverage, unlock, empower, robust, cutting-edge, revolutionary, world-class, seamless, frictionless, reimagine, AI-powered (used flatly), 10x, ninja, rockstar
 
 ### Emoji
 

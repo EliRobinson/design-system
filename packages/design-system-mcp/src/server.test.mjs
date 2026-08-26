@@ -278,7 +278,7 @@ describe('get_brand_guidance', () => {
     const result = await call('get_brand_guidance', { surface: 'webapp' });
     expect(result.isError).toBeFalsy();
     const text = textOf(result);
-    expect(text).toContain('Never the royal');
+    expect(text).toContain('Miltinson Technologies');
     expect(text).toContain('ui_kits/webapp/index.html');
     expect(text).toContain('Sidebar');
     expect(text).not.toContain('ui_kits/marketing');
@@ -344,7 +344,7 @@ describe('resources mirror the review surfaces', () => {
 
   it('serves the voice rules for a human to @-mention', async () => {
     const { contents } = await client.readResource({ uri: 'miltinson://brand/voice' });
-    expect(contents[0].text).toContain('Never the royal');
+    expect(contents[0].text).toContain('Miltinson Technologies');
   });
 
   it('serves the full contract set as JSON', async () => {
