@@ -78,7 +78,36 @@
        The `echo 'No tests configured'` placeholders in create-elirobinson-
        design-system and storybook cache like anything else. They are not
        coverage and must not be counted as any. */
+    /* `test` alone declares `dependsOn`. Several suites read a `dist/` — their
+       own package's or a dependency's — and until #147 nothing ordered the two
+       but the shell: CI ran `pnpm build`, then `pnpm test`. `nx affected -t
+       build,test` puts both targets in one graph, and with no edge between them
+       a project's `build` and its `test` are scheduled concurrently. Observed
+       on run 33000441286: `ai-patterns:build` SUCCEEDED while
+       `ai-patterns:test` failed in the same run, packing a `dist/artifacts`
+       that build was rewriting underneath it.
+       `build` is the entry that closes that. ai-patterns' pack-integrity test
+       runs `npm pack` over its own dist, and react's and tokens' builds open
+       with `rm -rf dist`, so a concurrent reader can watch the tree disappear.
+       Nothing granted that ordering before: no project.json declares a `test`
+       that waits on its own `build`.
+       `^build` is the generalisation, and today it is redundant rather than
+       load-bearing — every `build` already carries `^build` above, so a project
+       reaching its own build reaches its dependencies' too. It is here for the
+       shape that does not: a project with tests and no `build` of its own.
+       apps/docs and packages/design-system-mcp both hand-wrote exactly this
+       edge into their own project.json, and those hand-written copies override
+       this default rather than adding to it — measured with `nx show project
+       design-system-mcp`, whose `test` resolves to `["^build"]` alone. The
+       dependency is real: run its suite as bare `vitest run` with no dist in
+       the workspace and 13 of 33 fail, because the server resolves
+       `@elirobinson/react/manifest` and
+       `@elirobinson/ai-patterns/brand-manifest` at runtime. Declaring it here
+       means the next such project does not have to remember.
+       The cost is that a project's `build` no longer runs beside its `test`; it
+       runs before it. Both targets are cached, so a rerun pays nothing. */
     "test": {
+      "dependsOn": ["^build", "build"],
       "cache": true
     },
     "lint": {
