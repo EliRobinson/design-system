@@ -44,14 +44,45 @@ function walk(dir, prefix = '') {
   return found;
 }
 
+/* Both of the commands below are noisy on success and silent on failure, which
+   is the wrong way round. `stdio: 'ignore'` was worse than quiet: it left
+   `error.stderr` null, so #147 arrived in CI as `Command failed: node
+   scripts/build-artifacts.mjs` and not one word about why. Drop stdout, keep
+   stderr, and put it in the message the runner prints. */
+function run(command, args) {
+  try {
+    execFileSync(command, args, {
+      cwd: PACKAGE_DIR,
+      stdio: ['ignore', 'ignore', 'pipe'],
+      encoding: 'utf8',
+    });
+  } catch (error) {
+    throw new Error(
+      `\`${[command, ...args].join(' ')}\` failed in ${PACKAGE_DIR}:\n` +
+        `${error.stderr?.trim() || '(the command wrote nothing to stderr)'}`,
+      { cause: error },
+    );
+  }
+}
+
 beforeAll(() => {
   scratch = mkdtempSync(join(tmpdir(), 'ai-patterns-pack-'));
 
-  /* CI builds before it tests, and so does `pnpm build && pnpm test`. Building
-     here when dist is absent keeps a cold checkout from failing on a missing
-     file rather than on the invariant. */
+  /* The one path that reaches this branch is `vitest run` inside the package on
+     a checkout that has never been built, where a missing file would fail the
+     test for a reason that is not the invariant. Every other path builds first:
+     `pnpm build && pnpm test` by sequencing, and Nx because `test` declares
+     `dependsOn: ["^build", "build"]` in nx.json.
+     That `dependsOn` is what keeps this branch safe, and it is why it is not
+     merely a scheduling preference. Between #147 and it, `nx affected -t
+     build,test` ran `ai-patterns:build` alongside `ai-patterns:test`, and this
+     line then spawned a SECOND `build-artifacts.mjs` writing the same
+     `dist/artifacts` as the first — run 33000441286, where the build passed and
+     the test died here. Removing the edge in nx.json brings that back; the
+     `npm pack` below reads the same shared `dist/` and races it just as hard,
+     so deleting this fallback would not be a fix on its own. */
   if (!existsSync(join(PACKAGE_DIR, 'dist', 'artifacts', 'artifacts.json'))) {
-    execFileSync('node', ['scripts/build-artifacts.mjs'], { cwd: PACKAGE_DIR, stdio: 'ignore' });
+    run('node', ['scripts/build-artifacts.mjs']);
   }
 
   /* `npm pack`, though releases go out through `pnpm publish`: pnpm has no
@@ -61,10 +92,7 @@ beforeAll(() => {
      The two packers agree on the behaviour under test: both dropped the
      thirteen links before the fix and both carry the thirteen files after it,
      checked by hand against `pnpm pack` on the branch that added this. */
-  execFileSync('npm', ['pack', '--ignore-scripts', '--pack-destination', scratch], {
-    cwd: PACKAGE_DIR,
-    stdio: 'ignore',
-  });
+  run('npm', ['pack', '--ignore-scripts', '--pack-destination', scratch]);
 
   const tarball = readdirSync(scratch).find((name) => name.endsWith('.tgz'));
   if (!tarball) throw new Error(`npm pack produced no tarball in ${scratch}`);
