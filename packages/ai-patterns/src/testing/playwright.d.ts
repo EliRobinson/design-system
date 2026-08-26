@@ -17,7 +17,19 @@ export interface Violation {
   message: string;
 }
 
+/**
+ * Which of the two floors this control was measured against. Read this rather
+ * than parsing `message` for its prefix.
+ */
+export type TouchTargetContract =
+  | 'touch-target-primary'
+  | 'touch-target-dense'
+  | 'touch-target-unmeasurable';
+
 export interface TouchTargetViolation extends Violation {
+  contract: 'touch-target-primary' | 'touch-target-dense';
+  /** The floor actually applied to this control: 44 primary, 24 dense. */
+  minimum: number;
   width: number;
   height: number;
   /** The control's own hit area, including padding and any bounded overlay. */
@@ -39,6 +51,9 @@ export interface TouchTargetViolation extends Violation {
  * the painted box, which was obtained.
  */
 export interface UnmeasurableTouchTarget extends Violation {
+  contract: 'touch-target-unmeasurable';
+  /** The floor it would have been measured against, had it been measurable. */
+  minimum: number;
   width: number;
   height: number;
   unmeasurable: true;
@@ -55,10 +70,20 @@ export interface ContrastViolation extends Violation {
 export interface TouchTargetOptions {
   /** Which controls to measure. Defaults to PRIMARY_CONTROL_SELECTOR. */
   selector?: string;
-  /** Controls held to the dense scale instead. Defaults to DENSE_AFFORDANCE_SELECTOR. */
+  /**
+   * Controls measured against the dense floor instead of `minimum`. Defaults to
+   * DENSE_AFFORDANCE_SELECTOR. Matching is not an exemption from measurement —
+   * pass `''` to hold every control to `minimum`.
+   */
   exempt?: string;
   /** Minimum px in each axis. Defaults to 44. */
   minimum?: number;
+  /**
+   * Minimum px in each axis for a control matching `exempt`. Defaults to 24,
+   * the WCAG 2.2 AA floor (SC 2.5.8). Clamped to `minimum`, since a relaxation
+   * cannot be stricter than the floor it relaxes.
+   */
+  denseMinimum?: number;
 }
 
 export interface FocusVisibleOptions {
@@ -81,6 +106,7 @@ export interface ContractOptions {
 }
 
 export declare const MINIMUM_TOUCH_TARGET: number;
+export declare const MINIMUM_TOUCH_TARGET_DENSE: number;
 export declare const PRIMARY_CONTROL_SELECTOR: string;
 export declare const DENSE_AFFORDANCE_SELECTOR: string;
 

@@ -262,7 +262,8 @@ export function llmsFull({
     ),
     '',
     `UI contracts: minimum touch target ${contracts.uiContracts.minimumTouchTarget} ` +
-      `(scoped — see touch-target-dense), focus-visible required: ` +
+      `(scoped — see touch-target-dense). Dense floor: ` +
+      `${contracts.uiContracts.minimumTouchTargetDense} Focus-visible required: ` +
       `${contracts.uiContracts.focusVisibleRequired}, contrast level ${contracts.uiContracts.contrastLevel}.`,
     '',
     '## Import rules',

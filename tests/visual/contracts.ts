@@ -47,7 +47,20 @@ export async function assertContracts(page: Page): Promise<void> {
          `.ds-rule-link` and `.ds-button--sm`, and one 1x1 button — genuine
          sizing questions, and answering them changes how components look.
 
-       focusVisible reports 2, both the CommandPalette trigger. */
+       focusVisible reports 2, both the CommandPalette trigger.
+
+       #116 should shrink that touch-target list, without turning the switch
+       on. The dense floor measures `.ds-table__sort` and `.ds-button--sm` at
+       24x24 instead of 44x44, and both clear it when measured in isolation
+       against the shipped stylesheets — so the 12 + 2 above should be gone.
+       The counts have not been re-run here, because re-running them means
+       turning the flag on, which is #65's decision and not this one's. The
+       `.ds-rating__button` 5 were already fixed when the exemption moved off
+       the glyph onto the control. This flag staying `false` is also why #116
+       moves no baseline through this file:
+       the rendered-output changes in that PR (`.ds-table__sort`'s min-height
+       and the coarse-pointer floor) move baselines through the screenshots,
+       not through these assertions. */
     touchTargets: false,
     focusVisible: false,
   });

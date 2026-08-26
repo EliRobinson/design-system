@@ -20,6 +20,7 @@ import {
   DENSE_AFFORDANCE_SELECTOR,
   expectDesignSystemContracts,
   MINIMUM_TOUCH_TARGET,
+  MINIMUM_TOUCH_TARGET_DENSE,
   PRIMARY_CONTROL_SELECTOR,
 } from './playwright.mjs';
 
@@ -42,6 +43,11 @@ describe('argument handling', () => {
 
   it('exports the contract values it enforces', () => {
     expect(MINIMUM_TOUCH_TARGET).toBe(44);
+    /* 24 is WCAG 2.2 AA (SC 2.5.8), not a number this system chose, which is
+       what makes a second floor a relaxation to the standard rather than a
+       discount off it. It also has to agree with --target-min, which is what
+       the components size their hit areas from. */
+    expect(MINIMUM_TOUCH_TARGET_DENSE).toBe(24);
     expect(PRIMARY_CONTROL_SELECTOR).toContain('button');
   });
 
@@ -99,9 +105,71 @@ describeBrowser('browser contract checks', () => {
       expect(await checkTouchTargets(page)).toEqual([]);
     });
 
-    it('exempts a dense affordance that declares itself one', async () => {
-      await render('<button data-touch-target="dense" style="width:20px;height:20px">x</button>');
-      expect(await checkTouchTargets(page)).toEqual([]);
+    /* Issue #116, and a deliberate contract change rather than a test fix.
+       This fixture used to assert that a self-declared dense affordance at
+       20x20 *passed* — which was true, and was the bug: `dense` meant "stop
+       looking", so an 8x8 tap target with the attribute on it passed as
+       cleanly as a 36px button. `dense` now means "measured against 24x24, the
+       WCAG 2.2 AA floor", so the same fixture is red by construction. The pair
+       below pins both halves: 20x20 fails, 24x24 passes. */
+    describe('a dense affordance, which is measured against the dense floor', () => {
+      it('flags one below 24x24, which used to be an unconditional pass', async () => {
+        await render('<button data-touch-target="dense" style="width:20px;height:20px">x</button>');
+        const violations = await checkTouchTargets(page);
+
+        expect(violations).toHaveLength(1);
+        expect(violations[0].contract).toBe('touch-target-dense');
+        expect(violations[0].minimum).toBe(MINIMUM_TOUCH_TARGET_DENSE);
+        expect(violations[0].message).toContain('below 24x24');
+        expect(violations[0].message).toContain('dense floor');
+      });
+
+      it('passes one that clears 24x24 without going anywhere near 44', async () => {
+        await render('<button data-touch-target="dense" style="width:24px;height:24px">x</button>');
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      /* The floor is a floor, not a second exemption: the message has to name
+         which of the two was applied, or a reader cannot tell whether ~22x22
+         is a bug or a non-event, and it must not offer `dense` as the fix to a
+         control that is already dense. */
+      it('does not offer the dense marker as a remedy to a control that already has it', async () => {
+        await render('<button data-touch-target="dense" style="width:20px;height:20px">x</button>');
+        const [violation] = await checkTouchTargets(page);
+
+        expect(violation.message).not.toContain('declares itself with data-touch-target');
+        expect(violation.message).toContain('no marker below this one');
+      });
+
+      /* A primary control's advice does still name the marker — and now has to
+         say what it buys, which is a lower floor and not silence. */
+      it('tells a primary control that declaring itself dense still leaves a floor', async () => {
+        await render('<button style="width:20px;height:20px">x</button>');
+        const [violation] = await checkTouchTargets(page);
+
+        expect(violation.contract).toBe('touch-target-primary');
+        expect(violation.minimum).toBe(MINIMUM_TOUCH_TARGET);
+        expect(violation.message).toContain('data-touch-target="dense"');
+        expect(violation.message).toContain('24x24 dense floor');
+        expect(violation.message).toContain('not a way to stop the control being measured');
+      });
+
+      it('holds the dense floor to `minimum` when a caller loosens the contract below 24', async () => {
+        await render('<button data-touch-target="dense" style="width:20px;height:20px">x</button>');
+
+        /* A relaxation cannot come out stricter than the floor it relaxes: a
+           caller who has said 20 is enough for a page's primary CTA cannot
+           have meant 24 for its chip glyphs. */
+        expect(await checkTouchTargets(page, { minimum: 20 })).toEqual([]);
+      });
+
+      it('measures a dense affordance against `minimum` when `exempt` is cleared', async () => {
+        await render('<button data-touch-target="dense" style="width:32px;height:32px">x</button>');
+
+        expect(await checkTouchTargets(page)).toEqual([]);
+        const [violation] = await checkTouchTargets(page, { exempt: '' });
+        expect(violation.contract).toBe('touch-target-primary');
+      });
     });
 
     /* Rating's real shape. The exemption used to name `.ds-rating__star`,
@@ -109,7 +177,7 @@ describeBrowser('browser contract checks', () => {
        control it was written for failed anyway. Asserted against the markup
        rather than the string, because a class list is only as good as the
        elements it lands on. */
-    it('exempts a dense affordance by its shipped class, on the element that takes the click', async () => {
+    it('tiers a dense affordance by its shipped class, on the element that takes the click', async () => {
       await render(
         '<div class="ds-rating">' +
           '<button class="ds-rating__button" style="width:32px;height:32px">' +
@@ -140,7 +208,7 @@ describeBrowser('browser contract checks', () => {
         );
       }
 
-      it('is still under the 44px floor, which is the thing being exempted', async () => {
+      it('is still under the 44px floor, which is the thing being re-tiered', async () => {
         await renderShipped(
           '<a class="ds-button ds-button--accent ds-button--sm" href="#">Hire Me</a>',
         );
@@ -168,11 +236,11 @@ describeBrowser('browser contract checks', () => {
         expect(await checkTouchTargets(page)).toEqual([]);
       });
 
-      /* The half that matters. Exempting a named variant must not become a
+      /* The half that matters. Re-tiering a named variant must not become a
          blanket pass — an undersized control that has claimed nothing about
          itself is still a violation, and a default-size .ds-button that has
          been squashed is still a violation. */
-      it('does not exempt an undersized control that declares nothing', async () => {
+      it('does not re-tier an undersized control that declares nothing', async () => {
         await renderShipped(
           '<a class="ds-button ds-button--accent ds-button--sm" href="#">Hire Me</a>' +
             '<button style="width:24px;height:24px">x</button>',
@@ -184,12 +252,143 @@ describeBrowser('browser contract checks', () => {
         expect(violations[0].element).not.toContain('ds-button--sm');
       });
 
-      it('does not exempt a default-size .ds-button that has been squashed', async () => {
+      it('does not re-tier a default-size .ds-button that has been squashed', async () => {
         await renderShipped(
           '<button class="ds-button ds-button--primary" style="min-height:24px;padding:0">Save</button>',
         );
 
         expect(await checkTouchTargets(page)).toHaveLength(1);
+      });
+    });
+
+    /* Issue #116's blocking finding: `.ds-chip__remove` was the one thing the
+       system shipped under the dense floor — 22x22 painted and 22x22 effective,
+       2px short in both axes. The fix keeps the 22px painted glyph (MUI's own
+       delete-icon scale) and reaches --target-min through a bounded overlay, so
+       both halves have to be asserted: the reach, and the absence of an
+       overlap. Asserting a bounded overlay's *size* without asserting what it
+       covers is how the 44x44 chip overlay that swallowed its own label got
+       shipped in the first place — which is the failure hit-area-no-overlap
+       exists for, and which OVERLAP_MESSAGE tells consumers to avoid.
+
+       Against the shipped Chip.css over the shipped tokens.css, for the same
+       reason the .ds-button--sm cases are: a fixture restating the geometry
+       inline would keep passing after the stylesheet moved. */
+    describe("the chip's remove glyph, which reaches the dense floor without repainting", () => {
+      async function renderChip(body) {
+        await page.setContent(
+          `<!doctype html><html><head><style>* { box-sizing: border-box; margin: 0; }` +
+            `body { background: #ffffff; color: #000000; font: 16px system-ui; padding: 40px; }</style>` +
+            `<style>${shippedCss('@elirobinson/tokens/tokens.css')}</style>` +
+            `<style>${shippedCss('@elirobinson/react/styles/molecules/Chip.css')}</style>` +
+            `</head><body>${body}</body></html>`,
+        );
+      }
+
+      const CHIP =
+        '<span class="ds-chip"><span class="ds-chip__label">Design</span>' +
+        '<button type="button" class="ds-chip__remove" aria-label="Remove Design">&times;</button></span>';
+
+      it('still paints 22px, which is the point of keeping it dense', async () => {
+        await renderChip(CHIP);
+
+        const painted = await page.evaluate(() => {
+          const { width, height } = document
+            .querySelector('.ds-chip__remove')
+            .getBoundingClientRect();
+          return { width, height };
+        });
+
+        expect(painted).toEqual({ width: 22, height: 22 });
+      });
+
+      it('passes the dense floor on its hit area, not on its paint', async () => {
+        await renderChip(CHIP);
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      /* The measurement, not just the verdict: 22px of paint has to be
+         reporting >= 24 of reach, or this is passing for some other reason. */
+      it('reaches at least 24x24', async () => {
+        await renderChip(CHIP);
+
+        /* No floor can be cleared at 200, so the violation carries the number.
+           `exempt: ''` because the reach is the question, not the tier. */
+        const [measured] = await checkTouchTargets(page, { exempt: '', minimum: 200 });
+
+        expect(measured.effectiveWidth).toBeGreaterThanOrEqual(MINIMUM_TOUCH_TARGET_DENSE);
+        expect(measured.effectiveHeight).toBeGreaterThanOrEqual(MINIMUM_TOUCH_TARGET_DENSE);
+      });
+
+      it('covers nothing — the overlay is bounded, which is the constraint on the fix', async () => {
+        await renderChip(CHIP);
+        expect(await checkHitAreaOverlap(page)).toEqual([]);
+      });
+
+      /* The overlap headroom shrinks with the label, so the shortest chip the
+         system can render is the case that would break first. */
+      /* Issue #114. `<a class="ds-chip">` and `<button class="ds-chip">` are
+         sanctioned hand-written usages — tokens.css strips their underline on
+         purpose and components.md says a chip that is an anchor is a control —
+         but <Chip> renders a <span>, so no fixture in this repo has ever
+         rendered one and both failed the 44px floor latently, for consumers
+         only. They are dense at 32px (MUI's Chip exactly, which is the scale
+         this tier already cites) and clear 24 at 64x32.
+
+         What #114 objected to about this answer was that adding `.ds-chip`
+         here used to mean *not measuring* a control. It no longer does, which
+         is why the entry lands in this PR and not that issue. */
+      it('holds a chip that is a control to the dense floor, which it clears', async () => {
+        await renderChip(
+          '<a class="ds-chip" href="#">Design</a><button class="ds-chip">Filter</button>',
+        );
+
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      it('still fails a chip control that is squashed below the dense floor', async () => {
+        await renderChip('<a class="ds-chip" href="#" style="min-height:20px">Design</a>');
+
+        const [violation] = await checkTouchTargets(page);
+        expect(violation.contract).toBe('touch-target-dense');
+      });
+
+      it('covers nothing on a one-character chip either', async () => {
+        await renderChip(
+          '<span class="ds-chip"><span class="ds-chip__label">A</span>' +
+            '<button type="button" class="ds-chip__remove" aria-label="Remove A">&times;</button></span>',
+        );
+
+        expect(await checkHitAreaOverlap(page)).toEqual([]);
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+    });
+
+    /* The table's sort toggle is the only element in the repo that carries
+       data-touch-target="dense", so it is the only shipped element whose floor
+       this change moves. It used to clear 24 by 0.45px of inline-box bleed over
+       a 23.09px font-derived box, with no min-height of its own — passing by
+       accident is not the same as passing, and the next line-height change
+       would have turned it red. */
+    describe("the table's sort toggle, whose floor is now in CSS", () => {
+      it('is at least --target-min tall from the stylesheet, not from its font', async () => {
+        await page.setContent(
+          `<!doctype html><html><head><style>* { box-sizing: border-box; margin: 0; }` +
+            `body { background: #ffffff; color: #000000; font: 16px system-ui; padding: 40px; }</style>` +
+            `<style>${shippedCss('@elirobinson/tokens/tokens.css')}</style>` +
+            `<style>${shippedCss('@elirobinson/react/styles/organisms/table/core.css')}</style>` +
+            `</head><body><table class="ds-table"><thead><tr><th>` +
+            `<button type="button" data-touch-target="dense" class="ds-table__sort">` +
+            `<span>Name</span><span class="ds-table__sort-icon" aria-hidden="true">&#8597;</span>` +
+            `</button></th></tr></thead></table></body></html>`,
+        );
+
+        const height = await page.evaluate(
+          () => document.querySelector('.ds-table__sort').getBoundingClientRect().height,
+        );
+
+        expect(height).toBeGreaterThanOrEqual(MINIMUM_TOUCH_TARGET_DENSE);
+        expect(await checkTouchTargets(page)).toEqual([]);
       });
     });
 

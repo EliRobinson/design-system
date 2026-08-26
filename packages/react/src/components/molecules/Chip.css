@@ -11,11 +11,26 @@
   border-radius: var(--radius-pill);
   background: var(--bg-subtle);
   border: 1px solid var(--border-control); /* control edge — SC 1.4.11 */
+  /* A <span class="ds-chip"> inherits the family and this changes nothing for
+     it. <button class="ds-chip"> is the reason it is here: a button does not
+     inherit font-family — the UA stylesheet sets it — so the button form of a
+     chip painted its label in Arial while the span form painted it in Geist,
+     at the same declared font-size. A chip's label is text, so this is the
+     right fix for it; the remove button's glyph is not text any more and is
+     handled differently — see lib/marks.tsx. */
+  font-family: var(--font-sans);
   font-size: var(--fs-xs);
   color: var(--fg);
 }
 
+/* 22px painted, on purpose: MUI's Chip delete icon is 22px and that is the
+   scale a chip's remove glyph belongs to. The hit area is a different question
+   from the paint, and it was the same 22x22 until #116 — 2px under
+   --target-min in both axes, the one thing the system shipped below the WCAG
+   2.2 AA floor (SC 2.5.8). ::after below closes that without touching the
+   glyph. */
 .ds-chip__remove {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -27,8 +42,95 @@
   background: transparent;
   color: var(--fg-3);
   cursor: pointer;
+  /* The glyph is drawn, not typed. It used to be a literal `×` text node, and
+     that made this control's rendering depend on a font — on a <button>, a font
+     nobody declared, since font-family is not inherited and the UA stylesheet
+     sets it. The × came out in the UA default beside a Geist label.
+
+     Declaring the family fixed the typeface and not the geometry. Measured on
+     <Chip onRemove>Design</Chip>, as painted ink: `align-items: center` centres
+     the line *box*, the baseline sits (ascent - descent) / 2 below that box's
+     centre — 5.00px, the same for both families — and where the ink lands then
+     depends on where the family puts it above its own baseline. Arial 4.95px,
+     Geist 4.13px, so the same declaration centred one to 0.05px and the other
+     to 0.87px. Neither was designed. And --font-sans is a token a consumer may
+     re-point, which would move it again by some third amount.
+
+     lib/marks.tsx draws it instead: a replaced element, symmetric about its own
+     centre, blockified as a flex item and centred by the flex box already
+     declared above. No baseline, no metrics, nothing to inherit — the offset is
+     zero by construction rather than small by luck.
+
+     Verified as painted pixels at deviceScaleFactor 8, so a CSS pixel resolves
+     to an eighth of one, comparing the mark's stroke ink against the chip's own
+     painted box rather than against a layout rectangle:
+
+       text `×`, UA default   ink 6.13px   centre +0.063px
+       text `×`, Geist        ink 6.00px   centre +0.875px
+       drawn mark             ink 6.75px   centre  0.000px
+
+     and 0.000px at every tenth of a pixel through a full pixel of layout
+     nudging, which is the part that says "by construction". Chromium snaps an
+     element's raster to whole CSS pixels, so the mark's box can sit up to 0.5px
+     from where layout puts it — but the chip snaps with it, so what a reader
+     sees stays exactly centred. The old text glyph was subject to that same
+     snapping *plus* the metric offset above.
+
+     The label's own ink centre sits 0.31px above the chip's centre. That is the
+     word — cap heights and a descender — not this control, it was the same
+     before, and it is not something to chase.
+
+     --mark-size is read from the type ramp directly rather than as `1em`, so
+     the mark keeps its size even if a consumer restyles this button's text.
+     font-family and font-size stay for the hand-written `.ds-chip__remove` that
+     carries a text node of its own: nothing <Chip> renders needs them, and if
+     something ever does, it should be Geist at the ramp's step rather than the
+     UA default all over again. */
+  --mark-size: var(--fs-sm);
+  font-family: var(--font-sans);
   font-size: var(--fs-sm);
   line-height: 1;
+}
+
+/* The hit area, reaching --target-min without growing the painted circle.
+   Sized, not inset: `inset: -1px` would be the symmetric negative inset that
+   hit-area-no-overlap exists to warn about, and it would also grow with the
+   button — under data-platform="mobile" the remove button is floored to 44px
+   tall, and a symmetric inset would then hang 1px past a chip it has already
+   stretched. A fixed --target-min box centred on the control cannot: it is
+   24x24 in every condition, which is exactly the floor and nothing more.
+
+   Overlap headroom, measured on <Chip onRemove>Design</Chip>: the label's
+   centre is 34.07px from this control's centre and this overlay reaches 12px,
+   so it clears the label by 22px. Both halves — the 24x24 reach and the
+   absence of an overlap — are asserted against the shipped stylesheet in
+   packages/ai-patterns/src/testing/playwright.test.mjs.
+
+   Centred with negative margins rather than `transform: translate(-50%,-50%)`,
+   which is the usual way to write this and was how it was written first. A
+   transform on an element creates a containing block and hands the subtree to
+   the compositor, and Chromium then drops the × from subpixel (LCD) to
+   grayscale antialiasing — the overlay is transparent, but the glyph it sits
+   on top of is composited differently because of it. That is a real, visible
+   change in how the text is painted, and it is not noise: it moved 184 pixels
+   in four 8x8 clusters, one centred on each × in the chip row, with the
+   expected pixels carrying the colour fringes of subpixel AA (rgb(0,10,36),
+   rgb(116,75,36)) and the actual ones the neutral greys of grayscale
+   (rgb(0,1,1), rgb(67,68,70)).
+
+   The margins are `--target-min / -2`, so they track the token the box is
+   sized from and cannot drift from it. No transform, no stacking context, and
+   the glyph is painted exactly as it was before this overlay existed —
+   verified byte-for-byte against main's baseline rather than assumed. */
+.ds-chip__remove::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--target-min);
+  height: var(--target-min);
+  margin-top: calc(var(--target-min) / -2);
+  margin-left: calc(var(--target-min) / -2);
 }
 
 .ds-chip__remove:hover {

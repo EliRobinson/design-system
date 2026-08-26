@@ -21,9 +21,19 @@
 
 /* -- Sort control, shared by both table modes ----------------------------- */
 
+/* min-height is load-bearing, not decorative. This control is
+   data-touch-target="dense", so #116 measures it against --target-min. Its
+   painted height used to be entirely font-derived — 23.09px from the inner
+   <span>'s line box at --fs-sm — and it cleared 24 only because the probe at
+   centreY - 12 lands 0.45px above the border box and an inline box's hit
+   region bleeds that far. Stable across 40 subpixel/dpr permutations, and
+   still a rounding artefact: any change to the header line-height, or a
+   consumer whose fallback font resolves differently, would have turned it red
+   and looked like a contract regression. The floor now lives in CSS. */
 .ds-table__sort {
   display: inline-flex;
   align-items: center;
+  min-height: var(--target-min);
   gap: var(--space-1);
   background: none;
   border: none;

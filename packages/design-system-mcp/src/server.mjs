@@ -449,8 +449,9 @@ export function createServer() {
           '',
           ...entries.map(([id, entry]) => `- **${id}** — ${entry.summary} Check: ${entry.check}`),
           '',
-          `UI contracts: minimum touch target ${uiContracts.minimumTouchTarget} (scoped), ` +
-            `focus-visible required: ${uiContracts.focusVisibleRequired}, ` +
+          `UI contracts: minimum touch target ${uiContracts.minimumTouchTarget} (scoped). ` +
+            `Dense floor: ${uiContracts.minimumTouchTargetDense} ` +
+            `Focus-visible required: ${uiContracts.focusVisibleRequired}, ` +
             `contrast level ${uiContracts.contrastLevel}.`,
         ].join('\n'),
       );
