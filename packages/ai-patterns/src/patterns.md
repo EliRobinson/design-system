@@ -93,7 +93,7 @@ Length is the tell. If a piece of functional copy runs past two short sentences,
 it is explaining, reassuring, or selling — cut it back to the fact and the
 action.
 
-`@elirobinson/eslint-config` warns on the literal phrases above, scoped the same
+`@elirobinson/eslint-config` reports the literal phrases above, scoped the same
 way: copy props (`title`, `description`, `label`, `placeholder`, and friends)
 and the children of chrome components (`Alert`, `Toast`, `EmptyState`, …). It
 never reads ordinary prose. It ships as a **warning**, not an error, because
@@ -134,7 +134,12 @@ you can actually check, not a sentiment.
       states, helper text, toasts, labels, tooltips, confirmations, or
       validation — see **UI Copy Is Chrome** above. The product's editorial
       voice is content, not chrome, and is not covered by this.
-      `@elirobinson/eslint-config` warns on the literal phrases.
+      `@elirobinson/eslint-config` reports the literal phrases.
+- [ ] **The copy rule is an `error`, not a warning,** once the repo lints clean
+      under it: `designSystem({ copy: { severity: 'error' } })`. It ships at
+      `warn` so an upgrade cannot fail a build, and it stays there until you
+      raise it — at `warn` the rule observes that the copy is clean, at `error`
+      it keeps it that way.
 - [ ] **Any gap in the system is called out** explicitly, as a candidate for
       upstreaming rather than a local fork.
 

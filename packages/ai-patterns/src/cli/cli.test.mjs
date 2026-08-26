@@ -552,6 +552,26 @@ describe('ds init --agents', () => {
       expect(contents).toContain('pnpm ds');
     }
   });
+
+  it("names `warn` as the copy rule's shipped default, never as the level a repo runs at", async () => {
+    const root = consumer({});
+    await run(['init', '--agents'], at(root));
+
+    for (const path of [
+      '.claude/skills/design-system/SKILL.md',
+      '.cursor/rules/design-system.mdc',
+      '.github/copilot-instructions.md',
+      'AGENTS.md',
+    ]) {
+      const contents = readFileSync(join(root, path), 'utf8');
+      // A repo that has raised the severity cannot correct these files — the
+      // AGENTS.md block is rewritten wholesale on the next --force, and the
+      // other three are whole-file writes. So the claim has to be true at any
+      // configured level, and the raise has to be reachable from all four.
+      expect(contents).not.toMatch(/eslint-config` warns/);
+      expect(contents).toContain("designSystem({ copy: { severity: 'error' } })");
+    }
+  });
 });
 
 describe('AGENTS.md block merging', () => {

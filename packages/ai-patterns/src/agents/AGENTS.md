@@ -52,7 +52,7 @@ Functional copy — errors, empty states, helper and hint text, toasts, labels, 
 
 **This governs chrome, not this product's editorial voice.** Marketing prose, conversational surfaces, and written deliverables are content — their voice is a deliberate design decision and this rule says nothing about them. Chrome follows this rule even on a surface that mixes the two. Read as an instruction to flatten the product's voice, it does more harm than the padding it removes.
 
-If functional copy runs past two short sentences, it is explaining, reassuring, or selling — cut it back. `@elirobinson/eslint-config` warns on the literal phrases, over copy props and chrome components only; it never reads ordinary prose.
+If functional copy runs past two short sentences, it is explaining, reassuring, or selling — cut it back. `@elirobinson/eslint-config` reports the literal phrases, over copy props and chrome components only; it never reads ordinary prose. It ships at `warn` so an upgrade cannot fail a build — raise it to `error` once your copy is clean: `designSystem({ copy: { severity: 'error' } })`.
 
 Before calling UI work done, run `pnpm ds patterns` and work the **Definition of Done for UI work** checklist it prints.
 
