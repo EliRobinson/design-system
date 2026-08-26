@@ -83,7 +83,7 @@ Past two short sentences, functional copy is explaining, reassuring, or selling.
 
 **This governs chrome, not this product's editorial voice.** Marketing prose, conversational surfaces, and written deliverables are content — their voice is a deliberate design decision, and this rule says nothing about them. Where a surface mixes the two, the chrome follows this rule and the content is left alone. Do not read this as licence to flatten the product's voice; that does more harm than the padding it removes.
 
-`@elirobinson/eslint-config` warns on the literal phrases above. Its scope is that same line: copy props (`title`, `description`, `label`, `placeholder`, …) and the children of chrome components (`Alert`, `Toast`, `EmptyState`, …), never ordinary prose. It ships as a warning so an upgrade cannot break a build; raise it with `designSystem({ copy: { severity: 'error' } })` once existing copy is clean.
+`@elirobinson/eslint-config` reports the literal phrases above. Its scope is that same line: copy props (`title`, `description`, `label`, `placeholder`, …) and the children of chrome components (`Alert`, `Toast`, `EmptyState`, …), never ordinary prose. It ships as a warning so an upgrade cannot break a build; raise it with `designSystem({ copy: { severity: 'error' } })` once existing copy is clean.
 
 ## Step 6 — When something is missing
 

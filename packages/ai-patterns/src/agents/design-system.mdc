@@ -52,7 +52,7 @@ Functional copy — errors, empty states, helper and hint text, toasts, labels, 
 
 **Chrome only — not this product's editorial voice.** Marketing prose, conversational surfaces, and written deliverables are content, their voice is deliberate, and this rule does not touch them. Where a surface mixes the two, the chrome follows this rule and the content is left alone.
 
-`@elirobinson/eslint-config` warns on the literal phrases, scoped to copy props and chrome components; it never reads ordinary prose.
+`@elirobinson/eslint-config` reports the literal phrases, scoped to copy props and chrome components; it never reads ordinary prose. It ships at `warn` so an upgrade cannot fail a build — raise it to `error` once your copy is clean: `designSystem({ copy: { severity: 'error' } })`.
 
 ## Missing something?
 

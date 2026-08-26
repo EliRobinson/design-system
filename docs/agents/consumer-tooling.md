@@ -90,6 +90,11 @@ and radius aliases have no such carve-out; those the bridge really does replace.
 
 - **No inventories in prose.** If a doc, template, or comment lists components, tokens, or
   props, it is wrong as of the next release. Point at `ds`.
+- **No claim a consumer's own config can falsify.** A template that states which severity a
+  rule runs at, or which options a repo passed, is false for every repo configured
+  differently — and the consumer cannot correct it, because `ds init --agents --force`
+  rewrites the file. Name a shipped default as a default, and carry the knob that changes
+  it. `cli.test.mjs` holds the copy rule to this (#82).
 - **Layout-agnostic discovery.** The CLI and the manifest generator walk the tree; neither
   may assume a directory structure. Both have tests that build a flat layout and a tiered
   one and assert identical behaviour.
