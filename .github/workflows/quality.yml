@@ -141,6 +141,17 @@ jobs:
             #     one thing that ships unvalidated by the suite it scopes.
             #   .nvmrc, .npmrc         -> []  toolchain, not code. A Node bump
             #     affects every project and names none.
+            #   tests/visual/**, playwright.config.ts -> []  both, and
+            #     `scripts:test` reads them. visual-shots.test.mjs walks
+            #     tests/visual/__screenshots__ and asserts every baseline on
+            #     disk is a path listShots() computes, and vice versa — the
+            #     check that catches Playwright changing how it resolves
+            #     {testFilePath}, or a project added to playwright.config.ts
+            #     and not to SPEC_FILE_BY_PROJECT. A baseline-only pull request
+            #     is exactly the shape the recovery path opens, and without
+            #     this it selects nothing and the parity check never runs.
+            #     #93 forced the same two paths on the visual side; this is the
+            #     same hole on the build/test side, for a different consumer.
             #
             # Confirmed mapped, so deliberately NOT listed: package.json,
             # pnpm-lock.yaml, nx.json and tsconfig.base.json each already fan
@@ -148,7 +159,7 @@ jobs:
             #
             # Correctly empty, and left that way: README.md and docs/**. A
             # docs-only pull request SHOULD select nothing and pass green.
-            if printf '%s\n' "$CHANGED" | grep -qE '^(design-system-docs/|templates/|\.github/workflows/|\.nvmrc$|\.npmrc$)'; then
+            if printf '%s\n' "$CHANGED" | grep -qE '^(design-system-docs/|templates/|tests/visual/|\.github/workflows/|playwright\.config\.ts$|\.nvmrc$|\.npmrc$)'; then
               REASON="a path outside the project graph changed"
             else
               FULL=false
