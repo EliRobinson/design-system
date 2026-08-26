@@ -27,8 +27,12 @@ function kitFiles(dir = kitsDir) {
 }
 
 /* Matches oklch(), rgb()/rgba(), hsl()/hsla() and #rgb/#rrggbb. Deliberately not
-   matching `currentColor`, `transparent`, `inherit` or `none`, which carry no brand. */
-const COLOUR_LITERAL = /(oklch\(|rgba?\(|hsla?\(|#[0-9a-fA-F]{3,8}\b)/g;
+   matching `currentColor`, `transparent`, `inherit` or `none`, which carry no brand.
+   The #-hex branch requires a quote immediately before the `#` (every real colour
+   literal in these kits is a JS string prop like `'#fff'` or `"#0a0a0a"`) so a bare
+   `#123`-shaped prose reference — e.g. "see issue #119" in a comment — does not read
+   as a colour: nothing about that hash is a quoted value. */
+const COLOUR_LITERAL = /(oklch\(|rgba?\(|hsla?\(|(?<=['"`])#[0-9a-fA-F]{3,8}\b)/g;
 
 describe('the shipped UI kits paint no colour literals', () => {
   const files = kitFiles();
