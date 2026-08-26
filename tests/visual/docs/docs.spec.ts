@@ -31,10 +31,31 @@ import {
    design-system class every consumer has; `pre.shiki` is this site's
    syntax highlighter and has no business in a published default.
 
-   What this gives up: the code block's own border, radius and background
-   stop being compared. The syntax colours inside it were never a design
-   system concern, and the block's styling is three declarations in
-   site.css rather than a component. */
+   What this gives up, stated plainly because #143 was closed once without
+   stating it: no shot in this repo has ever contained a rendered code block,
+   in either theme, and none does now. The block's border, radius, background
+   and every syntax colour inside it are painted over before comparison. The
+   visual suite cannot tell a readable code block from an unreadable one.
+
+   That is a decision, not an oversight, and #143 is where it was made. The
+   obvious alternative — narrow the mask and shoot one unmasked specimen —
+   loses to the paragraph at the top of this comment: the flake is a property
+   of the corner arc, so a specimen shot reintroduces it on the specimen. It
+   would trade a silent gap for a noisy one, and #101 is this repo's own
+   record of what a reliably-red suite does to the information a red carries.
+   `regionBox` also wants a selector matching exactly one element, and the
+   pages with code blocks have many, so any "Nth block" selector would drift
+   under an edit above it — the same boundary shift #157 hit when three
+   screenfuls moved from masked to compared in one commit.
+
+   So code rendering is covered by apps/docs/src/lib/shiki-theme.test.ts and
+   by nothing here. That file measures both themes against their own
+   --bg-muted, pins each colour to a ramp step, asserts the markup carries
+   both themes and commits to neither, and checks the site.css rules that
+   choose between them — colour, weight and style. It is a good guard and it
+   is not a visual one: if a token moves and the rendered result regresses in
+   a way the scope table does not predict, no shot will see it. Do not assume
+   this sweep has your back on code blocks. */
 const MASK = [...DEFAULT_MASK, 'pre.shiki'];
 
 /* The docs site is what actually ships to people, so this covers what the

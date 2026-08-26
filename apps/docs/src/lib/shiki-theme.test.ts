@@ -157,6 +157,60 @@ describe('the stylesheet that chooses between the two themes', () => {
     expect(block).toContain('color: var(--shiki-dark)');
   });
 
+  /* `defaultColor: false` demotes weight and style to custom properties exactly
+     as it demotes colour, so these two need selecting too — and the assertions
+     above cannot tell that they were not. Deleting the four declarations below
+     from site.css leaves every colour correct, every ratio passing, and every
+     other test in this file green, while bold keywords render regular and
+     italic comments render upright.
+
+     That is not cosmetic here. `comment`, `entity.other.attribute-name` and
+     `punctuation` are deliberately the same hex — `--ink-600` in light,
+     `--ink-400` in dark — because the ramp step that reads as "de-emphasized"
+     is the same one for all three. The italic is the entire distinction
+     between a comment and the punctuation beside it, which is why the scope
+     table carries `fontStyle` at all and why losing it silently is worse than
+     losing a colour: a wrong colour looks wrong, and a comment that has become
+     punctuation just looks like code.
+
+     The colour half of this pair was the gap #164 named and #158 closed; the
+     weight and style half was left open, and this is it. */
+  it.each([
+    ['light', '.code-block__body .shiki span', 'light'],
+    ['dark', "[data-theme='dark'] .code-block__body .shiki span", 'dark'],
+  ])(
+    'carries the %s column of weight and style, not only its colour',
+    (_name, selector, column) => {
+      const block = blockFor(selector);
+
+      expect(block).not.toBeNull();
+      expect(block, 'bold keywords stop rendering bold').toContain(
+        `font-weight: var(--shiki-${column}-font-weight`,
+      );
+      expect(block, 'italic comments become indistinguishable from punctuation').toContain(
+        `font-style: var(--shiki-${column}-font-style`,
+      );
+    },
+  );
+
+  /* The fact the rule above protects, pinned to the scope table itself rather
+     than restated in prose. If a future edit gives comments their own hex, the
+     italic stops being load-bearing and this test should be deleted along with
+     the reasoning above — a failure here is a prompt to re-read that comment,
+     not necessarily a bug. */
+  it('leaves italic as the only thing separating a comment from punctuation', () => {
+    const ruleFor = (scope: string) => SCOPE_RULES.find((rule) => rule.scope.includes(scope))!;
+    const comment = ruleFor('comment');
+    const punctuation = ruleFor('punctuation');
+
+    for (const variant of VARIANTS) {
+      expect(comment[variant]).toBe(punctuation[variant]);
+    }
+
+    expect(comment.fontStyle).toBe('italic');
+    expect(punctuation.fontStyle).toBeUndefined();
+  });
+
   it('puts the dark rule after the light one, so it wins', () => {
     /* Same specificity would be a coin toss decided by order; the dark
        selector carries an extra attribute and outranks it either way. Both
