@@ -577,6 +577,29 @@ export function scopeFor({ changes, affectedProjects, shots, affectedBy }) {
       if (status === 'D') {
         return;
       }
+      /* The same class-wide relaxation addComponent already carries, on the
+         other path that reaches a `/components/*` route. When the shot list
+         contains no `/components/*` route at all, those pages are not being
+         screenshotted by any enabled project — today because `docs-wide` is
+         commented out in playwright.config.ts (see
+         docs/agents/visual-regression.md, "Why docs-wide is disabled") — so a
+         missing route is the normal state, not drift.
+
+         addComponent got this relaxation in d9391af and this function did not,
+         which left a hole rather than a rule: editing a component's SOURCE was
+         fine while editing its DOCS PAGE hard-failed the whole `scoped` job at
+         this throw. No pull request had modified a component page since
+         `docs-wide` was switched off, so nothing had walked into it yet.
+
+         Scoped to the whole class and derived from the shot list, not a flag,
+         exactly as it is there: if `docs-wide` comes back, `/components/*`
+         routes reappear and this re-arms by itself. And while it is off, one
+         page whose slug drifted still cannot hide — there is nothing for it to
+         hide from, since no component route is shot. This never relaxes for an
+         individual miss, and never for a route outside `/components/`. */
+      if (route.startsWith('/components/') && !routes.some((r) => r.startsWith('/components/'))) {
+        return;
+      }
       throw new Error(
         `visual-scope: '${source}' maps to route '${route}', which the suite does not enumerate. ` +
           'Either the page is excluded from the sweep or the path convention has changed.',

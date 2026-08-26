@@ -782,6 +782,65 @@ describe('an ADDED component with no story yet is exempt on the storybook side',
   });
 });
 
+describe('a component docs page while `docs-wide` is disabled', () => {
+  /* addComponent got this relaxation in d9391af and addRoute did not, which
+     left a hole rather than a rule: with `docs-wide` off, editing a
+     component's SOURCE was fine and editing its DOCS PAGE hard-failed the
+     whole `scoped` job on "maps to route … which the suite does not
+     enumerate". No pull request modified a component page between d9391af and
+     the one that added these tests, so nothing had walked into it. */
+  const noComponentRoutes = shots.filter((s) => !s.route?.startsWith('/components/'));
+
+  it('does not throw when NO /components/* route is enumerated at all', () => {
+    expect(() =>
+      scopeFor({
+        changes: [{ status: 'M', path: 'apps/docs/src/app/(docs)/components/badge/page.mdx' }],
+        affectedProjects: BOTH,
+        shots: noComponentRoutes,
+      }),
+    ).not.toThrow();
+  });
+
+  it('re-arms by itself the moment any /components/* route is back in the shot list', () => {
+    /* Derived from the shot list, not from a flag, so re-enabling `docs-wide`
+       restores the guard with no code change. `badge` is missing here while
+       `button` is present, which is exactly the individual miss that must
+       still fail. */
+    const buttonOnly = shots.filter((s) => s.route !== '/components/badge');
+    expect(() =>
+      scopeFor({
+        changes: [{ status: 'M', path: 'apps/docs/src/app/(docs)/components/badge/page.mdx' }],
+        affectedProjects: BOTH,
+        shots: buttonOnly,
+      }),
+    ).toThrow(/components\/badge/);
+  });
+
+  it('does not relax a route outside /components/, even with every component route absent', () => {
+    /* The relaxation is an argument about one class of page — the class no
+       enabled project screenshots. Any other page that maps to no route is
+       still drift and must still be loud. (A page under a DERIVED section
+       would not reach addRoute at all: it fans the docs side out first.) */
+    expect(() =>
+      scopeFor({
+        changes: [{ status: 'M', path: 'apps/docs/src/app/(docs)/nowhere/page.mdx' }],
+        affectedProjects: BOTH,
+        shots: noComponentRoutes,
+      }),
+    ).toThrow(/nowhere/);
+  });
+
+  it('relaxes a demo file the same way — it reaches addRoute by the same /components/ path', () => {
+    expect(() =>
+      scopeFor({
+        changes: [{ status: 'M', path: 'apps/docs/src/components/demos/badge/Basic.tsx' }],
+        affectedProjects: BOTH,
+        shots: noComponentRoutes,
+      }),
+    ).not.toThrow();
+  });
+});
+
 describe('a Next.js dynamic route segment', () => {
   it('does not throw when its subtree has no enumerated route at all', () => {
     /* apps/docs/src/app/(docs)/brand/ui-kits/[kit]/page.tsx maps to
