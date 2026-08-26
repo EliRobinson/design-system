@@ -84,6 +84,14 @@ jobs:
   # falls back to reading the pinned version out of pnpm-lock.yaml, so the tag
   # is still derived rather than written down here, and cannot drift from the
   # Playwright that produced the baselines.
+  #
+  # What it prints is tag@sha256:… — the tag says which Playwright, the digest
+  # is what actually gets pulled. MCR republishes a tag like `v1.62.1-noble` in
+  # place when its base is rebuilt, and a suite premised on a pinned renderer
+  # must not follow that silently. The digest lives in
+  # scripts/visual-image.lock.json; if it no longer matches the derived tag this
+  # step fails here, before any job has started a container on a ref nobody
+  # pinned.
   image:
     runs-on: ubuntu-latest
     outputs:

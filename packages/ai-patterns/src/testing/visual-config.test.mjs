@@ -75,15 +75,34 @@ describe('inVisualContainer', () => {
 });
 
 describe('defineVisualConfig', () => {
-  it('compares screenshots exactly, in all three senses Playwright offers', () => {
+  it('compares every pixel exactly', () => {
     const { toHaveScreenshot } = defineVisualConfig({}, OUTSIDE).expect;
 
     /* threshold is the one that is easy to get wrong: Playwright defaults it to
        0.2, under which a one-step shift inside a colour ramp compares equal. */
     expect(toHaveScreenshot.threshold).toBe(0);
-    expect(toHaveScreenshot.maxDiffPixels).toBe(0);
-    expect(toHaveScreenshot.maxDiffPixelRatio).toBe(0);
     expect(toHaveScreenshot.animations).toBe('disabled');
+  });
+
+  it('budgets a handful of pixels for rasteriser nondeterminism, and no more', () => {
+    const { toHaveScreenshot } = defineVisualConfig({}, OUTSIDE).expect;
+
+    /* Chosen against the measured event in issue #125 — 42 differing pixels, 3
+       of them counted, on anti-aliased avatar arcs from an identical container
+       digest. A real regression (token ramp, spacing, font swap, layout) moves
+       thousands and still fails here. Asserted as an exact number so that
+       raising it is a deliberate edit to a test, not a quiet edit to a config. */
+    expect(toHaveScreenshot.maxDiffPixels).toBe(8);
+  });
+
+  it('leaves maxDiffPixelRatio unset, because Playwright takes the stricter of the two', () => {
+    const { toHaveScreenshot } = defineVisualConfig({}, OUTSIDE).expect;
+
+    /* Not cosmetic. Playwright resolves the pair with Math.min, so a ratio of 0
+       over a 1280x800 shot is a 0-pixel budget and would cancel the line above
+       outright. This is the regression that would make the budget a no-op while
+       still reading, at a glance, exactly as intended. */
+    expect(toHaveScreenshot.maxDiffPixelRatio).toBeUndefined();
   });
 
   it('pins everything a render can otherwise vary by', () => {
@@ -157,6 +176,25 @@ describe('defineVisualConfig', () => {
 
     expect(config.expect.toHaveScreenshot.threshold).toBe(0.2);
     expect(config.expect.toHaveScreenshot.animations).toBe('disabled');
+  });
+
+  /* The pixel budget is a default, exactly as the zero it replaced was: a
+     consumer who wants none of it says so and gets none of it. Worth asserting
+     both directions, because a merge written with `??` instead of a spread
+     would silently ignore the stricter of the two. */
+  it('lets a caller tighten or loosen the pixel budget', () => {
+    const strict = defineVisualConfig(
+      { expect: { toHaveScreenshot: { maxDiffPixels: 0 } } },
+      OUTSIDE,
+    );
+    const loose = defineVisualConfig(
+      { expect: { toHaveScreenshot: { maxDiffPixels: 40 } } },
+      OUTSIDE,
+    );
+
+    expect(strict.expect.toHaveScreenshot.maxDiffPixels).toBe(0);
+    expect(loose.expect.toHaveScreenshot.maxDiffPixels).toBe(40);
+    expect(strict.expect.toHaveScreenshot.threshold).toBe(0);
   });
 
   it('reports the CI reporter pair only under CI', () => {

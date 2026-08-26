@@ -101,13 +101,25 @@ test('control: the same capture without the option is not reproducible', async (
    the real exported config rather than restating its values — a preset that
    quietly dropped `threshold: 0` would otherwise be invisible until a colour
    regression sailed through. */
-test('the shipped config compares screenshots exactly', () => {
+test('the shipped config compares every pixel exactly', () => {
   const screenshot = playwrightConfig.expect?.toHaveScreenshot;
 
   expect(screenshot?.threshold).toBe(0);
-  expect(screenshot?.maxDiffPixels).toBe(0);
-  expect(screenshot?.maxDiffPixelRatio).toBe(0);
   expect(screenshot?.animations).toBe('disabled');
+});
+
+/* Zero colour tolerance, a small count budget — two different levers, and the
+   split is the whole point of issue #125. Pinned to exact values here because
+   the interesting failure is a silent drift upward: a preset that shipped 64
+   would still read as "a small budget" in a diff and would hide most of what
+   this suite exists to catch. `maxDiffPixelRatio` must stay unset, since
+   Playwright resolves the pair with Math.min and a ratio of 0 would cancel the
+   budget back to 0 without changing a line anyone would look at. */
+test('the shipped config budgets a handful of pixels for rasteriser noise', () => {
+  const screenshot = playwrightConfig.expect?.toHaveScreenshot;
+
+  expect(screenshot?.maxDiffPixels).toBe(8);
+  expect(screenshot?.maxDiffPixelRatio).toBeUndefined();
 });
 
 test('the shipped config pins everything a render can vary by', () => {
