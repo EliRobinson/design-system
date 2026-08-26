@@ -16,12 +16,20 @@ function heading(Tag: 'h1' | 'h2' | 'h3' | 'h4') {
   };
 }
 
-function Anchor({ href = '', ...props }: ComponentPropsWithoutRef<'a'>) {
+export function Anchor({ href = '', ...props }: ComponentPropsWithoutRef<'a'>) {
   if (href.startsWith('/')) {
     return <Link href={href} {...props} />;
   }
   const external = href.startsWith('http');
   return <a href={href} rel={external ? 'noreferrer' : undefined} {...props} />;
+}
+
+export function TableScroll(props: ComponentPropsWithoutRef<'table'>) {
+  return (
+    <div className="table-scroll">
+      <table {...props} />
+    </div>
+  );
 }
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
@@ -32,11 +40,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     h4: heading('h4'),
     pre: CodeBlock,
     a: Anchor,
-    table: (props) => (
-      <div className="table-scroll">
-        <table {...props} />
-      </div>
-    ),
+    table: TableScroll,
     ...components,
   };
 }

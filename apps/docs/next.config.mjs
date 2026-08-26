@@ -1,9 +1,19 @@
 import createMDX from '@next/mdx';
 
-/* Turbopack requires MDX options to be serializable, so no function-valued
-   remark/rehype plugins here — syntax highlighting happens in the `pre`
-   component mapping (see mdx-components.tsx) instead. */
-const withMDX = createMDX({});
+/* Turbopack requires MDX options to be serializable, so plugins are named by
+   string rather than imported — the loader resolves them in its own worker.
+   That still rules out function-valued plugins, which is why syntax
+   highlighting happens in the `pre` component mapping (see mdx-components.tsx)
+   rather than through rehype.
+
+   remark-gfm is here because CommonMark has no tables: the endpoint table on
+   /build-with-ai was rendering as a paragraph of literal pipes and dashes
+   (#129), even though mdx-components.tsx has mapped `table` to the scroll
+   wrapper all along. It takes no options, so the serializable form costs
+   nothing. Nothing else in the MDX pages leans on GFM today — no task lists,
+   no strikethrough, and the only bare URLs are inside code — so turning it on
+   changes exactly the one block that was broken. */
+const withMDX = createMDX({ options: { remarkPlugins: [['remark-gfm', {}]] } });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
