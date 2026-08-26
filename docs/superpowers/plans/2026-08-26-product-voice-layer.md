@@ -1880,17 +1880,35 @@ const BRAND_TERMS = [
   'Builder. Consultant. Founder.',
 ];
 
-/** Permitted paths, read from the doc's table so the doc and the test cannot disagree. */
+/* Permitted paths, read from the doc's table so the doc and the test cannot disagree.
+ *
+ * Sliced by index rather than matched with one regex on purpose: `## Permitted files` is
+ * the document's last heading, and a `(?=\n## |\n*$)` terminator under the `m` flag ends
+ * the section at the first newline — `$` is end-of-LINE there, so the capture comes back
+ * empty and every file silently becomes permitted. A guard that permits everything is
+ * worse than no guard, so the section is bounded by the next heading or the end of file. */
 function permittedFiles() {
   const doc = readFileSync(join(repo, 'docs/agents/brand-boundary.md'), 'utf8');
-  const section = doc.match(/^## Permitted files\s*\n([\s\S]*?)(?=\n## |\n*$)/m);
-  if (!section) throw new Error('brand-boundary.md has no "## Permitted files" section');
+  const start = doc.indexOf('## Permitted files');
+  if (start === -1) throw new Error('brand-boundary.md has no "## Permitted files" section');
 
-  return section[1]
+  const rest = doc.slice(start + 1);
+  const next = rest.indexOf('\n## ');
+  const body = next === -1 ? rest : rest.slice(0, next);
+
+  const paths = body
     .split('\n')
     .map((line) => line.match(/^\|\s*`([^`]+)`\s*\|/))
     .filter(Boolean)
     .map((match) => match[1]);
+
+  /* An empty table means the parser broke, not that nothing is permitted. Fail loudly:
+     the silent-empty case is the one that turns this whole suite green and meaningless. */
+  if (paths.length === 0) {
+    throw new Error('brand-boundary.md\'s "## Permitted files" table parsed to zero rows');
+  }
+
+  return paths;
 }
 
 function filesUnder(dir) {
