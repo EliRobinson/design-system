@@ -400,6 +400,154 @@ describeBrowser('browser contract checks', () => {
         expect(await checkTouchTargets(page)).toEqual([]);
       });
     });
+
+    /* Issue #79. `document.elementFromPoint` only answers for the visible
+       viewport, so every probe on a control below the fold came back `null`,
+       `reach` returned 0 in all four directions, and `0 + 0 + 1` reported a
+       literal "1x1" — the same "1x1" for a compliant control and for a
+       genuinely undersized one. Any page taller than the viewport failed, and
+       nothing below the fold was ever actually measured. */
+    describe('controls below the fold', () => {
+      /* Enough filler that the control after it cannot be on screen at any
+         plausible viewport, so these do not quietly stop testing the fold. */
+      const FILLER = '<div style="min-height:200vh"></div>';
+
+      const isBelowTheFold = (selector) =>
+        page.evaluate(
+          (target) =>
+            document.querySelector(target).getBoundingClientRect().top >=
+            document.documentElement.clientHeight,
+          selector,
+        );
+
+      it('passes a correctly sized control that is below the fold', async () => {
+        await render(`${FILLER}<button id="t" style="width:112px;height:44px">Open phase</button>`);
+
+        expect(await isBelowTheFold('#t')).toBe(true);
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      /* The half that matters. Scrolling into view must not turn into a
+         blanket pass: an undersized control below the fold is exactly the
+         thing the old implementation could not distinguish from a compliant
+         one, and it still has to be reported. */
+      it('still reports an undersized control that is below the fold', async () => {
+        await render(`${FILLER}<button id="t" style="width:24px;height:24px">x</button>`);
+
+        expect(await isBelowTheFold('#t')).toBe(true);
+
+        const violations = await checkTouchTargets(page);
+
+        expect(violations).toHaveLength(1);
+        expect(violations[0].element).toBe('button#t "x"');
+        expect(violations[0].effectiveWidth).toBeLessThan(44);
+        expect(violations[0].effectiveHeight).toBeLessThan(44);
+      });
+
+      /* The padded-glyph case from above, moved below the fold: the fix has to
+         restore the real *effective* measurement down there, not just the
+         painted box. */
+      it('passes a padded glyph below the fold, measuring its hit area not its box', async () => {
+        await render(
+          `${FILLER}<button id="t" style="padding:12px 18px;border:0;background:none;` +
+            `font-size:16px;line-height:20px">x</button>`,
+        );
+
+        expect(await isBelowTheFold('#t')).toBe(true);
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      /* A surface larger than the window cannot be walked to its edge — the
+         probe leaves the viewport before it runs out of control. It also
+         plainly clears 44px, so it passes on its painted geometry rather than
+         failing for being too big to probe. */
+      it('passes a control taller than the viewport', async () => {
+        await render(
+          `${FILLER}<a id="t" href="#" style="display:block;width:44px;height:200vh"></a>`,
+        );
+
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      /* The check runs inside somebody else's test, in front of somebody
+         else's screenshot. Where it leaves the page is part of its contract. */
+      it('puts the page back where it found it', async () => {
+        await render(`${FILLER}<button id="t" style="width:112px;height:44px">Open phase</button>`);
+
+        await page.evaluate(() => window.scrollTo(0, 120));
+        await checkTouchTargets(page);
+
+        expect(await page.evaluate(() => window.scrollY)).toBe(120);
+      });
+
+      it('leaves a scrollable container where it found it', async () => {
+        await render(`<div id="pane" style="height:120px;overflow:auto">
+            <div style="height:1200px"></div>
+            <button style="width:112px;height:44px">Deep</button>
+          </div>`);
+
+        await page.evaluate(() => {
+          document.getElementById('pane').scrollTop = 40;
+        });
+        await checkTouchTargets(page);
+
+        expect(await page.evaluate(() => document.getElementById('pane').scrollTop)).toBe(40);
+      });
+    });
+
+    /* Belt and braces. A `null` from `elementFromPoint` means "the browser
+       routed nothing here", which is not a size — turning it into one is the
+       whole of #79. Out-of-viewport coordinates are now refused before the
+       call, and for a point inside the viewport Chromium answers with the root
+       element rather than `null` (even under `pointer-events: none`, which was
+       the obvious candidate — it returns <html>). So this guard covers a case
+       the browser is not supposed to produce, and the only way to reach it is
+       to make the browser produce it. Stubbing here asserts the guard, not the
+       browser: the thing being pinned is that an unobtainable measurement is
+       reported as unobtainable and never as a size. */
+    describe('controls the check cannot measure', () => {
+      it('reports a distinct diagnostic rather than a size violation', async () => {
+        await render('<button style="width:112px;height:44px">Unreachable</button>');
+
+        let violations;
+        try {
+          /* An own property shadowing Document.prototype's method, so the
+             `delete` below puts the real one back. `setContent` reuses the
+             same document object, so a stub left behind would follow this
+             page into every later test in the file. */
+          await page.evaluate(() => {
+            document.elementFromPoint = () => null;
+          });
+          violations = await checkTouchTargets(page);
+        } finally {
+          await page.evaluate(() => {
+            delete document.elementFromPoint;
+          });
+        }
+
+        expect(violations).toHaveLength(1);
+        expect(violations[0].unmeasurable).toBe(true);
+        expect(violations[0].message).toContain('touch-target-unmeasurable');
+        expect(violations[0].message).toContain('not a size violation');
+        expect(violations[0].effectiveWidth).toBeUndefined();
+        expect(violations[0].effectiveHeight).toBeUndefined();
+        /* The painted box was obtained, so it is reported; the hit area was
+           not, so it is not. */
+        expect(violations[0].width).toBe(112);
+        expect(violations[0].height).toBe(44);
+      });
+
+      /* A control deliberately parked out of the document's view — the
+         visually-hidden skip link every site ships — is not a gap in the
+         check. It is unreachable by design and stays silent. */
+      it('says nothing about a control parked off-canvas on purpose', async () => {
+        await render(
+          '<a href="#main" style="position:absolute;top:-64px;left:0;width:120px;height:24px">Skip to content</a>',
+        );
+
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+    });
   });
 
   describe('checkHitAreaOverlap', () => {

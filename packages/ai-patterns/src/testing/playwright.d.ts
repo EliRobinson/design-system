@@ -32,6 +32,18 @@ export interface TouchTargetViolation extends Violation {
   labelHeight?: number;
 }
 
+/**
+ * Not a size violation: a control the check could not measure at all. The
+ * browser routed nothing to its centre even though its box is on screen, so no
+ * effective hit area was obtained and none is reported. `width`/`height` are
+ * the painted box, which was obtained.
+ */
+export interface UnmeasurableTouchTarget extends Violation {
+  width: number;
+  height: number;
+  unmeasurable: true;
+}
+
 export interface HitAreaViolation extends Violation {
   covers: string;
 }
@@ -75,7 +87,7 @@ export declare const DENSE_AFFORDANCE_SELECTOR: string;
 export declare function checkTouchTargets(
   page: PageLike,
   options?: TouchTargetOptions,
-): Promise<TouchTargetViolation[]>;
+): Promise<Array<TouchTargetViolation | UnmeasurableTouchTarget>>;
 
 export declare function checkHitAreaOverlap(
   page: PageLike,

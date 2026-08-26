@@ -122,12 +122,17 @@ function assertPage(page) {
  * 20px-tall sliver of text — which is what makes this a measurement fix rather
  * than an exemption.
  *
+ * Hit testing only works inside the visible viewport, so each surface is
+ * scrolled into view before it is probed, and the page is put back where it was
+ * afterwards. Without that, nothing below the fold was ever measured at all —
+ * see the note on `measure` below.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {object} [options]
  * @param {string} [options.selector] which controls to measure
  * @param {string} [options.exempt] controls held to the dense scale instead
  * @param {number} [options.minimum] px, defaults to the contract's 44
- * @returns {Promise<Array<{ element: string, width: number, height: number, effectiveWidth: number, effectiveHeight: number, labelWidth?: number, labelHeight?: number, message: string }>>}
+ * @returns {Promise<Array<{ element: string, width: number, height: number, effectiveWidth?: number, effectiveHeight?: number, labelWidth?: number, labelHeight?: number, unmeasurable?: true, message: string }>>}
  */
 export async function checkTouchTargets(page, options = {}) {
   assertPage(page);
@@ -166,39 +171,107 @@ export async function checkTouchTargets(page, options = {}) {
       // answering the hit test means the point missed — and since <body>
       // contains every control, treating ancestors as hits would make every
       // target look infinitely large.
+      //
+      // `document.elementFromPoint` only answers for the *visible viewport*, so
+      // every probe has to happen somewhere the browser can currently see, and
+      // until this scrolled, none of them did. That is issue #79, and it had
+      // two faces. Before the centre guard below existed, a control past the
+      // fold got `null` from the very first probe, `reach` returned 0 in all
+      // four directions, and `0 + 0 + 1` reported a literal "1x1" for a 112x44
+      // button nobody had measured. Once the guard landed, the same `null` at
+      // the centre made it *skip* instead — quieter, and worse: every primary
+      // control below the fold passed without being checked, so a genuinely
+      // undersized one was indistinguishable from a compliant one. Either way
+      // the check only ever saw the first screenful of a page.
       const measure = (surface) => {
-        const rect = surface.getBoundingClientRect();
-        const centreX = rect.left + rect.width / 2;
-        const centreY = rect.top + rect.height / 2;
+        // Scrolling is synchronous with respect to layout, so the box read back
+        // immediately afterwards is already in the coordinate space the probes
+        // below will use. `instant` because a page with `scroll-behavior:
+        // smooth` would otherwise still be animating when the rect is read.
+        surface.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
 
-        const hits = (x, y) => {
+        const rect = surface.getBoundingClientRect();
+        const viewWidth = document.documentElement.clientWidth;
+        const viewHeight = document.documentElement.clientHeight;
+
+        // Parked off-canvas on purpose — a skip link at `top: -40px`, a closed
+        // drawer. Scrolling cannot bring back what is positioned out of view,
+        // and a surface no probe can reach is not a sizing question.
+        if (rect.right <= 0 || rect.bottom <= 0 || rect.left >= viewWidth || rect.top >= viewHeight)
+          return { measured: false, offCanvas: true, rect };
+
+        // Probe from the centre of whatever part of the box is on screen. For
+        // anything that fits the window — which is every control this contract
+        // is about — that is the box's own centre. For something larger than
+        // the window, centring is impossible and its true centre would sit
+        // outside the viewport, which is the same `null` that started this bug.
+        const midpoint = (start, end, extent) => (Math.max(start, 0) + Math.min(end, extent)) / 2;
+        const centreX = midpoint(rect.left, rect.right, viewWidth);
+        const centreY = midpoint(rect.top, rect.bottom, viewHeight);
+
+        // Three answers, not two. `null` from `elementFromPoint` means the
+        // browser routed *nothing* to the point — outside the viewport, or
+        // nothing hit-testable painted there — which is not the same as "some
+        // other element is there". Folding the two together is how a probe that
+        // failed turns into a size that was never obtained.
+        const HIT = 'hit';
+        const MISS = 'miss';
+        const BLIND = 'blind';
+
+        const probe = (x, y) => {
+          if (x < 0 || y < 0 || x >= viewWidth || y >= viewHeight) return BLIND;
           const hit = document.elementFromPoint(x, y);
-          return hit === surface || surface.contains(hit);
+          if (hit === null) return BLIND;
+          return hit === surface || surface.contains(hit) ? HIT : MISS;
         };
 
-        // A surface nothing routes to is not a sizing question, and the walk
-        // below cannot tell the two apart: it starts at ±1px, so a control
-        // covered by something else reaches 0 in all four directions and comes
+        // A surface something *else* answers for is not a sizing question
+        // either, and the walk below cannot tell the two apart: it starts at
+        // ±1px, so a covered control reaches 0 in all four directions and comes
         // back as "1x1". With a modal <dialog> open that is every control
         // behind it — Chromium attributes hits over the ::backdrop to the
         // dialog — so an untouched 186x44 button reported ~1x1 and advised
-        // padding, which would have done nothing. `null` means "unmeasurable",
-        // which the caller skips rather than reports.
-        if (!hits(centreX, centreY)) return null;
+        // padding, which would have done nothing.
+        const centre = probe(centreX, centreY);
+        if (centre === MISS) return { measured: false, occluded: true, rect };
+        if (centre === BLIND) return { measured: false, blind: true, rect };
 
         const reach = (dx, dy) => {
           let distance = 0;
           for (let step = 1; step <= minimum; step += 1) {
-            if (!hits(centreX + dx * step, centreY + dy * step)) break;
+            const answer = probe(centreX + dx * step, centreY + dy * step);
+            if (answer === BLIND) return { distance, blind: true };
+            if (answer === MISS) break;
             distance = step;
           }
-          return distance;
+          return { distance, blind: false };
         };
 
-        return { width: reach(-1, 0) + reach(1, 0) + 1, height: reach(0, -1) + reach(0, 1) + 1 };
+        const left = reach(-1, 0);
+        const right = reach(1, 0);
+        const up = reach(0, -1);
+        const down = reach(0, 1);
+
+        // A walk that ran out of window did not find the edge of the hit area,
+        // so its total is a floor, not a measurement. The painted box *is* a
+        // number we obtained, so take whichever is larger: a surface bigger
+        // than the viewport passes on its own geometry rather than failing for
+        // being too big to probe, while an undersized control pinned against a
+        // window edge still reports its real, too-small box.
+        const span = (a, b, painted) => {
+          const walked = a.distance + b.distance + 1;
+          return a.blind || b.blind ? Math.max(walked, Math.round(painted)) : walked;
+        };
+
+        return {
+          measured: true,
+          width: span(left, right, rect.width),
+          height: span(up, down, rect.height),
+          rect,
+        };
       };
 
-      const meets = (area) => area.width >= minimum && area.height >= minimum;
+      const meets = (area) => area.measured && area.width >= minimum && area.height >= minimum;
 
       // `.labels` covers both `<label for>` and a wrapping `<label>`, and is
       // only defined on the elements that can actually be labelled — an <a> or
@@ -206,49 +279,95 @@ export async function checkTouchTargets(page, options = {}) {
       // forwards a click to them.
       const labelsOf = (element) => (element.labels ? Array.from(element.labels) : []);
 
+      // Measuring now means scrolling, and a check must not leave the page
+      // somewhere else: a screenshot or an assertion later in the same test
+      // would see the scroll position this function happened to stop at.
+      // `scrollIntoView` walks the whole ancestor chain, so every scrollable
+      // container is snapshotted, not just the window.
+      const scrollState = [...document.querySelectorAll('*')]
+        .filter(
+          (node) => node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth,
+        )
+        .map((node) => [node, node.scrollLeft, node.scrollTop]);
+      const pageScrollX = window.scrollX;
+      const pageScrollY = window.scrollY;
+
       const violations = [];
 
-      for (const element of document.querySelectorAll(selector)) {
-        if (exempt && element.closest(exempt)) continue;
-        if (element.disabled) continue;
-        if (!isRendered(element)) continue;
+      try {
+        for (const element of document.querySelectorAll(selector)) {
+          if (exempt && element.closest(exempt)) continue;
+          if (element.disabled) continue;
+          if (!isRendered(element)) continue;
 
-        const own = measure(element);
-        if (!own || meets(own)) continue;
+          const own = measure(element);
 
-        // Too small on its own. If a label that activates it is big enough by
-        // itself, that label is the surface being aimed at.
-        const labelAreas = labelsOf(element).filter(isRendered).map(measure).filter(Boolean);
-        if (labelAreas.some(meets)) continue;
+          if (!own.measured) {
+            // Occluded and off-canvas surfaces are skipped, as they always
+            // were. `blind` is the one that must never pass silently: the
+            // browser answered `null` for a box that *is* on screen, so the
+            // check obtained no number at all. Saying so is the honest report;
+            // inventing a size from a failed probe is what #79 was.
+            if (own.blind) {
+              violations.push({
+                element: describe(element),
+                width: Math.round(own.rect.width),
+                height: Math.round(own.rect.height),
+                unmeasurable: true,
+                message:
+                  `touch-target-unmeasurable: the browser routed no element to this control's` +
+                  ` centre, so its hit area could not be measured and it has not been checked` +
+                  ` against ${minimum}x${minimum}. This is a gap in the check, not a size` +
+                  ` violation — look for pointer-events, a clipping ancestor, or a transform` +
+                  ` that moves the control away from its box.`,
+              });
+            }
+            continue;
+          }
 
-        // Report the roomiest label considered, so the message says what was
-        // measured rather than leaving the reader to guess why 18x18 was not
-        // rescued by the label sitting next to it.
-        const label = labelAreas.reduce(
-          (best, area) =>
-            !best || area.width * area.height > best.width * best.height ? area : best,
-          null,
-        );
+          if (meets(own)) continue;
 
-        const rect = element.getBoundingClientRect();
+          // Too small on its own. If a label that activates it is big enough by
+          // itself, that label is the surface being aimed at.
+          const labelAreas = labelsOf(element)
+            .filter(isRendered)
+            .map(measure)
+            .filter((area) => area.measured);
+          if (labelAreas.some(meets)) continue;
 
-        violations.push({
-          element: describe(element),
-          width: Math.round(rect.width),
-          height: Math.round(rect.height),
-          effectiveWidth: own.width,
-          effectiveHeight: own.height,
-          ...(label ? { labelWidth: label.width, labelHeight: label.height } : {}),
-          message:
-            `touch-target-primary: hit area is ~${own.width}x${own.height}, below ${minimum}x${minimum}` +
-            (label ? `, and its label is only ~${label.width}x${label.height}` : '') +
-            `. Expand it with padding or a bounded overlay — do not inflate the visible control` +
-            (label ? `; giving the label the full row height is usually the fix` : '') +
-            `. A deliberately compact control — a dense inline affordance, or a` +
-            ` variant whose whole point is being small — declares itself with` +
-            ` data-touch-target="dense" instead; the design system's own compact` +
-            ` variants (size="sm" and friends) already do.`,
-        });
+          // Report the roomiest label considered, so the message says what was
+          // measured rather than leaving the reader to guess why 18x18 was not
+          // rescued by the label sitting next to it.
+          const label = labelAreas.reduce(
+            (best, area) =>
+              !best || area.width * area.height > best.width * best.height ? area : best,
+            null,
+          );
+
+          violations.push({
+            element: describe(element),
+            width: Math.round(own.rect.width),
+            height: Math.round(own.rect.height),
+            effectiveWidth: own.width,
+            effectiveHeight: own.height,
+            ...(label ? { labelWidth: label.width, labelHeight: label.height } : {}),
+            message:
+              `touch-target-primary: hit area is ~${own.width}x${own.height}, below ${minimum}x${minimum}` +
+              (label ? `, and its label is only ~${label.width}x${label.height}` : '') +
+              `. Expand it with padding or a bounded overlay — do not inflate the visible control` +
+              (label ? `; giving the label the full row height is usually the fix` : '') +
+              `. A deliberately compact control — a dense inline affordance, or a` +
+              ` variant whose whole point is being small — declares itself with` +
+              ` data-touch-target="dense" instead; the design system's own compact` +
+              ` variants (size="sm" and friends) already do.`,
+          });
+        }
+      } finally {
+        for (const [node, scrollLeft, scrollTop] of scrollState) {
+          node.scrollLeft = scrollLeft;
+          node.scrollTop = scrollTop;
+        }
+        window.scrollTo(pageScrollX, pageScrollY);
       }
 
       return violations;
