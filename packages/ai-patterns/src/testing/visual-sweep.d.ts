@@ -17,8 +17,18 @@ export interface Story {
 }
 
 /** The parts of a Playwright `Page` a sweep actually drives. */
+/** The two accessors the missing-asset guard reads off a response. */
+export interface SweepResponse {
+  url(): string;
+  status(): number;
+}
+
 export interface SweepPage {
   goto(url: string): Promise<unknown>;
+  /* Narrowed to the one event a sweep subscribes to. Playwright's `Page.on` is
+     a much wider overload set; this is the shape a sweep actually calls, so a
+     hand-rolled page double only has to satisfy this much. */
+  on(event: 'response', handler: (response: SweepResponse) => void): unknown;
   locator(selector: string): unknown;
   /* Returns a Disposable in newer Playwright and void in older ones, so this
      stays `unknown` rather than pinning either. */
@@ -91,6 +101,17 @@ interface SweepOptions<TPage> {
   /** Defaults to THEMES. */
   themes?: readonly Theme[];
   themeStorageKey?: string;
+  /**
+   * Same-origin requests allowed to fail without failing the shot, matched
+   * against the full URL — a string as a substring, a RegExp by test.
+   *
+   * Every sweep fails a shot whose page made a same-origin request answering
+   * 400 or above, before the screenshot is taken. A missing asset renders as a
+   * stable empty box that compares equal to itself forever, so a baseline of
+   * the broken state can never be reported by a later comparison. Cross-origin
+   * requests are not checked. Defaults to none allowed.
+   */
+  allowMissing?: readonly (string | RegExp)[];
 }
 
 export interface SweepStorybookOptions<TPage> extends SweepOptions<TPage> {
