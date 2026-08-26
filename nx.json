@@ -44,9 +44,24 @@
        matched nothing here and hashed nothing — same silent 7/7 as declaring
        no input at all. Verified both ways against the same probe: brand-doc
        edit rebuilds, README-only edit stays 4/4 cached. */
+    /* `templates/` is the second one, found by the same sweep and with the
+       same shape: no project owns it, `nx show projects --affected --files=
+       templates/default-app` returns [], and
+       packages/ai-patterns/src/artifacts/manifest-versions.test.mjs walks
+       every templates/*(star)/package.json asserting it has not drifted from
+       the workspace. Measured: edit templates/default-app/package.json and
+       `nx run ai-patterns:test` still reports 1 of 1 from cache — the drift
+       check passes without running. `pnpm sync:deps` exists precisely because
+       that drift is real.
+       Those two are the whole list. Swept for the rest: everything else these
+       builds and tests read across project boundaries (packages/tokens/src,
+       packages/react/src/components, each package.json) is a dependency edge
+       Nx already models, and root package.json, pnpm-lock.yaml, nx.json and
+       tsconfig.base.json each already fan out to all nine projects. */
     "sharedGlobals": [
       "{workspaceRoot}/design-system-docs/**",
-      "!{workspaceRoot}/design-system-docs/README.md"
+      "!{workspaceRoot}/design-system-docs/README.md",
+      "{workspaceRoot}/templates/**"
     ]
   },
   "targetDefaults": {
