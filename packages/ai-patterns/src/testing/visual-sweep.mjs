@@ -262,6 +262,7 @@ export function sweepStorybook({
   rootSelector = '#storybook-root',
   title = (story, theme) => `${story.id} · ${theme}`,
   name = (story, theme) => `${story.id}-${theme}.png`,
+  allowMissing = [],
   afterCapture,
 }) {
   assertSweepable({ test, expect, baseUrl, subjects: stories, subjectName: 'stories' });
@@ -269,6 +270,8 @@ export function sweepStorybook({
   for (const story of stories) {
     for (const theme of themes) {
       test(title(story, theme), async ({ page }) => {
+        const assertNoMissingAssets = watchForMissingAssets(page, { baseUrl, allowMissing });
+
         await applyFixedClock(page);
         await applyTheme(page, theme, { storageKey: themeStorageKey });
         await page.goto(storyUrl(baseUrl, story.id));
@@ -280,6 +283,8 @@ export function sweepStorybook({
         }, rootSelector);
 
         await waitForStablePixels(page, { expect });
+
+        assertNoMissingAssets();
 
         await expect(page).toHaveScreenshot(name(story, theme));
 
@@ -391,6 +396,7 @@ export function sweepPages({
   mask = DEFAULT_MASK,
   title = (route, theme) => `${route} · ${theme}`,
   name = (route, theme) => `${routeSlug(route)}-${theme}.png`,
+  allowMissing = [],
   afterCapture,
 }) {
   assertSweepable({ test, expect, baseUrl, subjects: routes, subjectName: 'routes' });
@@ -398,6 +404,8 @@ export function sweepPages({
   for (const route of routes) {
     for (const theme of themes) {
       test(title(route, theme), async ({ page }) => {
+        const assertNoMissingAssets = watchForMissingAssets(page, { baseUrl, allowMissing });
+
         await applyFixedClock(page);
         await applyTheme(page, theme, { storageKey: themeStorageKey });
         await page.goto(`${baseUrl}${route}`);
@@ -413,6 +421,11 @@ export function sweepPages({
            and layout outside it can still push the region around, which a
            region-only settle would watch happen and call stable. */
         await waitForStablePixels(page, { expect, fullPage });
+
+        /* Before the capture, not after: CI mints a baseline for any shot that
+           does not have one, so a check that ran after would still let a
+           first-shot route record its broken state as truth. */
+        assertNoMissingAssets();
 
         await expect(page).toHaveScreenshot(name(route, theme), {
           fullPage,
@@ -465,6 +478,7 @@ export function sweepChrome({
   subject = (chrome) => `/chrome/${chrome.name}`,
   title = (chrome, theme) => `${subject(chrome)} · ${theme}`,
   name = (chrome, theme) => `${routeSlug(subject(chrome))}-${theme}.png`,
+  allowMissing = [],
   afterCapture,
 }) {
   assertSweepable({ test, expect, baseUrl, subjects: regions, subjectName: 'regions' });
@@ -482,11 +496,15 @@ export function sweepChrome({
   for (const chrome of regions) {
     for (const theme of themes) {
       test(title(chrome, theme), async ({ page }) => {
+        const assertNoMissingAssets = watchForMissingAssets(page, { baseUrl, allowMissing });
+
         await applyFixedClock(page);
         await applyTheme(page, theme, { storageKey: themeStorageKey });
         await page.goto(`${baseUrl}${route}`);
         await page.waitForLoadState('load');
         await waitForStablePixels(page, { expect, fullPage: true });
+
+        assertNoMissingAssets();
 
         await expect(page).toHaveScreenshot(name(chrome, theme), {
           fullPage: true,
@@ -497,6 +515,97 @@ export function sweepChrome({
         await afterCapture?.(page, { region: chrome, theme });
       });
     }
+  }
+}
+
+/**
+ * Watches a page's network for same-origin requests that fail, and returns the
+ * assertion that reports them. Attach before navigating; call before capturing.
+ *
+ * This exists because a pixel comparison structurally cannot catch a missing
+ * asset. A file the server does not have renders as a stable empty box, and a
+ * stable empty box compares equal to itself on every future run — so once a
+ * baseline records the empty state, the suite is green and wrong permanently,
+ * with nothing left to notice. The network is the only place the difference
+ * between "rendered" and "rendered without its content" still exists.
+ *
+ * Same-origin only. The docs site renders an avatar demo against a third-party
+ * image host, and a blanket rule would fail the suite whenever that host had a
+ * bad minute — a flake, not a defect. This site is answerable for what this
+ * site serves.
+ *
+ * Any status at or above 400, not 404 alone: a 500 on an asset paints exactly
+ * the same empty box. Failed requests that never produce a response are left
+ * alone deliberately — a framework aborts its own route prefetches, which
+ * surfaces as a request failure and would be a standing false positive, while
+ * a file that is genuinely absent answers with a real status.
+ */
+function watchForMissingAssets(page, { baseUrl, allowMissing }) {
+  if (typeof page?.on !== 'function') {
+    throw new TypeError(
+      'A sweep needs a page it can subscribe to — `page.on(...)` is not a function on the page ' +
+        'it was given. Skipping the check instead would leave a sweep that passes while ' +
+        'watching nothing, which is indistinguishable from one with no missing assets.',
+    );
+  }
+
+  const origin = originOf(baseUrl);
+
+  if (origin === null) {
+    throw new TypeError(
+      `A sweep needs a \`baseUrl\` that parses as a URL; got ${JSON.stringify(baseUrl)}. ` +
+        'Same-origin is measured against it, so an unparseable one would compare against ' +
+        'nothing and quietly excuse every failing request.',
+    );
+  }
+
+  /* Keyed by URL: one retried asset is one defect, and listing it once per
+     attempt would bury the distinct ones underneath it. */
+  const failures = new Map();
+
+  page.on('response', (response) => {
+    const status = response.status();
+
+    if (status < 400) return;
+
+    const url = response.url();
+
+    if (originOf(url) !== origin) return;
+
+    const allowed = allowMissing.some((pattern) =>
+      typeof pattern === 'string' ? url.includes(pattern) : pattern.test(url),
+    );
+
+    if (allowed) return;
+
+    failures.set(url, status);
+  });
+
+  return function assertNoMissingAssets() {
+    if (failures.size === 0) return;
+
+    const listed = Array.from(failures, ([url, status]) => `  ${status}  ${url}`).join('\n');
+
+    throw new Error(
+      `${failures.size} same-origin request(s) failed while rendering this shot:\n${listed}\n\n` +
+        'The screenshot was not taken. A missing asset renders as a stable empty box, so ' +
+        'capturing here would either fail against a correct baseline or — on a shot that does ' +
+        'not have one yet — mint the broken state as the baseline, where no later comparison ' +
+        'could ever report it.\n' +
+        'Either the file never reached the job that served it, or the URL is wrong. A request ' +
+        'that is genuinely expected to fail belongs in `allowMissing`.',
+    );
+  };
+}
+
+/* `null` rather than a throw: this runs against every response URL, including
+   the `data:` and `blob:` ones that have no origin and are not what it is
+   looking for. */
+function originOf(url) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
   }
 }
 

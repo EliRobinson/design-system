@@ -64,16 +64,35 @@ function recorder() {
 /* A `page` that satisfies everything a page sweep drives, and records the
    options the screenshot assertion was called with — which is where `region`
    either became a clip or silently did nothing. `measured` is what the region
-   measurement in the browser would have returned. */
-function fakePage(measured = { count: 1, x: 10.4, y: 20.2, width: 100.1, height: 200.9 }) {
-  const captured = { screenshot: null };
+   measurement in the browser would have returned.
+
+   `responses` are replayed to the `response` listeners during `goto`, which is
+   when a real navigation delivers them. `captured.order` records the calls the
+   missing-asset guard depends on being in a particular sequence: the listener
+   has to be attached before the navigation it is watching, and the assertion
+   has to run before the screenshot rather than after it. */
+function fakePage(
+  measured = { count: 1, x: 10.4, y: 20.2, width: 100.1, height: 200.9 },
+  responses = [],
+) {
+  const captured = { screenshot: null, order: [] };
   const frame = { equals: () => true };
+  const listeners = [];
 
   const page = {
     clock: { setFixedTime: async () => {} },
     addInitScript: async () => {},
     addStyleTag: async () => {},
-    goto: async () => {},
+    on: (event, handler) => {
+      captured.order.push(`on:${event}`);
+      if (event === 'response') listeners.push(handler);
+    },
+    goto: async () => {
+      captured.order.push('goto');
+      for (const { url, status } of responses) {
+        for (const handler of listeners) handler({ url: () => url, status: () => status });
+      }
+    },
     waitForLoadState: async () => {},
     waitForFunction: async () => {},
     locator: (selector) => ({ selector }),
@@ -86,6 +105,7 @@ function fakePage(measured = { count: 1, x: 10.4, y: 20.2, width: 100.1, height:
   const expectStub = Object.assign(
     () => ({
       toHaveScreenshot: async (_name, options) => {
+        captured.order.push('screenshot');
         captured.screenshot = options;
       },
     }),
@@ -431,6 +451,182 @@ describe('the shared defaults', () => {
   it('masks the shimmer that no amount of settling holds still', () => {
     expect(DEFAULT_MASK).toContain('.ds-skeleton');
     expect(Object.isFrozen(DEFAULT_MASK)).toBe(true);
+  });
+});
+
+/* A served-off-disk asset that is not on disk renders as a stable empty box,
+   and a stable empty box compares equal to itself forever. Once a baseline of
+   the empty state exists, no pixel comparison can ever report it — so the only
+   place this class of defect can be caught is the network, before the shot is
+   taken. See issue #149, where five /brand routes were shot against assets the
+   sweep container never received. */
+describe('the missing-asset guard', () => {
+  const missing = [{ url: 'http://docs/brand/wordmark.svg', status: 404 }];
+
+  it('fails the shot when a same-origin request answers 404', async () => {
+    const { test, bodies } = recorder();
+    const { page, expect: expectStub } = fakePage(undefined, missing);
+
+    sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+
+    await expect(bodies[0]({ page })).rejects.toThrow(/brand\/wordmark\.svg/);
+  });
+
+  /* The load-bearing ordering claim, and the reason this is a guard rather than
+     a report. CI mints a baseline for any shot that does not have one yet, so a
+     guard that fired after the capture would still let a first-shot route record
+     its broken state as truth — the exact failure #149 was reopened for. If a
+     refactor ever moves the assertion below the screenshot, this is what says so. */
+  it('fails before the screenshot is taken, so the empty state is never minted', async () => {
+    const { test, bodies } = recorder();
+    const { page, expect: expectStub, captured } = fakePage(undefined, missing);
+
+    sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+
+    await expect(bodies[0]({ page })).rejects.toThrow();
+    expect(captured.screenshot).toBeNull();
+    expect(captured.order).not.toContain('screenshot');
+  });
+
+  /* A listener attached after the navigation it is watching sees nothing, and
+     an guard that sees nothing passes. */
+  it('starts listening before the navigation it is watching', async () => {
+    const { test, bodies } = recorder();
+    const { page, expect: expectStub, captured } = fakePage();
+
+    sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+    await bodies[0]({ page });
+
+    /* Asserted as a prefix rather than with two indexOf calls: a listener that
+       was never attached indexes as -1, which compares "before" everything and
+       passes a test that was meant to prove it ran. */
+    expect(captured.order.slice(0, 2)).toEqual(['on:response', 'goto']);
+  });
+
+  /* The docs site renders an avatar demo against i.pravatar.cc. A blanket rule
+     would tie the visual suite to a third-party image host's uptime, which is a
+     flake, not a defect. Only assets this site is responsible for serving. */
+  it('ignores a cross-origin failure, which is not this site to fix', async () => {
+    const { test, bodies } = recorder();
+    const {
+      page,
+      expect: expectStub,
+      captured,
+    } = fakePage(undefined, [{ url: 'https://i.pravatar.cc/80?img=12', status: 404 }]);
+
+    sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+    await bodies[0]({ page });
+
+    expect(captured.screenshot).not.toBeNull();
+  });
+
+  it('lets a same-origin success through', async () => {
+    const { test, bodies } = recorder();
+    const {
+      page,
+      expect: expectStub,
+      captured,
+    } = fakePage(undefined, [
+      { url: 'http://docs/brand/wordmark.svg', status: 200 },
+      { url: 'http://docs/somewhere', status: 304 },
+    ]);
+
+    sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+    await bodies[0]({ page });
+
+    expect(captured.screenshot).not.toBeNull();
+  });
+
+  /* A 500 on an asset is the same defect wearing a different number: the page
+     paints without it either way. */
+  it('catches any failing status, not only 404', async () => {
+    const { test, bodies } = recorder();
+    const { page, expect: expectStub } = fakePage(undefined, [
+      { url: 'http://docs/brand/deck.pdf', status: 500 },
+    ]);
+
+    sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+
+    await expect(bodies[0]({ page })).rejects.toThrow(/500/);
+  });
+
+  it('exempts a URL matched by `allowMissing`, as a substring or a pattern', async () => {
+    for (const allowMissing of [['/brand/wordmark.svg'], [/wordmark/]]) {
+      const { test, bodies } = recorder();
+      const { page, expect: expectStub, captured } = fakePage(undefined, missing);
+
+      sweepPages({
+        test,
+        expect: expectStub,
+        baseUrl: 'http://docs',
+        routes: ['/'],
+        allowMissing,
+      });
+      await bodies[0]({ page });
+
+      expect(captured.screenshot).not.toBeNull();
+    }
+  });
+
+  it('names every failure, not just the first', async () => {
+    const { test, bodies } = recorder();
+    const { page, expect: expectStub } = fakePage(undefined, [
+      { url: 'http://docs/brand/one.svg', status: 404 },
+      { url: 'http://docs/brand/two.svg', status: 404 },
+    ]);
+
+    sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+
+    await expect(bodies[0]({ page })).rejects.toThrow(/one\.svg[\s\S]*two\.svg/);
+  });
+
+  /* Reporting the same URL once per retry would bury the distinct failures. */
+  it('reports a repeated URL once', async () => {
+    const { test, bodies } = recorder();
+    const { page, expect: expectStub } = fakePage(undefined, [
+      { url: 'http://docs/brand/one.svg', status: 404 },
+      { url: 'http://docs/brand/one.svg', status: 404 },
+    ]);
+
+    sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+
+    const error = await bodies[0]({ page }).catch((thrown) => thrown);
+    expect(error.message.match(/one\.svg/g)).toHaveLength(1);
+  });
+
+  /* Degrading quietly here would reintroduce the bug in the guard itself: a
+     sweep that cannot listen would pass while checking nothing, which is
+     indistinguishable from a sweep with no missing assets. */
+  it('refuses to run against a page it cannot listen on, rather than skipping the check', async () => {
+    const { test, bodies } = recorder();
+    const { page, expect: expectStub } = fakePage();
+    delete page.on;
+
+    sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+
+    await expect(bodies[0]({ page })).rejects.toThrow(/on\(/);
+  });
+
+  it('guards the storybook and chrome sweeps on the same terms', async () => {
+    const storybook = recorder();
+    const storybookPage = fakePage(undefined, [{ url: 'http://sb/assets/logo.svg', status: 404 }]);
+    sweepStorybook({
+      test: storybook.test,
+      expect: storybookPage.expect,
+      baseUrl: 'http://sb',
+      stories: [{ id: 'a--one', title: 'A', name: 'One' }],
+    });
+    await expect(storybook.bodies[0]({ page: storybookPage.page })).rejects.toThrow(/logo\.svg/);
+
+    const chrome = recorder();
+    const chromePage = fakePage(undefined, missing);
+    sweepChrome({
+      test: chrome.test,
+      expect: chromePage.expect,
+      baseUrl: 'http://docs',
+      regions: [{ name: 'header', selector: 'header' }],
+    });
+    await expect(chrome.bodies[0]({ page: chromePage.page })).rejects.toThrow(/wordmark\.svg/);
   });
 });
 
