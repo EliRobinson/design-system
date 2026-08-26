@@ -5,8 +5,8 @@ export const metadata = { title: 'Motion', order: 5 };
 
 # Motion
 
-Calm and purposeful. Motion here confirms what happened — it never performs. Hovers answer in
-140ms, state changes in 220ms, and nothing bounces across the screen.
+Motion here confirms what happened. Hovers answer in 140ms, state changes in 220ms, and nothing
+bounces across the screen.
 
 ## Durations
 
@@ -19,7 +19,7 @@ micro-interactions — a check mark settling into place — never for panels or 
 
 <TokenTable prefix="ease" />
 
-## Feel it
+## Try the durations
 
 <MotionDemo />
 
@@ -27,7 +27,7 @@ micro-interactions — a check mark settling into place — never for panels or 
 
 - **Hovers:** `--dur-fast`, color/background only — no scale, no opacity tricks.
 - **State changes** (open, select, expand): `--dur-normal` with `--ease-out`.
-- **No bouncy page transitions, no parallax.** The content is the show.
+- **No bouncy page transitions, no parallax.**
 - **`prefers-reduced-motion` is honored globally** — tokens.css collapses every
   transition and animation to 0.01ms when the user asks for reduced motion. You get
   this for free; don't opt out of it.

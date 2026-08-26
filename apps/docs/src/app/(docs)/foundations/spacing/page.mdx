@@ -5,8 +5,9 @@ export const metadata = { title: 'Spacing', order: 3 };
 
 # Spacing
 
-A 4px base, 8px-friendly, sixteen steps. Use the scale and nothing else — a magic number is a bug
-waiting for a redesign.
+A 4px base, 8px-friendly, sixteen steps. Use the scale and nothing else. A value off the scale
+has nothing to re-point when the scale changes, so it survives every redesign unchanged and
+wrong.
 
 ## The scale
 
@@ -14,8 +15,8 @@ waiting for a redesign.
 
 ## How the scale gets used
 
-- **Generous vertical rhythm.** Major sections on landing pages breathe —
-  `--space-13` (128px) between them. Cramped sections read as clutter, not density.
+- **Generous vertical rhythm.** Major sections on landing pages get `--space-13` (128px)
+  between them.
 - **Tight horizontal density inside cards.** `--space-4` (16px) is the default inner
   padding for compact components; `--space-6` (24px) for roomier cards.
 - **Gaps within a control cluster:** `--space-2` or `--space-3`. Between distinct

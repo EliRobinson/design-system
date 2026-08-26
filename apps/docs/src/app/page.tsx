@@ -7,20 +7,20 @@ import { cssTokens } from '../lib/tokens-css';
 
 const PRINCIPLES = [
   {
-    title: 'Ink-led, one loud color',
-    body: 'Black type, white surfaces, hairline borders. Miltinson Amber is the only shout — a signal, never a fill.',
+    title: 'One loud color',
+    body: 'Black type, white surfaces, hairline borders. Miltinson Amber marks the one action on a screen worth taking; two amber things means one of them is wrong.',
   },
   {
-    title: 'Sharp, not pillowy',
-    body: '4–6px radii, borders doing the work shadows usually do, and motion that confirms instead of performing.',
+    title: 'Borders, not shadows',
+    body: '4–6px radii, a 1px hairline where most systems reach for a drop shadow, and 140ms on a hover.',
   },
   {
-    title: 'Accessible by default',
-    body: 'WCAG AA pairings, 16px minimum text, visible focus rings, scoped touch targets, reduced motion honored — built into the tokens, not bolted on.',
+    title: 'Accessibility in the tokens',
+    body: 'WCAG AA pairings, 16px minimum body text and scoped touch targets are the bar every component ships against. tokens.css applies the focus ring and honors reduced motion globally, so a component cannot quietly drop either.',
   },
   {
-    title: 'Agents are users too',
-    body: 'A generated manifest feeds the props tables, the search index, and machine-readable endpoints — so an AI writing against this system imports the right thing on the first try.',
+    title: 'Built for agents',
+    body: 'One generated manifest feeds the props tables, the search index, and the machine-readable endpoints. Every import path it publishes is asserted against real source files at test time.',
   },
 ];
 
@@ -77,9 +77,9 @@ export default function HomePage() {
             Practical components, honestly built<span className="home-hero__dot">.</span>
           </h1>
           <p className="home-hero__lead">
-            I run several small products under one name, and this system keeps them consistent and
-            fast to ship — tokens, React components, and AI patterns that work the same way in every
-            app. No fluff, no dark patterns, accessible by default.
+            Design tokens, React components, and AI patterns, published as versioned packages. The
+            props tables, token values, and search index on this site are generated from the
+            packages themselves, so what you read here is what you install.
           </p>
           <div className="home-hero__actions">
             <Link className="ds-button ds-button--accent ds-button--lg" href="/installation">
@@ -101,7 +101,7 @@ export default function HomePage() {
       </section>
 
       <section className="home-section">
-        <h2>What the system believes</h2>
+        <h2>How it is built</h2>
         <div className="home-grid">
           {PRINCIPLES.map((principle) => (
             <div key={principle.title} className="home-card">
@@ -113,7 +113,7 @@ export default function HomePage() {
       </section>
 
       <section className="home-section">
-        <h2>Find your way in</h2>
+        <h2>Sections</h2>
         <div className="home-grid">
           {sections.map((section) => (
             <Link key={section.href} href={section.href} className="home-card home-card--link">
@@ -125,7 +125,7 @@ export default function HomePage() {
       </section>
 
       <section className="home-section">
-        <h2>Pointing an agent at this?</h2>
+        <h2>For agents</h2>
         <p className="home-ai-note">
           Fetch <a href="/llms.txt">/llms.txt</a> for the index,{' '}
           <a href="/llms-full.txt">/llms-full.txt</a> for the whole corpus, or{' '}
