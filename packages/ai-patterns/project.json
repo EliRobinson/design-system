@@ -8,7 +8,19 @@
       "command": "pnpm run build",
       "options": {
         "cwd": "packages/ai-patterns"
-      }
+      },
+      /* `dist` (the targetDefault) is right, with one deliberate omission:
+         build-artifacts.mjs also rewrites the managed block in
+         design-system-docs/README.md from the brand manifest it just built.
+         That file is NOT declared here. It is the one output this build reads
+         back as an input, and a file that is both would make this target's own
+         hash oscillate — build, README changes, next hash misses, rebuild.
+         It is committed in its generated state, so a clean checkout is already
+         correct, and the nx.json `sharedGlobals` input excludes it for the same
+         reason. What keeps it honest is the other half of that input: any edit
+         under design-system-docs/ invalidates this build, so the README is
+         regenerated on exactly the runs that could have changed it. */
+      "outputs": ["{projectRoot}/dist"]
     },
     "lint": {
       "command": "pnpm run lint",

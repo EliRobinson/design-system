@@ -51,6 +51,34 @@ jobs:
       # a `link:` workspace entry in the lockfile, so this never hits the
       # GitHub Packages registry.
       - run: pnpm install --frozen-lockfile
+
+      # The Nx task cache, restored across runs. `visual.yml` has carried this
+      # since a987bf3 and this job never did, so `pnpm build` below paid full
+      # price on every pull request while the visual workflow replayed. Same
+      # step, same reasoning, kept deliberately identical so the two do not
+      # drift — the long form of the argument lives on visual.yml's copy.
+      #
+      # In short: BOTH paths, because `.nx/cache` holds the task outputs and
+      # `.nx/workspace-data` holds the metadata saying which task hash produced
+      # them; restore the first without the second and Nx reports "Unrecognized
+      # Cache Artifacts" and rebuilds everything. `.nx/workspace-data/d` is
+      # excluded because it is daemon process state, not a build result.
+      #
+      # Keyed per commit and hit through `restore-keys`: a GitHub Actions cache
+      # entry is write-once, so a stable key would freeze the first run's cache
+      # forever. Nx re-derives its own content hashes from whatever is restored,
+      # so a stale or partial hit degrades to a rebuild rather than to wrong
+      # output.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .nx/cache
+            .nx/workspace-data
+            !.nx/workspace-data/d
+          key: ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-
+            ${{ runner.os }}-nx-
       # Build before typecheck: apps/docs consumes @elirobinson/react and
       # @elirobinson/tokens through their package exports maps (./dist/*),
       # not source aliases, so on a clean checkout its type-only imports
