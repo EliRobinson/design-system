@@ -2,8 +2,12 @@
 
 Working document for [#130](https://github.com/EliRobinson/design-system/issues/130) (the voice
 page is out of date) and [#128](https://github.com/EliRobinson/design-system/issues/128) (the site
-reads as AI marketing). Annotate it in place — the open questions at the end are the ones that
-have to be answered before the rest of #128 can be finished.
+reads as AI marketing). Annotate it in place.
+
+**Status:** the maintainer has answered Q1, Q3 and Q4 (§8). Q2 stays open and is being
+investigated separately. The word-list divergence in §4a is now its own ticket,
+[#142](https://github.com/EliRobinson/design-system/issues/142), and is deliberately **not**
+fixed here — consolidating the three copies needs the Q2 boundary answer first.
 
 Scope of the sweep: every MDX page under `apps/docs/src/app/(docs)/`, the page components under
 `apps/docs/src/app/`, hard-coded copy in `apps/docs/src/components/`, `apps/docs/src/lib/editorial.ts`,
@@ -73,14 +77,29 @@ _user_ speaking inside a demo, which is correct. Left alone.
 
 `installation/page.mdx:123` contains the literal CLI argument `my-app`. Not first person.
 
-### 1d. The upstream copy — flagged, not touched
+### 1d. The upstream copy — now changed, following the Q1 answer
 
-`design-system-docs/README.md:67` says **"Eli speaks as himself."** and that file is the brand
-source of truth: `@elirobinson/ai-patterns` exports it as `./brand-readme`, and `llmsFull()`
-extracts its `## CONTENT FUNDAMENTALS` section into `/llms-full.txt`. So the first-person rule
-is not only on the docs page — it is **published to every consuming agent**. `ai-corpus.test.ts:109`
-asserts the string `Never the royal "we."` appears in the corpus, so changing it fails CI here
-too. See §5.
+`design-system-docs/README.md:67` said **"Eli speaks as himself. … Never the royal 'we.'"** and
+that file is the brand source of truth: `@elirobinson/ai-patterns` exports it as `./brand-readme`,
+`llmsFull()` extracts its `## CONTENT FUNDAMENTALS` section into `/llms-full.txt`, and the
+`design-system-mcp` server serves it as `miltinson://brand/voice` and through
+`get_brand_guidance`. The rule was therefore published to every consuming agent, not just printed
+on a docs page.
+
+Q1 is answered (§8), so this PR deletes the rule at its source. Five places carried it:
+
+| file:line                                                        | was                                             | now                                                                  |
+| ---------------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------- |
+| `design-system-docs/README.md:67`                                | "Eli speaks as himself … Never the royal 'we.'" | "The voice is Miltinson Technologies" — person is the product's call |
+| `design-system-docs/README.md:93`                                | avoid-list ended `"we" (when Eli means "I")`    | clause removed                                                       |
+| `design-system-docs/SKILL.md:25`                                 | `Eli speaks as "I" — never "we"`                | person is the product's call, held within a surface                  |
+| `design-system-docs/guidelines/brand-voice.html` — card subtitle | "First person, sentence case…"                  | "Miltinson Technologies, sentence case…"                             |
+| `design-system-docs/guidelines/brand-voice.html` — avoid-list    | ended `"we" when Eli means "I"`                 | clause removed                                                       |
+
+Six assertions across three packages pinned the deleted string and moved with it — see §8, Q1.
+
+The `brand-voice.html` edits delete a rule that no longer exists. They are **not** the #142 fix:
+the three word lists still diverge, and consolidating them is still blocked on Q2.
 
 ## 2. AI-marketing inventory
 
@@ -238,6 +257,11 @@ marketing layer does not.
 Three violations found, all on the voice page or adjacent to it.
 
 **4a. The brand voice word lists exist in three hand-kept copies, and all three disagree.**
+Filed as [#142](https://github.com/EliRobinson/design-system/issues/142) and **not fixed in this
+PR** — consolidating them needs the Q2 boundary answer first, and Q4 suggests they may not even
+be three copies of one thing (§8, Q4). The counts below are as measured before this PR; the only
+edits made since are the deletions of the retired royal-we clause, which do not consolidate
+anything.
 
 | copy                                                           | "use" list | "avoid" list |
 | -------------------------------------------------------------- | ---------- | ------------ |
@@ -276,15 +300,14 @@ The fix for 4a and 4b is the same shape as the rest of this repo: the page shoul
 voice _is_ in the register above, and point at the command for anything enumerable — not carry
 a second copy of the list.
 
-## 5. `packages/` prose — flagged, not changed
+## 5. `packages/` prose
 
-Changing anything here needs a changeset and ships to consumers, so it is deliberately excluded
-from this PR.
+Everything here ships to consumers, so a change needs a changeset. Originally all of it was
+excluded from this PR; the Q1 answer pulled the first item in.
 
-- `design-system-docs/README.md:61–110` — the CONTENT FUNDAMENTALS block. **This is the real
-  #130 fix.** Until it changes, "Eli speaks as himself" is what every agent is told. Note
-  `apps/docs/src/lib/ai-corpus.test.ts:109` asserts on `Never the royal "we."`, so the test moves
-  with it.
+- `design-system-docs/README.md:61–110` — the CONTENT FUNDAMENTALS block. **Changed in this PR**
+  (§1d): this was the real #130 fix, and until it changed, "Eli speaks as himself" was what every
+  agent was told. Changeset: `.changeset/miltinson-technologies-voice.md`.
 - `packages/ai-patterns/src/contracts.json:3` — `"voice": "practical, honest, warm"`. Consistent
   with the README's tone ranking; survives a move away from "I" unchanged. Probably fine as is.
 - `packages/ai-patterns/src/patterns.md` — swept: **0 first-person, 0 intensifiers.** §6 "UI Copy
@@ -309,22 +332,34 @@ from this PR.
   `apps/docs/src/app/(docs)/components/button/page.mdx:26` — the two first-person lines that read
   the same under any answer to Q1.
 
+**Changed after the Q1 answer (§8), in a separate commit:**
+
+- `design-system-docs/README.md:67, :93`, `design-system-docs/SKILL.md:25` and
+  `design-system-docs/guidelines/brand-voice.html` — the royal-we rule, deleted at its source.
+- The six assertions in `apps/docs/src/lib/ai-corpus.test.ts`,
+  `packages/ai-patterns/src/artifacts/llms.test.mjs` and
+  `packages/design-system-mcp/src/server.test.mjs` that pinned the deleted string.
+- `guidelines/voice/page.mdx` — one paragraph saying the system does not fix person.
+- `.changeset/miltinson-technologies-voice.md`.
+
 **Deliberately left, listed as remaining work for #128:**
 
 - `foundations/radii-elevation/page.mdx:15` — "a pill button reads as a different brand". Counted
   as tic 2, but it is the only stated reason the pill radius is banned for CTAs, and deleting it
   loses the rationale. Needs a replacement reason, not a cut.
 - `patterns/{hero,forms,header}/page.mdx` and every `components/demos/*` file — the 15 lines in
-  §1b. This is a sample-content decision, not a copy edit: replacing the persona means choosing
-  a new one, and it touches ~20 files. Worth its own issue.
+  §1b. Q4 is answered (§8): these are not a defect, they are website copy filed in the system.
+  A separate agent is auditing that boundary repo-wide, so this PR stays off these files.
 - `patterns/footer/page.mdx:5–6` and `adoption/page.mdx:7` — one tic each.
 - The 50 component pages. Swept and clean: their antitheses are load-bearing and their leads name
   mechanisms. No work found.
-- `design-system-docs/README.md` — see §5.
+- The three divergent word lists — [#142](https://github.com/EliRobinson/design-system/issues/142), blocked on Q2.
 
-## 7. Open questions for the maintainer
+## 7. The open questions, as asked
 
-**Q1. What replaces "I"?** Three candidates, and the choice decides §1a, §1b, and 4a:
+Kept as the record of what was put to the maintainer. Three are answered in §8; Q2 is still open.
+
+**Q1. What replaces "I"?** — **ANSWERED, see §8.** Three candidates, and the choice decides §1a, §1b, and 4a:
 
 - **(a) The system as subject.** "The system ships two stylesheets." Matches the house voice in
   `docs/agents/*` and `patterns.md` exactly, and is the register a spec is normally written in.
@@ -337,7 +372,8 @@ from this PR.
   is genuinely becoming an org rather than staying a person's work; it would also mean the
   README's "Never the royal 'we'" rule is the thing that has to change.
 
-**Q2. Whose voice is this page describing — the system's, or the consumer's product's?**
+**Q2. Whose voice is this page describing — the system's, or the consumer's product's?** —
+**STILL OPEN.** Being investigated separately; nothing below is settled.
 The page currently conflates them, and that conflation is arguably the root cause of #130. Lines
 5–39 describe _Miltinson's own marketing voice_ (pricing conventions, the wordmark's period,
 taglines). Lines 47–53 describe _rules a consumer's product must follow_ (button labels are
@@ -361,10 +397,126 @@ covers chrome only, and the brand-voice half is a link to `/brand/guidelines` an
 rather than a copy of them. That fixes 4a without settling what the brand voice _is_ — whatever
 you decide about "I", the page stays correct, because it no longer states it.
 
-**Q3. Does the tone ranking survive?** "Practical / Honest / Warm / Quietly confident", weighted
+**Q3. Does the tone ranking survive?** — **ANSWERED, see §8.** "Practical / Honest / Warm / Quietly confident", weighted
 in that order, appears on the page and in the README. Nothing reads the ranking and no decision
 has ever turned on it. Keep as brand-level guidance, or drop it as tic-6 padding?
 
-**Q4. Is the sample-copy persona in scope?** §1b is 15 lines across ~20 demo files. Replacing
+**Q4. Is the sample-copy persona in scope?** — **ANSWERED, see §8.** §1b is 15 lines across ~20 demo files. Replacing
 "Eli Robinson, coach-resources" with a generic persona is a bigger, more visible diff than
 everything else here combined. Separate issue, or fold into #128?
+
+## 8. Answers, and what they change
+
+### Q1 — answered. The voice is Miltinson Technologies, and the royal-we rule is deleted
+
+> "Get rid of the royal we rule, change I to mean Miltinson Technologies which could just be me
+> (Eli) or the company which is the royal we. It's going to depend on the context of the product."
+
+So the answer is none of the three candidates in §7 as written. It is closest to **(c)**, but with
+the part that made (c) look expensive removed: the brand is Miltinson Technologies, and whether a
+given product writes "I" or "we" is that product's decision, taken from what the product actually
+is. One hard rule is not replaced by the opposite hard rule — "Eli speaks as himself" stops being
+_the_ rule and becomes one legitimate instantiation of it.
+
+The guidance now reads, at `design-system-docs/README.md:67`:
+
+> **The voice is Miltinson Technologies.** Whether that reads as one person — _"I'm Eli Robinson —
+> I build software, teach AI…"_ — or as a company depends on what the product is, and both are the
+> brand: the same name covers a personal site and a company product. Pick the person from the
+> product, not from a rule, and hold it. The failure is a surface that switches partway through,
+> not a surface that chose "we".
+
+The docs site says the system-level half of that at `/guidelines/voice`: person is the product's
+call, the system does not fix it, hold it within a surface.
+
+**The six assertions.** `Never the royal "we."` was pinned by six tests across three packages,
+because the string travelled `design-system-docs/README.md` → `brandVoice()` → `/llms-full.txt`
+→ the packed skill artifact → the MCP server. All six now pin the replacement:
+
+| file:line                                              | was                                    | now                                                   |
+| ------------------------------------------------------ | -------------------------------------- | ----------------------------------------------------- |
+| `apps/docs/src/lib/ai-corpus.test.ts:109`              | `toContain('Never the royal "we."')`   | `toContain('The voice is Miltinson Technologies.')`   |
+| `packages/ai-patterns/src/artifacts/llms.test.mjs:281` | fixture line `- Never the royal "we."` | fixture line `- The voice is Miltinson Technologies.` |
+| `packages/ai-patterns/src/artifacts/llms.test.mjs:315` | `toContain('Never the royal "we."')`   | `toContain('The voice is Miltinson Technologies.')`   |
+| `packages/ai-patterns/src/artifacts/llms.test.mjs:330` | `toContain('Never the royal')`         | `toContain('Miltinson Technologies')`                 |
+| `packages/design-system-mcp/src/server.test.mjs:281`   | `toContain('Never the royal')`         | `toContain('Miltinson Technologies')`                 |
+| `packages/design-system-mcp/src/server.test.mjs:347`   | `toContain('Never the royal')`         | `toContain('Miltinson Technologies')`                 |
+
+Three of the six read the real README; the `llms.test.mjs` trio run against a synthetic fixture,
+and the fixture was updated too rather than left enshrining a rule that no longer exists.
+
+Because `packages/` is now touched, this needs a changeset:
+`.changeset/miltinson-technologies-voice.md`.
+
+### Q3 — answered. The tone ranking stays, and should do more work
+
+> "It should and we should use it, find ways to utilize it more."
+
+The audit's finding was that nothing reads the ranking and no decision has ever turned on it.
+That is the gap. Four proposals, cheapest first. **None is built in this PR.**
+
+**1. Make it the documented tie-breaker.** The ranking's only real use is ordinal: when two
+phrasings both pass the chrome rule, the one higher on the list wins. Today a writer has no
+instruction to apply it that way. One paragraph on `/guidelines/voice` turns it from a description
+into a procedure:
+
+> Practical beats honest beats warm beats quietly confident. When two phrasings both state the
+> fact, keep the one that saves the reader more time. When one is warmer and the other is more
+> candid about a limitation, keep the candid one.
+
+**2. Make it the justification format for copy review.** Copy changes currently get reviewed on
+vibes. A one-line convention — name the rung the change is serving — makes a copy diff arguable:
+_"cut 'we'll sort it out': honest > warm, we can't promise it."_ Costs nothing, and it is the same
+shape as `verifiedBy` in `contracts.json`: say what the claim rests on.
+
+**3. Retro-fit it to the rewrites in this PR, as worked examples.** Every cut in §6 was made on one
+of the four rungs and none of them says so. Two examples, added to the page:
+
+- "No fluff, no dark patterns, accessible by default" → deleted. **Honest**: nothing in the system
+  detects a dark pattern.
+- "so an AI … imports the right thing on the first try" → "every import path it publishes is
+  asserted against real source files at test time". **Practical over quietly confident**: the
+  second sentence is checkable and the first is a mood.
+
+That converts the ranking from an assertion into a set of decisions a reader can see it producing —
+which is the §3 standard applied to the ranking itself.
+
+**4. Make one rung checkable.** Three of the four are judgement, and `contracts.json` already
+labels `systemPromptStyle.voice` as `"not automated — reviewer judgement"`, honestly. But
+**practical** has a proxy the repo already computes: length. `patterns.md` fixes the chrome
+threshold at two short sentences, and `copy-patterns.mjs` already walks exactly the right nodes —
+copy props and chrome-component children. A `copy/length` rule reusing that traversal would make
+one rung of the ranking enforceable without inventing a new lint surface, and would give the other
+three a precedent. Sizing this is a separate issue; noting the seam here.
+
+### Q4 — answered, and it reframes part of this audit
+
+> "This makes sense for the Miltinson Technologies website (company/self page) however not in the
+> design system as a whole. … The website is a consumer of the design system now, not the sole
+> ruleset."
+
+**Which of this audit's findings change meaning under that.**
+
+- **§1b — the 15 sample-copy lines. Downgraded from defect to misfiling.** The audit counted them
+  as brand-voice drift. Under the answer they are correct copy sitting in the wrong repo: valid
+  for the Miltinson site, out of place in a system that other products consume. The count stands;
+  the verdict changes from "rewrite these" to "these belong to the website". Concretely, `Hire me`
+  and `I'm Eli Robinson — I build software, teach AI…` are not wrong sentences, they are
+  site-specific sentences shipped as if they were system examples.
+- **§1a — the 6 docs-voice lines. Unchanged, still defects.** These are the system speaking about
+  itself ("I use pnpm" in an install guide), not sample content. They were fixed here.
+- **§1 headline — the framing shifts.** "21 lines of the brand speaking as 'I'" splits cleanly
+  into 6 defects and 15 misfilings, and only the first number is a #130 count.
+- **§4a and #142 — Q4 sharpens the question but does not answer it.** If the website is one
+  consumer among several, the three word lists are not three copies of one thing; they may be a
+  system-level list and a Miltinson-level list that were never separated. That is Q2's territory,
+  which is why #142 stays blocked.
+
+A separate agent is auditing the website-vs-system boundary repo-wide. Nothing in this PR touches
+`patterns/{hero,forms,header}` or `components/demos/*`, to stay out of its way.
+
+### Q2 — still open
+
+Left exactly as framed in §7. The rewrite's approach (the page covers chrome and links to the
+brand source rather than copying it) was chosen because it stays correct under any answer, not
+because it presumes one.
