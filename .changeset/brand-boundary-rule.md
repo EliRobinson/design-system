@@ -21,11 +21,18 @@ step, so un-ignoring them would cascade; a test guards the kits instead. Its det
 comments before matching, so a `#119`-shaped issue reference in prose is not mistaken for a
 colour, and a table of cases pins both halves of that behaviour.
 
-The comment stripper itself is now string-literal-aware. It used to be a pair of regexes,
-which meant a `/*` or `<!--` sitting inside a JS string or template literal would have been
-read as a real comment opener, silently deleting everything up to the next `*/` — including
-any genuine colour literal in between. It is now a single-pass character scanner that tracks
-whether it is inside a single-quoted, double-quoted, or backtick string (honouring backslash
-escapes), only treats `/*`, `//`, and `<!--` as comment openers outside of one, and lets an
-unterminated comment run to end of input instead of throwing. The `colourLiteralsIn` table
-test grew five cases that fail under the old regex pair to pin this down.
+The comment stripper itself is now string-literal-aware, and language-aware. It used to be a
+pair of regexes, which meant a `/*` or `<!--` sitting inside a JS string or template literal
+would have been read as a real comment opener, silently deleting everything up to the next
+`*/` — including any genuine colour literal in between. It is now two single-pass character
+scanners, picked per file by extension. The JS/JSX scanner tracks whether it is inside a
+single-quoted, double-quoted, or backtick string (honouring backslash escapes), only treats
+`/*`, `//`, and `<!--` as comment openers outside of one, and lets an unterminated comment run
+to end of input instead of throwing. The HTML scanner needed a second pass: JS and HTML
+disagree about what a quote character means, so reusing the JS scanner on markup meant an
+apostrophe in ordinary prose (`don't`) opened a string that never closed, silently hiding
+every comment and colour literal after it for the rest of the file. HTML mode now tracks a
+quote only while inside a tag's `<…>` span — an apostrophe in text content, or inside a
+`<style>` block's CSS, is just a character — while still stripping `<!-- … -->` and CSS's
+`/* … */` outside of an attribute value. The `colourLiteralsIn` table test grew nine cases
+across both modes that fail under the old single regex-pair implementation to pin this down.
