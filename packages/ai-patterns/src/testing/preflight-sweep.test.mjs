@@ -6,38 +6,18 @@
  * both render without a reset — which is exactly why #78 shipped and why the
  * form-control regression in #126 is still shipping.
  *
- * Skipped, loudly, when no browser is available — same posture as
- * playwright.test.mjs, whose bootstrap this mirrors.
+ * Skipped, loudly, when no browser is available. That posture, the browser
+ * budget and the reasoning behind it all live in browser.test-helper.mjs,
+ * which playwright.test.mjs boots from too — this file used to mirror that
+ * bootstrap by hand and lost the teardown budget in the copy.
  */
 
-import { describe, expect, it, afterAll } from 'vitest';
+import { expect, it } from 'vitest';
 
+import { bootBrowser } from './browser.test-helper.mjs';
 import { findPreflightSensitiveElements } from './preflight-sweep.mjs';
 
-const BROWSER_BUDGET = 20_000;
-
-let chromium;
-try {
-  ({ chromium } = await import('playwright'));
-} catch {
-  chromium = null;
-}
-
-let browser;
-if (chromium) {
-  browser = await Promise.race([
-    chromium.launch(),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('chromium.launch() timed out')), BROWSER_BUDGET),
-    ),
-  ]).catch(() => null);
-}
-
-afterAll(async () => {
-  await browser?.close();
-});
-
-const describeBrowser = browser ? describe : describe.skip;
+const { browser, describeBrowser } = await bootBrowser('preflight sweep tests');
 
 /* The one Preflight rule that causes #78, plus the line-height inheritance
    that causes #126. Enough to be a real reset without pulling Tailwind in as a
@@ -83,10 +63,6 @@ describeBrowser('findPreflightSensitiveElements', () => {
     expect(findings).toEqual([]);
   });
 
-  /* The guard that keeps the two cases above honest. If the fixture stopped
-     being hostile — a future browser dropping the UA default, or the reset
-     failing to apply — the first case would report nothing and read as a pass
-     for the wrong reason. */
   /* The guard that keeps the two cases above honest. If the fixture stopped
      being hostile — a future browser dropping the UA default, or the reset
      failing to apply — the first case would report nothing and read as a pass

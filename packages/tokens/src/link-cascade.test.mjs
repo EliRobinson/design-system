@@ -33,7 +33,8 @@ const srcDir = dirname(fileURLToPath(import.meta.url));
 
 /* Launching, opening and closing Chromium share the machine with whatever else
    the monorepo is running; the 60s budget and the reason for it are the same as
-   in @elirobinson/ai-patterns' playwright.test.mjs. */
+   in @elirobinson/ai-patterns' src/testing/browser.test-helper.mjs, which is
+   not reachable from here — this package does not depend on that one. */
 const BROWSER_BUDGET = 60_000;
 
 let chromium;
