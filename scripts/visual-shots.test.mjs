@@ -114,6 +114,14 @@ const BUILDS_PRESENT =
   existsSync('../apps/docs/.next/prerender-manifest.json');
 
 describe.skipIf(!BUILDS_PRESENT)('computed baseline paths vs the ones on disk', () => {
+  /* Explicit timeout because this shells out to Playwright's collection, so
+     vitest's 5s default is a budget for in-process work being applied to a
+     process spawn plus a config load plus an enumeration of both manifests.
+     It takes ~1s locally but has cleared 5s on loaded CI runners, failing
+     unrelated PRs on a stopwatch rather than on the mapping this asserts.
+     30s is ~14x the slowest local reading — headroom for a slow runner, while
+     still reporting a genuine hang promptly. (The sibling cross-check in
+     visual-scope.test.mjs allows 120s; it spawns Playwright twice.) */
   it('agree exactly, in both directions', () => {
     const computed = new Set(listShots({ cwd: '..' }).map((shot) => shot.baselinePath));
 
@@ -132,5 +140,5 @@ describe.skipIf(!BUILDS_PRESENT)('computed baseline paths vs the ones on disk', 
     /* Sorted arrays rather than set equality: on a failure the diff names the
        paths, which is the whole value of running this. */
     expect([...computed].sort()).toEqual([...onDisk].sort());
-  });
+  }, 30_000);
 });
