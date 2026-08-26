@@ -46,31 +46,14 @@ export const Default: Story = {
   ),
 };
 
-/* `headline` is a real heading element, so the only thing this story changes is
-   the document outline — it looks identical to Default by design. Inspect the
-   rendered markup to see the <h3>. */
-export const HeadingLevelThree: Story = {
-  args: {
-    verdict: 'go',
-    verdictLabel: 'Worth it',
-    headingLevel: 3,
-    subject: 'Team plan renewal',
-    headline: 'Renewing now costs less than waiting.',
-    caveat: 'This card sits inside an <h2> section, so its headline is an <h3>.',
-  },
-  render: () => (
-    <DecisionCard
-      verdict="go"
-      verdictLabel="Worth it"
-      headingLevel={3}
-      subject="Team plan renewal"
-      headline="Renewing now costs less than waiting."
-      caveat="This card sits inside an <h2> section, so its headline is an <h3>."
-      style={{ maxWidth: 420 }}
-    />
-  ),
-};
-
+/* There is deliberately no `HeadingLevel` story. `headline` is a real heading
+   element and the type ramp is carried by the class, so a story at level 3
+   renders pixel-for-pixel what `Default` renders — it would mint two visual
+   baselines (light and dark) that cannot catch a regression `Default` would
+   miss, in a suite already fighting baseline cost (#101, #105). The prop is
+   documented where it is legible: autodocs derives it from the component's
+   types, the outline change is asserted by DecisionCard.test.tsx, and the
+   reasoning is on the docs page under "Heading level". */
 export const WithoutAction: Story = {
   args: {
     verdict: 'no',
