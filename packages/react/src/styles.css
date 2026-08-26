@@ -4,6 +4,11 @@
 
 @import '@elirobinson/tokens/tokens.css';
 
+/* Shared internals, ahead of every component: the drawn marks several
+   controls paint. Not a component and not under components/ — see
+   lib/marks.css. */
+@import './lib/marks.css';
+
 @import './components/atoms/Button.css';
 @import './components/molecules/Card.css';
 @import './components/atoms/field.css';

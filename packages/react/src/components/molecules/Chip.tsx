@@ -2,6 +2,7 @@ import type { HTMLAttributes } from 'react';
 import { forwardRef } from 'react';
 
 import { cn } from '../../lib/cn.js';
+import { Mark } from '../../lib/marks.js';
 
 export type ChipProps = HTMLAttributes<HTMLSpanElement> & {
   onRemove?: () => void;
@@ -27,7 +28,7 @@ export const Chip = forwardRef<HTMLSpanElement, ChipProps>(function Chip(
           aria-label={removeLabel ?? `Remove ${children}`}
           onClick={onRemove}
         >
-          ×
+          <Mark name="cross" />
         </button>
       ) : null}
     </span>

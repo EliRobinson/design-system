@@ -61,17 +61,35 @@ already meant to.
   no stacking context and hands nothing to the compositor: an overlay that
   changes how the glyph beneath it is rasterised is not a transparent overlay.
 
-- **`.ds-chip` and `.ds-chip__remove` declare a `font-family`, which they never
-  did.** A `<button>` does not inherit `font-family` — the UA stylesheet sets it
-  — so declaring only a `font-size` left the remove glyph painted in Arial beside
-  a label painted in Geist, and left `<button class="ds-chip">` with an Arial
-  label while `<span class="ds-chip">` had a Geist one. **This changes rendered
-  output**: the × is a different shape and weight, and it sits 0.87px below the
-  chip's centre where Arial's happened to sit 0.05px below it. That residual is
-  the font's own metrics — `align-items: center` centres the line box, not the
-  ink — and it is reported rather than nudged away, because a nudge would be a
-  constant tied to Geist and would break for a consumer who re-points
-  `--font-sans`.
+- **The chip's remove glyph is drawn, not typed.** It rendered the literal
+  character `×`, which made the control's appearance depend on a font — and on a
+  `<button>`, on a font nobody declared: `font-family` is not inherited, the UA
+  stylesheet sets it, so the glyph came out in the UA default beside a Geist
+  label. Declaring the family fixed the typeface and not the geometry:
+  `align-items: center` centres a text node's line _box_, and where the ink
+  lands inside it is a property of the family's own metrics. Measured as painted
+  pixels, the same declaration centred the UA default's `×` to 0.063px and
+  Geist's to 0.875px — neither number designed, and `--font-sans` is a token a
+  consumer may re-point, which would move it again.
+
+  A new internal module, `lib/marks.tsx`, draws it as an inline SVG instead:
+  `currentColor` so every existing colour state keeps working, `aria-hidden`
+  because the button already has its accessible name, sized by a `--mark-size`
+  custom property the control sets from the type ramp, and geometry symmetric
+  about the viewBox's centre. It is a replaced element centred by the flex box
+  the control already declares, so there is no baseline and no metric involved.
+  **Measured after: 0.000px from the chip's painted centre, and 0.000px at every
+  tenth of a pixel through a full pixel of layout nudging.** The mark paints
+  6.75px of ink against the text glyph's 6.00px — deliberately a little
+  stronger, and visible in the before/after shots.
+
+  **This changes rendered output.** `Chip`'s remove affordance is a drawn cross
+  rather than a typed character; its hit area, its 22px painted box, and every
+  number in the touch-target tables are unchanged.
+
+  `.ds-chip` keeps a declared `font-family` — its label is genuinely text, and
+  `<button class="ds-chip">` was painting that label in the UA default while
+  `<span class="ds-chip">` painted it in Geist.
 
 - **`.ds-table__sort` gets `min-height: var(--target-min)`.** It is the only
   element in the repo carrying `data-touch-target="dense"`, and it cleared 24 by

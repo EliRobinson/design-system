@@ -1,0 +1,35 @@
+/* ==========================================================================
+   Marks — the drawn glyphs in lib/marks.tsx
+   ========================================================================== */
+
+/* Not under components/ because a mark is not a component: it has no tier, no
+   roster row and no story, and every call site is inside this package. If a
+   consumer ever needs to draw one, promote it to an atom then — that is a
+   decision about a published API, and it should be made on purpose rather than
+   inherited from where a file happened to be put.
+
+   `--mark-size` is set by the control, never here. The same mark is 14px in a
+   chip's remove button and larger in a toast's close, and a mark that picked
+   its own size would need a variant class per call site. The fallback is the
+   base step of the type ramp so an unset custom property degrades to something
+   sane rather than to `auto`, which on a replaced element with no intrinsic
+   size is a 300x150 box.
+
+   `flex: none` because these sit in flex containers that would otherwise be
+   free to stretch or shrink them — and a stretched mark is no longer square,
+   so its geometry is no longer symmetric about its centre, which is the one
+   property the whole module rests on.
+
+   `stroke: currentColor` and `fill: none`: the control's existing colour rules
+   — .ds-chip__remove's --fg-3, its :hover --fg — keep working untouched. A mark
+   that declared its own colour would need every one of those states restated. */
+.ds-mark {
+  width: var(--mark-size, var(--fs-md));
+  height: var(--mark-size, var(--fs-md));
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

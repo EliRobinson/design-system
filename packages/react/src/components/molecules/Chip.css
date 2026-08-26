@@ -15,7 +15,9 @@
      it. <button class="ds-chip"> is the reason it is here: a button does not
      inherit font-family — the UA stylesheet sets it — so the button form of a
      chip painted its label in Arial while the span form painted it in Geist,
-     at the same declared font-size. See the note on __remove below. */
+     at the same declared font-size. A chip's label is text, so this is the
+     right fix for it; the remove button's glyph is not text any more and is
+     handled differently — see lib/marks.tsx. */
   font-family: var(--font-sans);
   font-size: var(--fs-xs);
   color: var(--fg);
@@ -40,39 +42,51 @@
   background: transparent;
   color: var(--fg-3);
   cursor: pointer;
-  /* Load-bearing, and it was missing. font-family is one of the properties a
-     <button> does not inherit: the UA stylesheet sets it, so declaring only a
-     font-size here left the × painted in the UA default — Arial — beside a
-     label painted in Geist. Nothing in this repo ships a `font: inherit`
-     reset (tokens.css, styles.css and the docs site were all checked), so
-     there was nothing else to catch it.
+  /* The glyph is drawn, not typed. It used to be a literal `×` text node, and
+     that made this control's rendering depend on a font — on a <button>, a font
+     nobody declared, since font-family is not inherited and the UA stylesheet
+     sets it. The × came out in the UA default beside a Geist label.
 
-     Two families is a visible difference in the glyph itself — Arial's × and
-     Geist's × are different shapes at different stroke weights — and that is
-     what this line fixes.
+     Declaring the family fixed the typeface and not the geometry. Measured on
+     <Chip onRemove>Design</Chip>, as painted ink: `align-items: center` centres
+     the line *box*, the baseline sits (ascent - descent) / 2 below that box's
+     centre — 5.00px, the same for both families — and where the ink lands then
+     depends on where the family puts it above its own baseline. Arial 4.95px,
+     Geist 4.13px, so the same declaration centred one to 0.05px and the other
+     to 0.87px. Neither was designed. And --font-sans is a token a consumer may
+     re-point, which would move it again by some third amount.
 
-     What it does not fix, stated because the number moved the wrong way.
-     Measured as painted ink (canvas.measureText's actualBoundingBox against a
-     Range for the layout position), on <Chip onRemove>Design</Chip>:
+     lib/marks.tsx draws it instead: a replaced element, symmetric about its own
+     centre, blockified as a flex item and centred by the flex box already
+     declared above. No baseline, no metrics, nothing to inherit — the offset is
+     zero by construction rather than small by luck.
 
-                        before (Arial)   after (Geist)
-       × ink mid          centre +0.05     centre +0.87
-       label ink mid      centre -0.20     centre -0.20
-       label → × delta          0.25            1.07
+     Verified as painted pixels at deviceScaleFactor 8, so a CSS pixel resolves
+     to an eighth of one, comparing the mark's stroke ink against the chip's own
+     painted box rather than against a layout rectangle:
 
-     The geometry, so this is not mistaken for a regression this line
-     introduced. `align-items: center` centres the *line box*, and the baseline
-     sits (ascent - descent) / 2 below that box's centre — 5.00px here, for both
-     families, because both report 14/4 at this size. So the × baseline does not
-     move at all. What moves is where the glyph's ink sits above its baseline:
-     Arial 4.95px, Geist 4.13px. 5.00 - 4.95 = 0.05; 5.00 - 4.13 = 0.87.
-     Arial's near-perfect centring was a coincidence of Arial's metrics, not
-     something anyone designed, and it came at the price of the wrong typeface.
+       text `×`, UA default   ink 6.13px   centre +0.063px
+       text `×`, Geist        ink 6.00px   centre +0.875px
+       drawn mark             ink 6.75px   centre  0.000px
 
-     Centring a glyph's *ink* rather than its line box needs the font's metrics,
-     which CSS cannot read, so the remaining 0.87px is not fixable here without
-     a hard-coded nudge tied to Geist — which would break for any consumer who
-     overrides --font-sans. Left as measured rather than papered over. */
+     and 0.000px at every tenth of a pixel through a full pixel of layout
+     nudging, which is the part that says "by construction". Chromium snaps an
+     element's raster to whole CSS pixels, so the mark's box can sit up to 0.5px
+     from where layout puts it — but the chip snaps with it, so what a reader
+     sees stays exactly centred. The old text glyph was subject to that same
+     snapping *plus* the metric offset above.
+
+     The label's own ink centre sits 0.31px above the chip's centre. That is the
+     word — cap heights and a descender — not this control, it was the same
+     before, and it is not something to chase.
+
+     --mark-size is read from the type ramp directly rather than as `1em`, so
+     the mark keeps its size even if a consumer restyles this button's text.
+     font-family and font-size stay for the hand-written `.ds-chip__remove` that
+     carries a text node of its own: nothing <Chip> renders needs them, and if
+     something ever does, it should be Geist at the ramp's step rather than the
+     UA default all over again. */
+  --mark-size: var(--fs-sm);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
   line-height: 1;
