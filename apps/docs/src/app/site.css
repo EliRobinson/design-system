@@ -345,12 +345,44 @@
 .code-block__body pre {
   margin: 0;
   padding: var(--space-4);
-  background: var(--bg-muted) !important; /* beats shiki's inline theme background */
+  /* No !important any more: shiki used to write its theme's background onto
+     this element as a real inline declaration, and the pair of themes it
+     writes now is custom properties only. Nothing left to beat. */
+  background: var(--bg-muted);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow-x: auto;
   font-size: var(--fs-sm);
   line-height: var(--lh-normal);
+}
+
+/* Which of the two baked-in code themes is on screen.
+
+   highlight.ts highlights with a light/dark pair, so every span carries both
+   themes' values as custom properties and none of them as a real declaration.
+   Without these two rules the spans inherit and the block renders as one flat
+   ink — the same symptom as a dropped theme, from the opposite cause.
+
+   The weight and style are variables too, not just the colour: bold keywords
+   and italic comments are part of the theme, and italic is what separates a
+   comment from the punctuation grey it shares a hex with. The `inherit`
+   fallbacks are for the spans that set neither.
+
+   Keyed off `[data-theme]` only. tokens.css also accepts a `.dark` class as a
+   compatibility alias for consumers whose switcher defaults to one, but this
+   site has exactly one switcher — lib/theme.ts — and it sets the attribute. */
+.code-block__body .shiki,
+.code-block__body .shiki span {
+  color: var(--shiki-light);
+  font-style: var(--shiki-light-font-style, inherit);
+  font-weight: var(--shiki-light-font-weight, inherit);
+}
+
+[data-theme='dark'] .code-block__body .shiki,
+[data-theme='dark'] .code-block__body .shiki span {
+  color: var(--shiki-dark);
+  font-style: var(--shiki-dark-font-style, inherit);
+  font-weight: var(--shiki-dark-font-weight, inherit);
 }
 
 .code-block__copy {
