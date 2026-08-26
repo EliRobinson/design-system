@@ -16,7 +16,19 @@
       "options": {
         "cwd": "apps/docs"
       },
-      "outputs": ["{projectRoot}/.next"]
+      /* `.next` is not the whole build. `stage-brand.mjs` runs first and writes
+         public/brand/ — the dereferenced brand tree the /brand/** routes are
+         served from — and `next start` reads public/ off disk at request time
+         rather than baking it into `.next`.
+         public/brand/ is gitignored, so unlike the tokens mirror below there is
+         no committed copy to paper over a partial restore. Measured with only
+         `.next` declared: delete apps/docs/public/brand, re-run, and Nx reports
+         `4 of 4` from cache with the directory still gone. The site then boots,
+         every route returns 200, and the brand preview renders unstyled.
+         (visual.yml's `build` job packs only `.next` and `storybook-static`, so
+         the sweep jobs have never had this directory either — tracked
+         separately; declaring it here is what makes the cache honest.) */
+      "outputs": ["{projectRoot}/.next", "{projectRoot}/public/brand"]
     },
     "lint": {
       "command": "pnpm run lint",

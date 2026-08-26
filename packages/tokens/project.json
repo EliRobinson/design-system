@@ -8,7 +8,29 @@
       "command": "pnpm run build",
       "options": {
         "cwd": "packages/tokens"
-      }
+      },
+      /* `dist` is the targetDefault and it is less than a third of what this
+         build writes. `build-fonts.mjs` emits src/fonts.css and src/fonts/,
+         `build-tokens-json.mjs` emits src/tokens.json, and build-fonts then
+         mirrors the first two into design-system-docs/ as symlinks — outputs
+         two directories above the project root.
+         All six are committed, which is why the gap never failed a check: a
+         clean CI checkout has them from git whatever the cache does. It fails
+         locally instead. Measured with only `dist` declared: delete
+         design-system-docs/fonts.css and design-system-docs/fonts/, re-run,
+         and Nx reports `1 of 1` from cache with both still gone — the brand
+         preview then loads with no @font-face rules and nothing says so.
+         Nx restores the mirror as symlinks, not as dereferenced copies, so
+         `git status` stays clean across a replay. Verified: 13 links back,
+         each pointing at ../../packages/tokens/src/fonts/. */
+      "outputs": [
+        "{projectRoot}/dist",
+        "{projectRoot}/src/fonts.css",
+        "{projectRoot}/src/fonts",
+        "{projectRoot}/src/tokens.json",
+        "{workspaceRoot}/design-system-docs/fonts.css",
+        "{workspaceRoot}/design-system-docs/fonts"
+      ]
     },
     "lint": {
       "command": "pnpm run lint",
