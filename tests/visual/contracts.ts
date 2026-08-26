@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 import {
   PRIMARY_CONTROL_SELECTOR,
@@ -64,4 +64,84 @@ export async function assertContracts(page: Page): Promise<void> {
     touchTargets: false,
     focusVisible: false,
   });
+
+  await assertMarksCentred(page);
+}
+
+/* Every drawn mark sits exactly in the middle of the control that paints it.
+ *
+ * #166 replaced six controls' text glyphs — `×`, `★`/`☆`, `‹`/`›` — with drawn
+ * SVG marks, because a character's position inside its line box is a property
+ * of the font file and not something CSS can correct. The measurements that
+ * motivated it, taken on the shipped components: `‹` sat 1.438px below its
+ * button's centre, the search field's `×` 1.250px below, the toast's 0.750px.
+ *
+ * A mark cannot drift the same way — it has no baseline — but it can still be
+ * put in a control that does not centre it. That is the failure this catches,
+ * and it is a real one: `.ds-rating__star` and `.ds-date-picker__header button`
+ * were NOT flex containers before #166, so an inline `<svg>` in either would
+ * have sat on the text baseline and reintroduced the whole problem in a new
+ * spelling. Both gained `display: inline-flex` in that change; this is what
+ * stops them quietly losing it.
+ *
+ * LAYOUT, not pixels, and that distinction is the whole reason this assertion
+ * can be exact. Painted ink snaps to the device pixel grid, so a control that
+ * happens to land on a fractional page position paints its mark up to a pixel
+ * from where the float geometry puts it — measured at 0.391px on
+ * `.ds-rating__star` and 0.219px on `.ds-pagination__nav`, in both cases
+ * exactly that control's own distance to the grid. The control snaps and the
+ * mark snaps with it, so what a reader sees stays centred; it is only the
+ * comparison against unsnapped geometry that shows a residual. Comparing boxes
+ * to boxes takes the raster out of it entirely and lets this demand zero.
+ *
+ * The centre compared against is the parent's CONTENT box, not its border box.
+ * They coincide today because every control here is symmetrically padded, but
+ * a mark centres in the content box and asserting against the border box would
+ * silently start measuring the wrong thing the day one of them is not.
+ *
+ * Exported, and that is for a reason worth knowing before you change it: this
+ * runs from `afterCapture`, which fires only AFTER the screenshot assertion
+ * passes — and outside the pinned container every baseline mismatches, so on a
+ * developer machine the screenshot always throws first and this never runs at
+ * all. Exporting it is what makes it reachable from a throwaway spec that
+ * navigates to a story and calls it directly, which is the only way to see it
+ * work without pushing. Verified that way against chip, rating (both stories)
+ * and pagination; searchfield, toast and datepicker render no mark in their
+ * default stories, which is a coverage gap in those stories rather than here.
+ */
+export async function assertMarksCentred(page: Page): Promise<void> {
+  const offsets = await page.$$eval('.ds-mark', (marks) =>
+    marks.map((mark) => {
+      const control = mark.parentElement as HTMLElement;
+      const box = mark.getBoundingClientRect();
+      const outer = control.getBoundingClientRect();
+      const style = getComputedStyle(control);
+      const px = (value: string) => Number.parseFloat(value) || 0;
+
+      const left = outer.left + px(style.borderLeftWidth) + px(style.paddingLeft);
+      const right = outer.right - px(style.borderRightWidth) - px(style.paddingRight);
+      const top = outer.top + px(style.borderTopWidth) + px(style.paddingTop);
+      const bottom = outer.bottom - px(style.borderBottomWidth) - px(style.paddingBottom);
+
+      return {
+        control: `${control.tagName.toLowerCase()}.${control.className || '(unclassed)'}`,
+        dx: (box.left + box.right) / 2 - (left + right) / 2,
+        dy: (box.top + box.bottom) / 2 - (top + bottom) / 2,
+      };
+    }),
+  );
+
+  for (const { control, dx, dy } of offsets) {
+    /* Floats, so not `toBe(0)` — but three orders of magnitude tighter than
+       any of the character offsets above, and tight enough that a control
+       which stopped centring its mark could not slip through. */
+    expect(
+      Math.abs(dx),
+      `${control} paints its mark ${dx.toFixed(3)}px off centre in x`,
+    ).toBeLessThan(0.001);
+    expect(
+      Math.abs(dy),
+      `${control} paints its mark ${dy.toFixed(3)}px off centre in y`,
+    ).toBeLessThan(0.001);
+  }
 }

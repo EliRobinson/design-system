@@ -2,15 +2,18 @@ import type { HTMLAttributes } from 'react';
 import { forwardRef } from 'react';
 
 import { cn } from '../../lib/cn.js';
+import { Mark } from '../../lib/marks.js';
 
-/* Filled and empty stars are different glyphs, not one glyph in two colours.
+/* Filled and empty stars are different SHAPES, not one shape in two colours.
    Both states used ★ and were told apart by colour alone, which is SC 1.4.1
    (Use of Color) — and it put the two states 2.66:1 apart, under the 3:1
    SC 1.4.11 asks between adjacent meaningful graphics. Shape carries the
    value now, so the colour difference is reinforcement rather than the
-   only channel. */
-const FILLED_STAR = '★';
-const EMPTY_STAR = '☆';
+   only channel.
+
+   The characters became drawn marks in #166, and solid-versus-outline is the
+   same distinction ★ and ☆ carried — see `filled` in lib/marks.tsx. The star
+   keeps its stroke when filled, so a row does not change width as it fills. */
 
 export type RatingProps = Omit<HTMLAttributes<HTMLDivElement>, 'role'> & {
   value: number;
@@ -41,7 +44,7 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
             aria-hidden="true"
             className={cn('ds-rating__star', star <= clampedValue && 'ds-rating__star--filled')}
           >
-            {star <= clampedValue ? FILLED_STAR : EMPTY_STAR}
+            <Mark name="star" filled={star <= clampedValue} />
           </span>
         ))}
       </div>
@@ -59,7 +62,7 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
           className={cn('ds-rating__button', star <= clampedValue && 'ds-rating__star--filled')}
           onClick={() => onValueChange?.(star)}
         >
-          <span aria-hidden="true">{star <= clampedValue ? FILLED_STAR : EMPTY_STAR}</span>
+          <Mark name="star" filled={star <= clampedValue} />
         </button>
       ))}
     </div>

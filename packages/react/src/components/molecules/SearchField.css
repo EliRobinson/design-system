@@ -49,6 +49,11 @@
   background: transparent;
   color: var(--fg-3);
   cursor: pointer;
+  /* The drawn cross replaces a text `×` (#166). --mark-size is read from the
+     ramp rather than as `1em`, so the mark keeps its size if a consumer
+     restyles this button's text; font-size stays for a hand-written
+     `.ds-search-field__clear` that carries a text node of its own. */
+  --mark-size: var(--fs-md);
   font-size: var(--fs-md);
 }
 

@@ -31,6 +31,17 @@
   font-size: var(--fs-sm);
 }
 
+/* #166: the nav buttons paint a drawn chevron where they typeset `‹` and `›`.
+   Its own rule rather than a line in the shared block above, because only the
+   nav carries a mark — .ds-pagination__item renders page NUMBERS, which are
+   text and are sized by the font-size that block already sets.
+
+   --fs-sm matches that font-size, so the chevron is the size the character was
+   asking to be: this changes the shape, not the scale of the row. */
+.ds-pagination__nav {
+  --mark-size: var(--fs-sm);
+}
+
 .ds-pagination__nav:disabled {
   opacity: 0.4;
   cursor: not-allowed;

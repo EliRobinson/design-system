@@ -30,6 +30,23 @@
   fill: none;
   stroke: currentColor;
   stroke-width: 1.5;
+  /* Both `round`, and both load-bearing rather than stylistic. They make the
+     stroke grow the ink box by exactly half a stroke width on every side, so a
+     path whose bounding box is centred stays centred once painted. A `miter`
+     join extends each vertex along its own bisector by an amount that depends
+     on the angle — on `star`, whose 36-degree points and 108-degree notches
+     are nothing alike, that would push the ink off centre by a different
+     amount at each vertex and reintroduce exactly what this module removes. */
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* The one state a mark carries, used by Rating's filled star.
+   `currentColor` again, so the control's existing colour rules — and only
+   those — decide what a filled mark is painted in.
+
+   The stroke stays on underneath: it is what keeps a filled and an empty star
+   the same outer size, so a row does not change width as it fills. */
+.ds-mark--filled {
+  fill: currentColor;
 }

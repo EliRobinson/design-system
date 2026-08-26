@@ -79,6 +79,9 @@
   color: var(--fg-3);
   cursor: pointer;
   display: inline-flex;
+  /* #166: the drawn cross. See .ds-search-field__clear for why font-size
+     stays alongside it. */
+  --mark-size: var(--fs-lg);
   font-size: var(--fs-lg);
   justify-content: center;
   line-height: 1;

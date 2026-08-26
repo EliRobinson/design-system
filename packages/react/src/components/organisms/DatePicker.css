@@ -29,9 +29,16 @@
 }
 
 .ds-date-picker__header button {
+  /* A flex box for the same reason .ds-rating__star is one: these buttons hold
+     a drawn chevron (#166), and an inline replaced element would sit on the
+     text baseline rather than in the middle of the control. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
   cursor: pointer;
+  --mark-size: var(--fs-md);
   font-size: var(--fs-md);
   color: var(--fg-2);
 }
