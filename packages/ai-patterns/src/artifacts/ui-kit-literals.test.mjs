@@ -27,19 +27,74 @@ function kitFiles(dir = kitsDir) {
 }
 
 /* Strips `/* … *\/` block comments (JS/JSX doc comments, and CSS comments inside an
-   .html file's <style> block) and `<!-- … -->` HTML comments before matching, so a
-   colour word or a `#nnn` cross-reference living in prose never reads as a rendered
-   literal. `//` line comments are deliberately left untouched: telling a `//` comment
-   apart from a `https://` URL inside a string needs string-literal tracking that a
-   plain regex scan doesn't do, and none of the current kits put a colour literal or an
-   oklch()/rgba() call after `//` on the same line — so leaving line comments in place
-   costs nothing today and avoids a more fragile parser. The block-comment and HTML-comment
-   stripping above carries the same weakness — a plain regex scan can't tell a `/* ` or
-   `<!--` delimiter sitting inside a string literal from a real comment either — and is
-   accepted for the same reason: none of the current kits put those delimiters inside a
-   string, so nothing is silently swallowed today. */
+   .html file's <style> block), `<!-- … -->` HTML comments, and `//` line comments
+   before matching, so a colour word or a `#nnn` cross-reference living in prose never
+   reads as a rendered literal.
+ *
+ * This is a single-pass character scanner, not a pair of regexes, because a regex scan
+ * can't tell a `/*` or `<!--` delimiter that's sitting inside a string literal from a
+ * real comment opener. A single-quoted string, double-quoted string, or backtick
+ * template literal containing either sequence — e.g. a URL comment written as a string,
+ * or markup assembled as a template literal — would have had everything up to the next
+ * `*\/` treated as commented out and silently dropped from what the guard checks,
+ * including any real colour literal that followed. The scanner tracks whether it is
+ * inside a string and, if so, treats `/*` and `<!--` as ordinary characters; it also
+ * honours backslash escapes inside strings (`'it\'s'` doesn't end the string early).
+ * An unterminated `/*` or `<!--` (no closing delimiter) consumes to end of input rather
+ * than throwing.
+ *
+ * `//` line comments are now stripped too: once the scanner already tracks string
+ * state, telling a `//` comment apart from a `https://` URL inside a string is free —
+ * a `//` is only treated as a comment when it appears outside a string — so there's no
+ * remaining reason to leave line comments in place.
+ */
 function withoutComments(source) {
-  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
+  let result = '';
+  let quote = null; // one of ' " ` while inside a string, otherwise null
+
+  for (let i = 0; i < source.length; i++) {
+    const ch = source[i];
+
+    if (quote) {
+      result += ch;
+      if (ch === '\\' && i + 1 < source.length) {
+        // Copy the escaped character verbatim so it can't end the string early
+        // (and so an escaped quote isn't mistaken for the closing quote).
+        result += source[++i];
+      } else if (ch === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (ch === "'" || ch === '"' || ch === '`') {
+      quote = ch;
+      result += ch;
+      continue;
+    }
+
+    if (ch === '/' && source[i + 1] === '*') {
+      const end = source.indexOf('*/', i + 2);
+      i = end === -1 ? source.length : end + 1; // loop's i++ lands past '*/'
+      continue;
+    }
+
+    if (ch === '/' && source[i + 1] === '/') {
+      const end = source.indexOf('\n', i + 2);
+      i = end === -1 ? source.length : end - 1; // loop's i++ lands on '\n'
+      continue;
+    }
+
+    if (ch === '<' && source.slice(i, i + 4) === '<!--') {
+      const end = source.indexOf('-->', i + 4);
+      i = end === -1 ? source.length : end + 2; // loop's i++ lands past '-->'
+      continue;
+    }
+
+    result += ch;
+  }
+
+  return result;
 }
 
 /* Matches oklch(), rgb()/rgba(), hsl()/hsla() and #rgb/#rrggbb, wherever they appear —
@@ -119,6 +174,35 @@ describe('colourLiteralsIn', () => {
       label: 'a genuine rgba() call, still caught',
       input: "background: 'rgba(0, 0, 0, 0.5)'",
       expected: ['rgba('],
+    },
+    {
+      label:
+        'a /* inside a single-quoted string, paired with a later */ inside another string — the real colour literal between them must still be found',
+      input: "const s = 'weird /* text'; color: '#eee'; const t = 'trailing */ end';",
+      expected: ['#eee'],
+    },
+    {
+      label:
+        'a <!-- inside a string, paired with a later --> inside another string — the real colour literal between them must still be found',
+      input: "const s = 'oops <!-- html'; color: '#eee'; const t = 'trailer --> end';",
+      expected: ['#eee'],
+    },
+    {
+      label:
+        "a */ inside a string, before a genuine comment, does not disturb the comment's own scan",
+      input: "const s = 'oops */ text'; /* a fake #123abc color, ignored */ color: '#fff';",
+      expected: ['#fff'],
+    },
+    {
+      label:
+        "an escaped quote inside a string doesn't end it early, and a real colour literal after is found",
+      input: "const s = 'it\\'s fine'; color: '#abc';",
+      expected: ['#abc'],
+    },
+    {
+      label: 'an unterminated /* consumes to end of input, hiding the colour literal it contains',
+      input: '/* unterminated comment mentions #fff but never closes',
+      expected: [],
     },
   ];
 
