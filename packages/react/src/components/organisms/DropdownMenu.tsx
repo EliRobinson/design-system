@@ -141,21 +141,45 @@ export function DropdownMenuContent({
 
 export type DropdownMenuItemProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   inset?: boolean;
+  /**
+   * Whether choosing this item closes the menu. Defaults to `true` for an
+   * ordinary item, and to `false` when `type="submit"` — closing unmounts the
+   * portal during the click, which cancels the form submission the click was
+   * for. Set it explicitly to override either default.
+   */
+  closeOnSelect?: boolean;
 };
 
 export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemProps>(
-  function DropdownMenuItem({ className, inset, onClick, ...props }, ref) {
+  function DropdownMenuItem(
+    { className, inset, closeOnSelect, onClick, type = 'button', ...props },
+    ref,
+  ) {
     const { onOpenChange } = useDropdownMenuContext();
+
+    // Closing is a discrete update React flushes synchronously, still inside the
+    // click dispatch — `AnchoredOverlayContent` returns null and the portal
+    // unmounts before the browser gets to the click's default action. For an
+    // ordinary item that is exactly what's wanted; for `type="submit"` it
+    // destroys the thing the click was for. React has already suppressed the
+    // browser's own submission so it can run the form's `action` itself, and by
+    // then there is no live fiber to run it against, so both paths are gone and
+    // the item reads as dead (issue #179). A submit item therefore stays open
+    // unless the consumer asks otherwise — usually the action navigates or the
+    // consumer closes the menu when it resolves.
+    const shouldClose = closeOnSelect ?? type !== 'submit';
 
     return (
       <button
         ref={ref}
-        type="button"
+        type={type}
         role="menuitem"
         className={cn('ds-dropdown__item', inset && 'ds-dropdown__item--inset', className)}
         onClick={(event) => {
           onClick?.(event);
-          onOpenChange(false);
+          if (shouldClose) {
+            onOpenChange(false);
+          }
         }}
         {...props}
       />

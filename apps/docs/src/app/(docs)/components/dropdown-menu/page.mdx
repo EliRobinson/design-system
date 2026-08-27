@@ -31,6 +31,32 @@ sibling items that have a leading marker — a checkmark on the current selectio
   <Alignment />
 </DemoBlock>
 
+## Submitting a form from an item
+
+An item that submits a form — a sign-out button running a server action, say — must not close
+the menu as part of the click that submits it. Closing is a discrete state update React flushes
+synchronously, still inside the click dispatch: the portal unmounts before the browser reaches
+the click's default action, React has already suppressed the browser's own submission so that it
+can run the form's `action` itself, and no live fiber is left to run it against. The result is an
+item that looks like it does nothing at all.
+
+So `DropdownMenuItem` reads its own `type`: an item with `type="submit"` does not close on
+select, and everything else still does.
+
+```tsx
+<DropdownMenuContent>
+  <form action={signOutAction}>
+    <DropdownMenuItem type="submit">Sign out</DropdownMenuItem>
+  </form>
+</DropdownMenuContent>
+```
+
+The menu then stays open until the action navigates away, or until you close it yourself once
+the action resolves. `closeOnSelect` overrides the default in either direction —
+`closeOnSelect={false}` keeps an ordinary item's menu open (a toggle the user may want to flip
+more than once), and `closeOnSelect` on a submit item closes it anyway, which is only correct
+when the submission does not need the form to survive the click.
+
 ## Props
 
 <PropsTables slug="dropdown-menu" />

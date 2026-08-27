@@ -1,3 +1,5 @@
+import type { FormEvent } from 'react';
+
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
@@ -67,6 +69,87 @@ describe('DropdownMenu', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Duplicate' }));
 
     expect(onSelect).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  // Issue #179. `onOpenChange(false)` from the item's own onClick is a discrete
+  // update React flushes synchronously inside the click dispatch, so the portal
+  // unmounts while the browser is still processing the activation that submitted
+  // the form — the submit event fires against a detached tree and React has no
+  // live fiber left to run the form's `action`/`onSubmit` against. A submit item
+  // therefore does not close by default.
+  it('lets a type="submit" item submit the form it is in', async () => {
+    const user = userEvent.setup();
+    const action = vi.fn();
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      connectedAtSubmit = event.currentTarget.isConnected;
+    });
+    let connectedAtSubmit: boolean | null = null;
+
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>Account</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <form action={action} onSubmit={onSubmit}>
+            <DropdownMenuItem type="submit">Sign out</DropdownMenuItem>
+          </form>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Account' }));
+    const item = screen.getByRole('menuitem', { name: 'Sign out' });
+    await user.click(item);
+
+    // The form's own handlers, not the item's: `onSubmit` fired even before the
+    // fix (against a detached tree), but the `action` React was meant to run in
+    // its place never did.
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(connectedAtSubmit).toBe(true);
+    expect(action).toHaveBeenCalledOnce();
+    expect(item.isConnected).toBe(true);
+  });
+
+  it('keeps an ordinary item open when closeOnSelect is false', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>Actions</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem closeOnSelect={false}>Duplicate</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Actions' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Duplicate' }));
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
+  it('closes a submit item when closeOnSelect is explicitly true', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>Account</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <form onSubmit={onSubmit}>
+            <DropdownMenuItem type="submit" closeOnSelect>
+              Sign out
+            </DropdownMenuItem>
+          </form>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Account' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 });
