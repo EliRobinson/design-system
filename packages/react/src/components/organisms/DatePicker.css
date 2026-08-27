@@ -76,6 +76,22 @@
   gap: 2px;
 }
 
+/* The weekday header shares the week rows' 7-column track above, so the
+   labels stay in the same grid columns as the days they name -- a separate
+   layout here could drift out of alignment with them. */
+.ds-date-picker__row--head {
+  margin-bottom: var(--space-1);
+}
+
+.ds-date-picker__weekday {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--fg-2);
+}
+
 .ds-date-picker__cell {
   display: flex;
   align-items: center;
