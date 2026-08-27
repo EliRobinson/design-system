@@ -115,6 +115,8 @@ export const BRAND_DESCRIPTIONS = {
   'ui_kits/docs/': 'Docs / long-form reading kit.',
   'ui_kits/_shared/':
     'JSX primitives every kit loads over `../_shared/Primitives.jsx` — a kit copied without it renders nothing.',
+  'miltinson.voice.json':
+    "The default voice pack — the brand's prose values as data, the way palettes.css holds its colour. The voice rules in README.md are rendered from it; swap the whole pack rather than editing the prose.",
   'README.md': 'Brand voice, color, type, and layout rules. Read this first.',
   'SKILL.md': 'This file — the skill entry point.',
 };

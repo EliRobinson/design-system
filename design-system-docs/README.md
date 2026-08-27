@@ -53,7 +53,7 @@ Eli runs many small projects. The point of this system is to keep them **visuall
 | `uploads/`                  | — | Scratch uploads — working material. |
 | `_project-mirror/`          | — | Claude Design project mirror — 9 UI kits and 4 page templates awaiting port. Renders only inside that project (loads `_ds_bundle.js`). |
 | `SKILL.md`                  | ✓ | Agent Skills frontmatter — drop this folder into Claude Code as a skill. |
-| `miltinson.voice.json`      | — | The voice pack — the brand's prose values as data, the way `palettes.css` holds its colour. Every surface that states the voice is generated from it. |
+| `miltinson.voice.json`      | ✓ | The voice pack — the brand's prose values as data, the way `palettes.css` holds its colour. Every surface that states the voice is generated from it. |
 
 <!-- ds-artifacts:managed:end -->
 
