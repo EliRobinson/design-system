@@ -23,9 +23,36 @@ import { detect, findDrift } from './detect.mjs';
 import { formatMigrateReport, runMigrate } from './migrate.mjs';
 import { collectMigrations, readUpgradeRecord } from './migrations.mjs';
 import { promptSelections } from './prompt.mjs';
-import { fetchAllVersions, fetchChangelog, RegistryError } from './registry.mjs';
+import {
+  fetchAllVersions,
+  fetchChangelog,
+  fetchLatestVersion,
+  RegistryError,
+} from './registry.mjs';
 import { compareVersions, jumpClass, parseVersion, selectTarget } from './semver.mjs';
+import { checkSelfDrift, formatSelfStaleWarning, readOwnVersion } from './selfcheck.mjs';
 import { resolveTarget } from './targets.mjs';
+
+/**
+ * Loud, best-effort check that this running copy is the one the registry
+ * considers current — see selfcheck.mjs. A registry problem here is
+ * swallowed rather than surfaced: every command that actually needs the
+ * registry already reports its own failures, and this check should never be
+ * the reason an otherwise-offline-capable command stops working.
+ */
+function warnIfStale(cwd) {
+  const own = readOwnVersion();
+
+  let latest;
+  try {
+    latest = fetchLatestVersion(own.name, { cwd });
+  } catch {
+    return;
+  }
+
+  const drift = checkSelfDrift({ running: own.version, latest });
+  if (drift) process.stderr.write(`${formatSelfStaleWarning(drift, own.name)}\n\n`);
+}
 
 async function artifactsCommand(argv) {
   let args;
@@ -40,6 +67,8 @@ async function artifactsCommand(argv) {
     process.stdout.write(ARTIFACTS_USAGE);
     return 0;
   }
+
+  warnIfStale(args.cwd);
 
   let result;
   try {
@@ -420,6 +449,8 @@ export async function main(argv) {
     process.stdout.write(USAGE);
     return 0;
   }
+
+  warnIfStale(args.cwd);
 
   let result;
   try {
