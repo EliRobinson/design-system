@@ -13,7 +13,11 @@
 > 2. The pack's top-level `anchors` is **`samples`**; it collided with `person.anchors`.
 > 3. `fullName` is required, and distinct from `label`.
 > 4. `person.summary` is required.
-> 5. `brand.packId` already exists — Task 12 must not add a second one.
+> 5. ~~`brand.packId` already exists — Task 12 must not add a second one.~~ **Wrong, and
+>    corrected while building PR 3: it did not exist anywhere in the tree.** `grep -r
+packId packages apps` returned nothing on `main` @ b6d467b. Task 12 adds it, once,
+>    as its own code block always said. The amendment was written from a note about PR 2
+>    rather than from the tree — which is the same failure it was correcting.
 >
 > Where a task's prose and its code disagree, the code below is the amended version. Anything
 > describing state ("currently takes…", line numbers) was true when written and may not be now:
@@ -1410,14 +1414,16 @@ git commit -m "feat(ai-patterns): resolve a consumer's voice pack ahead of the s
 
 ---
 
-### Task 11: `ds voice` and `ds init --voice`
+### Task 11: `ds voice` and `ds init --voice` **[amended]**
 
 **Files:**
 
 - Modify: `packages/ai-patterns/src/cli/commands.mjs` (add `voice`, add to `usage()`)
 - Modify: `packages/ai-patterns/src/cli/cli.mjs` (route it)
 - Modify: `packages/ai-patterns/src/cli/init.mjs` (`--voice`)
-- Modify: `packages/ai-patterns/src/cli/commands.test.mjs`
+- Modify: `packages/ai-patterns/src/cli/cli.test.mjs` — **there is no `commands.test.mjs`.**
+  The CLI's tests all drive `run(argv, { origins, cwd, selfDir })` from `cli.test.mjs`,
+  which is the better seam anyway: it exercises the routing as well as the command.
 
 **Interfaces:**
 
@@ -1426,7 +1432,8 @@ git commit -m "feat(ai-patterns): resolve a consumer's voice pack ahead of the s
 
 - [ ] **Step 1: Write the failing test**
 
-Add to `packages/ai-patterns/src/cli/commands.test.mjs`:
+Add to `packages/ai-patterns/src/cli/cli.test.mjs`, driving `run` rather than the command
+function directly — `at(root)` there already supplies `{ origins, cwd, selfDir }`:
 
 ```javascript
 describe('ds voice', () => {
@@ -1452,7 +1459,8 @@ Expected: FAIL — `voice` is not exported.
 
 - [ ] **Step 3: Implement the command**
 
-The test snippet above needs these imports at the top of `commands.test.mjs`, alongside whatever is already there:
+Driven through `run`, the snippet above needs no new imports in `cli.test.mjs`. Calling
+`voice(env)` directly instead would need these:
 
 ```javascript
 import { mkdtempSync } from 'node:fs';
@@ -1571,9 +1579,16 @@ Expected: both FAIL on the old framing.
 
 - [ ] **Step 3: Rewrite the corpus section**
 
-`llmsFull` **already takes** `brand: { readme, packId, note, artifacts }` — `packId` was added when PR 2 shipped, so the corpus can name the pack without `llms.mjs` reading the filesystem; it is a pure renderer and must stay one. Read `build-artifacts.mjs` and use the field that is there. Do not add a second one.
+`llmsFull` takes `brand: { readme, note, artifacts }` and this task adds `packId`, so the
+corpus can name the pack without `llms.mjs` reading the filesystem — it is a pure renderer
+and must stay one. Require it rather than defaulting it: a corpus published saying
+`pack: undefined` is a worse claim than the framing this replaces.
 
-The block below is what PR 2 landed, kept here so this task's diff is legible:
+Both callers supply it, and both read the id from `design-system-docs/miltinson.voice.json`
+rather than from `resolveVoicePack` — `build-artifacts.mjs` is building this system's own
+tarball and `apps/docs/src/lib/ai-corpus.ts` is serving this system's own site, so a
+`voice.json` in whatever directory the build ran from must not decide what a consumer
+receives. The MCP is the surface that resolves.
 
 In `packages/ai-patterns/scripts/build-artifacts.mjs`, extend the `brand` object passed to `llmsFull`:
 
