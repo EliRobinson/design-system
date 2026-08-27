@@ -5,6 +5,8 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { renderVoice } from '../voice/render.mjs';
+import { resolveVoicePack } from '../voice/resolve.mjs';
 import {
   cssClasses,
   cssVariables,
@@ -66,7 +68,9 @@ export function usage() {
   contracts         Machine-checkable rules your UI must satisfy
   patterns          AI product patterns
   prompts [name]    Reusable prompt templates
+  voice             The brand voice pack in force, and where it came from
   init --agents     Install the agent-instruction files into this repo
+  init --voice      Scaffold a voice.json to declare your own voice pack
 
 Shorthand: \`ds Button\` is \`ds props Button\`.
 Everything is read from node_modules at run time, so it matches the installed
@@ -514,4 +518,39 @@ export function prompts(env, name) {
   }
 
   return ok(readFile(join(dir, `${name}.md`)).trim());
+}
+
+/**
+ * The voice pack in force, and which one it is.
+ *
+ * Naming the pack is the whole command. A consumer who has declared nothing inherits
+ * this system's pack, and inheriting silently is indistinguishable from being ruled —
+ * which is the thing `docs/agents/brand-boundary.md` says the system may not do. So the
+ * default case says it is a default and says how to replace it.
+ *
+ * The throw is caught rather than left to the bin: a stack trace tells a consumer that
+ * something in a node_modules file failed, when what actually happened is that their own
+ * voice.json is wrong and is not being used.
+ */
+export function voice(env = {}) {
+  let resolved;
+  try {
+    resolved = resolveVoicePack({ cwd: env.cwd });
+  } catch (error) {
+    return fail(
+      `${error.message}\n\nFix it or delete it — ds will not fall back to another brand's voice.`,
+    );
+  }
+
+  const { pack, source, path } = resolved;
+
+  const header =
+    source === 'consumer'
+      ? [`pack: ${pack.id} (${pack.label}) — yours, from ${path}`]
+      : [
+          `pack: ${pack.id} (${pack.label}) — the system default, not a rule of the system.`,
+          'Declare your own with `ds init --voice`, then edit voice.json.',
+        ];
+
+  return ok([...header, '', renderVoice(pack)].join('\n'));
 }
