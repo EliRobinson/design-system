@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Miltinson Technologies — Design Tokens
+   Miltinson Design System — Design Tokens
    palettes.css — the palette layer
    ==========================================================================
    The brand dial, selected by `data-palette`. @imported by tokens.css
@@ -455,9 +455,12 @@
 /* ==========================================================================
    BLOCK 5 — miltinson, light
    --------------------------------------------------------------------------
-   Teal over indigo, on violet-leaning greys. The palette miltinsons.com and
-   the other Miltinson properties render in, contributed so those sites stop
-   hand-overriding brand tokens in a block no contrast gate can see.
+   Teal over indigo, on violet-leaning greys. The palette this system's own
+   sites render in, contributed so they stop hand-overriding brand tokens in a
+   block no contrast gate can see. Named rather than described by domain: the
+   palette is the system's because it is inert until selected and contrast-
+   gated, and naming one consumer's site in a shipped stylesheet is the part
+   that did not need to be here.
 
    The three teals the properties already ship are pinned to ramp steps rather
    than re-picked, so adoption is a swap and not a redesign:
