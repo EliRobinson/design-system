@@ -1,0 +1,27 @@
+{
+  "id": "your-product",
+  "label": "Your Product",
+  "fullName": "Your Product, Inc.",
+  "person": {
+    "summary": "One sentence a reader could quote back. Surfaces with no room for `guidance` use this.",
+    "guidance": "- **Pick the person from the product, not from a rule, and hold it.** The failure is a surface that switches partway through, not a surface that chose \"we\".\n- **Reader is \"you.\"** Direct address, no buffer.",
+    "anchors": {
+      "asPerson": "One real sentence from your product, written as a person.",
+      "asCompany": "One real sentence from your product, written as a company."
+    }
+  },
+  "tone": [
+    { "name": "Practical", "gloss": "what the reader can actually use" },
+    { "name": "Honest", "gloss": "no claim you cannot support" },
+    { "name": "Warm", "gloss": "patient with a reader who is new to this" },
+    { "name": "Quietly confident", "gloss": "let the work speak" }
+  ],
+  "casing": ["**Sentence case** for headings.", "**Title Case** for product and proper names."],
+  "words": {
+    "use": ["replace these with your own"],
+    "avoid": ["synergy", "leverage", "unlock", "empower", "seamless"]
+  },
+  "emoji": { "guidance": "- **Sparingly**, or not at all in chrome.", "allowed": [] },
+  "samples": ["Replace with real copy from your product."],
+  "taglines": ["Replace with your own."]
+}
