@@ -246,6 +246,42 @@ export async function waitForStablePixels(page, { expect, fullPage = false, time
     }
   }
 
+  /* Lazy iframes, and then their contents. Both halves are load-bearing (#204).
+     
+     `loading="lazy"` defers a frame until it nears the viewport, so whether a
+     given frame has loaded at capture time is a race against how far down the
+     page the capture has scrolled and how fast the machine is. Measured on
+     /brand/guidelines, which embeds 23 cards this way: 11 of 23 loaded locally
+     and the rest never did, while CI landed on a different split per run — one
+     card's worth of pixels, ~0.01 of the image, alternating between the light
+     and dark shots with nothing else changing.
+     
+     Flipping them eager is what makes the set deterministic; waiting on each
+     frame's own document is what makes it settled. Neither guard above sees
+     any of this: `document.images` is the parent's collection and does not
+     include frames, and `document.fonts.ready` is the parent's font set. The
+     settle loop below cannot catch it either — a frame that is blank in two
+     consecutive captures reads as stable, which is precisely how a missing
+     card became a baseline. */
+  await page.evaluate(() => {
+    for (const frame of document.querySelectorAll('iframe[loading="lazy"]')) {
+      frame.loading = 'eager';
+    }
+  });
+
+  /* Same-origin frames only: a cross-origin frame's `contentDocument` is null
+     and nothing here can inspect it, so it is skipped rather than waited on
+     forever. This throws on a frame that never finishes, like the images guard
+     above — a page whose content never arrives must fail loudly rather than
+     bake its own absence into a baseline. */
+  await page.waitForFunction(() =>
+    Array.from(document.querySelectorAll('iframe')).every((frame) => {
+      const doc = frame.contentDocument;
+      if (!doc) return true;
+      return doc.readyState === 'complete' && doc.fonts.status === 'loaded';
+    }),
+  );
+
   /* A text caret blinks roughly twice a second, and it is not a CSS animation,
      so `animations: 'disabled'` does not touch it. Any page that focuses an
      input renders a bar that is present in some frames and absent in others. */
