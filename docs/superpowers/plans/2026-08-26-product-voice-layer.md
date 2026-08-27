@@ -2,6 +2,26 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Amended 2026-08-27, after PRs 1 and 2 shipped ([#178], [#185]).** This plan was written
+> before any of it was built, and building it proved five things in it wrong. Tasks 1–9 are
+> **done and merged**; Tasks 10–17 remain. The amendments are marked **[amended]** where they
+> appear, and are:
+>
+> 1. `DEFAULT_PACK_PATH` (Task 10) resolved to `design-system-docs/`, which `package.json`'s
+>    `files` never publishes — so it worked here and threw for every consumer. Now resolves
+>    from the packed skill first, with a test that asserts it.
+> 2. The pack's top-level `anchors` is **`samples`**; it collided with `person.anchors`.
+> 3. `fullName` is required, and distinct from `label`.
+> 4. `person.summary` is required.
+> 5. `brand.packId` already exists — Task 12 must not add a second one.
+>
+> Where a task's prose and its code disagree, the code below is the amended version. Anything
+> describing state ("currently takes…", line numbers) was true when written and may not be now:
+> read the file before trusting it.
+
+[#178]: https://github.com/EliRobinson/design-system/pull/178
+[#185]: https://github.com/EliRobinson/design-system/pull/185
+
 **Goal:** Give the brand prose the same dial colour already has — a named, replaceable voice pack — so the design system stops shipping one consumer's business facts as its own rules, and a test rather than an eye keeps it that way.
 
 **Architecture:** The system ships a voice _schema_, a _renderer_, and a _resolver_; `design-system-docs/miltinson.voice.json` is one pack that happens to be the default. Every surface that today carries a hand-kept copy of the voice — the README's `## CONTENT FUNDAMENTALS`, `guidelines/brand-voice.html`, `contracts.json`'s tone string — is generated from that pack instead. A consumer drops a `voice.json` at its repo root and the resolver prefers it. Nothing is deleted at any point, so there is never a release where the tarball is worse.
@@ -18,13 +38,13 @@
 - **No barrel files.** Import through package subpaths.
 - **Test file location:** `packages/ai-patterns/vitest.config.ts` sets `include: ['src/**/*.test.mjs']`. A test outside `packages/ai-patterns/src/**` will not run, and a test file not ending `.test.mjs` will not run.
 - **Build `react` before running the `ai-patterns` suite.** `src/artifacts/pack-integrity.test.mjs` shells out to `build-artifacts.mjs`, which resolves `@elirobinson/react/manifest`. Without it that one file fails with `Cannot resolve @elirobinson/react/manifest` and nothing else does — a confusing failure that is not your change. Run `pnpm nx build react` once per worktree.
-- **Verified green baseline before any of this work:** `pnpm nx build react` then `pnpm --filter @elirobinson/ai-patterns exec vitest run` → **40 files, 703 tests, all passing**. If your run shows a different total, reconcile that before trusting a red.
+- **Establish your own green baseline; do not trust a number written here.** `pnpm nx build react`, then `pnpm --filter @elirobinson/ai-patterns exec vitest run`. It was 40 files / 703 tests when this plan was written and 44 / 764 after PR 2; other work in flight moves it again. The number matters only as _your_ before-and-after, so measure it before editing and a pre-existing red will not be mistaken for yours.
 - **Filtering tests:** pass the pattern straight to vitest — `pnpm --filter @elirobinson/ai-patterns exec vitest run voice/render`. Do **not** write `pnpm --filter … test -- voice/render`: the `--` reaches vitest as a bare argument, the filter is silently ignored, and all 40 files run.
 - **`design-system-docs/**` is eslint-ignored** (`eslint.config.mjs:21`). Guards over that tree must be tests, not lint rules.
 - **`apps/docs/public/brand/` is gitignored** and staged from `design-system-docs/` by `apps/docs/scripts/stage-brand.mjs` at build time. Editing the source tree is sufficient; never edit the staged copy.
 - **Nx locally:** use `pnpm nx <target> <project>` — verified working in a worktree. `npx nx` and `node_modules/.bin/nx` fail with a bogus `Failed to parse "nx.json"` (a wrapper plain-`JSON.parse`s a JSONC file). `.nx/installation/node_modules/.bin/nx` is a workaround for the **main checkout only** — that directory is generated and is not present in a fresh worktree, where only `.nx/nxw.js` exists.
 - **Rebase before pushing.** `main` moves fast. A PR with merge conflicts runs zero workflows silently — check `gh pr view N --json mergeable,mergeStateStatus` if a PR shows no runs.
-- **Squash-merge repo.** A merged branch is never an ancestor of `main`; check PR state, not `git merge-base --is-ancestor`.
+- **This repo rebase-merges** — squash and merge commits are both disabled, and `gh pr merge --squash` fails outright. Use `--rebase`. Rebasing rewrites every commit onto `main`, so the SHA you pushed is never the SHA that lands: check PR state rather than reasoning from `git merge-base --is-ancestor`. `docs/agents/git-workflow.md` is the authority.
 - **Kept deliberately, do not "fix":** the system's name (`Miltinson Design System`), `[data-palette='miltinson']`, Miltinson Amber as the default palette, Geist and JetBrains Mono in `@elirobinson/tokens`.
 
 ---
@@ -369,7 +389,7 @@ Branch: `claude/voice-pack-source`. Depends on PR 1 being merged.
 
 **Open this PR by re-measuring #142.** Its body was written at 09:12 UTC on 2026-08-26; #136 merged at 19:18 UTC the same day and removed one of its three copies. Post a comment on #142 with the current numbers before closing anything against it.
 
-### Task 5: The schema
+### Task 5: The schema **[amended]**
 
 **Files:**
 
@@ -394,12 +414,13 @@ import { validatePack, VOICE_SECTIONS } from './schema.mjs';
 const minimal = () => ({
   id: 'example',
   label: 'Example',
-  person: { guidance: 'g', anchors: { asPerson: 'p', asCompany: 'c' } },
+  fullName: 'Example Technologies',
+  person: { summary: 's', guidance: 'g', anchors: { asPerson: 'p', asCompany: 'c' } },
   tone: [{ name: 'Practical', gloss: 'g' }],
   casing: ['c'],
   words: { use: ['build'], avoid: ['synergy'] },
   emoji: { guidance: 'g', allowed: ['✓'] },
-  anchors: ['a'],
+  samples: ['a'],
   taglines: ['t'],
 });
 
@@ -549,7 +570,7 @@ git commit -m "feat(ai-patterns): the voice pack schema"
 
 ---
 
-### Task 6: Author the Miltinson pack, and prove it round-trips
+### Task 6: Author the Miltinson pack, and prove it round-trips **[amended]**
 
 This is the task that makes PR 2 provably a re-hosting rather than a rewrite. The renderer's output must equal the README's current section **byte for byte**.
 
@@ -1169,7 +1190,7 @@ gh pr view --json mergeable,mergeStateStatus
 
 Branch: `claude/voice-pack-dial`. Depends on PR 2. This is the PR that makes the boundary real: after it, the shipped voice is labelled a default rather than asserted as a rule.
 
-### Task 10: Resolve a consumer's pack ahead of the default
+### Task 10: Resolve a consumer's pack ahead of the default **[amended]**
 
 **Files:**
 
@@ -1199,13 +1220,14 @@ const scratch = () => mkdtempSync(join(tmpdir(), 'voice-'));
 
 const valid = {
   id: 'cabin',
-  label: 'Cabin Whisperer',
-  person: { guidance: 'g', anchors: { asPerson: 'p', asCompany: 'c' } },
+  label: 'Cabin',
+  fullName: 'Cabin Whisperer',
+  person: { summary: 's', guidance: 'g', anchors: { asPerson: 'p', asCompany: 'c' } },
   tone: [{ name: 'Warm', gloss: 'g' }],
   casing: ['c'],
   words: { use: ['stay'], avoid: ['synergy'] },
   emoji: { guidance: 'g', allowed: [] },
-  anchors: ['a'],
+  samples: ['a'],
   taglines: ['t'],
 };
 
@@ -1237,6 +1259,16 @@ describe('resolveVoicePack', () => {
     writeFileSync(join(cwd, 'voice.json'), '{ not json');
     expect(() => resolveVoicePack({ cwd })).toThrow(/voice\.json/);
   });
+
+  /* The consumer case this repo cannot reproduce by accident. `design-system-docs/` is
+     not in package.json's `files`, so a consumer only ever has the copy under dist/. A
+     source-tree-first resolution passes every other test in this file and throws for
+     every consumer, so the default's location is asserted rather than assumed. */
+  it('defaults to the packed copy, which is the only one a consumer receives', () => {
+    const { path } = resolveVoicePack({ cwd: scratch() });
+    expect(path).toContain(join('dist', 'artifacts', 'skills', 'miltinson-design'));
+    expect(path).not.toContain('design-system-docs');
+  });
 });
 ```
 
@@ -1267,8 +1299,26 @@ import { validatePack } from './schema.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-/** The pack this system ships. Its values are one consumer's; its slot is the system's. */
-export const DEFAULT_PACK_PATH = join(
+/* The pack this system ships. Its values are one consumer's; its slot is the system's.
+ *
+ * Resolved from the packed skill FIRST, and from the source tree only as a fallback. The
+ * order is the whole point: `package.json`'s `files` is ['src', 'dist', …], so
+ * `design-system-docs/` is never published. A source-tree-first path resolves happily in
+ * this repo and to nothing at all in a consumer's node_modules — resolveVoicePack would
+ * throw for every consumer while every test here stayed green. PR 2 put the pack in
+ * BRAND_SOURCES so the shipped copy exists to be found. */
+const SHIPPED_PACK = join(
+  here,
+  '..',
+  '..',
+  'dist',
+  'artifacts',
+  'skills',
+  'miltinson-design',
+  'miltinson.voice.json',
+);
+
+const IN_REPO_PACK = join(
   here,
   '..',
   '..',
@@ -1277,6 +1327,8 @@ export const DEFAULT_PACK_PATH = join(
   'design-system-docs',
   'miltinson.voice.json',
 );
+
+export const DEFAULT_PACK_PATH = existsSync(SHIPPED_PACK) ? SHIPPED_PACK : IN_REPO_PACK;
 
 /** The filename a consumer declares by creating. Presence is the declaration. */
 export const CONSUMER_PACK_FILE = 'voice.json';
@@ -1318,7 +1370,9 @@ export function resolveVoicePack({ cwd = process.cwd() } = {}) {
 {
   "id": "your-product",
   "label": "Your Product",
+  "fullName": "Your Product, Inc.",
   "person": {
+    "summary": "One sentence a reader could quote back. Surfaces with no room for `guidance` use this.",
     "guidance": "- **Pick the person from the product, not from a rule, and hold it.** The failure is a surface that switches partway through, not a surface that chose \"we\".\n- **Reader is \"you.\"** Direct address, no buffer.",
     "anchors": {
       "asPerson": "One real sentence from your product, written as a person.",
@@ -1337,7 +1391,7 @@ export function resolveVoicePack({ cwd = process.cwd() } = {}) {
     "avoid": ["synergy", "leverage", "unlock", "empower", "seamless"]
   },
   "emoji": { "guidance": "- **Sparingly**, or not at all in chrome.", "allowed": [] },
-  "anchors": ["Replace with real copy from your product."],
+  "samples": ["Replace with real copy from your product."],
   "taglines": ["Replace with your own."]
 }
 ```
@@ -1465,7 +1519,7 @@ git commit -m "feat(ai-patterns): ds voice, and ds init --voice"
 
 ---
 
-### Task 12: Relabel the corpus and the MCP tool
+### Task 12: Relabel the corpus and the MCP tool **[amended]**
 
 This is where the shipped bytes stop asserting a business fact as a rule.
 
@@ -1517,7 +1571,9 @@ Expected: both FAIL on the old framing.
 
 - [ ] **Step 3: Rewrite the corpus section**
 
-`llmsFull` currently takes `brand: { readme, note, artifacts }` (`llms.mjs:315-329`, built at `build-artifacts.mjs:212-219`). Add a fourth field, `packId`, so the corpus can name the pack without `llms.mjs` reading the filesystem — it is a pure renderer and must stay one.
+`llmsFull` **already takes** `brand: { readme, packId, note, artifacts }` — `packId` was added when PR 2 shipped, so the corpus can name the pack without `llms.mjs` reading the filesystem; it is a pure renderer and must stay one. Read `build-artifacts.mjs` and use the field that is there. Do not add a second one.
+
+The block below is what PR 2 landed, kept here so this task's diff is legible:
 
 In `packages/ai-patterns/scripts/build-artifacts.mjs`, extend the `brand` object passed to `llmsFull`:
 
