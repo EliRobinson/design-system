@@ -707,3 +707,80 @@ describe('the ds binary', () => {
     expect(status).toBe(0);
   });
 });
+
+describe('ds voice', () => {
+  it('names which pack is in force, so an inherited voice is visible rather than inferred', async () => {
+    const { text, exitCode } = await run(['voice'], at(consumer({})));
+
+    expect(exitCode).toBe(0);
+    expect(text).toContain('pack: miltinson');
+    expect(text).toContain('default');
+    expect(text).toContain('ds init --voice');
+  });
+
+  it('renders the pack body, not just its name', async () => {
+    expect((await run(['voice'], at(consumer({})))).text).toContain('### Words to avoid');
+  });
+
+  it("names the consumer's own pack, and where it came from, once one is declared", async () => {
+    const root = consumer({});
+    await run(['init', '--voice'], at(root));
+
+    const { text } = await run(['voice'], at(root));
+    expect(text).toContain('pack: your-product');
+    expect(text).toContain('voice.json');
+    expect(text).not.toContain('the system default');
+  });
+
+  /* A stack trace here would be the same failure as a silent fallback, one layer up:
+     the consumer cannot tell that their own pack is the thing that is wrong. */
+  it('fails loudly on a broken pack rather than printing somebody else’s voice', async () => {
+    const root = consumer({});
+    write(root, 'voice.json', JSON.stringify({ id: 'broken' }));
+
+    const { text, exitCode } = await run(['voice'], at(root));
+    expect(exitCode).toBe(1);
+    expect(text).toContain('voice.json');
+    /* The failing field, named. `{ id: 'broken' }` is missing `label` first. */
+    expect(text).toContain('label');
+    expect(text).not.toContain('Miltinson');
+  });
+});
+
+describe('ds init --voice', () => {
+  it('scaffolds a starter that carries the schema and nobody’s brand', async () => {
+    const root = consumer({});
+    const { text, exitCode } = await run(['init', '--voice'], at(root));
+
+    expect(exitCode).toBe(0);
+    expect(text).toContain('voice.json');
+
+    const written = readFileSync(join(root, 'voice.json'), 'utf8');
+    expect(JSON.parse(written).id).toBe('your-product');
+    expect(written).not.toMatch(/miltinson/i);
+  });
+
+  /* Not even with --force. A consumer's voice is hand-written prose with no other copy;
+     the agents templates are regenerable and this is not. */
+  it('refuses to overwrite an existing voice.json, and --force is no escape', async () => {
+    const root = consumer({});
+    write(root, 'voice.json', '{ "id": "mine" }');
+
+    for (const argv of [
+      ['init', '--voice'],
+      ['init', '--voice', '--force'],
+    ]) {
+      const { exitCode } = await run(argv, at(root));
+      expect(exitCode, argv.join(' ')).toBe(1);
+      expect(readFileSync(join(root, 'voice.json'), 'utf8')).toBe('{ "id": "mine" }');
+    }
+  });
+
+  it('still refuses a bare `init`, now that two flags exist', async () => {
+    const { text, exitCode } = await run(['init'], at(consumer({})));
+
+    expect(exitCode).toBe(1);
+    expect(text).toContain('--agents');
+    expect(text).toContain('--voice');
+  });
+});

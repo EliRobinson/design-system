@@ -12,6 +12,9 @@ import { dirname, join, relative } from 'node:path';
 const BEGIN = '<!-- design-system:begin -->';
 const END = '<!-- design-system:end -->';
 
+/** The filename `ds voice` looks for. Kept here, and in resolve.mjs, as one word. */
+const VOICE_FILE = 'voice.json';
+
 /** Where each template lands in a consumer repo, and how it is written. */
 export const AGENT_FILES = [
   { template: 'SKILL.md', target: '.claude/skills/design-system/SKILL.md', mode: 'file' },
@@ -107,4 +110,55 @@ export function installAgents({ templateDir, targetDir, force = false }) {
   );
 
   return { text: lines.join('\n'), exitCode: 0 };
+}
+
+/**
+ * `ds init --voice` — scaffold the file whose presence declares a consumer's own voice.
+ *
+ * It refuses an existing `voice.json` and `--force` is deliberately not honoured here,
+ * which is the one place this file's rules differ from the agent surfaces above. Those
+ * are generated templates: overwriting one costs a re-edit of something the system can
+ * regenerate. A voice pack is hand-written brand prose with no other copy anywhere, so
+ * clobbering it is unrecoverable and no flag should make it a keystroke away.
+ *
+ * @param {object} options
+ * @param {string} options.starterPath the shipped starter pack
+ * @param {string} options.targetDir consumer repo root
+ * @returns {{ text: string, exitCode: number }}
+ */
+export function installVoice({ starterPath, targetDir }) {
+  if (!existsSync(starterPath)) {
+    return {
+      text: `No starter voice pack found at ${starterPath}. Upgrade @elirobinson/ai-patterns.`,
+      exitCode: 1,
+    };
+  }
+
+  const destination = join(targetDir, VOICE_FILE);
+
+  if (existsSync(destination)) {
+    return {
+      text: [
+        `${VOICE_FILE} already exists at ${destination}.`,
+        '',
+        'Left alone on purpose: a voice pack is hand-written and there is no second copy',
+        'of it, so `ds init --voice` will not overwrite one — not even with --force. Edit',
+        'it, or delete it first if you really want the starter back.',
+      ].join('\n'),
+      exitCode: 1,
+    };
+  }
+
+  writeFileSync(destination, readFileSync(starterPath, 'utf8'));
+
+  return {
+    text: [
+      `Installed:`,
+      `  ${relative(targetDir, destination) || VOICE_FILE}`,
+      '',
+      'Every value in it is an instruction, not an answer — replace them with your own.',
+      '`ds voice` prints the pack in force and where it came from.',
+    ].join('\n'),
+    exitCode: 0,
+  };
 }

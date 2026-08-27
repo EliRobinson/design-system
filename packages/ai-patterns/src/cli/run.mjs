@@ -7,7 +7,7 @@ import { installCommand } from '../resync/apply.mjs';
 import { detect, findDrift } from '../resync/detect.mjs';
 import * as commands from './commands.mjs';
 import { loadEnvironment, PATTERNS_PKG, REACT_PKG, TOKENS_PKG, versionOf } from './discovery.mjs';
-import { installAgents } from './init.mjs';
+import { installAgents, installVoice } from './init.mjs';
 
 const HANDLERS = {
   list: (env) => commands.list(env),
@@ -98,10 +98,15 @@ function dispatch(argv, { origins, cwd = process.cwd(), selfDir } = {}) {
 
   const [command = 'list', ...args] = argv.filter((argument) => !argument.startsWith('-'));
 
+  /* Routed ahead of loadEnvironment because it reads nothing installed: which voice is
+     in force is a fact about the consumer's own repo, and answering it must not depend
+     on @elirobinson/react being present. */
+  if (command === 'voice') return commands.voice({ cwd });
+
   if (command === 'init') {
-    if (!flagged(argv, '--agents')) {
+    if (!flagged(argv, '--agents') && !flagged(argv, '--voice')) {
       return {
-        text: 'Usage: ds init --agents [--force] [--dir <path>]\n\nInstalls the agent-instruction files (Claude Code skill, Cursor rule,\nCopilot instructions, AGENTS.md block) into this repo.',
+        text: 'Usage: ds init --agents [--force] [--dir <path>]\n       ds init --voice [--dir <path>]\n\n--agents installs the agent-instruction files (Claude Code skill, Cursor rule,\nCopilot instructions, AGENTS.md block) into this repo.\n--voice scaffolds a voice.json, which is how this repo declares its own brand\nvoice instead of inheriting the pack the design system ships.',
         exitCode: 1,
       };
     }
@@ -109,6 +114,13 @@ function dispatch(argv, { origins, cwd = process.cwd(), selfDir } = {}) {
     const templateRoot = selfDir ?? loadEnvironment(origins).patterns;
     if (!templateRoot) {
       return { text: `${PATTERNS_PKG} is not installed.`, exitCode: 1 };
+    }
+
+    if (flagged(argv, '--voice')) {
+      return installVoice({
+        starterPath: join(templateRoot, 'src', 'voice', 'starter.voice.json'),
+        targetDir: valueOf(argv, '--dir') ?? cwd,
+      });
     }
 
     return installAgents({
