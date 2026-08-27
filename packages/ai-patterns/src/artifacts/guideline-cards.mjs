@@ -6,9 +6,16 @@
  * tokens.css and never reached the card, so the palette a designer read was
  * missing three values and nothing anywhere failed.
  *
- * Only the enumerations live here. Cards that carry editorial judgement —
- * brand voice, the wordmark rules, type specimens, "spacing in use" — are
- * writing, not data, and are mirrored from the design project instead.
+ * Only the enumerations live here. Cards that carry editorial judgement — the
+ * wordmark rules, type specimens, "spacing in use" — are writing, not data, and
+ * are mirrored from the design project instead.
+ *
+ * brand-voice.html used to be in that list and no longer is. Its word lists are
+ * enumerations wearing prose clothing, which is exactly why they drifted: the
+ * hand-kept card shipped 8 of 19 use words and 7 of 15 avoid words to the page a
+ * human opens, while the fullest copy reached only agents. It is generated from
+ * the voice pack by scripts/sync-voice.mjs. The prose around the lists is still
+ * writing.
  *
  * Each card opens with the `@dsCard` marker the Design System pane reads to
  * build its index, so a generated card is indistinguishable from a hand-made

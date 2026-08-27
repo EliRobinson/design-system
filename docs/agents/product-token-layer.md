@@ -148,3 +148,10 @@ which is why the dark block in the starter file is empty.
   exist.
 - **No product's own values ship here.** The starter file restates the system defaults and
   nothing else. A product's palette lives in the product.
+
+This is about `--product-*`, not about palettes, and the difference is worth stating
+because the two rules look contradictory otherwise. A palette is inert until a consumer
+selects it and every combination it introduces is measured by `contrast.test.mjs`; a
+`--product-*` value applies wherever its scope does and no gate can see it. So
+`[data-palette='miltinson']` is the system's and a `--product-signal` of Miltinson's
+would not be. See [Brand boundary](./brand-boundary.md).
