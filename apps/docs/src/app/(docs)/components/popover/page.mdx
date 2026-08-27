@@ -48,8 +48,16 @@ There's no `PopoverClose` — unlike `Dialog`, closing programmatically means ca
 - No built-in close affordance: there's no `PopoverClose` subcomponent. Closing it from inside
   the content means calling `onOpenChange(false)` yourself.
 - Content is positioned with fixed coordinates computed from the trigger's bounding rect,
-  the same anchoring mechanism `DropdownMenu` uses — calculated once when it opens, not
-  re-measured on scroll or resize.
+  the same anchoring mechanism `DropdownMenu` uses — recalculated on scroll and resize while
+  the popover is open, so the content follows its trigger.
+- Nothing flips or clamps the content to keep it on screen: it hangs from the `side` and
+  `align` you pass to `PopoverContent` (default `bottom`/`start`) and stays there even when
+  that side has no room. Content short of room isn't clipped, it's squeezed — a
+  `position: fixed` panel with no width shrinks into whatever space is left beside its pinned
+  edge, so the content reflows and wraps. Reach for `align="end"` on a trigger near the right
+  edge. Unlike `DropdownMenu`, `PopoverContent` sets no `min-width` of its own, so the
+  trigger's width is the only floor — give your content `--anchored-min-width` if it needs a
+  wider one. See [`useAnchoredPosition`](/components/hooks#useanchoredposition).
 
 <DoDont
   do={[

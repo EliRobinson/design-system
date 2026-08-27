@@ -80,7 +80,15 @@ when the submission does not need the form to survive the click.
   than trapping it.
 - `DropdownMenuSeparator` renders `role="separator"` with `aria-orientation="horizontal"`.
 - Content is positioned with fixed coordinates computed from the trigger's bounding rect,
-  recalculated when the menu opens (not on every scroll or resize).
+  recalculated on scroll and resize while the menu is open, so the menu follows its trigger.
+- Nothing flips or clamps the menu to keep it on screen: it hangs from the `side` and `align`
+  you pass to `DropdownMenuContent` (default `bottom`/`start`) and stays there even when that
+  side has no room. A menu short of room isn't clipped, it's squeezed — a `position: fixed`
+  panel with no width shrinks into whatever space is left beside its pinned edge, so the items
+  reflow and wrap. Reach for `align="end"` on a trigger near the right edge. The squeeze
+  stops at the menu's floor — `.ds-dropdown__content` sets `--anchored-min-width: 180px`, and
+  the positioner keeps the larger of that and the trigger's width — and below that floor the
+  menu overflows instead. See [`useAnchoredPosition`](/components/hooks#useanchoredposition).
 
 <DoDont
   do={[
