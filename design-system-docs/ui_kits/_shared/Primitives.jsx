@@ -1,6 +1,7 @@
-/* global window -- a browser script: the kits publish their components onto
-   window for the sibling kit files loaded after them. See index.html. */
-// Shared UI primitives for Miltinson UI kits.
+/* global window, KIT_CONTENT -- a browser script: the kits publish their components
+   onto window for the sibling kit files loaded after them, and read their strings from
+   _shared/content.js, which is loaded first. See index.html. */
+// Shared UI primitives for the UI kits.
 // Loaded as a Babel script. Exposes components on window.
 
 const Wordmark = ({ size = 22, dark = false }) => (
@@ -16,7 +17,8 @@ const Wordmark = ({ size = 22, dark = false }) => (
       alignItems: 'baseline',
     }}
   >
-    Miltinson<span style={{ color: 'var(--accent)' }}>.</span>
+    {KIT_CONTENT.brand.wordmark}
+    <span style={{ color: 'var(--accent)' }}>.</span>
   </span>
 );
 

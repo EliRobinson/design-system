@@ -8,8 +8,10 @@
    repo's .claude/skills/, a directory most projects lint, where the same code
    is indistinguishable from a module with missing imports. Scoped to the one
    rule so everything else about these samples is still linted. #119 */
-/* global window -- a browser script: the kits publish their components onto
-   window for the sibling kit files loaded after them. See index.html. */
+/* global window, KIT_CONTENT -- a browser script: the kits publish their components
+   onto window for the sibling kit files loaded after them, and read their strings from
+   _shared/content.js, which is loaded first. See index.html. */
+const copy = KIT_CONTENT.webapp;
 const Sidebar = ({ active = 'Dashboard' }) => {
   const items = [
     { name: 'Dashboard', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' },
@@ -104,11 +106,11 @@ const Sidebar = ({ active = 'Dashboard' }) => {
               fontSize: 13,
             }}
           >
-            ER
+            {copy.account.initials}
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontFamily: 'Geist, sans-serif', fontSize: 13, fontWeight: 500 }}>
-              Eli Robinson
+              {copy.account.name}
             </div>
             <div
               style={{
@@ -117,7 +119,7 @@ const Sidebar = ({ active = 'Dashboard' }) => {
                 color: 'var(--fg-3)',
               }}
             >
-              Pro plan
+              {copy.account.plan}
             </div>
           </div>
         </div>
@@ -137,7 +139,7 @@ const TopBar = ({ title }) => (
     }}
   >
     <div>
-      <Eyebrow>Workspace · Miltinson</Eyebrow>
+      <Eyebrow>{copy.topBarEyebrow}</Eyebrow>
       <h1
         style={{
           fontFamily: 'Geist, sans-serif',
@@ -152,10 +154,10 @@ const TopBar = ({ title }) => (
     </div>
     <div style={{ display: 'flex', gap: 10 }}>
       <Button variant="secondary" size="sm">
-        Export
+        {copy.actions.secondary}
       </Button>
       <Button variant="primary" size="sm">
-        New project
+        {copy.actions.primary}
       </Button>
     </div>
   </div>
@@ -207,31 +209,7 @@ const StatCard = ({ label, value, delta, deltaPositive }) => (
 );
 
 const ProjectsTable = () => {
-  const rows = [
-    { name: 'Kids Recipes', status: 'Live', tag: 'Web', mrr: '$0', updated: '2d ago' },
-    { name: 'Maths', status: 'Live', tag: 'Web', mrr: '$0', updated: '1w ago' },
-    {
-      name: 'Coaching Guides Vol. 2',
-      status: 'Draft',
-      tag: 'Guide',
-      mrr: '$840',
-      updated: 'today',
-    },
-    {
-      name: 'AI Workflow Audit (client)',
-      status: 'In progress',
-      tag: 'Service',
-      mrr: '$1,200',
-      updated: '3h ago',
-    },
-    {
-      name: 'Tech Support · Smith Family',
-      status: 'In progress',
-      tag: 'Service',
-      mrr: '$300',
-      updated: 'today',
-    },
-  ];
+  const rows = copy.projects;
   const statusColors = {
     Live: { bg: 'var(--anchor-100)', fg: 'var(--anchor-700)' },
     Draft: { bg: 'var(--ink-100)', fg: 'var(--fg-2)' },

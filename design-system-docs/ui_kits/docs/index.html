@@ -1,18 +1,21 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Miltinson · Docs / Coaching guide</title>
+<html><head><meta charset="utf-8"><title>Docs / guide UI kit</title>
 <link rel="stylesheet" href="../../colors_and_type.css">
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 </head><body>
 <div id="app"></div>
+<script src="../_shared/content.js"></script>
 <script type="text/babel" src="../_shared/Primitives.jsx"></script>
 <script type="text/babel">
+const copy = KIT_CONTENT.docs;
+
 const TOC = ({ active }) => {
-  const items = ['Introduction', 'Warm-up drills', 'Session structure', 'Game-day frameworks', 'Common mistakes', 'Printable templates'];
+  const items = copy.toc;
   return (
     <nav style={{ position: 'sticky', top: 24, padding: '24px 16px' }}>
-      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--fg-3)', marginBottom: 12 }}>On this page</div>
+      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--fg-3)', marginBottom: 12 }}>{copy.tocHeading}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, borderLeft: '1px solid var(--border)' }}>
         {items.map((it, i) => (
           <a key={it} href="#" style={{
@@ -32,33 +35,31 @@ const TOC = ({ active }) => {
 
 const Article = () => (
   <article style={{ maxWidth: 720, padding: '48px 32px', fontFamily: 'Geist, sans-serif' }}>
-    <Eyebrow>Coaching Guide · Vol. 01</Eyebrow>
+    <Eyebrow>{copy.article.eyebrow}</Eyebrow>
     <h1 style={{
       fontFamily: 'Geist, sans-serif', fontWeight: 600, fontSize: 56,
       letterSpacing: '-0.025em', lineHeight: 1.05, margin: '16px 0 24px'
-    }}>Session plans for U10s.</h1>
+    }}>{copy.article.title}</h1>
     <p style={{ fontSize: 20, lineHeight: 1.55, color: 'var(--fg-2)', margin: '0 0 32px' }}>
-      A practical, no-fluff playbook for first-time coaches. 12 sessions,
-      printable templates, and the frameworks I actually use on the pitch.
+      {copy.article.standfirst}
     </p>
     <div style={{ display: 'flex', gap: 16, padding: '16px 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', alignItems: 'center', marginBottom: 40, fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: 'var(--fg-3)', letterSpacing: '0.04em' }}>
-      <span>By Eli Robinson</span>
+      <span>{copy.article.byline}</span>
       <span>·</span>
-      <span>14 min read</span>
+      <span>{copy.article.readingTime}</span>
       <span>·</span>
-      <span>Updated 26 Apr 2026</span>
+      <span>{copy.article.updated}</span>
     </div>
-    <h2 style={{ fontFamily: 'Geist, sans-serif', fontWeight: 600, fontSize: 28, letterSpacing: '-0.02em', margin: '40px 0 12px' }}>Why structure matters</h2>
-    <p style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--fg)', margin: '0 0 16px' }}>
-      Most beginner coaches show up with a vague plan, run a few drills they
-      remember from when they played, and hope it lands. It rarely does. Kids
-      get bored, parents get frustrated, and you leave the pitch wondering
-      what worked.
-    </p>
-    <p style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--fg)', margin: '0 0 16px' }}>
-      A session plan fixes that. Not a rigid script — a <em>scaffold</em> you
-      can adapt on the fly when six players cancel or it's pouring rain.
-    </p>
+    {copy.article.sections.map((section) => (
+      <React.Fragment key={section.heading}>
+        <h2 style={{ fontFamily: 'Geist, sans-serif', fontWeight: 600, fontSize: 28, letterSpacing: '-0.02em', margin: '40px 0 12px' }}>{section.heading}</h2>
+        {section.body.map((paragraph) => (
+          <p key={paragraph} style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--fg)', margin: '0 0 16px' }}>
+            {paragraph}
+          </p>
+        ))}
+      </React.Fragment>
+    ))}
     <blockquote style={{
       margin: '32px 0', padding: '20px 28px',
       borderLeft: '3px solid var(--signal-500)',
@@ -66,23 +67,18 @@ const Article = () => (
       fontFamily: 'Geist, sans-serif', fontSize: 19,
       fontStyle: 'normal', lineHeight: 1.5, letterSpacing: '-0.01em',
       color: 'var(--fg)'
-    }}>"Plan the shape, not the steps. Kids will surprise you — your scaffold should let them."</blockquote>
-    <h2 style={{ fontFamily: 'Geist, sans-serif', fontWeight: 600, fontSize: 28, letterSpacing: '-0.02em', margin: '40px 0 12px' }}>The 4-block session</h2>
+    }}>{copy.article.quote}</blockquote>
+    <h2 style={{ fontFamily: 'Geist, sans-serif', fontWeight: 600, fontSize: 28, letterSpacing: '-0.02em', margin: '40px 0 12px' }}>{copy.article.blocksHeading}</h2>
     <ol style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--fg)', paddingLeft: 22 }}>
-      <li><strong>Warm-up</strong> (10 min) — movement + ball touches, no queuing.</li>
-      <li><strong>Skill block</strong> (15 min) — one technique, three reps, low pressure.</li>
-      <li><strong>Game block</strong> (20 min) — small-sided, modified rules to surface the skill.</li>
-      <li><strong>Wind-down</strong> (5 min) — circle up, ask one question, send them home smiling.</li>
+      {copy.article.blocks.map((block) => (
+        <li key={block.term}><strong>{block.term}</strong> {block.text}</li>
+      ))}
     </ol>
     <pre style={{
       background: 'var(--bg-muted)', border: '1px solid var(--border)',
       borderRadius: 6, padding: 16, fontSize: 13,
       fontFamily: 'JetBrains Mono, monospace', overflow: 'auto', margin: '24px 0'
-    }}>{`# Session 03 — Passing under pressure
-Warm-up   10 min   triangle passing, 1-touch
-Skill     15 min   wall pass, both feet
-Game      20 min   3v3 + 2 floaters, no offside
-Wind-down  5 min   "what surprised you today?"`}</pre>
+    }}>{copy.article.sample}</pre>
   </article>
 );
 

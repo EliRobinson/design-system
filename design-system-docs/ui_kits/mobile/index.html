@@ -1,5 +1,5 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Miltinson · Mobile</title>
+<html><head><meta charset="utf-8"><title>Mobile UI kit</title>
 <link rel="stylesheet" href="../../colors_and_type.css">
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
@@ -7,6 +7,7 @@
 <style>body { background: var(--bg-subtle); padding: 48px 24px; }</style>
 </head><body>
 <div id="app"></div>
+<script src="../_shared/content.js"></script>
 <script type="text/babel" src="../_shared/Primitives.jsx"></script>
 <script type="text/babel" src="./Screens.jsx"></script>
 <script type="text/babel">
@@ -14,8 +15,8 @@ const App = () => (
   <div style={{ maxWidth: 800, margin: '0 auto' }}>
     <div style={{ marginBottom: 32 }}><Wordmark size={22} /> <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: 'var(--fg-3)', marginLeft: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Mobile UI Kit</span></div>
     <div style={{ display: 'flex', gap: 32, justifyContent: 'center' }}>
-      <PhoneFrame label="Kids Recipes · Browse"><RecipesScreen /></PhoneFrame>
-      <PhoneFrame label="Maths · Practice"><MathsScreen /></PhoneFrame>
+      <PhoneFrame label={KIT_CONTENT.mobile.browse.frameLabel}><BrowseScreen /></PhoneFrame>
+      <PhoneFrame label={KIT_CONTENT.mobile.practice.frameLabel}><PracticeScreen /></PhoneFrame>
     </div>
   </div>
 );

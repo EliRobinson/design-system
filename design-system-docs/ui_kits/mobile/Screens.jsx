@@ -1,7 +1,8 @@
-/* global window -- a browser script: the kits publish their components onto
-   window for the sibling kit files loaded after them. See index.html. */
-// Mobile screen kit — modeled on the Kids Recipes / Maths sub-apps.
-// Two screens: Recipe list (Kids Recipes), Practice screen (Maths).
+/* global window, KIT_CONTENT -- a browser script: the kits publish their components
+   onto window for the sibling kit files loaded after them, and read their strings from
+   _shared/content.js, which is loaded first. See index.html. */
+// Mobile screen kit. Two screens: a browsable list, and a practice/quiz screen.
+const copy = KIT_CONTENT.mobile;
 
 const PhoneFrame = ({ children, label }) => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
@@ -76,13 +77,8 @@ const PhoneFrame = ({ children, label }) => (
   </div>
 );
 
-const RecipesScreen = () => {
-  const recipes = [
-    { emoji: '🥞', name: 'Banana Pancakes', tag: 'Breakfast', time: '15 min', diff: 'Easy' },
-    { emoji: '🥪', name: 'Rainbow Sandwich', tag: 'Lunch', time: '10 min', diff: 'Easy' },
-    { emoji: '🍝', name: 'Spaghetti Faces', tag: 'Dinner', time: '25 min', diff: 'Medium' },
-    { emoji: '🍪', name: 'No-Bake Cookies', tag: 'Snack', time: '20 min', diff: 'Easy' },
-  ];
+const BrowseScreen = () => {
+  const recipes = copy.browse.items;
   return (
     <div style={{ padding: '8px 20px 20px', overflow: 'auto', height: 'calc(100% - 36px)' }}>
       <div
@@ -95,7 +91,7 @@ const RecipesScreen = () => {
           marginBottom: 6,
         }}
       >
-        Kids Recipes
+        {copy.browse.eyebrow}
       </div>
       <h1
         style={{
@@ -107,7 +103,7 @@ const RecipesScreen = () => {
           lineHeight: 1.1,
         }}
       >
-        What's for breakfast?
+        {copy.browse.heading}
       </h1>
       <p
         style={{
@@ -117,10 +113,10 @@ const RecipesScreen = () => {
           margin: '0 0 18px',
         }}
       >
-        Pick a recipe, get cooking.
+        {copy.browse.standfirst}
       </p>
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto' }}>
-        {['All', 'Breakfast', 'Lunch', 'Dinner', 'Snack'].map((t, i) => (
+        {copy.browse.filters.map((t, i) => (
           <span
             key={t}
             style={{
@@ -196,7 +192,7 @@ const RecipesScreen = () => {
   );
 };
 
-const MathsScreen = () => {
+const PracticeScreen = () => {
   return (
     <div
       style={{
@@ -217,8 +213,10 @@ const MathsScreen = () => {
           marginBottom: 22,
         }}
       >
-        <span style={{ letterSpacing: '0.16em', textTransform: 'uppercase' }}>Question 4 / 10</span>
-        <span style={{ color: 'var(--anchor-500)' }}>Streak ×3</span>
+        <span style={{ letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+          {copy.practice.progress}
+        </span>
+        <span style={{ color: 'var(--anchor-500)' }}>{copy.practice.streak}</span>
       </div>
       <div
         style={{
@@ -250,7 +248,7 @@ const MathsScreen = () => {
             marginBottom: 16,
           }}
         >
-          Multiplication · Year 4
+          {copy.practice.topic}
         </div>
         <div
           style={{
@@ -262,11 +260,11 @@ const MathsScreen = () => {
             lineHeight: 1,
           }}
         >
-          7 × 8 = ?
+          {copy.practice.question}
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-        {['54', '56', '63', '49'].map((v, i) => (
+        {copy.practice.answers.map((v, i) => (
           <button
             key={v}
             style={{
@@ -306,4 +304,4 @@ const MathsScreen = () => {
   );
 };
 
-Object.assign(window, { PhoneFrame, RecipesScreen, MathsScreen });
+Object.assign(window, { PhoneFrame, BrowseScreen, PracticeScreen });

@@ -25,12 +25,16 @@ import { describe, expect, it } from 'vitest';
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const kitsRoot = join(repoRoot, 'design-system-docs/ui_kits');
 
-function everyJsx(dir) {
+/* `.js` as well as `.jsx`: `_shared/content.js` is a kit file like any other — it ships
+   into the same `.claude/skills/` directory and a consumer's ESLint reads it the same
+   way. Scanning only `.jsx` would have left it the one unlinted file in the tree, which
+   is the hole #119 was about. */
+function everyScript(dir) {
   const found = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
-    if (entry.isDirectory()) found.push(...everyJsx(path));
-    else if (entry.name.endsWith('.jsx')) found.push(path);
+    if (entry.isDirectory()) found.push(...everyScript(path));
+    else if (/\.jsx?$/.test(entry.name)) found.push(path);
   }
   return found.sort();
 }
@@ -69,14 +73,14 @@ const eslint = new ESLint({
 
 describe('shipped UI kit samples (#119)', () => {
   it('finds the kits, so a rename cannot make this vacuous', () => {
-    expect(everyJsx(kitsRoot).length).toBeGreaterThan(0);
+    expect(everyScript(kitsRoot).length).toBeGreaterThan(0);
   });
 
   /* The guard that makes the assertion below mean anything. A file ESLint
      declines to lint reports no errors, which is indistinguishable from a
      clean one — so prove every kit was actually processed. */
   it('actually lints every kit, rather than skipping them as unmatched', async () => {
-    const files = everyJsx(kitsRoot);
+    const files = everyScript(kitsRoot);
     const results = await eslint.lintFiles(files);
 
     expect(results).toHaveLength(files.length);
@@ -93,7 +97,7 @@ describe('shipped UI kit samples (#119)', () => {
      fix that cleared only the first would still leave a red lint run in the
      directory ds-resync writes to. */
   it('reports no lint errors at all under a consumer-style config', async () => {
-    const results = await eslint.lintFiles(everyJsx(kitsRoot));
+    const results = await eslint.lintFiles(everyScript(kitsRoot));
 
     const offences = results.flatMap((result) =>
       result.messages.map(
