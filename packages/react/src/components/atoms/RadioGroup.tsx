@@ -1,5 +1,5 @@
 import type { HTMLAttributes, InputHTMLAttributes } from 'react';
-import { createContext, forwardRef, useContext, useId, useState } from 'react';
+import { createContext, forwardRef, useContext, useEffect, useId, useRef, useState } from 'react';
 
 import { cn } from '../../lib/cn.js';
 
@@ -20,8 +20,21 @@ function useRadioGroupContext() {
 }
 
 export type RadioGroupProps = Omit<HTMLAttributes<HTMLDivElement>, 'role'> & {
+  /**
+   * Shared `name` for every item's `input[type="radio"]`, which makes it the
+   * field name the group submits under. The group participates in native form
+   * submission with no extra wiring: inside a `<form>` its selection shows up
+   * in `FormData` and in a server action's payload under this `name`. Nothing
+   * hidden needs to be added to carry the value across.
+   */
   name: string;
-  value?: string;
+  /**
+   * Selection, when the group is controlled. `null` means controlled with
+   * nothing selected; `undefined` means uncontrolled, and hands the selection
+   * back to `defaultValue` and the group's own state. The distinction matters:
+   * clear a controlled group with `null`, never with `undefined`.
+   */
+  value?: string | null;
   defaultValue?: string;
   onValueChange?: (value: string) => void;
 };
@@ -31,10 +44,38 @@ export const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(function R
   ref,
 ) {
   const [internalValue, setInternalValue] = useState(defaultValue);
-  const currentValue = value ?? internalValue;
+
+  /* `value ?? internalValue` read "controlled but empty" as "uncontrolled",
+     so a controlled group could not express "nothing selected" and could not
+     be cleared once clicked. Worse, at the first click of a controlled-empty
+     group `value === undefined` still held, so internal state was written too
+     and the stale copy won every time the parent cleared. Controlledness is a
+     property of `value` being passed at all -- `null` for the empty case --
+     never of what it currently holds. */
+  const isControlled = value !== undefined;
+  const currentValue = isControlled ? (value ?? undefined) : internalValue;
+
+  /* The mode flip above is silent, and `undefined` is exactly what a consumer
+     holding `useState<string | undefined>` reaches for to clear a group -- the
+     one spelling that does not clear it, and the one the type cannot reject.
+     React warns for the same mistake on a native input; this group renders a
+     real input but derives `checked` itself, so React never sees the switch
+     and never warns. Warn here instead, in dev, once per instance. */
+  const wasControlled = useRef(isControlled);
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    if (wasControlled.current && !isControlled) {
+      wasControlled.current = false;
+      console.warn(
+        `RadioGroup "${name}" changed from controlled to uncontrolled: \`value\` went from a string to \`undefined\`, so the group fell back to its own state and kept the old selection. To clear a controlled group, pass \`null\`; \`undefined\` means uncontrolled.`,
+      );
+      return;
+    }
+    wasControlled.current = isControlled;
+  }, [isControlled, name]);
 
   const setValue = (next: string) => {
-    if (value === undefined) {
+    if (!isControlled) {
       setInternalValue(next);
     }
     onValueChange?.(next);
