@@ -70,19 +70,39 @@ function recorder() {
    when a real navigation delivers them. `captured.order` records the calls the
    missing-asset guard depends on being in a particular sequence: the listener
    has to be attached before the navigation it is watching, and the assertion
-   has to run before the screenshot rather than after it. */
+   has to run before the screenshot rather than after it.
+
+   `childFrames` are the embedded documents `page.frames()` reports alongside
+   the main one. Each records the settle it was asked for, which is what
+   proves the settle is per frame rather than per page. */
 function fakePage(
   measured = { count: 1, x: 10.4, y: 20.2, width: 100.1, height: 200.9 },
   responses = [],
+  childFrames = [],
 ) {
-  const captured = { screenshot: null, order: [] };
+  const captured = { screenshot: null, order: [], settled: [] };
   const frame = { equals: () => true };
   const listeners = [];
+
+  /* Named so a failure says which frame went unwaited rather than printing
+     two identical anonymous objects. */
+  const settleRecorder = (name) => ({
+    name,
+    waitForFunction: async () => {
+      captured.settled.push(`${name}:images`);
+    },
+    evaluate: async () => {
+      captured.settled.push(`${name}:fonts`);
+    },
+  });
+
+  const frames = [settleRecorder('main'), ...childFrames.map((name) => settleRecorder(name))];
 
   const page = {
     clock: { setFixedTime: async () => {} },
     addInitScript: async () => {},
     addStyleTag: async () => {},
+    frames: () => frames,
     on: (event, handler) => {
       captured.order.push(`on:${event}`);
       if (event === 'response') listeners.push(handler);
@@ -98,7 +118,7 @@ function fakePage(
     locator: (selector) => ({ selector }),
     screenshot: async () => frame,
     /* The region measurement is the only evaluate a sweep passes an argument
-       to; the settle loop's font wait passes none. */
+       to; the settle's frame-promotion pass passes none. */
     evaluate: async (_fn, arg) => (arg === undefined ? undefined : measured),
   };
 
@@ -351,6 +371,54 @@ describe('sweepPages', () => {
     expect(captured.screenshot.fullPage).toBe(true);
     /* Rounded outward from { x: 10.4, y: 20.2, width: 100.1, height: 200.9 }. */
     expect(captured.screenshot.clip).toEqual({ x: 10, y: 20, width: 101, height: 202 });
+  });
+
+  /* An <iframe> has its own document, and `page.evaluate`/`page.waitForFunction`
+     only ever reach the main one. While the settle was written against the page,
+     an embedded document's images and `@font-face` rules were awaited by
+     nothing — the gap that made /brand/guidelines land in one of two stable end
+     states and never converge on a regenerated baseline (#203).
+
+     Asserted per frame rather than by a call count, so a settle that ran twice
+     against the main frame and never touched the children cannot pass. */
+  it('settles every frame, not just the main one', async () => {
+    const { test, bodies } = recorder();
+    const { page, expect: expectStub, captured } = fakePage(undefined, [], ['card-1', 'card-2']);
+
+    sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+    await bodies[0]({ page });
+
+    expect(captured.settled).toEqual([
+      'main:images',
+      'main:fonts',
+      'card-1:images',
+      'card-1:fonts',
+      'card-2:images',
+      'card-2:fonts',
+    ]);
+  });
+
+  /* A frame can detach between being listed and being asked. One that no longer
+     exists cannot hold pixels still, so it must not take the whole sweep down
+     with it — and the frames after it still have to be settled. */
+  it('keeps settling when a frame detaches mid-wait', async () => {
+    const { test, bodies } = recorder();
+    const { page, expect: expectStub, captured } = fakePage(undefined, [], ['gone', 'survivor']);
+
+    const detached = page.frames()[1];
+    detached.waitForFunction = async () => {
+      throw new Error('Frame was detached');
+    };
+
+    sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+    await expect(bodies[0]({ page })).resolves.not.toThrow();
+
+    expect(captured.settled).toEqual([
+      'main:images',
+      'main:fonts',
+      'survivor:images',
+      'survivor:fonts',
+    ]);
   });
 });
 
