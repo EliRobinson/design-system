@@ -51,9 +51,14 @@ token rules, `forwardRef` requirement, touch targets and contrast contract apply
 - **`FormField`** wires ids and ARIA attributes to an arbitrary child — wiring, not
   orchestration — molecule.
 - **`VerdictBadge`** and **`DecisionCard`** were designed for an assistant product and
-  are still a molecule and an organism. A verdict marker a model happened to produce is
-  a verdict marker; a card that happens to render generated figures is a card. The
-  domain question is about the component, not about who supplied its props.
+  are still molecules. A verdict marker a model happened to produce is a verdict marker;
+  a card that happens to render generated figures is a card. The domain question is about
+  the component, not about who supplied its props.
+- **`DecisionCard`** shipped in `organisms/` and moved to `molecules/` in v3. It renders
+  no portal, traps no focus, and holds no open/closed state — it has no hooks at all — so
+  the rule above makes it a molecule and the weight of the surface does not enter into it.
+  A sweep in `packages/react/scripts/tier-boundary.test.mjs` now enforces that: every
+  component in `organisms/` must orchestrate, or compose something that does.
 - **`StreamingCaret`** is a single `<span>` with no children — atom-shaped by the rule
   above, and ai by question 0.
 
@@ -64,4 +69,5 @@ token rules, `forwardRef` requirement, touch targets and contrast contract apply
 - Review depth: organisms require keyboard-contract tests; their component pages must
   document focus behavior precisely.
 - Composition direction: organisms may compose molecules and atoms; molecules compose
-  atoms; atoms compose nothing from the system.
+  atoms and other molecules (`DecisionCard` composes `VerdictBadge`); atoms compose
+  nothing from the system.

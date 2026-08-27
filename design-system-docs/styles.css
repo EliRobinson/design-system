@@ -37,7 +37,7 @@
 @import '../packages/react/src/components/organisms/Combobox.css';
 @import '../packages/react/src/components/organisms/CommandPalette.css';
 @import '../packages/react/src/components/organisms/DatePicker.css';
-@import '../packages/react/src/components/organisms/DecisionCard.css';
+@import '../packages/react/src/components/molecules/DecisionCard.css';
 @import '../packages/react/src/components/organisms/Dialog.css';
 @import '../packages/react/src/components/organisms/DropdownMenu.css';
 @import '../packages/react/src/components/organisms/NavigationMenu.css';

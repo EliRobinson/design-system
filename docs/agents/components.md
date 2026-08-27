@@ -30,6 +30,14 @@ Components live under `packages/react/src/components/<tier>/`:
 
 Boundary rule: if a component renders into a portal, traps focus, or manages open/closed state across multiple sub-elements, it's an organism. If it's assembled from 2+ atoms with no such orchestration, it's a molecule. Otherwise it's an atom.
 
+The rule is enforced, not just written: `packages/react/scripts/tier-boundary.test.mjs`
+sweeps `organisms/` and fails on any component that neither orchestrates itself nor
+composes something that does. `VirtualTable` passes on the second half — it has no hooks
+of its own but renders `VirtualList` — and `DecisionCard` failed it, which is why it moved
+to `molecules/` in v3. Moving a component between tiers changes its published import path,
+so a directory that drifts from the rule costs a major to correct; the sweep is what keeps
+that from being discovered late.
+
 ### Why `ai` is a tier and not a fourth size
 
 The other three tiers answer "how much is assembled here." `ai` answers a different
@@ -44,10 +52,11 @@ Two consequences, both of them checks rather than advice:
 
 - **The test is the domain, not the shape.** A card that happens to render a model's output
   is still a `Card`. A verdict marker that happens to be produced by a model is still a
-  molecule — `VerdictBadge` and `DecisionCard` live in `molecules/` and `organisms/` for
-  exactly that reason, even though they were designed for an assistant product. If you can
-  describe the component without saying "assistant," "model," or "streaming," it is not an
-  `ai` component.
+  molecule — `VerdictBadge` and `DecisionCard` live outside `ai/` for exactly that reason,
+  even though they were designed for an assistant product. If you can describe the
+  component without saying "assistant," "model," or "streaming," it is not an `ai`
+  component. Which non-`ai` tier they land in is a separate question, answered only by the
+  boundary rule above: both are stateless compositions, so both are molecules.
 - **`ai/` inherits every other constraint unchanged.** Same `ds-` classes, same token
   rules, same `forwardRef` requirement, same touch targets, same contrast contract. Being a
   new tier buys a directory and nothing else.
@@ -235,7 +244,7 @@ because the library had no equivalent. Import them via the tiered subpath
 | ai        | `StreamingCaret` | Returns `null` when `active` is false, so it cannot be left mounted on a finished message. `label` promotes it to `role="status"`; without one it is `aria-hidden`. Honours `prefers-reduced-motion`.                                                                                                                                                                                              |
 | molecules | `VerdictBadge`   | A decision marker that survives both themes. Carries a glyph **and** a word — `Badge` has no state that does either. The glyph is `aria-hidden`; the word is the accessible text.                                                                                                                                                                                                                  |
 | molecules | `StubCard`       | A summary that reads as a ticket stub: a body column plus a perforated stub column. The perforation is structure, so it is a dashed `--border-control`.                                                                                                                                                                                                                                            |
-| organisms | `DecisionCard`   | A headline verdict, figures broken out by `kind`, a contrast figure, a caveat, and a **conditional** action. Composes `VerdictBadge`. `headline` is a real heading element — `headingLevel` is 2–6, default 2. See the footer guarantee below.                                                                                                                                                     |
+| molecules | `DecisionCard`   | A headline verdict, figures broken out by `kind`, a contrast figure, a caveat, and a **conditional** action. Composes `VerdictBadge`. `headline` is a real heading element — `headingLevel` is 2–6, default 2. See the footer guarantee below.                                                                                                                                                     |
 
 ### `DecisionCard` renders no footer when there is no action
 

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { DecisionCard } from '@design-system/react/components/organisms/DecisionCard';
+import { DecisionCard } from '@design-system/react/components/molecules/DecisionCard';
 import { Button } from '@design-system/react/components/atoms/Button';
 
 const meta = {

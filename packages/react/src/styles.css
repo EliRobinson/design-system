@@ -52,7 +52,7 @@
 @import './components/organisms/CommandPalette.css';
 @import './components/molecules/VerdictBadge.css';
 @import './components/molecules/StubCard.css';
-@import './components/organisms/DecisionCard.css';
+@import './components/molecules/DecisionCard.css';
 @import './components/ai/ChatThread.css';
 @import './components/ai/ChatMessage.css';
 @import './components/ai/StreamingCaret.css';
