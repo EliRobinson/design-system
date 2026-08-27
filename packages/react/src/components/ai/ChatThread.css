@@ -10,4 +10,11 @@
   gap: var(--space-5);
   overflow-y: auto;
   padding: var(--space-5);
+
+  /* `scroll-behavior` inherits, and `html { scroll-behavior: smooth }` is in
+     most CSS resets. Left to inherit, that turns `followNewMessages` from an
+     instant jump into an animation inside a live region — motion the component
+     never opted into and would then owe `prefers-reduced-motion` care. Declared
+     here so the thread scrolls the same way in every app that imports it. */
+  scroll-behavior: auto;
 }
