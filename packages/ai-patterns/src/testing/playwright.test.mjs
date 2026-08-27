@@ -70,6 +70,19 @@ describeBrowser('browser contract checks', () => {
       * { box-sizing: border-box; margin: 0; }
       body { background: #ffffff; color: #000000; font: 16px system-ui; padding: 40px; }
     </style></head><body>${body}</body></html>`);
+
+    /* `setContent` replaces the document but does NOT reset the viewport's
+       scroll offset, and the offset survives whenever the incoming page is tall
+       enough to hold it. So a test that leaves the page scrolled hands the next
+       one a viewport already past the fold, and `FILLER` stops putting anything
+       below it — measured: scrollY 778 in, 778 out, and the following page's
+       trailing element reports `top < clientHeight`.
+
+       Every fold case here depends on that not happening, and the failure is
+       order-dependent: green in isolation, red in sequence, with a message
+       about the fold rather than about scroll. Reset once, centrally, so no
+       individual test has to remember to. */
+    await page.evaluate(() => window.scrollTo(0, 0));
   }
 
   /* Enough filler that whatever follows it cannot be on screen at any plausible
@@ -88,6 +101,26 @@ describeBrowser('browser contract checks', () => {
         document.documentElement.clientHeight,
       selector,
     );
+
+  /* Guards the harness itself, not a check. Both fold suites below assume a
+     fresh `render()` starts at the top of the document; #137's scroll/restore
+     work is what made that assumption load-bearing. */
+  describe('the render harness', () => {
+    it('starts every page at the top, even after the previous one scrolled', async () => {
+      await render(`${FILLER}<p id="scrolled-to">bottom</p>`);
+      await page.evaluate(() =>
+        document.querySelector('#scrolled-to').scrollIntoView({ block: 'center' }),
+      );
+      expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
+      await render(`${FILLER}<p id="fresh">next test</p>`);
+
+      expect(await page.evaluate(() => window.scrollY)).toBe(0);
+      /* The property the fold cases actually rely on. Asserted separately from
+         scrollY because this is the one that breaks them. */
+      expect(await isBelowTheFold('#fresh')).toBe(true);
+    });
+  });
 
   describe('checkTouchTargets', () => {
     it('flags a control smaller than 44x44', async () => {
