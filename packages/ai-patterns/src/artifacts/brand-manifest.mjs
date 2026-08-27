@@ -48,7 +48,12 @@ import { buildGuidelineCards } from './guideline-cards.mjs';
    resolved against the importing file, and the importing file is copied under
    the name colors_and_type.css — so these two must sit beside it as exactly
    `palettes.css` and `mobile.css`. Renaming either here breaks the brand
-   silently, the same way the omission did. */
+   silently, the same way the omission did.
+
+   miltinson.voice.json is on the list for the same reason: it is the default
+   voice pack, resolved by name at runtime, and a pack that exists only in this
+   repo's source tree is a dangling import in every consumer — the same defect
+   as palettes.css, arriving through a resolver rather than an `@import`. */
 export const BRAND_SOURCES = [
   'colors_and_type.css',
   'palettes.css',
@@ -57,6 +62,7 @@ export const BRAND_SOURCES = [
   'fonts',
   'assets',
   'ui_kits',
+  'miltinson.voice.json',
 ];
 
 const GUIDELINE_CARDS_MODULE = 'packages/ai-patterns/src/artifacts/guideline-cards.mjs';
