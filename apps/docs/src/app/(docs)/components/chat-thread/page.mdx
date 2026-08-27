@@ -17,8 +17,9 @@ export const metadata = { title: 'ChatThread' };
 
 `ChatThread` is the scrolling region a conversation lives in: a column of `ChatMessage`
 turns that announces new ones as they arrive. It's the region, not the transcript — it
-holds no state, keeps no message list, and does no scrolling for you. What it owns is the
-announcement contract, which is the part that's easy to get wrong by hand.
+holds no state and keeps no message list. What it owns is the announcement contract and
+keeping the newest turn in view, which are the two parts that are easy to get wrong by
+hand.
 
 It sits in the `ai` tier because it only means anything inside an assistant interaction.
 The tier answers "what is this for," not "how much is assembled here" — a component earns
@@ -35,6 +36,29 @@ Pass `announce={false}` for a thread that isn't live — a closed conversation, 
 transcript, a replay in a history view. That sets `aria-live="off"`, so mounting a hundred
 past turns doesn't queue a hundred announcements. Rendering history is the case where the
 default is wrong.
+
+## Following the newest turn
+
+`followNewMessages` defaults to `true`: as the thread grows, the newest turn is scrolled
+into view. This isn't a preference the system left to you, because a live region that
+announces a turn and then renders it below the fold is a defect for exactly the readers
+the live region is for.
+
+**It only follows a reader who is already at the bottom.** Scroll up to re-read an earlier
+turn and the thread stays where you put it, however many turns arrive behind you; return
+to the bottom and it picks up again. "At the bottom" allows 32px of slack, which is enough
+that a zoomed page's fractional scroll offsets still count as pinned and far less than the
+~60px it takes to scroll back past a single turn.
+
+**It never animates.** The scroll is an assignment, not a smooth transition — there is no
+motion to reduce, so nothing here needs a `prefers-reduced-motion` branch. The component
+sets `scroll-behavior: auto` on itself for that reason: the property inherits, and an
+`html { scroll-behavior: smooth }` in your reset would otherwise turn every arriving turn
+into an animation inside a live region.
+
+Pass `followNewMessages={false}` to own scrolling yourself — for a jump-to-a-quoted-turn
+view, or a thread that opens on an unread marker rather than at the end. The ref still
+forwards to the element, so you have everything the component has.
 
 ## Props
 
@@ -55,14 +79,18 @@ default is wrong.
   tab stop is its own problem.
 - **Keyboard:** none of its own — `ChatThread` renders no controls. Anything focusable
   comes from the turns you put inside it.
-- The ref forwards to the outer `<div>`.
+- Following the newest turn moves nothing in the focus order: setting `scrollTop` is not a
+  focus change, so a composer below the thread keeps the caret and the typed text while
+  turns arrive above it.
+- The ref forwards to the outer `<div>` — the component holds its own reference internally
+  and merges the two, so what you receive is the same element it scrolls.
 
 <DoDont
   do={[
     'Give every thread a label that says which conversation it is.',
     'Pass announce={false} when you are rendering history rather than a live stream.',
     'Keep the turns inside it ChatMessage elements, so the avatar column lines up.',
-    'Manage scroll position yourself — the region scrolls, but it does not decide when.',
+    'Leave followNewMessages on unless you are deliberately opening somewhere other than the end.',
   ]}
   dont={[
     'Mount a long replayed transcript with announce left at its default.',
