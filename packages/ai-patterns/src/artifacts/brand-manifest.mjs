@@ -366,6 +366,18 @@ export function buildBrandManifest({ root, tokens }) {
     origin: 'hand-authored',
     members: [{ path: 'SKILL.md', role: 'entry' }],
   });
+  /* The voice pack is to prose what palettes.css is to colour: a named set of
+     values a consumer may swap wholesale, rather than the system's definition
+     of correct. It is hand-authored data, and the surfaces that show the voice
+     are generated from it. */
+  add({
+    id: 'miltinson.voice',
+    entry: 'miltinson.voice.json',
+    category: 'brand-doc',
+    title: 'Voice pack',
+    origin: 'hand-authored',
+    members: [{ path: 'miltinson.voice.json', role: 'entry' }],
+  });
   add({
     id: 'colors_and_type',
     entry: 'colors_and_type.css',
@@ -838,6 +850,12 @@ export function renderRepoIndexTable(manifest) {
     {
       path: 'SKILL.md',
       description: 'Agent Skills frontmatter — drop this folder into Claude Code as a skill.',
+    },
+    {
+      path: 'miltinson.voice.json',
+      description:
+        "The voice pack — the brand's prose values as data, the way `palettes.css` " +
+        'holds its colour. Every surface that states the voice is generated from it.',
     },
   ];
 
