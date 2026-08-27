@@ -14,6 +14,29 @@ const pack = JSON.parse(
   ),
 );
 const shipped = readFileSync(join(here, '__fixtures__', 'content-fundamentals.md'), 'utf8');
+const readme = readFileSync(
+  join(here, '..', '..', '..', '..', 'design-system-docs', 'README.md'),
+  'utf8',
+);
+
+describe('the fixture', () => {
+  /* The byte test below pins the renderer to the fixture. Nothing else pins the
+     fixture to the README it was snapshotted from, so a hand edit to that section
+     would leave this file green against a stale copy — the very drift the fixture
+     exists to catch, moved one step along.
+
+     This assertion is scaffolding for exactly as long as `## CONTENT FUNDAMENTALS`
+     stays hand-authored. Once the section is generated from the pack, the README
+     derives from the same source the renderer does, this can no longer fail
+     independently, and it may be deleted. */
+  it('still matches the README section it was captured from', () => {
+    const section = readme.match(/^## CONTENT FUNDAMENTALS\s*\n([\s\S]*?)(?=\n## )/m);
+    expect(section, 'design-system-docs/README.md has no CONTENT FUNDAMENTALS section').not.toBe(
+      null,
+    );
+    expect(section[1]).toBe(shipped);
+  });
+});
 
 describe('renderVoice', () => {
   /* The whole point of PR 2: the pack is a re-hosting of the section, not a rewrite.

@@ -103,9 +103,20 @@ describe('the testing export map', () => {
      of the export map below. Derived rather than restated so that adding an
      exclusion there cannot leave this check quietly wrong in either direction —
      a suffix added here alone would hide a genuinely unexported module. */
-  const internalSuffixes = require('../../package.json')
-    .files.filter((entry) => entry.startsWith('!'))
-    .map((entry) => entry.replace(/^!src\/\*\*\/\*/, ''));
+  const exclusions = require('../../package.json').files.filter((entry) => entry.startsWith('!'));
+
+  /* Two shapes are in use. A suffix glob — the one ending `.test.mjs` — un-ships a
+     kind of module, and so decides what this directory may publish. A directory
+     glob — the one naming `__fixtures__` — un-ships a whole folder, and decides
+     nothing here: the readdir below is not recursive, so it lists no file inside
+     one. Only the first kind contributes a suffix. */
+  const SUFFIX_EXCLUSION = /^!src\/\*\*\/\*(\.[\w.-]+\.mjs)$/;
+  const DIRECTORY_EXCLUSION = /^!src\/\*\*\/[\w.-]+\/\*\*$/;
+
+  const internalSuffixes = exclusions
+    .map((entry) => entry.match(SUFFIX_EXCLUSION))
+    .filter((match) => match !== null)
+    .map((match) => match[1]);
 
   /* A module added under src/testing without an `exports` entry is invisible to
      consumers, and the only symptom is an import that fails in their repo. */
@@ -121,16 +132,18 @@ describe('the testing export map', () => {
     expect(modules.sort()).toEqual(SUBPATHS.map(({ file }) => file).sort());
   });
 
-  /* The derivation above is only as good as the shape it assumes. If a future
-     exclusion is written some other way — a bare directory, a different glob —
-     the `replace` yields something that ends nothing, and every module would
-     start looking publishable again. */
-  it('reads every `files` exclusion as a suffix, which is the shape it assumes', () => {
+  /* The derivation above is only as good as the shapes it assumes. An exclusion
+     written some third way would match neither pattern, contribute no suffix, and
+     leave a module that does not ship looking publishable again — so an unrecognised
+     shape has to fail here rather than be skipped silently. */
+  it('reads every `files` exclusion as one of the two shapes it assumes', () => {
     expect(internalSuffixes.length).toBeGreaterThan(0);
-    for (const suffix of internalSuffixes) {
-      expect(suffix, 'a `files` exclusion is not a `!src/**/*<suffix>` glob').toMatch(
-        /^\.[\w.-]+\.mjs$/,
-      );
+    for (const entry of exclusions) {
+      expect(
+        SUFFIX_EXCLUSION.test(entry) || DIRECTORY_EXCLUSION.test(entry),
+        `\`files\` exclusion "${entry}" is neither a \`!src/**/*<suffix>\` nor a ` +
+          '`!src/**/<dir>/**` glob — teach this derivation about it.',
+      ).toBe(true);
     }
   });
 });
