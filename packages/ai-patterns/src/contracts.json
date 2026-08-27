@@ -1,6 +1,6 @@
 {
   "systemPromptStyle": {
-    "voice": "practical, honest, warm",
+    "voice": "practical, honest, warm, quietly confident",
     "forbidden": ["hype", "overclaiming", "jargon-first language"],
     "required": ["clear next step", "plain-language explanation", "accessibility consideration"],
     "verifiedBy": {
