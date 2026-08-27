@@ -1,5 +1,82 @@
 # @elirobinson/react
 
+## 3.0.0
+
+### Major Changes
+
+- e75165d: `DecisionCard` moves from `organisms/` to `molecules/`. Both of its subpaths change.
+
+  The tier is the import path, so this is the whole of the breaking change — nothing about
+  the component's props, markup, classes, or rendered output is different. Update two lines
+  and you are done.
+
+  ## Migration
+
+  | what              | before                                                 | after                                                  |
+  | ----------------- | ------------------------------------------------------ | ------------------------------------------------------ |
+  | component         | `@elirobinson/react/components/organisms/DecisionCard` | `@elirobinson/react/components/molecules/DecisionCard` |
+  | per-component CSS | `@elirobinson/react/styles/organisms/DecisionCard.css` | `@elirobinson/react/styles/molecules/DecisionCard.css` |
+
+  ```tsx
+  - import { DecisionCard } from '@elirobinson/react/components/organisms/DecisionCard';
+  + import { DecisionCard } from '@elirobinson/react/components/molecules/DecisionCard';
+  ```
+
+  ```css
+  - @import '@elirobinson/react/styles/organisms/DecisionCard.css';
+  + @import '@elirobinson/react/styles/molecules/DecisionCard.css';
+  ```
+
+  If you import the aggregate `@elirobinson/react/styles.css` there is nothing to do on the
+  CSS side — the aggregate already points at the new path.
+
+  Anything reading `@elirobinson/react/manifest` picks the move up on its own: `tier` and
+  `subpath` for `DecisionCard` are derived from the directory layout, so a codegen script or
+  docs sidebar built on the manifest needs no edit.
+
+  ## Why
+
+  The boundary rule in `docs/agents/components.md` is a mechanical test, not a preference:
+  a component that renders into a portal, traps focus, or manages open/closed state across
+  sub-elements is an organism; one assembled from 2+ atoms without such orchestration is a
+  molecule. `DecisionCard` does none of the three — it has no hooks at all — and composes a
+  single `VerdictBadge`. It was in `organisms/` because that is where #88 created the
+  directory, and nothing checked the rule against the directory afterwards.
+
+  Something does now: `packages/react/scripts/tier-boundary.test.mjs` sweeps `organisms/`
+  and fails on any component that neither orchestrates itself nor composes something that
+  does. `VirtualTable` passes on the second half — no hooks of its own, but it renders
+  `VirtualList` — and `DecisionCard` was the only file that failed. That is what stops the
+  next one from costing another major.
+
+### Patch Changes
+
+- 0203551: A `DropdownMenuItem` that submits a form no longer cancels its own submission.
+
+  `<DropdownMenuItem type="submit">` inside a `<form action={…}>` did nothing at all — no
+  request, no navigation, just a menu that closed. It read as a dead button, and it was the
+  Sign out control in a real account menu.
+
+  The item called `onOpenChange(false)` from its own `onClick`. That is a discrete update, so
+  React flushes it synchronously before the click dispatch finishes: `AnchoredOverlayContent`
+  returns `null` and the portal unmounts _during the click that submitted the form_. The submit
+  event still fires — a native listener on the form sees it — but it fires against a detached
+  tree, and React has already suppressed the browser's own submission so that it can run the
+  form's `action` itself. With no live fiber left to run it against, both paths are gone. Any
+  `onSubmit` handler on that form is lost the same way; this was never specific to server
+  actions. It was also not fixable from outside the component, because the close was
+  unconditional and not exposed.
+
+  `DropdownMenuItem` now reads its own `type`. An item with `type="submit"` does not close on
+  select — the click has a default action the consumer wants, and closing is what destroys it.
+  Every other item closes exactly as before, so nothing about existing menus changes.
+
+  The new `closeOnSelect` prop overrides the default in either direction:
+  `closeOnSelect={false}` keeps an ordinary item's menu open, and `closeOnSelect` on a submit
+  item closes it anyway. Consumers who took the documented workaround — a plain
+  `<button type="submit" role="menuitem" className="ds-dropdown__item">` in place of the
+  component — can now drop back to `DropdownMenuItem`.
+
 ## 2.10.0
 
 ### Minor Changes
