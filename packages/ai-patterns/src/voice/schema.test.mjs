@@ -6,7 +6,7 @@ const minimal = () => ({
   id: 'example',
   label: 'Example',
   fullName: 'Example Technologies',
-  person: { guidance: 'g', anchors: { asPerson: 'p', asCompany: 'c' } },
+  person: { summary: 's', guidance: 'g', anchors: { asPerson: 'p', asCompany: 'c' } },
   tone: [{ name: 'Practical', gloss: 'g' }],
   casing: ['c'],
   words: { use: ['build'], avoid: ['synergy'] },
