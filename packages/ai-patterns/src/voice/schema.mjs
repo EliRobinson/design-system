@@ -27,6 +27,12 @@ export const VOICE_SECTIONS = [
 const REQUIRED_PATHS = [
   'id',
   'label',
+  /* `label` is the short mark and `fullName` the legal one — "Miltinson" and
+     "Miltinson Technologies". Both are required because the surfaces disagree
+     about which they want: the README opens "How Miltinson copy is written",
+     and the guidelines card's subtitle names the company. Deriving one from
+     the other means a rendered page silently loses or gains a word. */
+  'fullName',
   'person.guidance',
   'person.anchors.asPerson',
   'person.anchors.asCompany',
