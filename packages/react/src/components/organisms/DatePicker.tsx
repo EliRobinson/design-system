@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useRef, useState } from 'react';
 
 import { useClickOutside } from '../../hooks/useClickOutside.js';
 import { cn } from '../../lib/cn.js';
+import { Mark } from '../../lib/marks.js';
 
 export type DatePickerProps = {
   /** Accessible label for the trigger input (also its accessible name). */
@@ -132,7 +133,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(function
               aria-label="Previous month"
               onClick={() => setViewDate(new Date(year, month - 1, 1))}
             >
-              ‹
+              <Mark name="chevron-left" />
             </button>
             <span>{monthLabel}</span>
             <button
@@ -140,7 +141,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(function
               aria-label="Next month"
               onClick={() => setViewDate(new Date(year, month + 1, 1))}
             >
-              ›
+              <Mark name="chevron-right" />
             </button>
           </div>
           <div role="grid" aria-label={monthLabel} className="ds-date-picker__grid">

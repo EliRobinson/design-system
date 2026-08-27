@@ -33,3 +33,20 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* The filled state, for a mark whose two states have to differ by shape rather
+   than by colour — the rating's star, today.
+
+   `fill: currentColor` and not a colour of its own, for the same reason the
+   stroke is currentColor: the control already declares what colour each state
+   is, and a mark that painted its own would need every one of those states
+   restated here.
+
+   The stroke stays on underneath. A filled star with no outline is very
+   slightly smaller than the outlined one — the outline's ink reaches half a
+   stroke-width beyond the path, the fill stops at it — and the pair sitting
+   side by side in a rating row would not line up. Keeping both means the two
+   states paint to exactly the same box. */
+.ds-mark--filled {
+  fill: currentColor;
+}

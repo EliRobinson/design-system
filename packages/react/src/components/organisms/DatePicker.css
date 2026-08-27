@@ -39,9 +39,27 @@
 }
 
 .ds-date-picker__header button {
+  /* inline-flex, which this did not declare before it painted a mark. A mark
+     centres because the flex box it sits in centres it; on a native button
+     with no display of its own it would be an inline replaced element sitting
+     on the text baseline, which is the font-metric positioning the drawn mark
+     exists to get away from. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
   cursor: pointer;
+  /* --mark-size is read from the type ramp directly rather than as `1em`, so
+     the mark keeps its size even if a consumer restyles this control's text.
+
+     No font-family here, deliberately. .ds-chip__remove declares one because it
+     predates #170, which puts a single layered `font-family: inherit` on native
+     form controls in tokens.css — restating it per control would be five more
+     copies of a rule being centralised next door, and unlayered ones that would
+     win against it. This control paints a mark and no text, so it has nothing
+     of its own to typeset either way. */
+  --mark-size: var(--fs-md);
   font-size: var(--fs-md);
   color: var(--fg-2);
 }
