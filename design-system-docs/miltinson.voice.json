@@ -1,0 +1,94 @@
+{
+  "id": "miltinson",
+  "label": "Miltinson",
+  "person": {
+    "guidance": "- **The voice is Miltinson Technologies.** Whether that reads as one person — _\"I'm Eli Robinson — I build software, teach AI…\"_ — or as a company depends on what the product is, and both are the brand: the same name covers a personal site and a company product. Pick the person from the product, not from a rule, and hold it. The failure is a surface that switches partway through, not a surface that chose \"we\".\n- **Reader is \"you.\"** Direct address, no buffer.\n- **Confident but unguarded.** _\"No jargon, no judgment — just practical solutions.\"_ The brand admits the field is full of nonsense and explicitly opts out.",
+    "anchors": {
+      "asPerson": "“I’m Eli Robinson — I build software, teach AI, and create resources for coaches.”",
+      "asCompany": "“Clear, patient tech help for individuals and small businesses who need a trusted hand.”"
+    }
+  },
+  "tone": [
+    {
+      "name": "Practical",
+      "gloss": "\"no-fluff\", \"what's actually useful\", \"saves you real time\""
+    },
+    {
+      "name": "Honest",
+      "gloss": "calls out hype, \"no contracts required\", transparent pricing (\"From $150/hr\")"
+    },
+    {
+      "name": "Warm",
+      "gloss": "patient, \"trusted hand\", reassuring about non-technical readers"
+    },
+    {
+      "name": "Quietly confident",
+      "gloss": "never flexes credentials, lets the work speak"
+    }
+  ],
+  "casing": [
+    "**Sentence case** for headings (\"Featured Apps\", \"Coaching Guides\", \"Need help with AI or tech?\"). Never ALL CAPS for body content.",
+    "**Title Case** is reserved for product/proper names (\"Kids Recipes\", \"AI Consulting\", \"Tech Support\") and the tagline (\"Builder. Consultant. Founder.\").",
+    "**Periods inside the wordmark.** \"Miltinson.\" with a period — it's part of the mark.",
+    "**Em-dashes** as the favored break: _\"I'm Eli Robinson — I build software…\"_, _\"No jargon, no judgment — just practical solutions.\"_ Use them.",
+    "**Oxford commas:** yes, when present.",
+    "**Pricing always prefixed with \"From\"** — \"From $150/hr\". Never list a single firm number; this signals starting point, not ceiling."
+  ],
+  "words": {
+    "use": [
+      "build",
+      "ship",
+      "practical",
+      "honest",
+      "no-fluff",
+      "hands-on",
+      "real",
+      "useful",
+      "trusted",
+      "patient",
+      "clear",
+      "simple",
+      "fun",
+      "interactive",
+      "no contracts",
+      "get started",
+      "get in touch",
+      "follow-up",
+      "what's actually useful"
+    ],
+    "avoid": [
+      "synergy",
+      "leverage",
+      "unlock",
+      "empower",
+      "robust",
+      "cutting-edge",
+      "revolutionary",
+      "world-class",
+      "seamless",
+      "frictionless",
+      "reimagine",
+      "AI-powered (used flatly)",
+      "10x",
+      "ninja",
+      "rockstar"
+    ]
+  },
+  "emoji": {
+    "guidance": "- **Sparingly.** The site uses ✓ as a checklist bullet inside service tier lists. That's it. No 🚀 🎉 ⚡, no decorative emoji in body copy or headings.\n- When a small mark is needed (checkmark, arrow), prefer a Lucide SVG icon. ✓ is acceptable as a fallback in plain-text contexts.",
+    "allowed": ["✓"]
+  },
+  "samples": [
+    "Builder. Consultant. Founder.",
+    "I'm Eli Robinson — I build software, teach AI, and create resources for coaches.",
+    "Practical, no-fluff guides written for sports coaches.",
+    "Clear, patient tech help for individuals and small businesses who need a trusted hand.",
+    "Tell me what you need and I'll get back to you within 24 hours."
+  ],
+  "taglines": [
+    "Practical tech, honestly built.",
+    "Built by hand. Shipped on purpose.",
+    "Tools that earn their keep.",
+    "AI help without the hype."
+  ]
+}
