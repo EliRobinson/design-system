@@ -17,7 +17,7 @@ export const VOICE_SECTIONS = [
   { key: 'casing', level: 'product', required: true },
   { key: 'words', level: 'product', required: true },
   { key: 'emoji', level: 'product', required: true },
-  { key: 'anchors', level: 'product', required: true },
+  { key: 'samples', level: 'product', required: true },
   { key: 'taglines', level: 'product', required: true },
 ];
 
@@ -35,7 +35,7 @@ const REQUIRED_PATHS = [
   'words.use',
   'words.avoid',
   'emoji.guidance',
-  'anchors',
+  'samples',
   'taglines',
 ];
 
