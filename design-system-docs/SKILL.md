@@ -20,15 +20,25 @@ rules in README.md to become an expert in designing with the Miltinson brand.
 
 <!-- ds-artifacts:managed:end -->
 
-Key brand reminders:
+Key brand reminders. The voice ones are rendered from the voice pack — edit `miltinson.voice.json`, never this list:
 
-- The voice is Miltinson Technologies; "I" or "we" is the product's call, held consistently within a surface
-- Tone: practical, honest, warm, no-fluff
+<!-- ds-artifacts:managed:begin name="voice" -->
+<!-- Generated from miltinson.voice.json, beside this file. Do not edit. -->
+
+- Voice: Miltinson Technologies. One brand, two registers. The product decides which, and a surface holds the one it picked — switching partway through is the failure, not choosing.
+- Tone, in order of weight: practical, honest, warm, quietly confident
+- Emoji: sparingly, and only ✓ — never decorative
+
+<!-- ds-artifacts:managed:end name="voice" -->
+
+The rest is visual direction and brand identity, which the pack does not carry:
+
 - Color: ink-led with **Miltinson Amber** as the only loud accent; Forest as the secondary anchor
 - Type: Geist + JetBrains Mono
 - Wordmark: "Miltinson." with the period (in amber)
 - Tagline: "Builder. Consultant. Founder." or "Practical tech, honestly built."
-- No gradients, no purple, no emoji in primary UI (emoji OK for the Kids Recipes sub-brand only)
+- No gradients, no purple
+- The one emoji exception the pack has no field for: playful emoji in **Kids Recipes** tags and category chips. Never in primary UI
 - Sharp 4–6px radii, hairline borders, restrained shadows, calm motion
 - Accessibility-first: 16px min, 44px touch, WCAG AA, focus-visible rings, reduced-motion honored
 

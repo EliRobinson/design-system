@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { brandVoice } from '../artifacts/llms.mjs';
-import { renderVoice, toneSummary } from './render.mjs';
+import { renderVoice, renderVoiceReminders, toneSummary } from './render.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, '..', '..', '..', '..');
@@ -59,6 +59,13 @@ describe('the generated surfaces match the pack', () => {
     expect(read('design-system-docs/guidelines/brand-voice.html')).toContain(
       `subtitle="${pack.fullName}, `,
     );
+  });
+
+  /* SKILL.md is the first thing an agent invoking the brand skill reads, and
+     its reminders shipped verbatim to consumers with a tone line that had lost
+     a step. The block is generated now; this pins the bytes an agent sees. */
+  it('the brand skill carries the reminders the pack renders', () => {
+    expect(read('design-system-docs/SKILL.md')).toContain(renderVoiceReminders(pack));
   });
 
   it('contracts.json carries all four tone steps', () => {
