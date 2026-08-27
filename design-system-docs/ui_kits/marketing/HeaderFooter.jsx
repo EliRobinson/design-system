@@ -8,10 +8,12 @@
    repo's .claude/skills/, a directory most projects lint, where the same code
    is indistinguishable from a module with missing imports. Scoped to the one
    rule so everything else about these samples is still linted. #119 */
-/* global window -- a browser script: the kits publish their components onto
-   window for the sibling kit files loaded after them. See index.html. */
+/* global window, KIT_CONTENT -- a browser script: the kits publish their components
+   onto window for the sibling kit files loaded after them, and read their strings from
+   _shared/content.js, which is loaded first. See index.html. */
+const copy = KIT_CONTENT.marketing;
 const Header = ({ active = 'Home' }) => {
-  const items = ['Home', 'Portfolio', 'Store', 'Services', 'About'];
+  const items = copy.nav;
   return (
     <header
       style={{
@@ -118,8 +120,8 @@ const Footer = () => (
         letterSpacing: '0.04em',
       }}
     >
-      <span>miltinsons.com</span>
-      <span>© 2026 Miltinson Technologies. All rights reserved.</span>
+      <span>{KIT_CONTENT.brand.domain}</span>
+      <span>{KIT_CONTENT.brand.copyright}</span>
     </div>
   </footer>
 );

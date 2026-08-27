@@ -591,6 +591,18 @@ export function buildBrandManifest({ root, tokens }) {
     origin: 'hand-authored',
     members: [{ path: 'ui_kits/_shared/Primitives.jsx', role: 'entry' }],
   });
+  /* The kits' strings, in one file. Its own artifact rather than a second member of
+     Primitives: they are loaded separately and for different reasons — a consumer keeps
+     the primitives and rewrites this one. */
+  add({
+    id: 'ui_kits/_shared/content',
+    entry: 'ui_kits/_shared/content.js',
+    category: 'support-file',
+    title: 'Kit content',
+    group: 'ui_kits',
+    origin: 'hand-authored',
+    members: [{ path: 'ui_kits/_shared/content.js', role: 'entry' }],
+  });
   const kitDirs = [...new Set(under('ui_kits').map((file) => file.path.split('/')[1]))]
     .filter((dir) => dir !== '_shared')
     .sort();
@@ -847,7 +859,12 @@ export function renderRepoIndexTable(manifest) {
     { path: 'ui_kits/webapp/', description: kitRow('ui_kits/webapp') },
     { path: 'ui_kits/mobile/', description: kitRow('ui_kits/mobile') },
     { path: 'ui_kits/docs/', description: kitRow('ui_kits/docs') },
-    { path: 'ui_kits/_shared/', description: 'Shared JSX primitives every kit loads.' },
+    {
+      path: 'ui_kits/_shared/',
+      description:
+        'Shared JSX primitives every kit loads, and content.js — every string the kits ' +
+        'render, in one file.',
+    },
     {
       path: 'slides/',
       description: `16:9 deck templates — ${slideTemplates.join(', ')} — plus an index.`,

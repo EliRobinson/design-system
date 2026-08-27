@@ -8,8 +8,10 @@
    repo's .claude/skills/, a directory most projects lint, where the same code
    is indistinguishable from a module with missing imports. Scoped to the one
    rule so everything else about these samples is still linted. #119 */
-/* global window -- a browser script: the kits publish their components onto
-   window for the sibling kit files loaded after them. See index.html. */
+/* global window, KIT_CONTENT -- a browser script: the kits publish their components
+   onto window for the sibling kit files loaded after them, and read their strings from
+   _shared/content.js, which is loaded first. See index.html. */
+const copy = KIT_CONTENT.marketing;
 const Hero = () => (
   <section
     style={{
@@ -20,7 +22,7 @@ const Hero = () => (
     }}
   >
     <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-      <Eyebrow>Miltinson Technologies</Eyebrow>
+      <Eyebrow>{copy.hero.eyebrow}</Eyebrow>
       <h1
         style={{
           fontFamily: 'Geist, sans-serif',
@@ -32,13 +34,13 @@ const Hero = () => (
           maxWidth: 1100,
         }}
       >
-        Builder. Consultant.{' '}
+        {copy.hero.headline}{' '}
         <span
           style={{
             background: 'linear-gradient(transparent 65%, var(--signal-300) 65%)',
           }}
         >
-          Founder.
+          {copy.hero.headlineAccent}
         </span>
       </h1>
       <p
@@ -51,14 +53,14 @@ const Hero = () => (
           margin: '32px 0 0',
         }}
       >
-        I'm Eli Robinson — I build software, teach AI, and create resources for coaches.
+        {copy.hero.standfirst}
       </p>
       <div style={{ display: 'flex', gap: 12, marginTop: 40 }}>
         <Button variant="primary" size="lg" icon>
-          View My Work
+          {copy.hero.primaryCta}
         </Button>
         <Button variant="secondary" size="lg">
-          Work With Me
+          {copy.hero.secondaryCta}
         </Button>
       </div>
     </div>
@@ -66,20 +68,7 @@ const Hero = () => (
 );
 
 const FeaturedApps = () => {
-  const apps = [
-    {
-      title: 'Kids Recipes',
-      body: 'Simple, fun recipes designed for kids.',
-      tags: ['Food', 'Family'],
-      thumb: 'recipes',
-    },
-    {
-      title: 'Maths',
-      body: 'Interactive maths resources for learners of all ages.',
-      tags: ['Education', 'Math'],
-      thumb: 'maths',
-    },
-  ];
+  const apps = copy.featured.apps;
   return (
     <section style={{ padding: '96px max(20px, 4vw)', borderBottom: '1px solid var(--border)' }}>
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
@@ -100,9 +89,9 @@ const FeaturedApps = () => {
               margin: 0,
             }}
           >
-            Featured Apps
+            {copy.featured.heading}
           </h2>
-          <RuleLink>View all</RuleLink>
+          <RuleLink>{copy.featured.viewAll}</RuleLink>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           {apps.map((app, i) => (
@@ -173,7 +162,7 @@ const FeaturedApps = () => {
   );
 };
 
-const CoachingBand = () => (
+const FeatureBand = () => (
   <section
     style={{
       padding: '96px max(20px, 4vw)',
@@ -193,7 +182,7 @@ const CoachingBand = () => (
       }}
     >
       <div>
-        <Eyebrow color="var(--fg-inverse-3)">Coaching Guides</Eyebrow>
+        <Eyebrow color="var(--fg-inverse-3)">{copy.feature.eyebrow}</Eyebrow>
         <h2
           style={{
             fontFamily: 'Geist, sans-serif',
@@ -204,7 +193,7 @@ const CoachingBand = () => (
             lineHeight: 1.05,
           }}
         >
-          Practical, no-fluff guides written for sports coaches.
+          {copy.feature.heading}
         </h2>
         <p
           style={{
@@ -216,11 +205,10 @@ const CoachingBand = () => (
             maxWidth: 560,
           }}
         >
-          Drills, session plans, and coaching frameworks. Read on any device, download the PDF, keep
-          forever.
+          {copy.feature.body}
         </p>
         <Button variant="accent" size="lg" icon>
-          Browse Guides
+          {copy.feature.cta}
         </Button>
       </div>
       <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end' }}>
@@ -248,7 +236,7 @@ const CoachingBand = () => (
                 color: 'var(--anchor-700)',
               }}
             >
-              GUIDE · 0{i + 1}
+              {copy.feature.cardLabel} · 0{i + 1}
             </div>
             <div
               style={{
@@ -260,7 +248,7 @@ const CoachingBand = () => (
                 lineHeight: 1.2,
               }}
             >
-              {['Session Plans for U10s', 'Practice Drills Vol. 1', 'Game-Day Frameworks'][i]}
+              {copy.feature.cards[i]}
             </div>
           </div>
         ))}
@@ -273,18 +261,7 @@ const ServicesBand = () => (
   <section style={{ padding: '96px max(20px, 4vw)' }}>
     <div style={{ maxWidth: 1280, margin: '0 auto' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-        {[
-          {
-            eb: 'AI Consulting',
-            price: '150',
-            body: "Learn how to use AI tools effectively. I'll show you what's actually useful, what's hype, and how to integrate AI into your workflows.",
-          },
-          {
-            eb: 'Tech Support',
-            price: '75',
-            body: 'Clear, patient tech help for individuals and small businesses who need a trusted hand. No jargon, no judgment — just practical solutions.',
-          },
-        ].map((s, i) => (
+        {copy.services.items.map((s, i) => (
           <div
             key={i}
             style={{
@@ -347,7 +324,7 @@ const ServicesBand = () => (
               {s.body}
             </p>
             <div style={{ marginTop: 24 }}>
-              <RuleLink>See details</RuleLink>
+              <RuleLink>{copy.services.detailsLink}</RuleLink>
             </div>
           </div>
         ))}
@@ -356,4 +333,4 @@ const ServicesBand = () => (
   </section>
 );
 
-Object.assign(window, { Hero, FeaturedApps, CoachingBand, ServicesBand });
+Object.assign(window, { Hero, FeaturedApps, FeatureBand, ServicesBand });
