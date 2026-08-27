@@ -87,21 +87,31 @@ describe('guideline cards', () => {
     expect(cards).toHaveLength(onDisk.length);
   });
 
-  it('marks exactly the cards buildGuidelineCards emits as generated', () => {
+  it('marks exactly the cards buildGuidelineCards emits, plus the voice card, as generated', () => {
+    /* guidelines/brand-voice.html is generated too, but by sync-voice.mjs from
+       the voice pack rather than by buildGuidelineCards — it is carved out of
+       both checks below rather than folded into the buildGuidelineCards set,
+       so this test still fails if the roster import that drives the
+       token-enumeration cards ever breaks. */
+    const VOICE_CARD_PATH = 'guidelines/brand-voice.html';
     const generated = new Set(
       cards.filter((card) => card.origin === 'generated').map((card) => card.path),
     );
     expect(generated).toEqual(
-      new Set(buildGuidelineCards(tokens).map((card) => `guidelines/${card.path}`)),
+      new Set([
+        ...buildGuidelineCards(tokens).map((card) => `guidelines/${card.path}`),
+        VOICE_CARD_PATH,
+      ]),
     );
     for (const card of cards) {
-      if (card.origin === 'generated') {
+      if (card.origin === 'generated' && card.path !== VOICE_CARD_PATH) {
         expect(card.generatedBy).toContain('guideline-cards.mjs');
       }
     }
-    /* The editorial cards are writing, not derivation — a generated origin on
-       one of these would mean the roster import broke. */
-    expect(byId('guidelines/brand-voice').origin).toBe('hand-authored');
+    /* The remaining editorial cards are writing, not derivation — a generated
+       origin on one of these would mean the roster import broke. */
+    expect(byId('guidelines/brand-voice').origin).toBe('generated');
+    expect(byId('guidelines/brand-voice').generatedBy).toContain('sync-voice.mjs');
     expect(byId('guidelines/colors-ink').origin).toBe('generated');
   });
 
