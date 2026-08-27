@@ -16,24 +16,35 @@ export const BLOCK_END = '<!-- ds-artifacts:managed:end -->';
 const GENERATED_NOTE =
   '<!-- Regenerated on every publish from what the tarball actually contains. Do not edit. -->';
 
+const markers = (name) =>
+  name === undefined
+    ? { begin: BLOCK_BEGIN, end: BLOCK_END }
+    : {
+        begin: `<!-- ds-artifacts:managed:begin name="${name}" -->`,
+        end: `<!-- ds-artifacts:managed:end name="${name}" -->`,
+      };
+
 /**
  * @param {string} source
  * @param {string} replacement text to put between the markers
  * @param {string} label file name, for the error message
  * @param {string} note provenance comment written just inside the block
+ * @param {string} [name] block name; omit for the original unnamed block
  */
 export function replaceManagedBlock(
   source,
   replacement,
   label = 'document',
   note = GENERATED_NOTE,
+  name = undefined,
 ) {
-  const start = source.indexOf(BLOCK_BEGIN);
-  const end = source.indexOf(BLOCK_END);
+  const { begin, end } = markers(name);
+  const start = source.indexOf(begin);
+  const finish = source.indexOf(end);
 
-  if (start === -1 || end === -1 || end < start) {
+  if (start === -1 || finish === -1 || finish < start) {
     throw new Error(
-      `${label} has no ${BLOCK_BEGIN} … ${BLOCK_END} block. ` +
+      `${label} has no ${begin} … ${end} block. ` +
         'The consumer copy of this file is generated from that block; add it back or ' +
         'update packages/ai-patterns/src/artifacts/brand.mjs.',
     );
@@ -41,13 +52,13 @@ export function replaceManagedBlock(
 
   return [
     source.slice(0, start),
-    BLOCK_BEGIN,
+    begin,
     '\n',
     note,
     '\n\n',
     replacement.trim(),
     '\n\n',
-    source.slice(end),
+    source.slice(finish),
   ].join('');
 }
 
