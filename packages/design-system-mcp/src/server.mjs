@@ -463,9 +463,9 @@ export function createServer() {
     {
       title: 'Get brand guidance',
       description:
-        'The Miltinson brand voice rules (words to use and avoid, tone, casing) plus the ' +
-        'UI kit and asset pointers for the surface being built — the material that makes a ' +
-        'page Miltinson rather than merely correct.',
+        'The voice pack in force for this repo — words to use and avoid, tone, casing — ' +
+        'plus the UI kit and asset pointers for the surface being built. Returns the ' +
+        "consumer's own pack when one is declared, and the system's default pack otherwise.",
       inputSchema: z.object({
         surface: z
           .string()
@@ -491,9 +491,20 @@ export function createServer() {
           `- ${kit.title} — ${kit.path} in the miltinson-design skill` +
           (kit.components?.length ? ` (components: ${kit.components.join(', ')})` : ''),
       );
+      /* The pack is named before a word of it is quoted. A model that cannot tell an
+         inherited voice from a declared one has no way to know whether the words below
+         are this product's or somebody else's — which is the whole defect the pack
+         layer closes, and it closes here or not at all. */
+      const provenance =
+        voice.source === 'consumer'
+          ? `This repo declares its own voice pack (${voice.path}).`
+          : 'This is the pack the design system ships as its default, not a rule of the ' +
+            'system. A product declares its own with `ds init --voice`, and this tool ' +
+            'follows it from then on.';
+
       return text(
         [
-          '# Miltinson brand guidance',
+          '# Brand guidance',
           '',
           'The kits and assets below ship in the `miltinson-design` skill ' +
             '(`.claude/skills/miltinson-design/` after `ds-resync artifacts`, or ' +
@@ -503,9 +514,11 @@ export function createServer() {
           '## Starting points',
           ...kitLines,
           '',
-          '## Voice and content rules',
+          `## Voice (pack: ${voice.packId} — ${voice.source})`,
           '',
-          voice,
+          provenance,
+          '',
+          voice.text,
         ].join('\n'),
       );
     },
@@ -565,13 +578,28 @@ export function createServer() {
     'brand-voice',
     'miltinson://brand/voice',
     {
-      title: 'Miltinson brand voice',
-      description: 'Voice, tone, casing, and word-choice rules for Miltinson surfaces.',
+      title: 'Brand voice pack',
+      /* The URI keeps its scheme — it is the server's, and renaming it would break every
+         consumer that already reads this resource for no gain. What the resource claims
+         to be is the part that was wrong. */
+      description:
+        'Voice, tone, casing and word-choice from the voice pack in force — this repo’s ' +
+        'own when it declares one, and the pack the design system ships by default ' +
+        'otherwise.',
       mimeType: 'text/markdown',
     },
-    async (uri) => ({
-      contents: [{ uri: uri.href, mimeType: 'text/markdown', text: await brandVoiceRules() }],
-    }),
+    async (uri) => {
+      const voice = await brandVoiceRules();
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'text/markdown',
+            text: [`<!-- pack: ${voice.packId} (${voice.source}) -->`, '', voice.text].join('\n'),
+          },
+        ],
+      };
+    },
   );
 
   server.registerResource(
