@@ -215,8 +215,8 @@ function main() {
   }
 
   /* 6. SKILL.md — the project's copy of the brand skill. The hand-written copy
-        had lost every brand rule that makes the skill worth invoking ("Eli
-        speaks as 'I' — never 'we'", the tagline, the accessibility floors).
+        had lost every brand rule that makes the skill worth invoking (the voice
+        and its tone ranking, the tagline, the accessibility floors).
         Generated through the same managed-block mechanism the consumer skill
         uses, so those rules are carried verbatim from one source and only the
         surface-specific paragraphs differ. */

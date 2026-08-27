@@ -105,8 +105,9 @@ buttons, cards, fields, tags, type, spacing, radii), `ui_kits/`, and `slides/`.
 Read `design-system-docs/README.md` and `SKILL.md` before you design a single screen. The
 site must look like it belongs to this brand, not like a generic docs theme.
 
-**Brand rules, condensed** (the full set is in `design-system-docs/`): Eli speaks as "I",
-never "we". Tone is practical, honest, warm, no-fluff. Ink-led with Miltinson Amber as the
+**Brand rules, condensed** (the full set is in `design-system-docs/`): the voice is
+Miltinson Technologies, and "I" or "we" is the product's call, held consistently within a
+surface. Tone is practical, honest, warm, quietly confident. Ink-led with Miltinson Amber as the
 only loud accent, Forest as secondary anchor. Geist + JetBrains Mono. Wordmark is
 "Miltinson." with the amber period. No gradients, no purple, no emoji in primary UI. Sharp
 4–6px radii, hairline borders, restrained shadows, calm motion. Accessibility-first: 16px
