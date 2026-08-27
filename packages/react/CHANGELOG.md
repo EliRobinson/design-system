@@ -1,5 +1,89 @@
 # @elirobinson/react
 
+## 2.9.0
+
+### Minor Changes
+
+- ffb57e7: An anchored panel can pin its right edge to its trigger, and its inline min-width is a floor again.
+
+  A `DropdownMenu` whose avatar trigger sat at the far right of a header opened 95px wide against
+  `.ds-dropdown__content`'s own `min-width: 180px` — every item wrapped, the label onto three lines
+  (#180). Two independent causes, both fixed here.
+
+  `useAnchoredPosition` only ever set `left`. A `position: fixed` panel with no width is sized by
+  what is left of the viewport beside the edge that is pinned, so a trigger near the right edge does
+  not merely overflow — the panel is _resized_ and its content reflows. `align` now takes `'end'`,
+  which pins the panel's right edge to the trigger's and releases `left`, and `DropdownMenuContent`
+  and `PopoverContent` forward `side` and `align` through to the positioner, which neither did
+  before:
+
+  ```tsx
+  <DropdownMenuContent align="end">…</DropdownMenuContent>
+  ```
+
+  Separately, the inline `min-width: <trigger width>` the positioner writes for a start-aligned
+  panel is meant as a floor ("at least as wide as its trigger") but read as an override, so it
+  deleted the panel's own minimum for every trigger narrower than it — every icon or avatar trigger.
+  It is now written as `max(var(--anchored-min-width, 0px), <trigger width>)`, and
+  `.ds-dropdown__content` declares `--anchored-min-width: 180px` beside its `min-width`. The number
+  stays in the stylesheet, where it belongs; a panel that declares no floor falls back to `0px` and
+  is sized by its trigger exactly as before.
+
+  A panel that does not fit is still neither flipped nor clamped. `align: 'end'` is an opt-in a
+  consumer has to know to reach for, and there is no equivalent on the vertical axis: a
+  `side: 'bottom'` panel on a trigger near the bottom of the viewport is squeezed the same way this
+  one was. Tracked in #195.
+
+  One internal note for anyone composing the overlay parts directly: `useAnchoredOverlay` no longer
+  runs `useAnchoredPosition`. `AnchoredOverlayContent` does, because that is where `side` and `align`
+  arrive. Using the two together, as `DropdownMenu` and `Popover` do, is unchanged.
+
+- d49d2f5: A controlled `RadioGroup` can express "nothing selected", and `null` is how it says so.
+
+  `const currentValue = value ?? internalValue` conflated two unrelated situations —
+  "this group is uncontrolled" and "this group is controlled and currently empty" — because
+  both arrive as a falsy `value`. Controlledness is a property of whether `value` is passed
+  at all, never of what it happens to hold, so the group now derives it once:
+
+  ```ts
+  const isControlled = value !== undefined;
+  const currentValue = isControlled ? (value ?? undefined) : internalValue;
+  ```
+
+  `value` widens from `string` to `string | null`. `null` means controlled with nothing
+  selected; `undefined` continues to mean uncontrolled. Consumers passing a string, or
+  passing nothing, are unaffected — which is why this is a minor and not a major, even
+  though it is a behaviour correction. The widening is the additive half and it is what
+  sets the bump; the corrected resolution only reaches code that was already passing
+  `null` and getting the wrong answer for it.
+
+  **What actually changes at runtime is narrower than the bug report suggests, and worth
+  being precise about.** The only input whose handling differs is `value={null}`. It used
+  to fall through to internal state, so a controlled group handed `null` showed whatever
+  `defaultValue` said, or whatever an earlier uncontrolled click had left behind, instead
+  of clearing. Every other input resolves exactly as before.
+
+  **Clearing with `undefined` still does not clear the group**, and that is now the
+  documented convention rather than an accident: `undefined` hands selection back to the
+  group's own state, which still holds the last click. TypeScript cannot reject it, since
+  `undefined` is always legal for an optional prop, and a consumer holding
+  `useState<string | undefined>` reaches for exactly that. So the group now warns in
+  development when `value` goes from a string to `undefined` — the warning React emits for
+  the same mistake on a native input, which it never emitted here because the group derives
+  `checked` itself and React never sees the switch. Type controlled state as
+  `string | null`.
+
+  The controlled path had no test coverage at all, which is how this survived: both
+  existing cases passed `defaultValue` and neither passed `value`. It now covers
+  parent-driven value winning over a click, clearing to `null`, the mode boundary and its
+  warning, and the uncontrolled path from `defaultValue` and from nothing.
+
+  Also documents, in the prop table rather than in prose a consumer would have to copy,
+  that the group participates in native form submission: `RadioGroupItem` renders a real
+  `input[type="radio"]`, so the group's `name` is the submitted field name and the
+  selection reaches `FormData` and server actions with no hidden input. A test pins that,
+  since it is a promise resting on an implementation detail a refactor could quietly drop.
+
 ## 2.8.0
 
 ### Minor Changes
