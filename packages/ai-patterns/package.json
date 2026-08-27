@@ -20,7 +20,8 @@
     "dist",
     "CHANGELOG.md",
     "!src/**/*.test.mjs",
-    "!src/**/*.test-helper.mjs"
+    "!src/**/*.test-helper.mjs",
+    "!src/**/__fixtures__/**"
   ],
   "exports": {
     "./patterns": "./src/patterns.md",
