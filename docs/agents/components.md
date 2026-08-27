@@ -228,14 +228,14 @@ Ported up from a product built on this system, where every one of them had been 
 because the library had no equivalent. Import them via the tiered subpath
 (`@elirobinson/react/components/<tier>/<Name>`, see above).
 
-| Tier      | Export           | Notes                                                                                                                                                                                                                                                                                                                                           |
-| --------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ai        | `ChatThread`     | `role="log"`, `aria-live="polite"`, `aria-relevant="additions text"`. `label` is required — the accessible name is a prop, never copy in the component. `announce={false}` sets `aria-live="off"` for a closed or replayed thread.                                                                                                              |
-| ai        | `ChatMessage`    | One turn. `avatar` is a **required** node — there is no role-derived fallback — framed by `ds-avatar ds-avatar--md`, so the circle is an `Avatar` and not a size of ChatMessage's own. `actions` is a node, not an `[{ label, onClick }]` array. `variant` is `sent` \| `received`; a sent turn reads as settled via `--fg-2`, never `opacity`. |
-| ai        | `StreamingCaret` | Returns `null` when `active` is false, so it cannot be left mounted on a finished message. `label` promotes it to `role="status"`; without one it is `aria-hidden`. Honours `prefers-reduced-motion`.                                                                                                                                           |
-| molecules | `VerdictBadge`   | A decision marker that survives both themes. Carries a glyph **and** a word — `Badge` has no state that does either. The glyph is `aria-hidden`; the word is the accessible text.                                                                                                                                                               |
-| molecules | `StubCard`       | A summary that reads as a ticket stub: a body column plus a perforated stub column. The perforation is structure, so it is a dashed `--border-control`.                                                                                                                                                                                         |
-| organisms | `DecisionCard`   | A headline verdict, figures broken out by `kind`, a contrast figure, a caveat, and a **conditional** action. Composes `VerdictBadge`. `headline` is a real heading element — `headingLevel` is 2–6, default 2. See the footer guarantee below.                                                                                                  |
+| Tier      | Export           | Notes                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ai        | `ChatThread`     | `role="log"`, `aria-live="polite"`, `aria-relevant="additions text"`. `label` is required — the accessible name is a prop, never copy in the component. `announce={false}` sets `aria-live="off"` for a closed or replayed thread. `followNewMessages` defaults true and follows only a reader already at the bottom — see below.                                                                  |
+| ai        | `ChatMessage`    | One turn. `avatar` is a **required** node — there is no role-derived fallback — framed by `ds-avatar ds-avatar--md`, so the circle is an `Avatar` and not a size of ChatMessage's own. `actions` is a node, not an `[{ label, onClick }]` array. `variant` is `sent` \| `received`; a sent turn reads as settled via `--fg-2`, never `opacity`. There is deliberately no `role` union — see below. |
+| ai        | `StreamingCaret` | Returns `null` when `active` is false, so it cannot be left mounted on a finished message. `label` promotes it to `role="status"`; without one it is `aria-hidden`. Honours `prefers-reduced-motion`.                                                                                                                                                                                              |
+| molecules | `VerdictBadge`   | A decision marker that survives both themes. Carries a glyph **and** a word — `Badge` has no state that does either. The glyph is `aria-hidden`; the word is the accessible text.                                                                                                                                                                                                                  |
+| molecules | `StubCard`       | A summary that reads as a ticket stub: a body column plus a perforated stub column. The perforation is structure, so it is a dashed `--border-control`.                                                                                                                                                                                                                                            |
+| organisms | `DecisionCard`   | A headline verdict, figures broken out by `kind`, a contrast figure, a caveat, and a **conditional** action. Composes `VerdictBadge`. `headline` is a real heading element — `headingLevel` is 2–6, default 2. See the footer guarantee below.                                                                                                                                                     |
 
 ### `DecisionCard` renders no footer when there is no action
 
@@ -258,6 +258,84 @@ That shape is a quote, an eligibility result, or a risk assessment just as readi
 a recommendation. `kind` on a figure renders as `data-kind` rather than a class from a
 fixed enum, so a product can group its figures without the system having to learn the
 product's vocabulary.
+
+### `ChatMessage` has no `role`, and the absence is the decision
+
+The contract this component was ported from carried `role: 'user' | 'assistant' | 'system'`,
+and the open question was whether a product with a fourth author grew the union or folded
+`admin` onto `user`. What shipped is neither. There is no `ChatRole`, no `role` prop and no
+author concept in the component at all: identity is `name` plus a **required** `avatar`, and
+`variant` is presentation — which side of the conversation a turn is on.
+
+That was decided by deletion, and a deletion argues for nothing, so:
+
+- **An author enum is a domain model the system does not own.** Three members is wrong for a
+  product with four authors and wrong again for one with two. `name` + `avatar` is wrong for
+  none of them, because it asks a product for what it already has instead of asking it to
+  translate into our vocabulary first and then translate back.
+- **It removes what made a role union tempting**, which was deriving the avatar from the
+  role. That derivation is the bug that made `avatar` required: a mark the system picks is a
+  pure-ink glyph, and a pure-ink glyph is invisible on `--ink-950` in dark mode.
+
+So `avatar` staying required is part of this decision and not merely the dark-mode fix it was
+first justified as. Identity has to live somewhere; once the system holds no author model the
+only places left are `name` and the node a product passes. Restoring the optional `avatar`
+restores the fallback, and the fallback **is** the derivation.
+
+`variant` keeps its name for the same reason it keeps its values. `variant` is this library's
+one word for a presentational axis — `Button`, `Badge`, `Alert` — and spelling it `side` or
+`from` on this component alone would cost every reader of the library to buy a nicety in one
+place. `sent` / `received` reads as a messaging idiom, but it is anchored on the **reader**,
+not on an author: this turn is mine, that turn arrived. That is as true of an assistant reply
+as of a colleague's, which is exactly why the pair survives having no sender to point at.
+
+Do not close this by shipping the mapping. A `ChatMessage` that accepts a role-to-props table,
+or an exported `authorProps()`, is the same domain model one indirection further out — and
+now versioned, so a product's fourth author becomes our minor release.
+
+**Coming from a `role` union?** Keep it. It is your domain model; hold it in your own state
+and translate at the call site:
+
+```tsx
+const AUTHOR = {
+  user: { variant: 'sent', name: 'Eli', avatar: 'E' },
+  assistant: { variant: 'received', name: 'Assistant', avatar: '◆' },
+  admin: { variant: 'received', name: 'Support', avatar: 'S' },
+} as const;
+
+<ChatMessage {...AUTHOR[message.role]}>{message.text}</ChatMessage>;
+```
+
+Adding a fourth author is a line in that object. It is one table in one file, it costs no
+release of ours, and `admin` mapping to `received` is now a visible product choice rather
+than a fact buried in a union. `design-system-docs/_project-mirror/ui_kits/ai-assistant/Assistant.jsx`
+is the worked example.
+
+### `ChatThread` follows the newest turn, and only when you are on it
+
+`followNewMessages` defaults to `true` and is not a preference. A `role="log"` live region
+that renders the announced turn below the fold is a defect for precisely the readers the live
+region exists for, so _when_ to scroll is the system's problem, not a product's.
+
+Three constraints are load-bearing, and each is a thing to leave alone:
+
+- **It follows only a reader already at the bottom.** Unconditional following yanks someone
+  who scrolled up to re-read. The measurement is `scrollHeight - scrollTop - clientHeight`
+  taken against the scroll height of the **previous** commit — by the time a layout effect
+  runs the new turn is already in the DOM, and measuring then reports a pinned reader as one
+  whole turn adrift.
+- **The threshold is a constant** (`PINNED_TO_BOTTOM_THRESHOLD_PX`, 32), not a token and not
+  a prop. It measures nothing on screen, so a token would falsely invite tuning; a caller who
+  wants to own scrolling has `followNewMessages={false}` and the forwarded ref.
+- **It does not animate.** `element.scrollTop = element.scrollHeight` is instant, which
+  sidesteps `prefers-reduced-motion` rather than taking on the care an animation inside a live
+  region would owe. `ChatThread.css` pins `scroll-behavior: auto` so an inherited
+  `html { scroll-behavior: smooth }` from a consumer's reset cannot turn it into one.
+
+None of this changes the tier. A `useLayoutEffect` is not a portal, a focus trap, or
+open/closed state, so the boundary rule above still puts `ChatThread` where it is; `ai` is
+answering "what is this for" regardless. The ref is merged through `lib/useMergedRef`, so the
+caller still receives the element exactly as before.
 
 ### Product theming
 
