@@ -4,11 +4,18 @@
  * The word lists lived in hand-kept copies that disagreed — the fullest reached agents
  * and the shortest reached humans. One source, written out; `--check` is the CI form.
  *
- * Three surfaces, and each is written whole rather than patched:
+ * Four surfaces, and each is written whole rather than patched:
  *
  *   design-system-docs/README.md                    the `name="voice"` managed block
+ *   design-system-docs/SKILL.md                     the voice half of "Key brand reminders"
  *   design-system-docs/guidelines/brand-voice.html  the card the design project renders
  *   packages/ai-patterns/src/contracts.json         the tone line agents are given
+ *
+ * SKILL.md's reminders sat below the packer's own managed block, so no transform
+ * reached them and the tone line had already lost a step. Only the bullets that
+ * restate pack values are inside the block — colour, type, the wordmark, the
+ * taglines and the accessibility floors are not pack data and stay hand-authored
+ * around it.
  *
  * contracts.json is hand-authored and checked in — build-artifacts.mjs reads it and
  * embeds it in the packed corpus, and nothing else writes it — so this is its one
@@ -19,11 +26,16 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { replaceManagedBlock } from '../src/artifacts/brand.mjs';
-import { renderVoice, renderVoiceCard, toneSummary } from '../src/voice/render.mjs';
+import {
+  renderVoice,
+  renderVoiceCard,
+  renderVoiceReminders,
+  toneSummary,
+} from '../src/voice/render.mjs';
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const at = (path) => join(repo, path);
@@ -31,16 +43,33 @@ const PACK = 'design-system-docs/miltinson.voice.json';
 const pack = JSON.parse(readFileSync(at(PACK), 'utf8'));
 
 const README = 'design-system-docs/README.md';
+const SKILL = 'design-system-docs/SKILL.md';
 const CARD = 'design-system-docs/guidelines/brand-voice.html';
 const CONTRACTS = 'packages/ai-patterns/src/contracts.json';
 
-const GENERATED_NOTE = `<!-- Generated from ${PACK}. Do not edit. -->`;
+/* The pack's name only, not its repo path: README.md and SKILL.md both ship
+   into a consumer's skill folder, where the pack lands beside them at the
+   folder root and `design-system-docs/` does not exist. A repo-relative path
+   here reads as a working pointer and is one a consumer cannot follow. The
+   basename is true in both places, because in this repo the pack is a sibling
+   of these two files too. */
+const GENERATED_NOTE = `<!-- Generated from ${basename(PACK)}, beside this file. Do not edit. -->`;
 
 function readmeWithVoice() {
   return replaceManagedBlock(
     readFileSync(at(README), 'utf8'),
     renderVoice(pack),
     README,
+    GENERATED_NOTE,
+    'voice',
+  );
+}
+
+function skillWithReminders() {
+  return replaceManagedBlock(
+    readFileSync(at(SKILL), 'utf8'),
+    renderVoiceReminders(pack),
+    SKILL,
     GENERATED_NOTE,
     'voice',
   );
@@ -71,6 +100,7 @@ function contractsWithTone() {
 
 const surfaces = [
   { path: README, contents: readmeWithVoice() },
+  { path: SKILL, contents: skillWithReminders() },
   { path: CARD, contents: `${renderVoiceCard(pack)}\n` },
   { path: CONTRACTS, contents: contractsWithTone() },
 ];

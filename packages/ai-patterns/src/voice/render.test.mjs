@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { renderVoice, renderVoiceCard, toneSummary } from './render.mjs';
+import { renderVoice, renderVoiceCard, renderVoiceReminders, toneSummary } from './render.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pack = JSON.parse(
@@ -93,6 +93,36 @@ describe('renderVoiceCard', () => {
   it('names the brand in full in the subtitle, not by the short mark', () => {
     expect(renderVoiceCard(pack)).toContain(`subtitle="${pack.fullName}, sentence case`);
     expect(pack.fullName).not.toBe(pack.label);
+  });
+});
+
+describe('renderVoiceReminders', () => {
+  /* The line this replaced read "Tone: practical, honest, warm, no-fluff" — it
+     dropped the fourth step and promoted a `words.use` entry into the ranking,
+     in the file an agent reads first. */
+  it('states all four tone steps, in the order the pack ranks them', () => {
+    expect(renderVoiceReminders(pack)).toContain(`Tone, in order of weight: ${toneSummary(pack)}`);
+  });
+
+  it('names the brand in full and carries the register lead', () => {
+    expect(renderVoiceReminders(pack)).toContain(
+      `- Voice: ${pack.fullName}. ${pack.person.summary}`,
+    );
+  });
+
+  /* `emoji.allowed` is optional — the schema rejects empty arrays, so a brand
+     that allows none has to leave the field out. Absent must not throw. */
+  it('renders the stricter rule when the pack allows no emoji', () => {
+    const strict = { ...pack, emoji: { guidance: pack.emoji.guidance } };
+    expect(renderVoiceReminders(strict)).toContain('- Emoji: none');
+    expect(renderVoiceReminders(pack)).toContain('- Emoji: sparingly, and only ✓');
+  });
+
+  /* The reminders are a compression of the pack, not a second copy of it: the
+     visual and identity lines around the block are hand-authored, and nothing
+     the renderer emits may restate them. */
+  it('emits only the three pack-derived bullets', () => {
+    expect(renderVoiceReminders(pack).split('\n')).toHaveLength(3);
   });
 });
 

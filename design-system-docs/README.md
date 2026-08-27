@@ -61,7 +61,7 @@ Eli runs many small projects. The point of this system is to keep them **visuall
 
 ## CONTENT FUNDAMENTALS
 <!-- ds-artifacts:managed:begin name="voice" -->
-<!-- Generated from design-system-docs/miltinson.voice.json. Do not edit. -->
+<!-- Generated from miltinson.voice.json, beside this file. Do not edit. -->
 
 How Miltinson copy is written. Read this before writing for the brand.
 

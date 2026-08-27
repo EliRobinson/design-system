@@ -88,3 +88,37 @@ export function toneSummary(pack) {
   validatePack(pack);
   return pack.tone.map((step) => step.name.toLowerCase()).join(', ');
 }
+
+/**
+ * The pack-derived bullets in the brand skill's "Key brand reminders" list.
+ *
+ * `SKILL.md` is the first thing an agent invoking the skill reads, and its
+ * reminders sat below the packer's managed block, so no transform ever touched
+ * them. The tone line had already rotted into "practical, honest, warm,
+ * no-fluff" — four adjectives of which only three are tone steps, dropping
+ * "Quietly confident" and promoting a `words.use` entry into the ranking. That
+ * is the whole failure the pack exists to end, one file away from where this
+ * branch fixed it in `contracts.json`.
+ *
+ * Only the reminders that restate pack values are rendered here. Colour, type,
+ * the wordmark, the taglines, radii and the accessibility floors are visual and
+ * identity facts the pack has no field for, and they stay hand-authored around
+ * this block rather than being forced into the schema.
+ */
+export function renderVoiceReminders(pack) {
+  validatePack(pack);
+
+  /* `emoji.allowed` is deliberately not a required field: a brand that allows
+     no emoji at all would have to write `[]`, and the schema rejects empty
+     arrays as bad merges. Absent and empty therefore mean the same thing here,
+     and both render as the stricter rule rather than throwing. */
+  const allowed = pack.emoji.allowed ?? [];
+
+  return [
+    `- Voice: ${pack.fullName}. ${pack.person.summary}`,
+    `- Tone, in order of weight: ${toneSummary(pack)}`,
+    allowed.length > 0
+      ? `- Emoji: sparingly, and only ${list(allowed)} — never decorative`
+      : '- Emoji: none',
+  ].join('\n');
+}
