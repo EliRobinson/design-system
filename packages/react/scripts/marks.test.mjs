@@ -94,14 +94,40 @@ describe('every mark is centred in its viewBox', () => {
   /* A mark whose box is centred but tiny or oversized would pass the test
      above and still be wrong on screen — and a path that had lost its
      coordinates entirely would collapse to a point at (8, 8), which is
-     perfectly centred. */
+     perfectly centred.
+
+     Bounded on the LONGER side only. This checked the shorter side too until
+     `minus` was added: it is a single horizontal stroke, so its geometry is
+     one-dimensional — every point sits at y = 8 — and it failed a floor of 3
+     while being exactly the mark it should be. The check was measuring the
+     wrong thing rather than finding a bad mark.
+
+     Nothing is lost by dropping it. These marks are STROKED, so what a reader
+     sees in the thin direction is the stroke width, not the geometry: a path
+     0.5 units tall and one 0 units tall paint the same 1.5-unit bar once
+     `stroke-linecap: round` has been applied. The shorter side therefore says
+     almost nothing about what appears on screen. The collapse case the comment
+     above is really about — a path whose coordinates are gone — has a longer
+     side of 0 and is still caught here. */
   it.each(markNames())('%s fills a sane share of the box', (name) => {
     const box = boundingBox(pathOf(name));
-    const width = box.x[1] - box.x[0];
-    const height = box.y[1] - box.y[0];
+    const longest = Math.max(box.x[1] - box.x[0], box.y[1] - box.y[0]);
 
-    expect(Math.min(width, height)).toBeGreaterThanOrEqual(3);
-    expect(Math.max(width, height)).toBeLessThanOrEqual(14);
+    expect(longest, `${name} has collapsed, or is too small to read`).toBeGreaterThanOrEqual(3);
+    expect(longest, `${name} overflows the box it is drawn in`).toBeLessThanOrEqual(14);
+  });
+
+  /* The floor the check above used to imply, kept as its own assertion so that
+     dropping the shorter-side bound cannot quietly admit an empty path: a mark
+     has to have at least one stroke in it. */
+  it.each(markNames())('%s draws at least one line', (name) => {
+    const d = pathOf(name);
+    const numbers = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).length / 2;
+
+    expect(
+      numbers,
+      `${name} has fewer than two points, so it paints nothing`,
+    ).toBeGreaterThanOrEqual(2);
   });
 });
 

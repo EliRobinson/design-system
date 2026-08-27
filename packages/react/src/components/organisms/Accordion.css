@@ -28,15 +28,21 @@
   font-weight: var(--fw-medium);
   text-align: left;
   cursor: pointer;
+  /* --mark-size matches the ramp step this trigger sets, so the mark is the
+     size the character it replaces was asking to be. */
+  --mark-size: var(--fs-sm);
 }
 
-.ds-accordion__trigger::after {
-  content: '+';
+/* The mark's colour, and nothing else. It used to be a ::after carrying
+   `content: '+'` / `'\2212'`; #167's follow-up made it a drawn <Mark>, so the
+   glyph and the open/closed swap both moved into the component and only the
+   colour is left here.
+
+   No selector for the open state: the trigger renders `minus` instead of
+   `plus`, so which mark is painted is a fact about the component rather than a
+   second CSS rule that has to be kept in step with it. */
+.ds-accordion__trigger .ds-mark {
   color: var(--fg-3);
-}
-
-.ds-accordion__trigger--open::after {
-  content: '\2212';
 }
 
 .ds-accordion__trigger:focus-visible {

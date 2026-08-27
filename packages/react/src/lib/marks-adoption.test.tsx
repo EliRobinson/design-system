@@ -16,6 +16,12 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '../components/organisms/Accordion.js';
 import { Chip } from '../components/molecules/Chip.js';
 import { Pagination } from '../components/molecules/Pagination.js';
 import { Rating } from '../components/molecules/Rating.js';
@@ -26,7 +32,7 @@ import { Toast } from '../components/organisms/Toast.js';
 /* The characters these controls used to typeset. If one comes back, the control
    has regressed to a font-dependent glyph — and it would still have a mark in
    the tree, so checking only for marks would not see it. */
-const TYPESET_GLYPHS = /[×✕✖★☆‹›]/;
+const TYPESET_GLYPHS = /[×✕✖★☆‹›+\u2212]/;
 
 const noop = () => {};
 
@@ -40,6 +46,22 @@ const CONTROLS: Array<[string, () => HTMLElement, number]> = [
     'Pagination',
     () => render(<Pagination page={2} pageCount={5} onPageChange={noop} />).container,
     2,
+  ],
+  [
+    /* The seventh, added after #166's six: the accordion's `+`/`\u2212` were set
+       as `content` on a ::after, which a pseudo-element can hold and an `<svg>`
+       cannot — so the trigger had to start rendering a real element. */
+    'Accordion',
+    () =>
+      render(
+        <Accordion>
+          <AccordionItem value="a">
+            <AccordionTrigger>Shipping</AccordionTrigger>
+            <AccordionContent>Two days.</AccordionContent>
+          </AccordionItem>
+        </Accordion>,
+      ).container,
+    1,
   ],
   [
     /* `defaultOpen` rather than a click: #177 gave the picker that prop, so the
@@ -76,6 +98,8 @@ describe('every control that #166 converted paints a drawn mark', () => {
        it cannot show the check would fire. */
     expect(TYPESET_GLYPHS.test('‹')).toBe(true);
     expect(TYPESET_GLYPHS.test('★')).toBe(true);
+    expect(TYPESET_GLYPHS.test('+')).toBe(true);
+    expect(TYPESET_GLYPHS.test('\u2212')).toBe(true);
     expect(TYPESET_GLYPHS.test('August 2026')).toBe(false);
   });
 });

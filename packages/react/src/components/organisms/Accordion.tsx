@@ -2,6 +2,7 @@ import type { ButtonHTMLAttributes, HTMLAttributes, MouseEventHandler } from 're
 import { createContext, forwardRef, useContext, useId, useState } from 'react';
 
 import { cn } from '../../lib/cn.js';
+import { Mark } from '../../lib/marks.js';
 
 export type AccordionHeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -221,6 +222,11 @@ export const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerPr
           {...props}
         >
           {children}
+          {/* The expand/collapse mark, rendered rather than set as
+              `content` on a ::after. A pseudo-element cannot hold an
+              `<svg>`, which is the only reason this element exists — and
+              why #166 converted six controls and left this one. */}
+          <Mark name={isOpen ? 'minus' : 'plus'} />
         </button>
       </HeadingTag>
     );
