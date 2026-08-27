@@ -10,7 +10,7 @@ const minimal = () => ({
   casing: ['c'],
   words: { use: ['build'], avoid: ['synergy'] },
   emoji: { guidance: 'g', allowed: ['✓'] },
-  anchors: ['a'],
+  samples: ['a'],
   taglines: ['t'],
 });
 
