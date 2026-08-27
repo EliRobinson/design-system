@@ -42,6 +42,25 @@ function isSameDay(a: Date | undefined, year: number, month: number, day: number
 }
 
 /**
+ * Sunday-to-Saturday column labels, in the order `getDay()` numbers them --
+ * which is the order `buildWeeks` lays its columns out in, so header index N
+ * always names the weekday that column N's days fall on.
+ *
+ * Derived from `Date` rather than written out as a literal array, and pinned
+ * to the same explicit `'en-US'` locale as the month label and the formatted
+ * value, so all three agree instead of one of them drifting to whatever
+ * locale the runtime happens to have.
+ *
+ * The seed 2026-11-01 is a Sunday, so offsets 0..6 land on Sunday..Saturday.
+ * That is not left as an unchecked magic date: a test walks a full rendered
+ * week and asks `Date` what weekday each day actually is, so a seed on the
+ * wrong day would shift every label and fail there.
+ */
+const WEEKDAY_LABELS = Array.from({ length: 7 }, (_, index) =>
+  new Date(2026, 10, 1 + index).toLocaleDateString('en-US', { weekday: 'short' }),
+);
+
+/**
  * Builds full weeks (always 7 cells) for a given local year/month. Leading
  * cells before the 1st (padding out to the first weekday) and trailing
  * cells after the last day (rounding out the final week) are `null`
@@ -145,6 +164,20 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(function
             </button>
           </div>
           <div role="grid" aria-label={monthLabel} className="ds-date-picker__grid">
+            {/* The weekday header. Without it the columns are unlabelled and
+                the only clue to which is which is the run of leading blanks
+                before the 1st -- which you can only read if you already know
+                the answer. `columnheader` (not `gridcell`) is what makes a
+                screen reader announce "Tuesday" alongside a day it lands on;
+                the row sits above the weeks because that is where a column
+                header has to be to label anything. */}
+            <div role="row" className="ds-date-picker__row ds-date-picker__row--head">
+              {WEEKDAY_LABELS.map((weekday) => (
+                <div role="columnheader" key={weekday} className="ds-date-picker__weekday">
+                  {weekday}
+                </div>
+              ))}
+            </div>
             {weeks.map((week, weekIndex) => (
               <div role="row" key={weekIndex} className="ds-date-picker__row">
                 {week.map((day, dayIndex) =>

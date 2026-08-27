@@ -62,10 +62,15 @@ month the marker cannot land in.
 ## Accessibility
 
 - The calendar uses the WAI-ARIA grid pattern: `role="grid"` (labeled with the visible month
-  and year), one `role="row"` per week, and `role="gridcell"` per day. Every row always has
-  exactly 7 gridcells — leading/trailing blanks before the 1st and after the last day are real
-  cells with `aria-disabled="true"` (not `aria-hidden`), specifically so the row stays
-  structurally valid rather than short a cell.
+  and year), a leading `role="row"` of seven `role="columnheader"` weekday labels, then one
+  `role="row"` per week with `role="gridcell"` per day. Every week row always has exactly 7
+  gridcells — leading/trailing blanks before the 1st and after the last day are real cells
+  with `aria-disabled="true"` (not `aria-hidden`), specifically so the row stays structurally
+  valid rather than short a cell.
+- The weekday labels (`Sun`–`Sat`) are what let a screen reader announce which column a day
+  falls in, and what lets a sighted reader tell the columns apart without inferring it from
+  the run of blanks before the 1st. They are formatted from `Date` with an explicit `en-US`
+  locale, the same one the month label and the field's displayed value use.
 - The selected day's gridcell carries `aria-selected="true"` (and only that one); today's date
   gets `aria-current="date"` on its button. These are independent — "selected" and "today" can
   be different days, or the same one.
