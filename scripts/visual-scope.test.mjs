@@ -5,10 +5,10 @@
 // 142 docs pages legitimately changed.
 
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import { buildsPresent } from './visual-builds.mjs';
 import { parseNameStatus, parseNxProjectList, resolveBaseArg, scopeFor } from './visual-scope.mjs';
 import { listShots } from './visual-shots.mjs';
 
@@ -1009,20 +1009,15 @@ describe('parseNxProjectList', () => {
 /* Everything above asserts against a fixture shot list, which proves the
    scoper is self-consistent — not that the pattern it emits actually selects
    the right tests when Playwright is the one applying it. This does. Same
-   guard as visual-shots.test.mjs's disk cross-check: it needs both builds,
-   because the specs enumerate stories from Storybook's index.json and routes
-   from Next's prerender manifest.
+   guard as visual-shots.test.mjs's disk cross-check, and for the same reason:
+   see visual-builds.mjs.
 
    Worth an out-of-process Playwright call because the anchoring the whole
    narrowing rests on — the ' · ' route separator, the '--' story-id
    separator, the absence of a '^' — is Playwright's --grep semantics, not
    ours, and a version bump could change them silently. Renovate bumps
    Playwright in this repo. */
-const BUILDS_PRESENT =
-  existsSync('../apps/storybook/storybook-static/index.json') &&
-  existsSync('../apps/docs/.next/prerender-manifest.json');
-
-describe.skipIf(!BUILDS_PRESENT)('the emitted pattern, applied by Playwright itself', () => {
+describe.skipIf(!buildsPresent())('the emitted pattern, applied by Playwright itself', () => {
   it('selects exactly the 30 tests a modified Button.tsx could have changed', () => {
     const plan = scopeFor({
       changes: [{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }],

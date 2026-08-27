@@ -99,9 +99,10 @@ describe('parseShots', () => {
   });
 });
 
-import { existsSync, readdirSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { buildsPresent } from './visual-builds.mjs';
 import { listShots } from './visual-shots.mjs';
 
 /* The mapping above is asserted against fixtures, which proves it is
@@ -109,11 +110,7 @@ import { listShots } from './visual-shots.mjs';
    on disk must be a path this module computes, and vice versa. If Playwright
    changes how it resolves {testFilePath}, or a viewport project is added to the
    config and not to SPEC_FILE_BY_PROJECT, this is what reports it. */
-const BUILDS_PRESENT =
-  existsSync('../apps/storybook/storybook-static/index.json') &&
-  existsSync('../apps/docs/.next/prerender-manifest.json');
-
-describe.skipIf(!BUILDS_PRESENT)('computed baseline paths vs the ones on disk', () => {
+describe.skipIf(!buildsPresent())('computed baseline paths vs the ones on disk', () => {
   it('agree exactly, in both directions', () => {
     const computed = new Set(listShots({ cwd: '..' }).map((shot) => shot.baselinePath));
 
