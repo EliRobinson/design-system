@@ -10,5 +10,29 @@
         "cwd": "scripts"
       }
     }
-  }
+  },
+  /* Two suites here spawn `playwright test --list`, which enumerates stories
+     from `apps/storybook/storybook-static/index.json` and routes from
+     `apps/docs/.next/prerender-manifest.json`. Neither is an import edge Nx
+     can see, and until this line `nx show project scripts` reported
+     `implicitDependencies: []` — so nx.json's `test: dependsOn ["^build",
+     "build"]` resolved to nothing, `scripts:test` entered the graph with
+     nothing to wait for, and `nx run-many -t test` scheduled it beside
+     `storybook:build`. That target empties `storybook-static` before it
+     refills it, so the suite read a directory that was missing, half-written
+     or one commit stale depending on when it got there. See the comment at the
+     top of visual-builds.mjs for the three shapes that took, and for the
+     measurement.
+     Deliberately implicitDependencies rather than a per-project `dependsOn`
+     on `test`: a per-project `dependsOn` REPLACES the nx.json default rather
+     than adding to it (nx.json says so, and #165 settled that ordering
+     centrally), so spelling it here would mean re-stating `^build` and
+     `build` to keep them. Naming the two projects instead is what makes the
+     `^build` already in the default resolve to their builds.
+     The cost is that a change to either app now marks `scripts` affected. That
+     is correct rather than incidental: the docs routes and the storybook
+     stories ARE the shot list these suites assert over. quality.yml already
+     forces a whole-repo run for `tests/visual/**` and `playwright.config.ts`
+     for the same reason, from the other side. */
+  "implicitDependencies": ["storybook", "docs"]
 }
