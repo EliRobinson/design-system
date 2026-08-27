@@ -33,6 +33,10 @@ const REQUIRED_PATHS = [
      and the guidelines card's subtitle names the company. Deriving one from
      the other means a rendered page silently loses or gains a word. */
   'fullName',
+  /* One sentence, for surfaces with no room for `guidance`. The guidelines
+     card carried exactly this line by hand; rendering the card without it
+     would delete a paragraph from a page nobody was watching. */
+  'person.summary',
   'person.guidance',
   'person.anchors.asPerson',
   'person.anchors.asCompany',

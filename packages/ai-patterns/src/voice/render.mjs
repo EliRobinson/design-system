@@ -69,6 +69,12 @@ export function renderVoiceCard(pack) {
     '<style>body{margin:0;padding:20px;background:var(--bg);font-family:var(--font-sans)}',
     '.lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-3)}</style>',
     '</head><body><div style="display:grid;gap:10px;max-width:600px">',
+    /* The lead the hand-kept card opened with. It is in the pack rather than
+       in this template because it is brand writing, not layout — a consumer's
+       pack says something else here — and it is rendered because generating
+       the card without it would have deleted a paragraph from a live page as
+       a side effect of moving the word lists. */
+    `<p class="t-body-sm" style="margin:0">${pack.person.summary}</p>`,
     `<div><p class="lbl" style="margin:0 0 4px">As a person</p><p class="t-body" style="margin:0">${pack.person.anchors.asPerson}</p></div>`,
     `<div><p class="lbl" style="margin:0 0 4px">As a company</p><p class="t-body" style="margin:0">${pack.person.anchors.asCompany}</p></div>`,
     `<p class="t-body-sm" style="margin:0"><b>Use:</b> ${list(pack.words.use)}.</p>`,

@@ -75,6 +75,12 @@ describe('renderVoiceCard', () => {
   /* The card that shipped by hand read "Miltinson Technologies". `label` is the
      short mark the README's opening line is pinned to, so the card has to name
      the pack's `fullName` or generating it drops a word off a rendered page. */
+  /* The card that shipped by hand opened with this sentence. Generating the
+     card is a re-hosting of it, so the sentence has to survive the move. */
+  it('opens with the register lead the hand-kept card carried', () => {
+    expect(renderVoiceCard(pack)).toContain(pack.person.summary);
+  });
+
   it('names the brand in full in the subtitle, not by the short mark', () => {
     expect(renderVoiceCard(pack)).toContain(`subtitle="${pack.fullName}, sentence case`);
     expect(pack.fullName).not.toBe(pack.label);
