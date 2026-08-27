@@ -1,5 +1,133 @@
 # @elirobinson/react
 
+## 2.7.0
+
+### Minor Changes
+
+- d21cb73: `DatePicker`'s calendar labels its columns, so which day is which stops being a
+  puzzle you can only solve if you already know the answer.
+
+  The calendar rendered as a `role="grid"` of week rows and seven
+  `role="gridcell"` children each, with **no header row at all** — no `Sun Mon Tue
+…`, no `role="columnheader"`. Sighted and screen-reader users alike had one clue
+  to which column was which: the run of leading blanks before the 1st. That clue
+  only works backwards — you have to already know what weekday the 1st falls on to
+  read it, which is the thing the calendar was supposed to tell you. A screen
+  reader landing on a day announced the number and nothing else, because a grid
+  with no column headers has nothing to announce.
+
+  A `role="row"` of seven `role="columnheader"` cells now sits above the weeks:
+
+  ```
+  Sun  Mon  Tue  Wed  Thu  Fri  Sat
+  ```
+
+  **The labels come from `Date`, not from a literal array**, and are pinned to the
+  same explicit `'en-US'` locale the month label and the formatted value already
+  use, so the three agree instead of one drifting to whatever locale the runtime
+  happens to have:
+
+  ```ts
+  const WEEKDAY_LABELS = Array.from({ length: 7 }, (_, index) =>
+    new Date(2026, 10, 1 + index).toLocaleDateString('en-US', { weekday: 'short' }),
+  );
+  ```
+
+  **`weekday: 'short'` (`Sun`), not `'narrow'` and not a two-letter form.**
+  `'narrow'` yields `S M T W T F S` — two pairs of identical labels, which
+  reintroduces the exact ambiguity this fixes. A two-letter `Su Mo` form is not
+  something `Intl` produces, so it means slicing locale output to a fixed width —
+  string surgery on a value whose length is the formatter's business. `'short'`
+  fits: the popover is 280px, less 12px padding a side and six 2px gaps, so a
+  column is ~35px and `Wed` sets at ~25px at `--fs-xs`.
+
+  **The header shares the week rows' grid track** (`.ds-date-picker__row` plus a
+  `--head` modifier) rather than declaring a second seven-column layout of its
+  own, so a label cannot drift out of the column it names.
+
+  `minor` rather than `patch` because rendered output changes for anyone
+  upgrading — the popover grows by one row — and on a 0.x package `minor` is the
+  breaking lane.
+
+  **This moves the `components-datepicker--open-{light,dark}` baselines** that
+  #177 minted, wide and narrow. That story is what makes the change reviewable at
+  all: before it, the calendar was only ever screenshotted closed.
+
+  **Three checks stop this regressing**, each confirmed red before it was trusted
+  green:
+  - The grid-shape test previously asserted every `role="row"` had exactly 7
+    gridcells. A header row of columnheaders would have thrown there, so rather
+    than relax it the assertion now states its real claim: `rows[0]` is a header
+    of exactly 7 columnheaders named `Sun`…`Sat` (which also pins it _above_ the
+    weeks, where a column header has to sit to label anything), the grid contains
+    no other columnheader, and every remaining row is still a full 7 gridcells
+    wide with no columnheader among them.
+  - A new test walks a full rendered week and asks `Date` what weekday each day
+    actually falls on, comparing column by column against the rendered headers.
+    This is what keeps the `2026-11-01` seed honest: a seed landing on the wrong
+    weekday shifts every label and fails here, so the date is guarded rather than
+    magic.
+  - `defaultOpen` gains the tests it shipped without in #177 — the calendar is
+    open on first render, and it still closes when the input is clicked, which is
+    the half of the contract that makes it uncontrolled rather than stuck open —
+    alongside one asserting the picker stays closed without it.
+
+### Patch Changes
+
+- af02564: Two guards behind the drawn marks: the controls really adopted them, and the
+  controls really centre them.
+
+  Test-only. No component, stylesheet or rendered output changes.
+
+  `scripts/marks.test.mjs` (#172) proves the marks themselves are right — centred
+  in their viewBox, the chevron pair a true reflection, the element hidden from
+  assistive technology. It is arithmetic about the mark, and two things sit
+  outside what it can see.
+
+  **Nothing asserted that any control had adopted a mark.** That file never
+  imports a component, so every assertion in it would pass on a library where
+  `Mark` existed and nothing used it — which is the state #166 was moving out of.
+  `src/lib/marks-adoption.test.tsx` renders all six and checks the count, not just
+  presence: a `Rating` painting one star for five values, or a `Pagination` that
+  converted `‹` and left `›`, is half-converted and would satisfy a
+  "contains a mark" check. It also asserts each control typesets none of
+  `×✕✖★☆‹›`, because a control can render a mark and still leave a character
+  elsewhere in its tree. `DatePicker` uses the `defaultOpen` prop #177 added
+  rather than driving a click.
+
+  **Nothing asserted that a control centres the mark it paints.** A mark cannot
+  drift the way a character did — it has no baseline — but it can be dropped into
+  a control that does not centre it, and then the glyph is off-centre again for a
+  new reason. That is not hypothetical: `.ds-rating__star` and
+  `.ds-date-picker__header button` were not flex containers before #172, so an
+  inline `<svg>` in either would have sat on the text baseline and reproduced the
+  whole problem. Both gained `display: inline-flex` there — and until now nothing
+  failed if one lost it again. Measured by deleting those three lines:
+  **2.844px off centre**, with the arithmetic test still green.
+
+  `assertMarksCentred` in `tests/visual/contracts.ts` closes that, run against
+  every story: each mark's box centre must coincide with its control's content-box
+  centre, to within 0.001px.
+
+  **Boxes, not pixels, and that is what lets it demand zero** rather than carry a
+  tolerance. Painted ink snaps to the device grid, so a control that lands on a
+  fractional page position paints its mark up to a pixel from where the float
+  geometry puts it — measured at 0.391px on `.ds-rating__star` and 0.219px on
+  `.ds-pagination__nav`, in both cases exactly that control's own distance to the
+  grid. The control snaps and the mark snaps with it, so what a reader sees stays
+  centred; only a comparison against unsnapped geometry shows a residual. The
+  content box is compared rather than the border box because a mark centres in the
+  content box — they coincide for every control today, and would stop coinciding
+  the day one gains asymmetric padding.
+
+  The contract is exported, which is deliberate: it runs from `afterCapture`,
+  which fires only after the screenshot assertion passes, and outside the pinned
+  container every baseline mismatches — so on a developer machine the screenshot
+  always throws first and it never executes. Exporting it is what makes it
+  reachable from a throwaway spec. Verified that way against chip, both rating
+  stories, pagination, the sortable table and the new `datepicker--open` story,
+  and confirmed to fail on the mutation above before being trusted.
+
 ## 2.6.0
 
 ### Minor Changes
