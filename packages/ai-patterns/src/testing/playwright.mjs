@@ -147,6 +147,15 @@ const FOCUS_MESSAGE =
 const OVERLAP_MESSAGE =
   "hit-area-no-overlap: this control's hit area covers the centre of a sibling. Bound the overlay — stretch it to the container's height rather than using a symmetric negative inset.";
 
+/**
+ * The `touch-target-unmeasurable` of this check, and for the same reason: a
+ * probe that failed must not be reported as a clean result. Saying "no overlap"
+ * about a sibling nothing was routed to is exactly the silent false negative
+ * #137 was, so the honest answer is that the question went unanswered.
+ */
+const OVERLAP_UNMEASURABLE_MESSAGE =
+  "hit-area-unmeasurable: the browser routed no element to this sibling's centre, so whether this control's hit area covers it could not be established. This is a gap in the check, not a violation — look for pointer-events, a clipping ancestor, or a transform that moves the sibling away from its box.";
+
 function assertPage(page) {
   if (!page || typeof page.evaluate !== 'function') {
     throw new TypeError(
@@ -255,6 +264,14 @@ export async function checkTouchTargets(page, options = {}) {
       // 24 + 24 + 1 = 49) rather than a width. That is harmless — the only
       // question asked of the result is `>= floor` — but it is why two runs at
       // different floors can report different numbers for the same box.
+      //
+      // The scroll-and-probe opening below is duplicated in
+      // `checkHitAreaOverlap`'s `routesTo()`, which carries the matching note.
+      // #131 established that each check's helpers live inside its own
+      // `page.evaluate` closure and cannot close over module scope, so sharing
+      // would mean eval-ing a source string — ruled out by the strict-CSP
+      // promise in this file's header. The two are meant to agree; a silent
+      // divergence between them is its own bug.
       const measure = (surface, floor) => {
         // Scrolling is synchronous with respect to layout, so the box read back
         // immediately afterwards is already in the coordinate space the probes
@@ -497,17 +514,26 @@ export async function checkTouchTargets(page, options = {}) {
  * anything — see `isVisuallyRendered` below for why the zero-size guard alone
  * could not tell the two apart.
  *
+ * Each sibling is scrolled into view before its centre is probed, because
+ * `document.elementFromPoint` only answers for the visible viewport and a
+ * sibling past the fold used to come back `null` — neither the control nor
+ * contained by it, so the comparison quietly failed and nothing was reported.
+ * A sibling that is on screen and still routes nothing is reported as
+ * `hit-area-unmeasurable` (a stated gap in the check, not a violation) rather
+ * than passing; one parked off-canvas, which scrolling cannot rescue, stays
+ * silent. The page is put back where it was found.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {object} [options]
  * @param {string} [options.selector]
- * @returns {Promise<Array<{ element: string, covers: string, message: string }>>}
+ * @returns {Promise<Array<{ element: string, covers: string, unmeasurable?: true, message: string }>>}
  */
 export async function checkHitAreaOverlap(page, options = {}) {
   assertPage(page);
   const { selector = PRIMARY_CONTROL_SELECTOR } = options;
 
   return page.evaluate(
-    ({ selector, message }) => {
+    ({ selector, message, unmeasurableMessage }) => {
       const describe = (element) => {
         const id = element.id ? `#${element.id}` : '';
         const classes =
@@ -549,29 +575,142 @@ export async function checkHitAreaOverlap(page, options = {}) {
         return true;
       };
 
+      // Four answers, not two. `document.elementFromPoint` only answers for the
+      // *visible viewport*, so until this scrolled, a sibling past the fold was
+      // probed at a coordinate the browser cannot see. It returned `null`,
+      // `null` is neither the control nor contained by it, both branches were
+      // false, and the loop moved on having established nothing. That is issue
+      // #137, and it is the quiet direction of #79: a page taller than the
+      // window is the normal case, so the check reported zero violations for
+      // most of most pages and a green result was indistinguishable from a
+      // genuinely clean one.
+      //
+      // Folding `null` back into MISS is what made that silent, so the two are
+      // kept apart. `OFF_CANVAS` is a sibling scrolling cannot rescue — a skip
+      // link at `top: -40px`, a closed drawer — which is unreachable by design
+      // and cannot be covered in any sense the contract is about. `BLIND` is a
+      // sibling that *is* on screen and still routed nothing: a gap in the
+      // check, and this says so rather than counting it as "not covered".
+      const HIT = 'hit';
+      const MISS = 'miss';
+      const BLIND = 'blind';
+      const OFF_CANVAS = 'off-canvas';
+
+      // Deliberately a near-copy of `measure()`'s scroll-and-probe opening in
+      // `checkTouchTargets` above, not a shared helper. #131 established that
+      // each check's helpers live inside its own `page.evaluate` closure, which
+      // is serialised to the browser and cannot close over module scope, so
+      // "sharing" would mean eval-ing a source string — which the strict-CSP
+      // promise in this file's header rules out. `describe()` above is
+      // duplicated for the same reason. Both copies carry this note: the two
+      // scroll blocks are meant to agree, and a silent divergence between them
+      // is its own bug.
+      const routesTo = (sibling, control) => {
+        // Scrolling is synchronous with respect to layout, so the box read back
+        // immediately afterwards is already in the coordinate space the probe
+        // below uses. `instant` because a page with `scroll-behavior: smooth`
+        // would otherwise still be animating when the rect is read.
+        //
+        // The *sibling* is what moves, because the sibling's centre is what
+        // gets probed. The control has to still be on top of it afterwards,
+        // which holds because the loop only ever walks
+        // `control.parentElement.children` — they share a parent and so scroll
+        // together. That is asserted, not assumed: see the below-the-fold case
+        // in playwright.test.mjs.
+        sibling.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+
+        const rect = sibling.getBoundingClientRect();
+        const viewWidth = document.documentElement.clientWidth;
+        const viewHeight = document.documentElement.clientHeight;
+
+        if (rect.right <= 0 || rect.bottom <= 0 || rect.left >= viewWidth || rect.top >= viewHeight)
+          return OFF_CANVAS;
+
+        // Probe the centre of whatever part of the sibling is on screen. For
+        // anything that fits the window that is the sibling's own centre.
+        // `checkTouchTargets` lets a surface too large to walk pass on its
+        // painted geometry, because the question there is "is this box big
+        // enough" and an oversized box plainly is. The question here is "is
+        // this sibling covered", and being tall is no reason to stop asking —
+        // so an oversized sibling is probed rather than excused.
+        const midpoint = (start, end, extent) => (Math.max(start, 0) + Math.min(end, extent)) / 2;
+        const x = midpoint(rect.left, rect.right, viewWidth);
+        const y = midpoint(rect.top, rect.bottom, viewHeight);
+
+        if (x < 0 || y < 0 || x >= viewWidth || y >= viewHeight) return BLIND;
+
+        const hit = document.elementFromPoint(x, y);
+        if (hit === null) return BLIND;
+        return hit === control || control.contains(hit) ? HIT : MISS;
+      };
+
+      // Reaching a sibling now means scrolling, and a check must not leave the
+      // page somewhere else: a screenshot or an assertion later in the same
+      // test would see the scroll position this function happened to stop at.
+      // `scrollIntoView` walks the whole ancestor chain, so every scrollable
+      // container is snapshotted, not just the window.
+      const scrollState = [...document.querySelectorAll('*')]
+        .filter(
+          (node) => node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth,
+        )
+        .map((node) => [node, node.scrollLeft, node.scrollTop]);
+      const pageScrollX = window.scrollX;
+      const pageScrollY = window.scrollY;
+
       const violations = [];
 
-      for (const control of document.querySelectorAll(selector)) {
-        for (const sibling of control.parentElement?.children ?? []) {
-          if (sibling === control || control.contains(sibling)) continue;
+      try {
+        for (const control of document.querySelectorAll(selector)) {
+          for (const sibling of control.parentElement?.children ?? []) {
+            if (sibling === control || control.contains(sibling)) continue;
 
-          const rect = sibling.getBoundingClientRect();
-          if (!isVisuallyRendered(sibling, rect)) continue;
+            // Before the scroll — but as a cost decision, not a correctness
+            // one, and #137 asked for that to be settled rather than assumed.
+            // Every clause of this guard is scroll-invariant: it reads the
+            // box's *dimensions* and its computed style, and a scroll changes
+            // neither. Running it first therefore only avoids scrolling the
+            // page for a sibling that was never going to be probed. Moving it
+            // after `routesTo` was measured and changes no result in the suite,
+            // so there is no ordering hazard here to pin — which is worth
+            // stating, because the obvious assumption is that there would be.
+            //
+            // What does matter is that it still runs at all. It is what keeps
+            // #131 intact: an `sr-only` label is 1x1 at its control's static
+            // origin, so its centre routes to the control, and probing it would
+            // report every accessible-name-only label on the page. Reaching
+            // below the fold gave the check a lot more siblings to be wrong
+            // about, so that case is now asserted down there too.
+            if (!isVisuallyRendered(sibling, sibling.getBoundingClientRect())) continue;
 
-          const hit = document.elementFromPoint(
-            rect.left + rect.width / 2,
-            rect.top + rect.height / 2,
-          );
+            const answer = routesTo(sibling, control);
 
-          if (hit === control || control.contains(hit)) {
-            violations.push({ element: describe(control), covers: describe(sibling), message });
+            if (answer === HIT) {
+              violations.push({ element: describe(control), covers: describe(sibling), message });
+            } else if (answer === BLIND) {
+              violations.push({
+                element: describe(control),
+                covers: describe(sibling),
+                unmeasurable: true,
+                message: unmeasurableMessage,
+              });
+            }
           }
         }
+      } finally {
+        for (const [node, scrollLeft, scrollTop] of scrollState) {
+          node.scrollLeft = scrollLeft;
+          node.scrollTop = scrollTop;
+        }
+        window.scrollTo(pageScrollX, pageScrollY);
       }
 
       return violations;
     },
-    { selector, message: OVERLAP_MESSAGE },
+    {
+      selector,
+      message: OVERLAP_MESSAGE,
+      unmeasurableMessage: OVERLAP_UNMEASURABLE_MESSAGE,
+    },
   );
 }
 
