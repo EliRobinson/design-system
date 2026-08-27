@@ -93,7 +93,16 @@ export function brandVoice(readme) {
         'the corpus would silently lose the voice rules.',
     );
   }
-  return section[1].replace(/\n---\s*$/, '').trim();
+  /* The section is a managed block now — `name="voice"`, written from the voice
+     pack — so the extracted range opens with the begin marker and its
+     generated-note comment and closes with the end marker. Strip HTML comments
+     before the separator, so what lands in the corpus is the same bytes it
+     carried when the section was hand-authored. The trailing `---` divides two
+     README sections and means nothing here, where nothing follows it. */
+  return section[1]
+    .replace(/<!--[\s\S]*?-->\n?/g, '')
+    .replace(/\n---\s*$/, '')
+    .trim();
 }
 
 /** One line per brand artifact; repo-only artifacts say so. */

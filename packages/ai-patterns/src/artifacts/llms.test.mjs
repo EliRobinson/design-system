@@ -334,5 +334,34 @@ describe('llmsFull', () => {
     it('throws rather than silently losing the voice rules', () => {
       expect(() => brandVoice('# A readme with no fundamentals')).toThrow(/CONTENT FUNDAMENTALS/);
     });
+
+    /* The section is a managed block written from the voice pack, so the range
+       this extracts now opens and closes with markers. They are machinery, not
+       voice, and a corpus that carried them would be a corpus that changed the
+       day the section stopped being hand-authored. */
+    it('drops the managed-block markers, which are machinery and not voice', () => {
+      const managed = [
+        '# Brand',
+        '',
+        '## CONTENT FUNDAMENTALS',
+        '<!-- ds-artifacts:managed:begin name="voice" -->',
+        '<!-- Generated from design-system-docs/miltinson.voice.json. Do not edit. -->',
+        '',
+        '### Voice',
+        '',
+        '- The voice is Miltinson Technologies.',
+        '',
+        '---',
+        '',
+        '<!-- ds-artifacts:managed:end name="voice" -->',
+        '',
+        '## VISUAL FOUNDATIONS',
+        '',
+        'Not voice.',
+      ].join('\n');
+      expect(brandVoice(managed)).not.toContain('ds-artifacts:managed');
+      expect(brandVoice(managed)).not.toContain('Do not edit');
+      expect(brandVoice(managed)).toBe(brandVoice(readme));
+    });
   });
 });

@@ -60,6 +60,8 @@ Eli runs many small projects. The point of this system is to keep them **visuall
 ---
 
 ## CONTENT FUNDAMENTALS
+<!-- ds-artifacts:managed:begin name="voice" -->
+<!-- Generated from design-system-docs/miltinson.voice.json. Do not edit. -->
 
 How Miltinson copy is written. Read this before writing for the brand.
 
@@ -114,6 +116,8 @@ synergy, leverage, unlock, empower, robust, cutting-edge, revolutionary, world-c
 - "AI help without the hype."
 
 ---
+
+<!-- ds-artifacts:managed:end name="voice" -->
 
 ## VISUAL FOUNDATIONS
 
