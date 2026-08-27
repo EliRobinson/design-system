@@ -52,6 +52,10 @@ accessible name an icon-only `Button` still needs on its own `aria-label`.
   it isn't hidden with CSS, so there's nothing sitting in the DOM to tab into while closed.
 - Position is fixed: centered under the trigger, a few pixels below it. There's no
   side/alignment prop to place it anywhere else.
+- Nothing flips or clamps it to keep it on screen either, and centered alignment gives it no
+  trigger-width floor — so a tooltip on a trigger near the edge of the viewport can overflow,
+  or have its text reflow into whatever space is left. Leave room around edge-adjacent
+  triggers. See [`useAnchoredPosition`](/components/hooks#useanchoredposition).
 
 <DoDont
   do={[
