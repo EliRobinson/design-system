@@ -78,8 +78,8 @@ is — one name can cover a single person's site and a company's product — so 
 fix it. Choose per product, then hold it: the tell of a voice nobody decided is one that switches
 partway down a page.
 
-Miltinson's own brand voice — how it addresses a reader, its casing and punctuation conventions,
-its word lists, its iconography — lives in `design-system-docs/README.md` under **CONTENT
-FUNDAMENTALS**, rendered on [brand guidelines](/brand/guidelines) and shipped to agents inside
-[/llms-full.txt](/llms-full.txt). It is not reproduced here: it is brand-specific rather than
-system-wide, and a second copy on this page would be a second copy to keep in step.
+Miltinson's own brand voice — how it addresses a reader, its casing and punctuation
+conventions, its word lists, its iconography — is a **voice pack**:
+`design-system-docs/miltinson.voice.json`. Every surface that shows it is generated from
+that one file, so the copies cannot disagree again. It is the pack this system ships by
+default, not a rule of the system; a product declares its own with `ds init --voice`.
