@@ -2,8 +2,8 @@ import type { HTMLAttributes, ReactNode } from 'react';
 import { forwardRef } from 'react';
 
 import { cn } from '../../lib/cn.js';
-import type { Verdict } from '../molecules/VerdictBadge.js';
-import { VerdictBadge } from '../molecules/VerdictBadge.js';
+import type { Verdict } from './VerdictBadge.js';
+import { VerdictBadge } from './VerdictBadge.js';
 
 export type DecisionFigure = { label: string; value: string; kind?: string };
 

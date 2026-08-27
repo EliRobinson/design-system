@@ -66,7 +66,7 @@ documents, so the table cannot drift away from the code.
 
 Which components read which is derivable — `grep -r 'var(--product-' packages/react/src`
 — so it is not restated here. Today it is `ai/ChatMessage`, `ai/StreamingCaret` and
-`molecules/VerdictBadge`. `organisms/DecisionCard` inherits the verdict palette through
+`molecules/VerdictBadge`. `molecules/DecisionCard` inherits the verdict palette through
 the `VerdictBadge` it composes rather than reading it itself, which is the shape to copy:
 a component that composes another should not re-read that component's variables.
 

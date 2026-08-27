@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@elirobinson/react/components/atoms/Button';
-import { DecisionCard } from '@elirobinson/react/components/organisms/DecisionCard';
+import { DecisionCard } from '@elirobinson/react/components/molecules/DecisionCard';
 
 export default function Basic() {
   return (

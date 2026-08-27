@@ -40,7 +40,7 @@ export * from './dist/components/organisms/Accordion';
 export * from './dist/components/organisms/Combobox';
 export * from './dist/components/organisms/CommandPalette';
 export * from './dist/components/organisms/DatePicker';
-export * from './dist/components/organisms/DecisionCard';
+export * from './dist/components/molecules/DecisionCard';
 export * from './dist/components/organisms/Dialog';
 export * from './dist/components/organisms/DropdownMenu';
 export * from './dist/components/organisms/NavigationMenu';

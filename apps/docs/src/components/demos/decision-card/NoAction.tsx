@@ -1,6 +1,6 @@
 'use client';
 
-import { DecisionCard } from '@elirobinson/react/components/organisms/DecisionCard';
+import { DecisionCard } from '@elirobinson/react/components/molecules/DecisionCard';
 
 export default function NoAction() {
   return (
