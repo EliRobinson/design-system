@@ -21,6 +21,78 @@ Two consequences, and the second is the one that changes how you write a branch:
   `visual-accept` — it lands beside your change rather than being absorbed
   into it.
 
+## Worktrees share one Nx cache, so `nx reset` is repo-wide
+
+Run from a worktree — `.claude/worktrees/<branch>` — `nx reset` deletes the **main
+checkout's** `.nx/cache`, not the worktree's. It also deletes the main checkout's
+`.nx/workspace-data`, where the cache's index lives. It is the least visible of the
+worktree traps because clearing a cache produces no error and no output naming a
+path: the command prints `Successfully reset the Nx workspace` either way.
+
+The mechanism, read in `node_modules/nx/dist/src/utils/cache-directory.js` at Nx
+22.7.0, is deliberate and documented in Nx's own comment — "In a git worktree this
+resolves to the main repo's cache dir so all worktrees share the same cache". The
+exported `cacheDir` is `sharedCacheDirectory(workspaceRoot)`, which asks the native
+`getMainWorktreeRoot()` for the main repo root and resolves the cache against that
+instead of the current root. `reset.js`'s `cleanupCacheEntries` then `rmSync`s
+exactly that path, and its `cleanupWorkspaceData` goes one step further, deleting
+the main repo's `.nx/workspace-data` by name.
+
+Before [#139](https://github.com/EliRobinson/design-system/pull/139) every target
+had `cache: undefined`, so `.nx/cache` held nothing anyone depended on and clearing
+it cost nothing. Now `build`, `test` and `lint` are all `cache: true` and CI
+restores `.nx/cache` across runs, so the local cache is an accumulation across every
+branch in flight — 2.2G when this was filed. One reset from one worktree buys a cold
+rebuild in every worktree, not just the one that ran it.
+
+**No workflow runs `nx reset`** (grepped across `.github/` for #150). Keep it that
+way: on a runner it would delete the `.nx/cache` the job had just restored, silently
+undoing #139 for that job.
+
+### Measure a cold build with `--skip-nx-cache`
+
+That is what `nx reset` was being reached for, and `--skip-nx-cache` gives it scoped
+to one invocation, touching no shared state. Make it the default habit:
+
+```bash
+pnpm nx run-many -t build,test --skip-nx-cache
+```
+
+Twelve of the last hundred PR bodies already record their verification this way —
+[#165](https://github.com/EliRobinson/design-system/pull/165) is the clearest:
+"Five cold `nx run-many -t build,test --skip-nx-cache` runs, deleting
+`packages/*/dist` before each."
+
+### Do not try to isolate the cache with `NX_CACHE_DIRECTORY`
+
+Nothing in this repo sets it, and nothing should. Verified against Nx 22.7.0's
+source rather than assumed, because the honest answer is more specific than "it
+doesn't work":
+
+- **An absolute value does fully redirect the cache directory.** `NX_CACHE_DIRECTORY`
+  is checked before every other source in `cacheDirectory()`, so a worktree can point
+  `cacheDir` anywhere. The trap below is not that the redirect fails.
+- **A relative value redirects into the main checkout.** Relative paths are resolved
+  against the root `sharedCacheDirectory` already picked — the main repo's. Setting
+  `NX_CACHE_DIRECTORY=.nx/cache-worktree` in a worktree resolves to
+  `<main checkout>/.nx/cache-worktree`: still shared by every worktree, just at a new
+  path, and no longer the one CI caches.
+- **Redirecting only the cache directory is a partial redirect, which is worse than
+  none.** The cache is a directory of outputs _plus_ a SQLite index at
+  `.nx/workspace-data/nx.db`, and the two are resolved independently —
+  `utils/db-connection.js` runs its own `getMainWorktreeRoot()` lookup, so the DB
+  stays in the main checkout. A worktree with only `NX_CACHE_DIRECTORY` set writes
+  outputs locally while recording them in the main checkout's shared index, and
+  `nx reset` there still deletes that index. Nx names the resulting state itself, in
+  `tasks-runner/cache.js`: "Nx can only restore artifacts it has metadata about" —
+  and that warning is gated on `isCI()`, so on a laptop the mostly-isolated cache
+  just quietly misses.
+
+Full isolation needs `NX_CACHE_DIRECTORY` **and** `NX_WORKSPACE_DATA_DIRECTORY`, both
+absolute, per worktree. It works, and it is still not worth doing: it gives every
+worktree its own cold cache, which is precisely the cross-branch sharing that makes
+the 2.2G cache worth having. Leave both unset and reach for `--skip-nx-cache`.
+
 ## Screenshots for front-end changes
 
 Any PR that changes front-end code (components, layout, styling, tokens that affect rendered output) must include before-and-after screenshots in the PR description. Take the "before" screenshot on the unmodified code, make the change, then take the "after" screenshot of the same view. This gives reviewers a visual diff alongside the code diff for stronger UI/UX review — don't rely on a description of the change instead.
