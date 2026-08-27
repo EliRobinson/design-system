@@ -61,12 +61,13 @@ Do not touch any other file. No git commands. Do not modify component source in
   columns (re-exported from the Table module); `CommandPalette` is opened from a button.
   Read the story file when in doubt.
 
-## Voice (from design-system-docs/README.md — the authority)
+## Voice (from design-system-docs/miltinson.voice.json — the authority; README.md renders it)
 
-- Eli speaks as "I", never "we". Reader is "you".
+- The voice is Miltinson Technologies. "I" or "we" is the product's call, held
+  consistently within a surface. Reader is "you".
 - Sentence case headings. Em-dashes as the favored break. No emoji.
-- Practical, honest, warm, no-fluff. Banned words: leverage, seamless, robust,
-  empower, unlock, cutting-edge, revolutionary.
+- Practical, honest, warm, quietly confident — in that order. Banned words:
+  leverage, seamless, robust, empower, unlock, cutting-edge, revolutionary.
 - Don't pad: if a section has nothing real to say, say less.
 
 ## MDX gotchas
