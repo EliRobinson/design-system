@@ -35,6 +35,51 @@ Pass `value` and `onValueChange` to drive selection from your own state. Passing
   <Controlled />
 </DemoBlock>
 
+### Clearing a controlled group
+
+`value` distinguishes empty from absent, and the difference decides the mode:
+
+- **`null`** — controlled, nothing selected. This is how you clear a controlled group.
+- **`undefined`** — uncontrolled. The group falls back to `defaultValue` and its own
+  internal state, exactly as if `value` had never been passed.
+
+So type your state `string | null`, not `string | undefined`:
+
+```tsx
+const [plan, setPlan] = useState<string | null>(null);
+
+<RadioGroup name="plan" value={plan} onValueChange={setPlan}>
+  <RadioGroupItem value="free" label="Free" />
+  <RadioGroupItem value="pro" label="Pro" />
+</RadioGroup>
+<button onClick={() => setPlan(null)}>Clear</button>;
+```
+
+Clearing with `undefined` instead does not clear the group — it hands selection back to
+the group's own state, which still holds the last click. TypeScript can't catch that,
+since `undefined` is legal for an optional prop, so the group warns in development when
+`value` goes from a string to `undefined`.
+
+## Form submission
+
+The group works with native form submission on its own — no hidden input, no extra
+wiring. `RadioGroupItem` renders a real `input[type="radio"]`, so the group's `name` is
+also the submitted field name, and the selection is in `FormData` and in a server
+action's payload under that name:
+
+```tsx
+<form action={savePlan}>
+  <RadioGroup name="plan" defaultValue="free">
+    <RadioGroupItem value="free" label="Free" />
+    <RadioGroupItem value="pro" label="Pro" />
+  </RadioGroup>
+  <Button type="submit">Save</Button>
+</form>
+```
+
+`formData.get('plan')` is `'free'` or `'pro'`. This holds in both modes — a controlled
+group submits its current selection too.
+
 ## Props
 
 <PropsTables slug="radio-group" />
@@ -55,6 +100,8 @@ Pass `value` and `onValueChange` to drive selection from your own state. Passing
 <DoDont
   do={[
     'Give RadioGroup a name and either defaultValue (uncontrolled) or value + onValueChange (controlled) — pick one mode.',
+    'Type controlled state as string | null and clear it with null — undefined means uncontrolled.',
+    'Rely on the group name for form submission; it submits natively, so no hidden input is needed.',
     'Use it for 2–6 mutually exclusive, always-visible options.',
     'Pair a standalone Label above the group via aria-labelledby, since RadioGroup has no label prop of its own.',
     'Give every RadioGroupItem a distinct, real value and label.',
@@ -64,6 +111,8 @@ Pass `value` and `onValueChange` to drive selection from your own state. Passing
     'Render a RadioGroupItem outside a RadioGroup — it throws immediately, with no fallback behavior.',
     'Reach for RadioGroup when the option list is long or needs search — use Select or Combobox.',
     'Pass both value and defaultValue — value wins, and defaultValue is only read on the first render.',
+    'Clear a controlled group with undefined — that switches it to uncontrolled and keeps the last selection. Pass null.',
+    'Add a hidden input to carry the selection to a server action — the group already submits under its own name.',
   ]}
 />
 
