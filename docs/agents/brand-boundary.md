@@ -38,9 +38,10 @@ as `## Brand — these rules make it Miltinson`, and are not one framed as
 Every other published file is checked against the brand denylist. These are not, because
 holding a brand's values is what they are for.
 
-| path                                            | why                                 |
-| ----------------------------------------------- | ----------------------------------- |
-| `design-system-docs/miltinson.voice.json`       | one voice pack; the shipped default |
-| `design-system-docs/ui_kits/_shared/content.js` | the kits' strings, in one place     |
-| `design-system-docs/README.md`                  | the brand skill's own document      |
-| `design-system-docs/SKILL.md`                   | the brand skill's own frontmatter   |
+| path                                             | why                                 |
+| ------------------------------------------------ | ----------------------------------- |
+| `design-system-docs/miltinson.voice.json`        | one voice pack; the shipped default |
+| `design-system-docs/guidelines/brand-voice.html` | the same pack, rendered as a card   |
+| `design-system-docs/ui_kits/_shared/content.js`  | the kits' strings, in one place     |
+| `design-system-docs/README.md`                   | the brand skill's own document      |
+| `design-system-docs/SKILL.md`                    | the brand skill's own frontmatter   |

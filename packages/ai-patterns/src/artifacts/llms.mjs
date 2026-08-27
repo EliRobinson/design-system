@@ -20,9 +20,13 @@
  * added there needs no change until this file wants to render it.
  */
 
+/* Names the system, not a company. "for Miltinson Technologies products" told every
+   consumer the system was built for one of them — the boundary violation this issue
+   exists to end, sitting in the first paragraph an agent reads. The system's own name
+   stays; that is a kept decision (docs/agents/brand-boundary.md). */
 const INTRO =
-  'Miltinson Design System — tokens, React 19 components, and AI patterns for ' +
-  'Miltinson Technologies products. Ink-led palette with one amber accent, sharp radii, ' +
+  'Miltinson Design System — tokens, React 19 components, and AI patterns for the ' +
+  'products built on it. Ink-led palette with one amber accent, sharp radii, ' +
   'hairline borders, WCAG AA by default. Packages: @elirobinson/tokens, ' +
   '@elirobinson/react, @elirobinson/ai-patterns (GitHub Packages registry).';
 
