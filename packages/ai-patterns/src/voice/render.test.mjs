@@ -38,7 +38,16 @@ describe('the fixture', () => {
     expect(section, 'design-system-docs/README.md has no CONTENT FUNDAMENTALS section').not.toBe(
       null,
     );
-    expect(section[1].replace(/<!--[\s\S]*?-->\n?/g, '').trim()).toBe(shipped.trim());
+    const body = section[1]
+      /* The markers and the generated note. */
+      .replace(/<!--[\s\S]*?-->\n?/g, '')
+      /* And the blank line replaceManagedBlock pads with on each side —
+         `note + '\n\n'` and `'\n\n' + end`. Exactly one newline at each end,
+         not `.trim()`: the fixture is compared raw, so any OTHER whitespace
+         drift in the README section still has to fail this. */
+      .replace(/^\n/, '')
+      .replace(/\n$/, '');
+    expect(body).toBe(shipped);
   });
 });
 
@@ -72,15 +81,15 @@ describe('renderVoiceCard', () => {
     expect(renderVoiceCard(pack).startsWith('<!-- @dsCard ')).toBe(true);
   });
 
-  /* The card that shipped by hand read "Miltinson Technologies". `label` is the
-     short mark the README's opening line is pinned to, so the card has to name
-     the pack's `fullName` or generating it drops a word off a rendered page. */
   /* The card that shipped by hand opened with this sentence. Generating the
      card is a re-hosting of it, so the sentence has to survive the move. */
   it('opens with the register lead the hand-kept card carried', () => {
     expect(renderVoiceCard(pack)).toContain(pack.person.summary);
   });
 
+  /* The card that shipped by hand read "Miltinson Technologies". `label` is the
+     short mark the README's opening line is pinned to, so the card has to name
+     the pack's `fullName` or generating it drops a word off a rendered page. */
   it('names the brand in full in the subtitle, not by the short mark', () => {
     expect(renderVoiceCard(pack)).toContain(`subtitle="${pack.fullName}, sentence case`);
     expect(pack.fullName).not.toBe(pack.label);
