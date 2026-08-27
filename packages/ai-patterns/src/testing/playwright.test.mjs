@@ -72,6 +72,23 @@ describeBrowser('browser contract checks', () => {
     </style></head><body>${body}</body></html>`);
   }
 
+  /* Enough filler that whatever follows it cannot be on screen at any plausible
+     viewport, so the fold cases below do not quietly stop testing the fold.
+
+     Shared by both fold suites — `checkTouchTargets` (#79/#133) and
+     `checkHitAreaOverlap` (#137) — because they assert the same property about
+     the same viewport, and a second copy is exactly the drift #137 warns about
+     in the checks themselves. */
+  const FILLER = '<div style="min-height:200vh"></div>';
+
+  const isBelowTheFold = (selector) =>
+    page.evaluate(
+      (target) =>
+        document.querySelector(target).getBoundingClientRect().top >=
+        document.documentElement.clientHeight,
+      selector,
+    );
+
   describe('checkTouchTargets', () => {
     it('flags a control smaller than 44x44', async () => {
       await render('<button style="width:24px;height:24px">x</button>');
@@ -532,18 +549,6 @@ describeBrowser('browser contract checks', () => {
        genuinely undersized one. Any page taller than the viewport failed, and
        nothing below the fold was ever actually measured. */
     describe('controls below the fold', () => {
-      /* Enough filler that the control after it cannot be on screen at any
-         plausible viewport, so these do not quietly stop testing the fold. */
-      const FILLER = '<div style="min-height:200vh"></div>';
-
-      const isBelowTheFold = (selector) =>
-        page.evaluate(
-          (target) =>
-            document.querySelector(target).getBoundingClientRect().top >=
-            document.documentElement.clientHeight,
-          selector,
-        );
-
       it('passes a correctly sized control that is below the fold', async () => {
         await render(`${FILLER}<button id="t" style="width:112px;height:44px">Open phase</button>`);
 
@@ -748,6 +753,225 @@ describeBrowser('browser contract checks', () => {
 
       expect(violations).toHaveLength(1);
       expect(violations[0].covers).toContain('span.label');
+    });
+
+    /* Issue #137, the same defect #79/#133 fixed in `checkTouchTargets` and
+       left alone here so that PR stayed one function wide.
+       `document.elementFromPoint` only answers for the visible viewport, so a
+       sibling past the fold was probed at a coordinate the browser cannot see.
+       It answered `null`, `null` is neither the control nor contained by it,
+       both branches were false, and the loop moved on having established
+       nothing — a silent false negative on every page taller than the window,
+       which is the normal case rather than the edge case. */
+    describe('siblings below the fold', () => {
+      /* The bug itself. Byte-for-byte the visible-sibling fixture above, moved
+         past the fold — so this passing can only ever mean the probe never ran.
+
+         It is also the test the issue asks for in place of an assumption:
+         scrolling moves the *sibling* into view, and this only reports if the
+         control is still on top of it afterwards. Sharing a parent is what
+         makes that true, and the loop only ever walks
+         `control.parentElement.children`. */
+      it('flags an overlay that swallows a visible sibling below the fold', async () => {
+        await render(`<style>
+            .row { position: relative; display: flex; gap: 4px; align-items: center; }
+            .grabby { position: relative; width: 20px; height: 20px; border: 0; }
+            .grabby::after { content: ''; position: absolute; inset: -40px; }
+            .label { width: 60px; height: 20px; }
+          </style>
+          ${FILLER}
+          <div class="row">
+            <button class="grabby"></button>
+            <span class="label">Visible label</span>
+          </div>`);
+
+        expect(await isBelowTheFold('.label')).toBe(true);
+
+        const violations = await checkHitAreaOverlap(page);
+
+        expect(violations).toHaveLength(1);
+        expect(violations[0].message).toContain('hit-area-no-overlap');
+        expect(violations[0].covers).toContain('span.label');
+      });
+
+      /* The other half. Reaching the sibling must not reintroduce what #131
+         removed: `sr-only` is 1x1, sits at its control's static origin, and its
+         centre therefore routes to the control — so anything that probes it at
+         all reports every accessible-name-only label on the page. Scrolling
+         gave the check far more siblings to be wrong about, so the case is
+         asserted below the fold as well as above it.
+
+         #137 asks for the visibility guard and the scroll to have their
+         ordering pinned here. Measured instead: running the guard after the
+         scroll leaves this suite entirely green, because every clause of it
+         reads dimensions and computed style, which a scroll does not change.
+         The order is a cost decision, and there is no hazard to pin — recorded
+         so the next reader does not go looking for one. What this does pin is
+         that the guard survives the fix at all. */
+      it('passes an sr-only sibling below the fold', async () => {
+        await render(`<style>
+            .sr-only {
+              position: absolute;
+              width: 1px; height: 1px;
+              padding: 0; margin: -1px;
+              overflow: hidden;
+              clip-path: inset(50%);
+              white-space: nowrap; border: 0;
+            }
+            .row { position: relative; display: flex; align-items: center; }
+            .box { width: 18px; height: 18px; }
+          </style>
+          ${FILLER}
+          <div class="row">
+            <input class="box" id="done" type="checkbox" />
+            <label class="sr-only" for="done">Mark task done</label>
+          </div>`);
+
+        expect(await isBelowTheFold('.sr-only')).toBe(true);
+        expect(await checkHitAreaOverlap(page)).toEqual([]);
+      });
+
+      /* The call #137 asks to make rather than inherit. `checkTouchTargets`
+         lets a surface too large to walk pass on its painted geometry, because
+         the question there is "is this box big enough" and an oversized box
+         plainly is. The question here is "is this sibling covered", and being
+         tall is no reason to stop asking — so an oversized sibling is probed at
+         the centre of whatever part of it is on screen, and a control sitting
+         on that point is still reported.
+
+         `scrollIntoView({ block: 'center' })` can usually bring even an
+         oversized element's true centre on screen; the on-screen midpoint is
+         what answers when the document's scroll range runs out first. */
+      it('flags an overlay covering a sibling taller than the viewport', async () => {
+        await render(`<style>
+            .row { position: relative; display: flex; gap: 4px; align-items: flex-start; }
+            .grabby { position: relative; width: 20px; height: 20px; border: 0; }
+            .grabby::after { content: ''; position: absolute; inset: -400vh -40px; }
+            .tall { width: 60px; height: 300vh; background: #eeeeee; }
+          </style>
+          ${FILLER}
+          <div class="row">
+            <button class="grabby"></button>
+            <span class="tall">Tall neighbour</span>
+          </div>`);
+
+        const violations = await checkHitAreaOverlap(page);
+
+        expect(violations).toHaveLength(1);
+        expect(violations[0].covers).toContain('span.tall');
+      });
+
+      /* Reaching a sibling now means scrolling, and this check runs inside
+         somebody else's test, in front of somebody else's screenshot. Where it
+         leaves the page is part of its contract — the same one
+         `checkTouchTargets` holds itself to.
+
+         This asserts the contract, not a line: the window scroll is restored
+         twice over, because <html> is itself a scrollable node and so is in the
+         container snapshot, *and* `window.scrollTo` names it directly. Deleting
+         either one on its own leaves this green; deleting both turns it red.
+         Both are kept — the pair mirrors `checkTouchTargets`, and a page whose
+         scrolling element is <body> would not be in the snapshot. */
+      it('puts the page back where it found it', async () => {
+        await render(`<style>
+            .row { position: relative; display: flex; gap: 4px; align-items: center; }
+            .grabby { position: relative; width: 20px; height: 20px; border: 0; }
+            .grabby::after { content: ''; position: absolute; inset: -40px; }
+            .label { width: 60px; height: 20px; }
+          </style>
+          ${FILLER}
+          <div class="row">
+            <button class="grabby"></button>
+            <span class="label">Visible label</span>
+          </div>`);
+
+        await page.evaluate(() => window.scrollTo(0, 120));
+        await checkHitAreaOverlap(page);
+
+        expect(await page.evaluate(() => window.scrollY)).toBe(120);
+      });
+
+      /* `scrollIntoView` walks the whole ancestor chain, so restoring the
+         window alone would still leave a scrollable container somewhere new. */
+      it('leaves a scrollable container where it found it', async () => {
+        await render(`<style>
+            .row { position: relative; display: flex; gap: 4px; align-items: center; }
+            .grabby { position: relative; width: 20px; height: 20px; border: 0; }
+            .grabby::after { content: ''; position: absolute; inset: -40px; }
+            .label { width: 60px; height: 20px; }
+          </style>
+          <div id="pane" style="height:120px;overflow:auto">
+            <div style="height:1200px"></div>
+            <div class="row">
+              <button class="grabby"></button>
+              <span class="label">Deep label</span>
+            </div>
+          </div>`);
+
+        await page.evaluate(() => {
+          document.getElementById('pane').scrollTop = 40;
+        });
+        await checkHitAreaOverlap(page);
+
+        expect(await page.evaluate(() => document.getElementById('pane').scrollTop)).toBe(40);
+      });
+    });
+
+    /* The same belt-and-braces guard `checkTouchTargets` carries, for the same
+       reason. Once the probe is scrolled into view a `null` cannot mean "below
+       the fold" any more, and Chromium answers an on-screen point with the root
+       element rather than `null` — so the only way to reach this is to make the
+       browser produce it. What is being pinned is that a probe which failed is
+       reported as a gap rather than silently counted as "not covered", which is
+       the shape of #137 itself. */
+    describe('siblings the check cannot probe', () => {
+      it('reports a distinct diagnostic rather than staying silent', async () => {
+        await render(`<style>
+            .row { position: relative; display: flex; gap: 4px; align-items: center; }
+            .grabby { position: relative; width: 20px; height: 20px; border: 0; }
+            .grabby::after { content: ''; position: absolute; inset: -40px; }
+            .label { width: 60px; height: 20px; }
+          </style>
+          <div class="row">
+            <button class="grabby"></button>
+            <span class="label">Visible label</span>
+          </div>`);
+
+        let violations;
+        try {
+          /* An own property shadowing Document.prototype's method, so the
+             `delete` below puts the real one back. `setContent` reuses the same
+             document object, so a stub left behind would follow this page into
+             every later test in the file. */
+          await page.evaluate(() => {
+            document.elementFromPoint = () => null;
+          });
+          violations = await checkHitAreaOverlap(page);
+        } finally {
+          await page.evaluate(() => {
+            delete document.elementFromPoint;
+          });
+        }
+
+        expect(violations).toHaveLength(1);
+        expect(violations[0].unmeasurable).toBe(true);
+        expect(violations[0].message).toContain('hit-area-unmeasurable');
+        expect(violations[0].message).toContain('not a violation');
+        expect(violations[0].covers).toContain('span.label');
+      });
+
+      /* A sibling parked out of the document's view — the visually-hidden skip
+         link every site ships — is not a gap. Scrolling cannot bring back what
+         is positioned off-canvas, and nothing a user cannot reach can be
+         covered, so it stays silent rather than becoming unmeasurable noise. */
+      it('says nothing about a sibling parked off-canvas on purpose', async () => {
+        await render(`<div style="position:relative">
+            <button style="width:44px;height:44px">Menu</button>
+            <a href="#main" style="position:absolute;top:-100px;left:0;width:120px;height:24px">Skip to content</a>
+          </div>`);
+
+        expect(await checkHitAreaOverlap(page)).toEqual([]);
+      });
     });
   });
 

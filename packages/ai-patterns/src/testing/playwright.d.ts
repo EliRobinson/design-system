@@ -60,7 +60,21 @@ export interface UnmeasurableTouchTarget extends Violation {
 }
 
 export interface HitAreaViolation extends Violation {
+  /** The sibling this control's hit area was found to cover. */
   covers: string;
+}
+
+/**
+ * Not an overlap violation: a sibling the check could not probe at all. It is
+ * on screen and the browser still routed nothing to its centre, so whether the
+ * control covers it was never established. Reported rather than passed —
+ * treating an unanswered probe as "no overlap" is the silent false negative
+ * that made every sibling below the fold look clean.
+ */
+export interface UnmeasurableHitArea extends Violation {
+  /** The sibling that could not be probed. */
+  covers: string;
+  unmeasurable: true;
 }
 
 export interface ContrastViolation extends Violation {
@@ -118,7 +132,7 @@ export declare function checkTouchTargets(
 export declare function checkHitAreaOverlap(
   page: PageLike,
   options?: { selector?: string },
-): Promise<HitAreaViolation[]>;
+): Promise<Array<HitAreaViolation | UnmeasurableHitArea>>;
 
 export declare function checkFocusVisible(
   page: PageLike,
