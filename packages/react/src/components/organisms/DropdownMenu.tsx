@@ -2,7 +2,10 @@ import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useContext, useEffect, useMemo, useState } from 'react';
 
 import { cn } from '../../lib/cn.js';
-import type { AnchoredOverlayContextValue } from './overlay/anchoredOverlay.js';
+import type {
+  AnchoredOverlayContentProps,
+  AnchoredOverlayContextValue,
+} from './overlay/anchoredOverlay.js';
 import {
   AnchoredOverlayContent,
   AnchoredOverlayTrigger,
@@ -76,15 +79,26 @@ export const DropdownMenuTrigger = forwardRef<HTMLButtonElement, DropdownMenuTri
   },
 );
 
-export type DropdownMenuContentProps = HTMLAttributes<HTMLDivElement>;
+/** `side` and `align` are forwarded to the positioner. `align: 'end'` pins the
+ * menu's right edge to the trigger's, which is what a trigger near the right
+ * edge of the viewport needs — see `useAnchoredPosition`. */
+export type DropdownMenuContentProps = HTMLAttributes<HTMLDivElement> &
+  Pick<AnchoredOverlayContentProps, 'side' | 'align'>;
 
-export function DropdownMenuContent({ className, ...props }: DropdownMenuContentProps) {
+export function DropdownMenuContent({
+  className,
+  side,
+  align,
+  ...props
+}: DropdownMenuContentProps) {
   const context = useDropdownMenuContext();
   const { onOpenChange, contentRef, activeIndex, setActiveIndex } = context;
 
   return (
     <AnchoredOverlayContent
       overlay={context}
+      side={side}
+      align={align}
       role="menu"
       className={cn('ds-dropdown__content', className)}
       onKeyDown={(event) => {

@@ -25,14 +25,20 @@
   outline-offset: 2px;
 }
 
+/* --anchored-min-width is this panel's floor, and useAnchoredPosition reads it
+   back: the positioner writes an inline `min-width` to keep the menu at least
+   as wide as its trigger, which outranks anything here, so the number has to
+   reach it rather than be restated in JS. See the hook for the full story. */
 .ds-dropdown__content {
+  --anchored-min-width: 180px;
+
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   display: grid;
   gap: var(--space-1);
-  min-width: 180px;
+  min-width: var(--anchored-min-width);
   padding: var(--space-2);
 }
 
