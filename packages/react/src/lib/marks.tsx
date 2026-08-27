@@ -105,6 +105,26 @@ const MARK_PATHS = {
   'chevron-right': CHEVRON_RIGHT,
   'chevron-left': mirrorX(CHEVRON_RIGHT),
 
+  /* The accordion's expand/collapse pair, and the last two marks in the library
+     that were characters — `content: '+'` and `content: '\2212'` on
+     `.ds-accordion__trigger::after`. #166 did not reach them because it listed
+     six controls that render a real element, and a pseudo-element cannot hold
+     an `<svg>`; the trigger had to start rendering one instead.
+
+     5..11, which is `cross`'s extent rather than a number tuned for these.
+     They are the same family drawn at the same scale, and matching a sibling is
+     a rule that survives someone adding a seventh mark — measured at 6.75px of
+     ink against the character `+`'s 7.00px at --fs-sm, so the quarter pixel
+     that buys is not worth a bespoke extent.
+
+     `minus` is the horizontal stroke of `plus`, which is what makes the pair
+     read as one control changing state rather than two unrelated glyphs. Its
+     bounding box is one-dimensional — every point is at y = 8 — and that is
+     still centred: min and max agree, so the midpoint is 8. `stroke-linecap:
+     round` then grows it symmetrically into a visible bar. */
+  plus: 'M8 5 8 11M5 8 11 8',
+  minus: 'M5 8 11 8',
+
   /* A regular five-pointed star, outer radius 7, inner radius at the regular
      ratio sin(18°)/sin(54°).
 

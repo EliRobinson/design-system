@@ -101,6 +101,20 @@ export async function assertContracts(page: Page): Promise<void> {
  * against the border box would silently start measuring the wrong thing the
  * day one of them is not.
  *
+ * PER AXIS, because not every mark is centred on both. This asserted both
+ * unconditionally until `.ds-accordion__trigger` painted one: that trigger is
+ * `justify-content: space-between`, which puts the mark hard against the right
+ * edge on purpose, and the check reported it 617px off centre in x. The claim
+ * was too strong, not the layout. What a flex box actually promises is the axis
+ * it says it centres — `justify-content` for the main axis, `align-items` for
+ * the cross one — so each is now asserted only where the control claims it.
+ *
+ * That would be a hole if a control could opt out of both, so it cannot: a mark
+ * whose parent centres it on neither axis fails outright. That is the shape of
+ * the regression this exists to catch — a mark dropped into a box that does not
+ * centre it — and it is what a `.ds-rating__star` that lost `display:
+ * inline-flex` looks like.
+ *
  * Exported, and worth knowing why before moving it: this runs from
  * `afterCapture`, which fires only AFTER the screenshot assertion passes — and
  * outside the pinned container every baseline mismatches, so on a developer
@@ -122,26 +136,49 @@ export async function assertMarksCentred(page: Page): Promise<void> {
       const top = outer.top + px(style.borderTopWidth) + px(style.paddingTop);
       const bottom = outer.bottom - px(style.borderBottomWidth) - px(style.paddingBottom);
 
+      /* Which axes this control actually claims to centre on. A flex box
+         centres its main axis with `justify-content` and its cross axis with
+         `align-items`, and which of those is x depends on the direction. */
+      const column = style.flexDirection.startsWith('column');
+      const centresX = (column ? style.alignItems : style.justifyContent) === 'center';
+      const centresY = (column ? style.justifyContent : style.alignItems) === 'center';
+
       return {
         control: `${control.tagName.toLowerCase()}.${control.className || '(unclassed)'}`,
+        centresX,
+        centresY,
         dx: (box.left + box.right) / 2 - (left + right) / 2,
         dy: (box.top + box.bottom) / 2 - (top + bottom) / 2,
       };
     }),
   );
 
-  for (const { control, dx, dy } of offsets) {
+  for (const { control, centresX, centresY, dx, dy } of offsets) {
+    /* A mark in a box that centres it on NEITHER axis is the failure this
+       exists for — it is what `.ds-rating__star` looked like before it was a
+       flex container, with the mark seated on the text baseline. Asserted
+       first, because the two axis checks below are vacuous for such a box:
+       both would be skipped and the mark would pass unexamined. */
+    expect(
+      centresX || centresY,
+      `${control} centres its mark on neither axis — is it still a flex container?`,
+    ).toBe(true);
+
     /* Floats, so not `toBe(0)` — but three orders of magnitude below the
        offsets the characters carried (the date picker's `‹` sat 1.438px low),
        and tight enough that a control which stopped centring its mark could
        not slip through. */
-    expect(
-      Math.abs(dx),
-      `${control} paints its mark ${dx.toFixed(3)}px off centre in x`,
-    ).toBeLessThan(0.001);
-    expect(
-      Math.abs(dy),
-      `${control} paints its mark ${dy.toFixed(3)}px off centre in y`,
-    ).toBeLessThan(0.001);
+    if (centresX) {
+      expect(
+        Math.abs(dx),
+        `${control} paints its mark ${dx.toFixed(3)}px off centre in x`,
+      ).toBeLessThan(0.001);
+    }
+    if (centresY) {
+      expect(
+        Math.abs(dy),
+        `${control} paints its mark ${dy.toFixed(3)}px off centre in y`,
+      ).toBeLessThan(0.001);
+    }
   }
 }
