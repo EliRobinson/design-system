@@ -24,7 +24,7 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 - [AI patterns](docs/agents/ai-patterns.md) — the `ds` discovery CLI, contracts, agent templates
 - [Consumer tooling](docs/agents/consumer-tooling.md) — what a consuming app installs, and why each piece lives here
 - [Publishing](docs/agents/publishing.md)
-- [Git workflow](docs/agents/git-workflow.md) — commit style, before/after screenshots for front-end PRs
+- [Git workflow](docs/agents/git-workflow.md) — commit style, the Nx cache worktrees share, before/after screenshots for front-end PRs
 - [Visual regression](docs/agents/visual-regression.md) — what to do when a baseline passes locally and fails in CI
 
 Brand source of truth: `design-system-docs/` (preview swatches, UI kits, agent skill).
