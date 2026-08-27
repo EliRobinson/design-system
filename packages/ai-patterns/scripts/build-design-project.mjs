@@ -201,7 +201,13 @@ function main() {
 
   /* 5. The foundation cards that are pure token enumerations, to both sides.
         The editorial cards in guidelines/ are the project's and are not touched
-        — this only ever writes the paths buildGuidelineCards names. */
+        — this only ever writes the paths buildGuidelineCards names.
+
+        One exception, and it is not this script's: guidelines/brand-voice.html
+        is written from the voice pack by scripts/sync-voice.mjs, into
+        design-system-docs/ only. It stays outside buildGuidelineCards and
+        outside pushBoundary, so the rule above still holds for everything this
+        script emits — a push built here still cannot clobber the design work. */
   const cards = buildGuidelineCards(tokens);
   for (const { path, html } of cards) {
     writeDocs(join('guidelines', path), html);
