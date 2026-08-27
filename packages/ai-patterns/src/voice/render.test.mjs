@@ -25,16 +25,20 @@ describe('the fixture', () => {
      would leave this file green against a stale copy — the very drift the fixture
      exists to catch, moved one step along.
 
-     This assertion is scaffolding for exactly as long as `## CONTENT FUNDAMENTALS`
-     stays hand-authored. Once the section is generated from the pack, the README
-     derives from the same source the renderer does, this can no longer fail
-     independently, and it may be deleted. */
+     The section is generated now, so the two do derive from one source — but
+     they derive through `sync-voice.mjs`, and this is the only assertion that
+     would catch a renderer whose output the fixture no longer describes being
+     written straight into the README. Deleting it in the same change that made
+     the section generated would have removed the guard and the thing it guards
+     at once, so it stays and compares comment-free text instead: the managed
+     markers and the generated note now sit inside the extracted range, exactly
+     as they do for `brandVoice`. */
   it('still matches the README section it was captured from', () => {
     const section = readme.match(/^## CONTENT FUNDAMENTALS\s*\n([\s\S]*?)(?=\n## )/m);
     expect(section, 'design-system-docs/README.md has no CONTENT FUNDAMENTALS section').not.toBe(
       null,
     );
-    expect(section[1]).toBe(shipped);
+    expect(section[1].replace(/<!--[\s\S]*?-->\n?/g, '').trim()).toBe(shipped.trim());
   });
 });
 
