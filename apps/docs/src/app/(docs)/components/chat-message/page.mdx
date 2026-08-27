@@ -36,6 +36,47 @@ system owns how an action renders, which button variant it gets, and what happen
 product needs a menu, a link, or a copy control with its own state. A node owns none of
 that: you pass the buttons you already have.
 
+## Coming from a `role` union?
+
+There is no `role` prop, and there is no `ChatRole` type. An earlier draft of this
+component had `'user' | 'assistant' | 'system'`, and it was cut rather than extended.
+
+An author enum is a domain model, and the design system does not own your domain. Three
+members is wrong for a product with four authors and wrong again for one with two —
+`name` plus `avatar` is wrong for none of them, because it asks you for what you already
+have rather than asking you to translate into our vocabulary and then translate back.
+Cutting it also removed the thing that made a union attractive in the first place:
+deriving the avatar from the role. That derivation is why `avatar` is required — a mark
+the system picks for you is a pure-ink glyph, and a pure-ink glyph disappears against
+`--ink-950` in dark mode.
+
+So keep your union. It is yours, it belongs in your state, and you translate it where you
+render:
+
+```tsx
+const AUTHOR = {
+  user: { variant: 'sent', name: 'Eli', avatar: 'E' },
+  assistant: { variant: 'received', name: 'Assistant', avatar: '◆' },
+  admin: { variant: 'received', name: 'Support', avatar: 'S' },
+} as const;
+
+{
+  messages.map((message) => (
+    <ChatMessage key={message.id} {...AUTHOR[message.role]}>
+      {message.text}
+    </ChatMessage>
+  ));
+}
+```
+
+A fourth author is one line in that object, on your release schedule rather than ours. And
+`admin` sharing a side with `assistant` becomes a product decision you can see, instead of
+a fact buried in a union somebody else versions.
+
+The one thing not to do is push the table back down into the component. A `ChatMessage`
+that took a role-to-props map would be the same domain model, one indirection further
+away — and then your fourth author would need a release of this package.
+
 ## Props
 
 <PropsTables slug="chat-message" />
