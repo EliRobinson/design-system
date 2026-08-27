@@ -79,4 +79,21 @@ describe('Popover anchoring', () => {
     // Bottom of the stubbed 500x500 trigger rect, plus the shared 4px gap.
     expect(panel.style.top).toBe('504px');
   });
+
+  // #180: the positioning options existed but PopoverContent forwarded none of
+  // them, so a panel anchored near the right edge could not be re-aligned
+  // without fighting the layout effect's inline writes from a className.
+  it('forwards the alignment through to the positioner', () => {
+    render(
+      <Popover defaultOpen>
+        <PopoverTrigger>Open</PopoverTrigger>
+        <PopoverContent align="end">panel body</PopoverContent>
+      </Popover>,
+    );
+
+    const panel = screen.getByRole('dialog');
+    // Right edge of the stubbed trigger rect, measured back from the viewport.
+    expect(panel.style.right).toBe(`${window.innerWidth - 500}px`);
+    expect(panel.style.left).toBe('auto');
+  });
 });

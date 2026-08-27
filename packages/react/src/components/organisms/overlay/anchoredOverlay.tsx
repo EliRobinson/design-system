@@ -2,6 +2,7 @@ import type { ButtonHTMLAttributes, HTMLAttributes, RefObject } from 'react';
 import { forwardRef, useId, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
+import type { AnchoredPositionOptions } from '../../../hooks/useAnchoredPosition.js';
 import { useAnchoredPosition } from '../../../hooks/useAnchoredPosition.js';
 import { useClickOutside } from '../../../hooks/useClickOutside.js';
 import type { UseDisclosureOptions } from '../../../hooks/useDisclosure.js';
@@ -28,9 +29,14 @@ export type AnchoredOverlayContextValue = {
 export type AnchoredOverlayOptions = UseDisclosureOptions;
 
 /**
- * Open state, the trigger/content refs, and the three behaviours every
- * anchored overlay needs: position against the trigger, dismiss on Escape,
- * dismiss on a click outside both nodes.
+ * Open state, the trigger/content refs, and the two behaviours every anchored
+ * overlay needs wherever its panel ends up: dismiss on Escape, dismiss on a
+ * click outside both nodes.
+ *
+ * Anchoring is not here. `side`/`align` are props of the panel rather than of
+ * the overlay as a whole, so `AnchoredOverlayContent` — which is where those
+ * props arrive, and what holds the node being positioned — runs
+ * `useAnchoredPosition` itself.
  */
 export function useAnchoredOverlay({
   open: controlledOpen,
@@ -40,14 +46,8 @@ export function useAnchoredOverlay({
   const contentId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const hasMounted = useHasMounted();
   const { open, setOpen } = useDisclosure({ open: controlledOpen, defaultOpen, onOpenChange });
 
-  // Gated on the same mount flag the portal is, because an overlay that starts
-  // open has no content node on the first render — positioning it then measures
-  // nothing, and without this the panel would stay unpositioned until the next
-  // scroll or resize.
-  useAnchoredPosition(open && hasMounted, triggerRef, contentRef);
   useClickOutside([triggerRef, contentRef], () => setOpen(false), open);
   useEscapeKey(() => setOpen(false), open);
 
@@ -85,17 +85,29 @@ export const AnchoredOverlayTrigger = forwardRef<HTMLButtonElement, AnchoredOver
   },
 );
 
-export type AnchoredOverlayContentProps = HTMLAttributes<HTMLDivElement> & {
-  overlay: AnchoredOverlayContextValue;
-};
+export type AnchoredOverlayContentProps = HTMLAttributes<HTMLDivElement> &
+  Pick<AnchoredPositionOptions, 'side' | 'align'> & {
+    overlay: AnchoredOverlayContextValue;
+  };
 
-/** The portalled panel. */
+/** The portalled panel, anchored to the trigger. */
 export function AnchoredOverlayContent({
   overlay,
+  side,
+  align,
   children,
   ...props
 }: AnchoredOverlayContentProps) {
   const hasMounted = useHasMounted();
+
+  // Gated on the same mount flag the portal is, because an overlay that starts
+  // open has no content node on the first render — positioning it then measures
+  // nothing, and without this the panel would stay unpositioned until the next
+  // scroll or resize.
+  useAnchoredPosition(overlay.open && hasMounted, overlay.triggerRef, overlay.contentRef, {
+    side,
+    align,
+  });
 
   // A closed overlay never reaches the portal, so an uncontrolled one survives
   // a server render on its own. One opened via the `open` prop does not —

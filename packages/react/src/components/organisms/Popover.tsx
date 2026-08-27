@@ -2,7 +2,10 @@ import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useContext } from 'react';
 
 import { cn } from '../../lib/cn.js';
-import type { AnchoredOverlayContextValue } from './overlay/anchoredOverlay.js';
+import type {
+  AnchoredOverlayContentProps,
+  AnchoredOverlayContextValue,
+} from './overlay/anchoredOverlay.js';
 import {
   AnchoredOverlayContent,
   AnchoredOverlayTrigger,
@@ -49,14 +52,20 @@ export const PopoverTrigger = forwardRef<HTMLButtonElement, PopoverTriggerProps>
   },
 );
 
-export type PopoverContentProps = HTMLAttributes<HTMLDivElement>;
+/** `side` and `align` are forwarded to the positioner. `align: 'end'` pins the
+ * panel's right edge to the trigger's, which is what a trigger near the right
+ * edge of the viewport needs — see `useAnchoredPosition`. */
+export type PopoverContentProps = HTMLAttributes<HTMLDivElement> &
+  Pick<AnchoredOverlayContentProps, 'side' | 'align'>;
 
-export function PopoverContent({ className, ...props }: PopoverContentProps) {
+export function PopoverContent({ className, side, align, ...props }: PopoverContentProps) {
   const overlay = usePopoverContext();
 
   return (
     <AnchoredOverlayContent
       overlay={overlay}
+      side={side}
+      align={align}
       role="dialog"
       className={cn('ds-popover__content', className)}
       {...props}
