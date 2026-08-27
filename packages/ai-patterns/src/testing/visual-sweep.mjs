@@ -193,15 +193,58 @@ export async function waitForStablePixels(page, { expect, fullPage = false, time
     );
   }
 
-  /* Images are not covered by document.fonts.ready, and a capture taken while
-     one is still decoding bakes a half-drawn page into the baseline. Cheap and
-     targeted, where the settle loop below is the general safety net. */
-  await page.waitForFunction(() => Array.from(document.images).every((image) => image.complete));
+  /* `loading="lazy"` defers a frame until it nears the viewport, which on a
+     long page means it starts loading *after* everything below settles — and
+     its fonts start resolving later still. Promoting to eager restarts a frame
+     that has not begun loading yet, so the waits below have something to wait
+     on rather than agreeing about an empty box. */
+  await page.evaluate(() => {
+    for (const iframe of document.querySelectorAll('iframe[loading="lazy"]')) {
+      iframe.loading = 'eager';
+    }
+  });
 
-  /* Fonts may resolve from a system stack rather than the network, but a
-     capture taken before they are applied still measures different text
-     metrics. */
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  /* An <iframe> carries its own document, and a frame that is still parsing
+     one has nothing to report about its images or its fonts yet. Cross-origin
+     frames answer nothing here and are left to the settle loop below. */
+  await page.waitForFunction(() =>
+    Array.from(document.querySelectorAll('iframe')).every((iframe) => {
+      try {
+        return !iframe.contentDocument || iframe.contentDocument.readyState === 'complete';
+      } catch {
+        return true;
+      }
+    }),
+  );
+
+  /* Both waits run per frame, not per page.
+     `page.waitForFunction`/`page.evaluate` execute in the main frame only, so
+     an embedded document's images and `@font-face` rules were awaited by
+     nothing: /brand/guidelines embeds 23 frames carrying 253 font faces of
+     their own against the parent's 15, and a frame webfont applying after the
+     page had been called stable repainted text inside a box whose height is
+     pinned inline — a diff with no layout change, landing in one of two stable
+     end states, which is why regenerating its baseline never converged (#203).
+
+     Images are not covered by document.fonts.ready, and a capture taken while
+     one is still decoding bakes a half-drawn page into the baseline. Fonts may
+     resolve from a system stack rather than the network, but a capture taken
+     before they are applied still measures different text metrics. Both are
+     cheap and targeted, where the settle loop below is the general safety
+     net. */
+  for (const frame of page.frames()) {
+    try {
+      await frame.waitForFunction(() =>
+        Array.from(document.images).every((image) => image.complete),
+      );
+      await frame.evaluate(() => document.fonts.ready.then(() => undefined));
+    } catch {
+      /* A frame can detach between being listed and being asked — a carousel
+         that swaps one out, a script that rewrites the DOM. A frame that no
+         longer exists cannot hold pixels still, so it is not this function's
+         problem; anything still attached is covered by the loop below. */
+    }
+  }
 
   /* A text caret blinks roughly twice a second, and it is not a CSS animation,
      so `animations: 'disabled'` does not touch it. Any page that focuses an
