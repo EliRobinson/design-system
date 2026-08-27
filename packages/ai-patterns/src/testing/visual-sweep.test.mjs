@@ -80,7 +80,7 @@ function fakePage(
   responses = [],
   childFrames = [],
 ) {
-  const captured = { screenshot: null, order: [], settled: [] };
+  const captured = { screenshot: null, order: [], settled: [], waits: [] };
   const frame = { equals: () => true };
   const listeners = [];
 
@@ -114,7 +114,11 @@ function fakePage(
       }
     },
     waitForLoadState: async () => {},
-    waitForFunction: async () => {},
+    /* Kept, not just awaited: the frame-readiness predicate runs in the browser,
+       so the only way to assert what it accepts is to run it here. */
+    waitForFunction: async (predicate) => {
+      captured.waits.push(predicate);
+    },
     locator: (selector) => ({ selector }),
     screenshot: async () => frame,
     /* The region measurement is the only evaluate a sweep passes an argument
@@ -396,6 +400,62 @@ describe('sweepPages', () => {
       'card-2:images',
       'card-2:fonts',
     ]);
+  });
+
+  /* The readiness predicate runs in the browser, so it is exercised here
+     directly against a stand-in DOM. `fonts.status` is the half that #204
+     added and shipped without a test: a frame that has finished parsing but
+     whose face set is still resolving is exactly the one that repaints after
+     the page reads as settled, so `readyState` alone must not be enough. */
+  describe('the frame-readiness predicate', () => {
+    const predicateFor = async () => {
+      const { test, bodies } = recorder();
+      const { page, expect: expectStub, captured } = fakePage();
+      sweepPages({ test, expect: expectStub, baseUrl: 'http://docs', routes: ['/'] });
+      await bodies[0]({ page });
+      return captured.waits[0];
+    };
+
+    const withFrames = (frames, predicate) => {
+      const stub = { querySelectorAll: () => frames };
+      vi.stubGlobal('document', stub);
+      try {
+        return predicate();
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    };
+
+    const frame = (readyState, status) => ({ contentDocument: { readyState, fonts: { status } } });
+
+    it('holds while a frame is still parsing', async () => {
+      const predicate = await predicateFor();
+
+      expect(withFrames([frame('loading', 'loaded')], predicate)).toBe(false);
+    });
+
+    it('holds while a parsed frame is still resolving its own fonts', async () => {
+      const predicate = await predicateFor();
+
+      expect(withFrames([frame('complete', 'loading')], predicate)).toBe(false);
+    });
+
+    it('passes once every frame is parsed and its fonts are resolved', async () => {
+      const predicate = await predicateFor();
+
+      expect(
+        withFrames([frame('complete', 'loaded'), frame('complete', 'loaded')], predicate),
+      ).toBe(true);
+    });
+
+    /* A cross-origin frame answers `null` and can never be inspected. Waiting
+       on one would hang the sweep forever on a page that embeds a third party;
+       Playwright reaches those through the per-frame loop instead. */
+    it('skips a frame it cannot see into rather than waiting forever', async () => {
+      const predicate = await predicateFor();
+
+      expect(withFrames([{ contentDocument: null }], predicate)).toBe(true);
+    });
   });
 
   /* A frame can detach between being listed and being asked. One that no longer
