@@ -1,8 +1,5 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "installation": {
-    "version": "22.7.0"
-  },
   /* So a local `nx affected` compares against the same branch CI does. Without
      it Nx infers a base, and the inference differs between a fresh clone and a
      long-lived checkout — the two disagree silently, in the direction of
