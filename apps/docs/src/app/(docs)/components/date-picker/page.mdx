@@ -5,6 +5,7 @@ import { PropsTables } from '@/components/docs/PropsTables';
 import { RelatedComponents } from '@/components/docs/RelatedComponents';
 import Basic from '@/components/demos/date-picker/Basic';
 import Empty from '@/components/demos/date-picker/Empty';
+import Open from '@/components/demos/date-picker/Open';
 
 export const metadata = { title: 'DatePicker' };
 
@@ -31,6 +32,27 @@ repeatedly.
 
 <DemoBlock file="date-picker/Empty.tsx">
   <Empty />
+</DemoBlock>
+
+## Starting open
+
+`defaultOpen` renders the calendar already open. It is uncontrolled — it seeds the initial
+state and then stops mattering, so the field still toggles on click and still closes on
+selection or an outside click. There is no controlled `open` prop to pair it with.
+
+Reach for it when the calendar is the point of the step rather than one field among many — a
+booking flow whose only question is "which day?" — and when a screenshot or a design review
+needs to show the grid rather than the closed field. The popover is positioned absolutely, so
+it reserves no space: give the surrounding layout the height the open calendar needs, or it
+will paint over what follows.
+
+One caveat if you prerender: today's date is read when the component renders, so a statically
+generated page bakes in whichever day the build ran and keeps showing it until the first
+client re-render. On a server-rendered open calendar, either mount it on the client or pick a
+month the marker cannot land in.
+
+<DemoBlock file="date-picker/Open.tsx">
+  <Open />
 </DemoBlock>
 
 ## Props
