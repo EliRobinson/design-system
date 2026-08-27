@@ -152,6 +152,38 @@ describe('brandIndex', () => {
   });
 });
 
+describe('named managed blocks', () => {
+  const doc = [
+    'intro',
+    '<!-- ds-artifacts:managed:begin -->',
+    'old index',
+    '<!-- ds-artifacts:managed:end -->',
+    'middle',
+    '<!-- ds-artifacts:managed:begin name="voice" -->',
+    'old voice',
+    '<!-- ds-artifacts:managed:end name="voice" -->',
+    'outro',
+  ].join('\n');
+
+  it('replaces the named block and leaves the unnamed one alone', () => {
+    const out = replaceManagedBlock(doc, 'NEW VOICE', 'doc', undefined, 'voice');
+    expect(out).toContain('NEW VOICE');
+    expect(out).toContain('old index');
+    expect(out).not.toContain('old voice');
+  });
+
+  it('replaces the unnamed block and leaves the named one alone', () => {
+    const out = replaceManagedBlock(doc, 'NEW INDEX', 'doc');
+    expect(out).toContain('NEW INDEX');
+    expect(out).toContain('old voice');
+    expect(out).not.toContain('old index');
+  });
+
+  it('throws naming the block when it is absent', () => {
+    expect(() => replaceManagedBlock(doc, 'x', 'doc', undefined, 'missing')).toThrow(/missing/);
+  });
+});
+
 describe('transformBrandDocs', () => {
   const { readme, skill } = transformBrandDocs({
     readme: doc,
