@@ -83,6 +83,7 @@
   "scripts": {
     "build": "node scripts/build-artifacts.mjs",
     "build:design-project": "node scripts/build-design-project.mjs",
+    "sync:voice": "node scripts/sync-voice.mjs",
     "prepack": "node scripts/build-artifacts.mjs",
     "lint": "echo 'No lint configured for ai-patterns'",
     "test": "vitest run",
