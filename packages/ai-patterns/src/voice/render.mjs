@@ -59,7 +59,11 @@ export function renderVoiceCard(pack) {
   validatePack(pack);
 
   return [
-    `<!-- @dsCard group="Brand" viewport="700x320" name="Voice" subtitle="${pack.label}, sentence case, em-dashes, no hype words" -->`,
+    /* `fullName`, not `label`: the card's subtitle is the one place the brand
+       is named in full, and rendering the short mark here would quietly drop
+       "Technologies" from a page that has shipped with it. renderVoice keeps
+       `label`, which is what the README section says. */
+    `<!-- @dsCard group="Brand" viewport="700x320" name="Voice" subtitle="${pack.fullName}, sentence case, em-dashes, no hype words" -->`,
     '<!doctype html><html><head><meta charset="utf-8">',
     '<link rel="stylesheet" href="../styles.css">',
     '<style>body{margin:0;padding:20px;background:var(--bg);font-family:var(--font-sans)}',

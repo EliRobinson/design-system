@@ -67,6 +67,14 @@ describe('renderVoiceCard', () => {
   it('opens with the @dsCard marker the Design System pane indexes on', () => {
     expect(renderVoiceCard(pack).startsWith('<!-- @dsCard ')).toBe(true);
   });
+
+  /* The card that shipped by hand read "Miltinson Technologies". `label` is the
+     short mark the README's opening line is pinned to, so the card has to name
+     the pack's `fullName` or generating it drops a word off a rendered page. */
+  it('names the brand in full in the subtitle, not by the short mark', () => {
+    expect(renderVoiceCard(pack)).toContain(`subtitle="${pack.fullName}, sentence case`);
+    expect(pack.fullName).not.toBe(pack.label);
+  });
 });
 
 describe('toneSummary', () => {
