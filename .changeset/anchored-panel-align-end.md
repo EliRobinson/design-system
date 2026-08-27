@@ -27,6 +27,11 @@ It is now written as `max(var(--anchored-min-width, 0px), <trigger width>)`, and
 stays in the stylesheet, where it belongs; a panel that declares no floor falls back to `0px` and
 is sized by its trigger exactly as before.
 
+A panel that does not fit is still neither flipped nor clamped. `align: 'end'` is an opt-in a
+consumer has to know to reach for, and there is no equivalent on the vertical axis: a
+`side: 'bottom'` panel on a trigger near the bottom of the viewport is squeezed the same way this
+one was. Tracked in #195.
+
 One internal note for anyone composing the overlay parts directly: `useAnchoredOverlay` no longer
 runs `useAnchoredPosition`. `AnchoredOverlayContent` does, because that is where `side` and `align`
 arrive. Using the two together, as `DropdownMenu` and `Popover` do, is unchanged.
