@@ -193,24 +193,42 @@ export async function waitForStablePixels(page, { expect, fullPage = false, time
     );
   }
 
-  /* `loading="lazy"` defers a frame until it nears the viewport, which on a
-     long page means it starts loading *after* everything below settles — and
-     its fonts start resolving later still. Promoting to eager restarts a frame
-     that has not begun loading yet, so the waits below have something to wait
-     on rather than agreeing about an empty box. */
+  /* `loading="lazy"` defers a frame until it nears the viewport, so whether a
+     given frame has loaded at capture time is a race against how far down the
+     page the capture has scrolled and how fast the machine is — and on a long
+     page it starts loading *after* everything below it has gone quiet, with
+     its fonts resolving later still.
+
+     Measured on /brand/guidelines, which embeds 23 cards this way: 11 of 23
+     loaded locally and the rest never did, while CI landed on a different
+     split per run. Promoting to eager is what makes the set deterministic;
+     the waits below are what make it settled. Without this they have nothing
+     to wait on and agree about an empty box — a frame that is blank in two
+     consecutive captures reads as stable, which is how a missing card became
+     a baseline (#204). */
   await page.evaluate(() => {
     for (const iframe of document.querySelectorAll('iframe[loading="lazy"]')) {
       iframe.loading = 'eager';
     }
   });
 
-  /* An <iframe> carries its own document, and a frame that is still parsing
-     one has nothing to report about its images or its fonts yet. Cross-origin
-     frames answer nothing here and are left to the settle loop below. */
+  /* An <iframe> carries its own document, and a frame still parsing one has
+     nothing to report about its images or its fonts yet. `fonts.status` is
+     checked here rather than awaited per frame below because a frame whose
+     face set is still resolving is exactly the one that repaints after the
+     page reads as settled.
+
+     Same-origin frames only: a cross-origin frame's `contentDocument` is null
+     and nothing here can inspect it, so it is skipped rather than waited on
+     forever — the per-frame loop below reaches those through Playwright.
+     This throws on a frame that never finishes, deliberately: a page whose
+     content never arrives must fail loudly rather than bake its own absence
+     into a baseline. */
   await page.waitForFunction(() =>
     Array.from(document.querySelectorAll('iframe')).every((iframe) => {
       try {
-        return !iframe.contentDocument || iframe.contentDocument.readyState === 'complete';
+        const doc = iframe.contentDocument;
+        return !doc || (doc.readyState === 'complete' && doc.fonts.status === 'loaded');
       } catch {
         return true;
       }
@@ -245,42 +263,6 @@ export async function waitForStablePixels(page, { expect, fullPage = false, time
          problem; anything still attached is covered by the loop below. */
     }
   }
-
-  /* Lazy iframes, and then their contents. Both halves are load-bearing (#204).
-     
-     `loading="lazy"` defers a frame until it nears the viewport, so whether a
-     given frame has loaded at capture time is a race against how far down the
-     page the capture has scrolled and how fast the machine is. Measured on
-     /brand/guidelines, which embeds 23 cards this way: 11 of 23 loaded locally
-     and the rest never did, while CI landed on a different split per run — one
-     card's worth of pixels, ~0.01 of the image, alternating between the light
-     and dark shots with nothing else changing.
-     
-     Flipping them eager is what makes the set deterministic; waiting on each
-     frame's own document is what makes it settled. Neither guard above sees
-     any of this: `document.images` is the parent's collection and does not
-     include frames, and `document.fonts.ready` is the parent's font set. The
-     settle loop below cannot catch it either — a frame that is blank in two
-     consecutive captures reads as stable, which is precisely how a missing
-     card became a baseline. */
-  await page.evaluate(() => {
-    for (const frame of document.querySelectorAll('iframe[loading="lazy"]')) {
-      frame.loading = 'eager';
-    }
-  });
-
-  /* Same-origin frames only: a cross-origin frame's `contentDocument` is null
-     and nothing here can inspect it, so it is skipped rather than waited on
-     forever. This throws on a frame that never finishes, like the images guard
-     above — a page whose content never arrives must fail loudly rather than
-     bake its own absence into a baseline. */
-  await page.waitForFunction(() =>
-    Array.from(document.querySelectorAll('iframe')).every((frame) => {
-      const doc = frame.contentDocument;
-      if (!doc) return true;
-      return doc.readyState === 'complete' && doc.fonts.status === 'loaded';
-    }),
-  );
 
   /* A text caret blinks roughly twice a second, and it is not a CSS animation,
      so `animations: 'disabled'` does not touch it. Any page that focuses an
