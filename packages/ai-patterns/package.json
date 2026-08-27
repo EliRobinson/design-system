@@ -31,6 +31,8 @@
     "./prompts/*": "./src/prompts/*",
     "./agents/*": "./src/agents/*",
     "./resync/skill": "./src/resync/SKILL.md",
+    "./voice/resolve": "./src/voice/resolve.mjs",
+    "./voice/render": "./src/voice/render.mjs",
     "./corpus": {
       "types": "./src/artifacts/llms.d.ts",
       "import": "./src/artifacts/llms.mjs",

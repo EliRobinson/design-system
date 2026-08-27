@@ -206,17 +206,44 @@ export function brandManifest() {
   );
 }
 
-/** The brand voice rules, extracted by the corpus generator's own extractor. */
+/**
+ * The voice pack in force, rendered — the consumer's own when this repo declares one,
+ * and the pack the design system ships otherwise.
+ *
+ * Resolved rather than read out of the shipped brand README, which is what this used to
+ * do. The README only ever carries the default, so a consumer that declared its own
+ * voice.json got told about somebody else's brand by a server they mounted for their own
+ * product. The default case is unchanged bytes: `renderVoice` reproduces that README
+ * section exactly, which is the byte contract PR 2 pinned.
+ *
+ * @returns {Promise<{text: string, packId: string, label: string,
+ *                    source: 'consumer'|'default', path: string}>}
+ */
 export async function brandVoiceRules() {
   return memo('brand-voice', async () => {
-    const readme = readFileSync(
-      resolveFrom('@elirobinson/ai-patterns/brand-readme', '@elirobinson/ai-patterns'),
-      'utf8',
+    const { resolveVoicePack } = await import(
+      pathToFileURL(
+        resolveFrom('@elirobinson/ai-patterns/voice/resolve', '@elirobinson/ai-patterns'),
+      )
     );
-    const { brandVoice } = await import(
-      pathToFileURL(resolveFrom('@elirobinson/ai-patterns/corpus', '@elirobinson/ai-patterns'))
+    const { renderVoice } = await import(
+      pathToFileURL(
+        resolveFrom('@elirobinson/ai-patterns/voice/render', '@elirobinson/ai-patterns'),
+      )
     );
-    return brandVoice(readme);
+
+    const { pack, source, path } = resolveVoicePack({ cwd: process.cwd() });
+
+    return {
+      /* The trailing `---` divides two sections of the brand README and means nothing
+         to a reader who is handed the voice on its own — `brandVoice` drops it for the
+         corpus for the same reason. */
+      text: renderVoice(pack).replace(/\n---\s*$/, ''),
+      packId: pack.id,
+      label: pack.label,
+      source,
+      path,
+    };
   });
 }
 

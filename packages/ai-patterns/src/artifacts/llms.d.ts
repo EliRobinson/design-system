@@ -113,6 +113,12 @@ export type BrandInput = {
   /** design-system-docs/README.md source; CONTENT FUNDAMENTALS is extracted. */
   readme: string;
   /**
+   * The id of the voice pack the section renders — `resolveVoicePack().pack.id`. The
+   * caller resolves it, because this renderer reads no filesystem. Required: a corpus
+   * that cannot name its pack should not claim to carry one.
+   */
+  packId: string;
+  /**
    * Pre-filtered by the caller: the packed snapshot passes only `ships: true`
    * artifacts; the docs site may include repo-only ones, which are marked.
    */

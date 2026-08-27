@@ -295,6 +295,25 @@ describe('get_brand_guidance', () => {
     expect(result.isError).toBe(true);
     expect(textOf(result)).toMatch(/Kits: .*webapp/);
   });
+
+  /* A consumer mounting this server for their own product used to get a tool whose own
+     description advertised that it makes their pages Miltinson. Naming the pack and
+     calling it a default is the whole of what this changes — the voice body beneath is
+     the same bytes. */
+  it('names the pack and calls it a default, rather than a rule of the system', async () => {
+    const text = textOf(await call('get_brand_guidance'));
+    expect(text).toContain('pack: miltinson');
+    expect(text).toContain('default');
+    expect(text).toContain('ds init --voice');
+    expect(text).not.toContain('rather than merely correct');
+  });
+
+  it('does not advertise in its own description that it makes pages Miltinson', async () => {
+    const { tools } = await client.listTools();
+    const { description } = tools.find((tool) => tool.name === 'get_brand_guidance');
+    expect(description).not.toMatch(/Miltinson/);
+    expect(description).toMatch(/voice pack/);
+  });
 });
 
 describe('check_adherence', () => {

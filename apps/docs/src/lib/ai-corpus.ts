@@ -23,6 +23,7 @@ import { cssTokens } from './tokens-css';
 
 const APP_DIR = join(process.cwd(), 'src/app/(docs)');
 const BRAND_README = join(process.cwd(), '../../design-system-docs/README.md');
+const BRAND_PACK = join(process.cwd(), '../../design-system-docs/miltinson.voice.json');
 
 /* What a reader of /llms.txt can fetch next. The packed snapshot answers the
    same question with filenames and the `ds` CLI; a website answers it with
@@ -150,6 +151,11 @@ export function llmsIndex(): string {
 function brandInput() {
   return {
     readme: readFileSync(BRAND_README, 'utf8'),
+    /* This site is the pack's own product, so the pack in force here is always the
+       one in the repo — read rather than resolved, for the same reason the packed
+       snapshot reads it: nothing about the directory the build ran from should be
+       able to change what /llms-full.txt says its voice is. */
+    packId: (JSON.parse(readFileSync(BRAND_PACK, 'utf8')) as { id: string }).id,
     note: 'The brand source of truth is design-system-docs/ in this repo; consumers receive the shipped subset through @elirobinson/ai-patterns.',
     artifacts: brandManifest.artifacts.filter(
       (artifact) =>

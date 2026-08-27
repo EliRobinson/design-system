@@ -213,6 +213,11 @@ function main() {
          advertising repo-only material to a consumer is a broken pointer. */
       brand: {
         readme: regenerated,
+        /* The pack this build packs, read from the source it copies into the brand
+           skill above — deliberately not `resolveVoicePack`. This is the system's own
+           tarball, and a `voice.json` sitting in whatever directory the build happened
+           to run from must not decide what a consumer receives. */
+        packId: JSON.parse(readFileSync(join(brandSource, 'miltinson.voice.json'), 'utf8')).id,
         note:
           'The full brand skill — tokens, assets, UI kits — ships alongside this one at ' +
           `.claude/skills/${SKILL_DIRS.brand}/.`,

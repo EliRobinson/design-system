@@ -322,12 +322,25 @@ export function llmsFull({
   }
 
   if (brand) {
+    /* Loudly, and here rather than at the surface: the id is the whole point of the
+       section's new framing, and a corpus published saying `pack: undefined` would be a
+       worse claim than the one this replaced. This renderer is pure and cannot look the
+       id up itself, so it refuses the input instead. */
+    if (!brand.packId) {
+      throw new Error(
+        'llmsFull: brand.packId is required — the voice section names the pack in force, ' +
+          'and a corpus that cannot name it should not claim to carry one.',
+      );
+    }
+
     parts.push(
       '',
-      '## Brand',
+      '## Voice',
       '',
-      'How Miltinson surfaces are written and what brand material exists. Prop tables and',
-      'tokens make a page correct; these rules make it Miltinson.',
+      `The voice pack in force (pack: ${brand.packId}). Prop tables and tokens make a page`,
+      'correct; a voice pack makes it sound like a particular product. This one is the',
+      'default this system ships, not a rule of the system — a product declares its own',
+      'with `ds init --voice` and this section follows it.',
     );
     if (brand.note) {
       parts.push('', brand.note);

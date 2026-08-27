@@ -293,6 +293,7 @@ describe('llmsFull', () => {
       tokens,
       brand: {
         readme,
+        packId: 'miltinson',
         note: 'The brand source lives here.',
         artifacts: [
           {
@@ -306,12 +307,33 @@ describe('llmsFull', () => {
       },
     });
 
-    it('omits the brand section entirely when the caller has no brand input', () => {
-      expect(text).not.toContain('## Brand');
+    it('omits the voice section entirely when the caller has no brand input', () => {
+      expect(text).not.toContain('\n## Voice\n');
+    });
+
+    /* The section is the same bytes it always was. What changed is the claim above them:
+       `## Brand — these rules make it Miltinson` asserted one consumer's business facts as
+       a rule of the system, which is exactly what docs/agents/brand-boundary.md forbids.
+       A named, replaceable pack labelled a default does not. */
+    it('frames the voice as a replaceable pack, not as a rule of the system', () => {
+      /* Newline-anchored: `### Voice` inside the body contains `## Voice`, so the bare
+         substring passes against the old heading too. */
+      expect(withBrand).toContain('\n## Voice\n');
+      expect(withBrand).toContain('pack: miltinson');
+      expect(withBrand).toContain('default');
+      expect(withBrand).toContain('ds init --voice');
+      expect(withBrand).not.toContain('these rules make it Miltinson');
+      expect(withBrand).not.toContain('## Brand\n');
+    });
+
+    /* `pack: undefined` in a published corpus is worse than the framing it replaced.
+       The renderer is pure and cannot look the id up, so it refuses the input instead. */
+    it('refuses a brand input that cannot name its pack', () => {
+      expect(() => llmsFull({ manifest, contracts, tokens, brand: { readme } })).toThrow(/packId/);
     });
 
     it('carries the voice rules, the caller note, and the artifact inventory', () => {
-      expect(withBrand).toContain('## Brand');
+      expect(withBrand).toContain('\n## Voice\n');
       expect(withBrand).toContain('The voice is Miltinson Technologies.');
       expect(withBrand).toContain('The brand source lives here.');
       expect(withBrand).toContain(
