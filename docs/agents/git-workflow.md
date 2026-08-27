@@ -2,6 +2,25 @@
 
 Always use conventional commit messages.
 
+## This repo rebase-merges
+
+Squash and merge commits are both disabled; `gh pr merge --squash` fails with
+`Squash merges are not allowed on this repository`. Use `--rebase`.
+
+Two consequences, and the second is the one that changes how you write a branch:
+
+- **A merged branch is still never an ancestor of `main`.** Rebasing rewrites
+  every commit, so the SHAs you pushed are not the SHAs that land. Check PR
+  state — `gh pr view <n> --json state` — never `git merge-base --is-ancestor`,
+  which reports merged branches as unmerged. This was equally true under
+  squash; only the mechanism changed.
+- **Every commit on the branch lands on `main` individually.** Nothing is
+  folded away, so an intermediate commit is permanent history rather than a
+  private working step. Keep the branch to commits you would want in the log.
+  That includes the baseline-accept commit CI pushes for you when you apply
+  `visual-accept` — it lands beside your change rather than being absorbed
+  into it.
+
 ## Screenshots for front-end changes
 
 Any PR that changes front-end code (components, layout, styling, tokens that affect rendered output) must include before-and-after screenshots in the PR description. Take the "before" screenshot on the unmodified code, make the change, then take the "after" screenshot of the same view. This gives reviewers a visual diff alongside the code diff for stronger UI/UX review — don't rely on a description of the change instead.
@@ -15,7 +34,7 @@ Every PR that has ever attached a screenshot got the link form wrong, each in a 
 | #88  | relative path                       | never rendered, from the day it was opened            |
 | #73  | absolute URL on the **branch name** | 404 the moment the branch was deleted on merge        |
 | #67  | absolute URL on **`main`**          | renders — until the file is moved, renamed or deleted |
-| #107 | absolute URL on the **branch SHA**  | renders, but the SHA was orphaned by squash-merge     |
+| #107 | absolute URL on the **branch SHA**  | renders, but the SHA was orphaned when the PR merged  |
 
 All four have since been repointed at a commit reachable from `main`, so don't read them as live examples of the breakage — read the table.
 
@@ -43,17 +62,19 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' https://raw.githubuserc
 
 Check the content type, not just the status. A 404 from `github.com` redirects to a login page and answers `200 text/html`; only `image/png` means the link is good.
 
-### After merge, repoint to the squash commit
+### After merge, repoint to the commit that landed
 
-**This repo squash-merges, which orphans every commit on the branch** — including the one the screenshots are pinned to. So the SHA you had to use when opening the PR is, by definition, not the SHA the record should keep.
+**Merging orphans every commit on the branch** — including the one the screenshots are pinned to. Rebasing rewrites each commit onto `main`, so what you pushed and what landed are different objects, and the SHA you had to use when opening the PR is, by definition, not the SHA the record should keep. (This was true under squash for a different reason, which is why the procedure below did not change when the merge method did.)
 
 GitHub still serves blobs from unreachable commits, so nothing visibly breaks the moment it merges (verified on #107 after its branch commit was orphaned). But it is unreachable from any ref, nothing guarantees it stays served, and `git show <sha>` fails for anyone who fetches the repo fresh. Repoint the body once, right after merging:
 
 ```bash
-gh pr view <pr> --json mergeCommit -q .mergeCommit.oid   # the squash commit, on main
+gh pr view <pr> --json mergeCommit -q .mergeCommit.oid   # the tip that landed, on main
 ```
 
-Swap that SHA into the body's image URLs and `gh pr edit <pr> --body-file …`. Two SHAs total: the branch one to open with, the squash one to leave behind.
+For a rebase merge that is the **tip of the landed sequence**, not a single combined commit — verified on #184, where the branch's two commits landed as `ce0a782` and `7417ed8` and `mergeCommit` returned the latter. The tip is still the right SHA to pin to even when the assets were committed earlier in the branch: a file added by any commit is present in every commit after it, so the tip carries every PNG the branch introduced.
+
+Swap that SHA into the body's image URLs and `gh pr edit <pr> --body-file …`. Two SHAs total: the branch one to open with, the landed one to leave behind.
 
 A human opening the PR in a browser can skip all of this by dragging the PNGs into the description box, which uploads them to GitHub's `user-attachments` CDN — tied to no commit, so there is nothing to repoint and nothing enters the repo. That is the nicer result, but it cannot be scripted, so anything running headless uses the committed-asset path above.
 
