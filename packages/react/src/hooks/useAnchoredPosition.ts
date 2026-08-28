@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { useLayoutEffect } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 
 type Side = 'top' | 'bottom';
 type Align = 'start' | 'center' | 'end';
@@ -49,11 +49,15 @@ function minWidthFor(triggerWidth: number) {
  * up in the wrong place first. The fourth argument accepts a bare side for the
  * common case (`'top'` / `'bottom'`) or an options object.
  *
- * It does not flip or clamp the panel to stay inside the viewport — a panel
- * anchored near an edge can overflow it. Note that a `position: fixed` panel
- * with no width does not merely overflow: its shrink-to-fit width is capped by
- * whatever room is left beside the edge that is pinned, so the content reflows
- * instead. `align: 'end'` is the answer for the common right-edge trigger.
+ * A panel that does not fit on the side it asked for flips to the opposite one
+ * — `bottom` to `top`, `start` to `end` — provided the opposite side has room.
+ * Each axis flips at most once per open and never flips back, so the panel
+ * cannot chase a threshold it is sitting on; `align: 'center'` is symmetric and
+ * never flips. It does not *clamp*, though: a panel that fits on neither side
+ * stays where it was asked to go, and a `position: fixed` panel with no width
+ * does not merely overflow — its shrink-to-fit width is capped by whatever room
+ * is left beside the pinned edge, so the content reflows instead. Give such a
+ * panel a `--anchored-min-width` floor, or room. See #195.
  */
 export function useAnchoredPosition(
   open: boolean,
@@ -64,10 +68,22 @@ export function useAnchoredPosition(
   const resolved = typeof options === 'string' ? { side: options } : options;
   const { side = 'bottom', align = 'start', zIndex = 'var(--z-overlay)' } = resolved;
 
+  /* Each axis flips at most once, away from a side that does not fit and never
+     back. That is what keeps a measure-then-reposition pass from oscillating:
+     flipping changes the very measurement that caused it, so a decision free to
+     move both ways can chase itself every frame at the threshold. One-way, the
+     loop cannot close — and once an axis has settled there is nothing left to
+     decide, so the measurement stops mattering. */
+  const flippedSide = useRef(false);
+  const flippedAlign = useRef(false);
+
   useLayoutEffect(() => {
     if (!open) {
       return;
     }
+
+    flippedSide.current = false;
+    flippedAlign.current = false;
 
     function position() {
       const trigger = triggerRef.current;
@@ -77,6 +93,44 @@ export function useAnchoredPosition(
       }
 
       const rect = trigger.getBoundingClientRect();
+      const panel = content.getBoundingClientRect();
+
+      /* Read before any write. The panel's own box is the only thing measured
+         here, and measuring it after writing geometry would read back what
+         this pass had just set. */
+      const roomBelow = window.innerHeight - rect.bottom - GAP;
+      const roomAbove = rect.top - GAP;
+      const roomFromLeft = window.innerWidth - rect.left;
+      const roomFromRight = rect.right;
+
+      if (!flippedSide.current) {
+        const preferred = side === 'bottom' ? roomBelow : roomAbove;
+        const opposite = side === 'bottom' ? roomAbove : roomBelow;
+        /* Only worth flipping if the other side is actually better. A panel
+           that fits nowhere stays where it was asked to go. */
+        flippedSide.current = panel.height > preferred && panel.height <= opposite;
+      }
+
+      /* Centring is symmetric — there is no opposite edge to pin instead — so
+         a tooltip is left exactly where it was. */
+      if (align !== 'center' && !flippedAlign.current) {
+        const preferred = align === 'start' ? roomFromLeft : roomFromRight;
+        const opposite = align === 'start' ? roomFromRight : roomFromLeft;
+        flippedAlign.current = panel.width > preferred && panel.width <= opposite;
+      }
+
+      /* `flippedAlign` only ever latches on a start/end panel, so the centred
+         case needs no guard here. */
+      const effectiveSide: Side = flippedSide.current
+        ? side === 'bottom'
+          ? 'top'
+          : 'bottom'
+        : side;
+      const effectiveAlign: Align = flippedAlign.current
+        ? align === 'start'
+          ? 'end'
+          : 'start'
+        : align;
 
       content.style.position = 'fixed';
       content.style.zIndex = zIndex;
@@ -84,11 +138,11 @@ export function useAnchoredPosition(
       // Exactly one horizontal edge is ever pinned. The other is released to
       // `auto`, because a fixed box given both a left and a right is stretched
       // between them rather than sized by its content.
-      if (align === 'center') {
+      if (effectiveAlign === 'center') {
         content.style.left = `${rect.left + rect.width / 2}px`;
         content.style.right = 'auto';
         content.style.transform = 'translateX(-50%)';
-      } else if (align === 'end') {
+      } else if (effectiveAlign === 'end') {
         // Measured back from the same viewport width the `bottom` case below
         // measures against, for the same reason: a classic scrollbar makes
         // `window.innerWidth` a few pixels generous, and one consistent frame
@@ -104,7 +158,7 @@ export function useAnchoredPosition(
         content.style.transform = '';
       }
 
-      if (side === 'bottom') {
+      if (effectiveSide === 'bottom') {
         content.style.top = `${rect.bottom + GAP}px`;
         content.style.bottom = 'auto';
       } else {
