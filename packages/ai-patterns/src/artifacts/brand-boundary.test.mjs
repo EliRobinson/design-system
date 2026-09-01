@@ -8,9 +8,18 @@
  * price format, wordmark punctuation and product line came to ship to every other
  * consumer as the design system's own guidance. Two things are asserted, both mechanical:
  *
- *   1. No published artifact contains a brand term outside a permitted file.
+ *   1. No published file contains a brand term outside a permitted file. "Published" is
+ *      whatever each package's own `files` field says, negations included, plus the
+ *      `README.md` and `LICENSE` npm adds on its own — read from the manifests, never
+ *      restated here.
  *   2. The permitted-file set is exactly the set the doc's table names. Double-entry, so
  *      neither side can move without the other.
+ *
+ * Assertion 1 said "artifact" and meant it: the scan was `dist/artifacts` and the agent
+ * templates, while `files` had said `src` and `dist` all along. Most of published source
+ * went unchecked, and a banner naming one consumer survived the run that caught three
+ * others (#214). The claim and the check are the same sentence now, which is the only
+ * arrangement in which the docblock is worth trusting.
  *
  * Two terms are deliberately absent from the denylist, both recorded decisions:
  * "Miltinson Design System" is the system's own name, and `miltinson` is a palette and a
@@ -25,7 +34,13 @@ import { describe, expect, it } from 'vitest';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, '..', '..', '..', '..');
-const distArtifacts = join(here, '..', '..', 'dist', 'artifacts');
+const packagesDir = join(repo, 'packages');
+
+/* npm publishes these whether or not `files` names them. That is npm's rule and not this
+   repo's, so it is written down once, here, rather than copied into six manifests.
+   `package.json` ships too and is deliberately absent: its fields are registry metadata,
+   and `author` naming a person is provenance rather than guidance the system asserts. */
+const ALWAYS_PUBLISHED = ['README.md', 'LICENSE'];
 
 /* Business facts about one consumer. Not "Miltinson" alone: the system's name contains
    it, and so do the palette and pack identifiers, all three kept on purpose. */
@@ -101,6 +116,74 @@ function filesUnder(dir) {
   });
 }
 
+/* One negation from a `files` field, as a RegExp over a package-relative path.
+ *
+ * npm's patterns, not a general glob: `*` stops at a separator and `**` crosses them. The
+ * detail that matters is what an INTERIOR `**` means. This package's negation for test
+ * files has to exclude `src/foo.test.mjs` as well as `src/voice/foo.test.mjs`, and npm
+ * reads it that way; a required run of segments would quietly stop excluding the shallow
+ * half of the pattern's own job. So an interior `**` is an optional run and only a
+ * trailing one is the greedy "everything below here". Getting this backwards does not
+ * fail loudly — it publishes a test fixture and passes. */
+function toRegExp(pattern) {
+  const segments = pattern.split('/');
+  const source = segments
+    .map((segment, index) => {
+      const last = index === segments.length - 1;
+      if (segment === '**') return last ? '.*' : '(?:.*/)?';
+      const literal = segment.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*');
+      return last ? literal : `${literal}/`;
+    })
+    .join('');
+  return new RegExp(`^${source}$`);
+}
+
+/* Everything the registry would receive, read from the manifests that decide it.
+ *
+ * Derived rather than listed because a second list is a second thing to update, and the
+ * first one drifted: see the note in this file's header. The negations come from the
+ * manifest too, so the test never decides on its own that a file is unpublished — drop
+ * the `__fixtures__` negation tomorrow and the fixtures start being checked without
+ * anyone touching this file, which is the correct direction for that mistake. */
+function publishedFiles() {
+  return readdirSync(packagesDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) => {
+      const packageDir = join(packagesDir, entry.name);
+      const manifestPath = join(packageDir, 'package.json');
+      if (!statSync(manifestPath, { throwIfNoEntry: false })) return [];
+
+      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+      const declared = manifest.files ?? [];
+      const excluded = declared
+        .filter((pattern) => pattern.startsWith('!'))
+        .map((pattern) => toRegExp(pattern.slice(1)));
+
+      const included = declared.filter((pattern) => !pattern.startsWith('!'));
+
+      return [...included, ...ALWAYS_PUBLISHED].flatMap((include) => {
+        const target = join(packageDir, include);
+        const stat = statSync(target, { throwIfNoEntry: false });
+
+        /* An npm-implicit file may legitimately not exist — most packages here have no
+           README. A `files` entry that resolves to nothing is different: the scan just
+           got smaller and nobody chose that. `dist` is the one that goes missing, and a
+           silently shorter file list is exactly how this suite would go green while
+           checking half of what it claims, so it throws instead. */
+        if (!stat) {
+          if (ALWAYS_PUBLISHED.includes(include)) return [];
+          throw new Error(
+            `${manifest.name} publishes "${include}", which does not exist — run \`pnpm build\``,
+          );
+        }
+
+        return (stat.isDirectory() ? filesUnder(target) : [target])
+          .filter((path) => !excluded.some((pattern) => pattern.test(relative(packageDir, path))))
+          .map((path) => ({ file: relative(repo, path), path }));
+      });
+    });
+}
+
 describe('the brand boundary', () => {
   const permitted = permittedFiles();
 
@@ -117,16 +200,24 @@ describe('the brand boundary', () => {
     }
   });
 
-  describe('no published artifact asserts one consumer as a rule of the system', () => {
-    const built = filesUnder(distArtifacts);
+  describe('no published file asserts one consumer as a rule of the system', () => {
+    const published = publishedFiles();
 
-    it('found built artifacts to check — run `nx build ai-patterns` first', () => {
-      expect(built.length).toBeGreaterThan(0);
+    it('found published files to check — run `pnpm build` first', () => {
+      expect(published.length).toBeGreaterThan(0);
     });
 
     /* Permitted source files reach the tarball under their basename, so a built file is
-       permitted when its source counterpart is. */
+       permitted when its source counterpart is: `design-system-docs/miltinson.voice.json`
+       ships as `dist/artifacts/skills/miltinson-design/miltinson.voice.json`.
+       Scoped to build output, which is new and load-bearing. The permitted set contains a
+       `README.md`, and a basename match reaching checked-in files would hand every
+       package README in the repo a permission nobody granted it — the widened scan is the
+       first thing to bring package READMEs within range of that mistake. */
     const permittedNames = new Set(permitted.map((path) => path.split('/').pop()));
+    const isPermitted = (file) =>
+      permitted.includes(file) ||
+      (file.includes('/dist/') && permittedNames.has(file.split('/').pop()));
 
     /* The brand manifest is an index of the brand artifacts, so it necessarily quotes the
        title and subtitle of each one — including the files permitted to hold this brand's
@@ -149,18 +240,20 @@ describe('the brand boundary', () => {
       );
     };
 
-    it.each(built.map((path) => ({ file: relative(distArtifacts, path), path })))(
-      '$file',
-      ({ file, path }) => {
-        if (permittedNames.has(file.split('/').pop())) return;
-        const raw = readFileSync(path, 'utf8');
-        const source =
-          file === 'brand-manifest.json' ? withoutPermittedEntries(raw) : withoutVoiceSection(raw);
-        expect(BRAND_TERMS.filter((term) => source.includes(term))).toEqual([]);
-      },
-    );
+    it.each(published)('$file', ({ file, path }) => {
+      if (isPermitted(file)) return;
+      const raw = readFileSync(path, 'utf8');
+      const source = file.endsWith('/brand-manifest.json')
+        ? withoutPermittedEntries(raw)
+        : withoutVoiceSection(raw);
+      expect(BRAND_TERMS.filter((term) => source.includes(term))).toEqual([]);
+    });
   });
 
+  /* Subsumed by the scan above while `files` says `src`, and kept anyway: `ds init
+     --agents` copies these templates into a consumer's own repo, which is a second
+     distribution channel that no `files` field describes. The promise is about the
+     templates, not about the tarball that happens to carry them. */
   it('the ds init --agents templates carry no brand at all', () => {
     for (const path of filesUnder(join(here, '..', 'agents'))) {
       const source = readFileSync(path, 'utf8');

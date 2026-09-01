@@ -27,11 +27,16 @@ export const VOICE_SECTIONS = [
 const REQUIRED_PATHS = [
   'id',
   'label',
-  /* `label` is the short mark and `fullName` the legal one — "Miltinson" and
-     "Miltinson Technologies". Both are required because the surfaces disagree
-     about which they want: the README opens "How Miltinson copy is written",
-     and the guidelines card's subtitle names the company. Deriving one from
-     the other means a rendered page silently loses or gains a word. */
+  /* `label` is the short mark and `fullName` the legal one — "Acme" and "Acme
+     Corporation" in a pack that is nobody's. Both are required because the
+     surfaces disagree about which they want: a README opens "How <label> copy
+     is written", and the guidelines card's subtitle names the company. Deriving
+     one from the other means a rendered page silently loses or gains a word.
+
+     The example is invented rather than taken from the shipped pack because
+     this file is published (`files` includes `src`) and that pack's `fullName`
+     is on the brand denylist. A made-up pair carries the two-field rule just as
+     well; see docs/agents/brand-boundary.md. */
   'fullName',
   /* One sentence, for surfaces with no room for `guidance`. The guidelines
      card carried exactly this line by hand; rendering the card without it
