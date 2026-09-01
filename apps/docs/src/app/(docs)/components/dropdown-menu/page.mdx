@@ -86,11 +86,14 @@ when the submission does not need the form to survive the click.
   are preferences, not guarantees. Each axis flips at most once per open and never flips back,
   so a menu can't oscillate while you scroll. `side` and `align` on `DropdownMenuContent` set
   the preferred side.
-- It does not clamp: a menu that fits on neither side stays where it was asked to go. That
-  isn't a clip but a squeeze — a `position: fixed` panel with no width shrinks into whatever
-  space is left beside its pinned edge, so the items reflow and wrap. The squeeze stops at the
-  menu's floor: `.ds-dropdown__content` sets `--anchored-min-width: 180px`, and the positioner
-  keeps the larger of that and the trigger's width. See [`useAnchoredPosition`](/components/hooks#useanchoredposition).
+- A menu that fits on neither side is shifted rather than shrunk: it keeps its width and
+  slides along the axis until it is back inside the viewport, so its items never reflow into
+  whatever space is left beside a pinned edge. It stops being edge-aligned with its trigger,
+  which is the price. The width it keeps has a floor — `.ds-dropdown__content` sets
+  `--anchored-min-width: 180px`, and the positioner keeps the larger of that and the trigger's
+  width. A menu taller than the viewport is the one case no offset rescues: it takes a
+  `max-height` of the viewport and scrolls its own items.
+  See [`useAnchoredPosition`](/components/hooks#useanchoredposition).
 
 <DoDont
   do={[

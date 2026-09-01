@@ -41,6 +41,37 @@ function minWidthFor(triggerWidth: number) {
 }
 
 /**
+ * Slides one pinned offset along its axis until the panel is inside the
+ * viewport, and returns the offset to write.
+ *
+ * `offset` is the distance from the viewport edge the panel hangs off — a
+ * `left`, a `right`, a `top`, a `bottom` — so the panel occupies
+ * `offset` through `offset + size`, and the whole of it is on screen exactly
+ * when `0 <= offset <= viewport - size`. Shifting is that clamp and nothing
+ * more: the panel moves, it is never resized, so the width floor above and
+ * the panel's own content width both survive it untouched.
+ *
+ * Unlike the flip above this cannot be latched, and does not need to be. Flip
+ * is a choice between two placements, so leaving it free to change its mind
+ * lets it chase a threshold it is sitting on. A shift is not a choice — it is
+ * a function of the geometry in front of it, with no memory of the offset the
+ * last pass wrote. Feed it the same rects and it returns the same answer, so
+ * repositioning on every scroll event cannot walk the panel anywhere.
+ *
+ * The one feedback loop it does have is benign. A shrink-to-fit panel widens
+ * when it is given more room, and shifting only ever gives it more room, so
+ * across passes the measured width can only grow and the offset can only
+ * fall — monotonic, bounded below by 0, and settled the moment the panel is
+ * rendering at its natural width.
+ *
+ * `viewport - size` goes negative for a panel bigger than the viewport, and
+ * the `max` then pins it flush against the edge it was already anchored to.
+ */
+function shiftIntoView(offset: number, size: number, viewport: number) {
+  return Math.max(0, Math.min(offset, viewport - size));
+}
+
+/**
  * Positions a floating panel against its trigger with `position: fixed`, and
  * keeps it there while the page scrolls or the window resizes.
  *
@@ -53,11 +84,37 @@ function minWidthFor(triggerWidth: number) {
  * — `bottom` to `top`, `start` to `end` — provided the opposite side has room.
  * Each axis flips at most once per open and never flips back, so the panel
  * cannot chase a threshold it is sitting on; `align: 'center'` is symmetric and
- * never flips. It does not *clamp*, though: a panel that fits on neither side
- * stays where it was asked to go, and a `position: fixed` panel with no width
- * does not merely overflow — its shrink-to-fit width is capped by whatever room
- * is left beside the pinned edge, so the content reflows instead. Give such a
- * panel a `--anchored-min-width` floor, or room. See #195.
+ * never flips. A panel that fits on *neither* side is shifted instead: it keeps
+ * its width and slides along the axis until it is inside the viewport, so it
+ * stops being edge-aligned with its trigger, and may overlap it, but it is
+ * never narrowed into the room left beside a pinned edge and never reflows.
+ * Only a panel taller than the viewport fits at no offset at all; that one
+ * takes a `max-height` of the viewport and scrolls its own content.
+ *
+ * (The docs site renders the three paragraphs above and stops, so anything
+ * a consumer has to know belongs there rather than here.)
+ *
+ * Shifting rather than clamping is the decision #195 asked for, and it is
+ * decided by what a clamp would do: a `position: fixed` panel with no width is
+ * shrink-to-fit, so capping its width does not crop it — it reflows the
+ * content and wraps the labels, which is the squeeze #180 reported and reads
+ * as a styling bug rather than a positioning one. Moving the panel sidesteps
+ * the overflow-versus-wrap tradeoff entirely; the width floor `minWidthFor`
+ * writes survives a shift untouched, because a shift resizes nothing. Unlike
+ * the flip it is never latched — see `shiftIntoView` for why it does not need
+ * to be, and why recomputing it on every reposition cannot walk the panel
+ * across the screen. The one thing it cannot rescue horizontally is a panel
+ * wider than the viewport, which is left flush against the edge it was pinned
+ * to and overflows the other, because narrowing it is exactly what the floor
+ * exists to prevent.
+ *
+ * The shift is measured from the panel's rendered box, and the pass is ordered
+ * so that box is worth measuring — see the `position: fixed` written ahead of
+ * the read. Every offset it then writes leaves the panel room for the width it
+ * measured, so a panel placed by this hook is not squeezed into wrapping by
+ * where it was put. What it cannot see is a panel that resizes itself while it
+ * is open: nothing observes that, and it is corrected on the next scroll or
+ * resize like everything else here.
  */
 export function useAnchoredPosition(
   open: boolean,
@@ -92,12 +149,24 @@ export function useAnchoredPosition(
         return;
       }
 
+      /* The one declaration written before the measurement, because it decides
+         what is being measured. A portalled panel that has not been positioned
+         yet is a block-level box as wide as the body it was appended to, and
+         every "does it fit?" question answered against that width answers
+         wrong — a shift computed from it would drag every panel to the edge of
+         the viewport on its first paint. Fixed, and with neither offset set
+         yet, the panel is shrink-to-fit at its static position: its natural
+         width, up to the viewport. On every later pass the property already
+         holds this value, so nothing is invalidated and the read below flushes
+         the same single layout it would have flushed anyway. */
+      content.style.position = 'fixed';
+
       const rect = trigger.getBoundingClientRect();
       const panel = content.getBoundingClientRect();
 
-      /* Read before any write. The panel's own box is the only thing measured
-         here, and measuring it after writing geometry would read back what
-         this pass had just set. */
+      /* Read before any write of geometry. Both boxes are measured up front,
+         and measuring them after writing offsets would read back what this
+         pass had just set. */
       const roomBelow = window.innerHeight - rect.bottom - GAP;
       const roomAbove = rect.top - GAP;
       const roomFromLeft = window.innerWidth - rect.left;
@@ -132,14 +201,18 @@ export function useAnchoredPosition(
           : 'start'
         : align;
 
-      content.style.position = 'fixed';
       content.style.zIndex = zIndex;
 
       // Exactly one horizontal edge is ever pinned. The other is released to
       // `auto`, because a fixed box given both a left and a right is stretched
       // between them rather than sized by its content.
       if (effectiveAlign === 'center') {
-        content.style.left = `${rect.left + rect.width / 2}px`;
+        /* Shifting is stated in terms of the edge that is on screen or not, so
+           the centre is taken apart into a left edge, shifted, and put back
+           together — `translateX(-50%)` is still what does the centring. */
+        const centred = rect.left + rect.width / 2;
+        const shifted = shiftIntoView(centred - panel.width / 2, panel.width, window.innerWidth);
+        content.style.left = `${shifted + panel.width / 2}px`;
         content.style.right = 'auto';
         content.style.transform = 'translateX(-50%)';
       } else if (effectiveAlign === 'end') {
@@ -147,24 +220,43 @@ export function useAnchoredPosition(
         // measures against, for the same reason: a classic scrollbar makes
         // `window.innerWidth` a few pixels generous, and one consistent frame
         // is worth more here than two subtly different ones.
-        content.style.right = `${window.innerWidth - rect.right}px`;
+        const pinned = window.innerWidth - rect.right;
+        content.style.right = `${shiftIntoView(pinned, panel.width, window.innerWidth)}px`;
         content.style.left = 'auto';
         content.style.minWidth = minWidthFor(rect.width);
         content.style.transform = '';
       } else {
-        content.style.left = `${rect.left}px`;
+        content.style.left = `${shiftIntoView(rect.left, panel.width, window.innerWidth)}px`;
         content.style.right = 'auto';
         content.style.minWidth = minWidthFor(rect.width);
         content.style.transform = '';
       }
 
       if (effectiveSide === 'bottom') {
-        content.style.top = `${rect.bottom + GAP}px`;
+        content.style.top = `${shiftIntoView(rect.bottom + GAP, panel.height, window.innerHeight)}px`;
         content.style.bottom = 'auto';
       } else {
-        content.style.bottom = `${window.innerHeight - rect.top + GAP}px`;
+        const pinned = window.innerHeight - rect.top + GAP;
+        content.style.bottom = `${shiftIntoView(pinned, panel.height, window.innerHeight)}px`;
         content.style.top = 'auto';
       }
+
+      /* The one case no offset can rescue, so the only case that gets a clamp.
+         Both properties are written on every pass — cleared to `''` rather
+         than left behind — so a panel that grows past the viewport and shrinks
+         back again gets its own stylesheet's height rules returned to it.
+
+         `>=`, not `>`, is what keeps the clamp from fighting the shift. The
+         next pass measures the box this one produced, and that box is exactly
+         `innerHeight` tall: read as `>` it would count as fitting, be released,
+         spring back to its full height, and be clamped again on the pass after
+         — the same oscillation the flip latch exists to prevent, arrived at
+         from the other direction. Clamping to the viewport exactly, and
+         treating the clamped height as still too tall, makes the panel its own
+         fixed point. */
+      const tallerThanViewport = panel.height >= window.innerHeight;
+      content.style.maxHeight = tallerThanViewport ? `${window.innerHeight}px` : '';
+      content.style.overflowY = tallerThanViewport ? 'auto' : '';
     }
 
     position();
