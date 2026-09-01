@@ -20,10 +20,13 @@
  * added there needs no change until this file wants to render it.
  */
 
-/* Names the system, not a company. "for Miltinson Technologies products" told every
-   consumer the system was built for one of them — the boundary violation this issue
-   exists to end, sitting in the first paragraph an agent reads. The system's own name
-   stays; that is a kept decision (docs/agents/brand-boundary.md). */
+/* Names the system, not a company. This line used to read "for <Company> products", which
+   told every consumer the system was built for one of them — the boundary violation this
+   issue exists to end, sitting in the first paragraph an agent reads. The placeholder is
+   deliberate and not coyness: this file ships (`files` includes `src`), the removed string
+   is itself on the brand denylist, and quoting it here would put back in a comment exactly
+   what the edit took out of the prose. The system's own name stays; that is a kept
+   decision (docs/agents/brand-boundary.md). */
 const INTRO =
   'Miltinson Design System — tokens, React 19 components, and AI patterns for the ' +
   'products built on it. Ink-led palette with one amber accent, sharp radii, ' +

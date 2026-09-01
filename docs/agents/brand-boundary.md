@@ -33,6 +33,26 @@ as `## Brand — these rules make it Miltinson`, and are not one framed as
 - **Does the tone ranking apply to a consumer's product?** Left open on the same terms.
   (#159 open question 2.)
 
+## Quoting a brand term to explain its removal
+
+A comment that quotes the string it deleted is the clearest kind of comment. In a
+published file it is also, still, the string. `@elirobinson/ai-patterns` lists `src` in
+`files`, so `src/artifacts/llms.mjs` and `src/voice/schema.mjs` reach the tarball with
+their comments intact, and each used the company name as its worked example — one to
+explain what the `llms.txt` intro stopped saying, the other to show why a pack carries a
+short mark and a legal name as separate fields.
+
+Both were reworded rather than permitted (#214). A placeholder — `<Company>`, `"Acme"` —
+carries each lesson whole: that the intro names the system rather than a company, and that
+the two name fields exist because the surfaces disagree about which they want. Neither
+argument needed the real string; it was there because it was at hand.
+
+Permitting them was the alternative, and it is the weaker one for the reason #145 records.
+An exception granted because a file is "only a comment" is the same shape as the exception
+that let the voice rules ship as the system's own guidance, and the permitted-file table
+below holds because every row in it is a file whose _job_ is to carry a brand's values. A
+comment is not that.
+
 ## Permitted files
 
 Every other published file is checked against the brand denylist. These are not, because
@@ -45,3 +65,17 @@ holding a brand's values is what they are for.
 | `design-system-docs/ui_kits/_shared/content.js`  | the kits' strings, in one place     |
 | `design-system-docs/README.md`                   | the brand skill's own document      |
 | `design-system-docs/SKILL.md`                    | the brand skill's own frontmatter   |
+
+And the published changelogs, on different grounds: a changelog is the record of a change,
+not guidance the system gives. An entry quotes the string it removed — that is what makes
+it readable — and the release tooling writes it from changesets, so a failure here would
+land on a `chore(release)` commit and the only available fix would be to edit shipped
+history into a lie about what shipped. `@elirobinson/eslint-config` keeps a changelog and
+does not list it in `files`, so it is not published and is not listed here.
+
+| path                                      | why                                          |
+| ----------------------------------------- | -------------------------------------------- |
+| `packages/ai-patterns/CHANGELOG.md`       | published history; generated from changesets |
+| `packages/design-system-mcp/CHANGELOG.md` | published history; generated from changesets |
+| `packages/react/CHANGELOG.md`             | published history; generated from changesets |
+| `packages/tokens/CHANGELOG.md`            | published history; generated from changesets |
