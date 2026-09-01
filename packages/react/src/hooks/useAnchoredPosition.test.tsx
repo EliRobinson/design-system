@@ -76,15 +76,16 @@ describe('useAnchoredPosition', () => {
       expect(panel.style.top).toBe('auto');
     });
 
-    it('stays below the trigger when neither side has room', () => {
-      /* A panel taller than the viewport fits nowhere; the preferred side is
-         still the better answer than an arbitrary flip. */
+    it('stays on the bottom edge when neither side has room', () => {
+      /* A panel taller than the viewport fits nowhere, so there is no better
+         side to flip to. It stays hung from the trigger's bottom edge — which
+         is what `bottom: auto` says — and the shift pass below is what then
+         decides where along the axis that leaves it. */
       const panel = anchor({
         trigger: { top: 400, left: 40, width: 120, height: 40 },
         panel: { width: 180, height: 900 },
       });
 
-      expect(panel.style.top).toBe(`${440 + GAP}px`);
       expect(panel.style.bottom).toBe('auto');
     });
 
@@ -129,8 +130,13 @@ describe('useAnchoredPosition', () => {
       placeAt(view.getByTestId('trigger'), { top: 100, left: 40, width: 120, height: 40 });
       fireEvent.scroll(window);
 
+      /* `top: auto` is the latch: the panel is still hung from the trigger's
+         top edge rather than re-deciding now that below fits again. The offset
+         is the shift pass's, not the anchor's — hanging a 200px panel above a
+         trigger 100px down the page would put it 104px past the top of the
+         viewport, and shift is what pulls it back to flush. */
       expect(panel.style.top).toBe('auto');
-      expect(panel.style.bottom).toBe(`${VIEWPORT_HEIGHT - 100 + GAP}px`);
+      expect(panel.style.bottom).toBe(`${VIEWPORT_HEIGHT - 200}px`);
     });
 
     it('starts over on the next open, rather than inheriting the last one', () => {
@@ -142,6 +148,113 @@ describe('useAnchoredPosition', () => {
       view.rerender(<Anchored open trigger={{ top: 100, left: 40, width: 120, height: 40 }} />);
 
       expect(view.getByTestId('panel').style.top).toBe(`${140 + GAP}px`);
+    });
+  });
+
+  /* Shift is this hook's answer to "fits on neither side", where flip has
+     nowhere better to go. The panel keeps its width floor and slides along the
+     axis until it is inside the viewport, instead of being left half off the
+     edge. Unlike flip it is never latched: the space beside a trigger changes
+     with every scroll, so the offset is recomputed each pass. */
+  describe('shifting a panel that fits on neither side', () => {
+    /* 724px of room right of the trigger's left edge, 420 back to its right
+       edge, for an 800px panel: neither alignment fits, so flip declines. */
+    const wide = {
+      trigger: { top: 100, left: 300, width: 120, height: 40 },
+      panel: { width: 800, height: 200 },
+    } as const;
+
+    it('slides a start-aligned panel back inside the right edge', () => {
+      const panel = anchor({ ...wide });
+
+      expect(panel.style.left).toBe(`${VIEWPORT_WIDTH - 800}px`);
+      expect(panel.style.right).toBe('auto');
+    });
+
+    it('keeps the trigger-width floor while shifted, rather than narrowing', () => {
+      const panel = anchor({ ...wide });
+
+      expect(panel.style.minWidth).toBe('max(var(--anchored-min-width, 0px), 120px)');
+      expect(panel.style.maxWidth).toBe('');
+    });
+
+    it('slides an end-aligned panel back inside the left edge', () => {
+      /* 924px of room back from the trigger's right edge is still short of a
+         950px panel, and the 220px in front of it is shorter still. */
+      const panel = anchor({
+        options: { align: 'end' },
+        trigger: { top: 100, left: 100, width: 120, height: 40 },
+        panel: { width: 950, height: 200 },
+      });
+
+      expect(panel.style.right).toBe(`${VIEWPORT_WIDTH - 950}px`);
+      expect(panel.style.left).toBe('auto');
+    });
+
+    it('slides a centred panel, which has no flip of its own to fall back on', () => {
+      /* Centred on 1000, a 180px panel would end at 1090. */
+      const panel = anchor({
+        options: { align: 'center' },
+        trigger: { top: 100, left: 980, width: 40, height: 40 },
+      });
+
+      expect(panel.style.left).toBe(`${VIEWPORT_WIDTH - 90}px`);
+      expect(panel.style.transform).toBe('translateX(-50%)');
+    });
+
+    it('slides a panel that fits neither above nor below up inside the viewport', () => {
+      /* 374px below the trigger and 346 above it, for a 500px panel. */
+      const panel = anchor({
+        trigger: { top: 350, left: 40, width: 120, height: 40 },
+        panel: { width: 180, height: 500 },
+      });
+
+      expect(panel.style.top).toBe(`${VIEWPORT_HEIGHT - 500}px`);
+      expect(panel.style.bottom).toBe('auto');
+    });
+
+    it('scrolls a panel taller than the viewport instead of sliding it', () => {
+      /* The one case shifting cannot rescue: no offset makes a 900px panel fit
+         in 768px of viewport. */
+      const panel = anchor({
+        trigger: { top: 400, left: 40, width: 120, height: 40 },
+        panel: { width: 180, height: 900 },
+      });
+
+      expect(panel.style.maxHeight).toBe(`${VIEWPORT_HEIGHT}px`);
+      expect(panel.style.overflowY).toBe('auto');
+      expect(panel.style.top).toBe('0px');
+    });
+
+    it('leaves the height alone for a panel that fits', () => {
+      const panel = anchor({ trigger: { top: 100, left: 40, width: 120, height: 40 } });
+
+      expect(panel.style.maxHeight).toBe('');
+      expect(panel.style.overflowY).toBe('');
+    });
+
+    it('lands in the same place on every reposition, with no drift', () => {
+      /* The shift is a function of the current rects alone, never of the
+         offset the last pass wrote, so repositioning cannot walk the panel
+         across the screen the way a flip free to move both ways could. */
+      const view = render(
+        <Anchored
+          trigger={{ top: 350, left: 300, width: 120, height: 40 }}
+          panel={{ width: 800, height: 500 }}
+        />,
+      );
+      const panel = view.getByTestId('panel');
+      const placed = { left: panel.style.left, top: panel.style.top };
+
+      fireEvent.scroll(window);
+      fireEvent.scroll(window);
+      fireEvent(window, new Event('resize'));
+
+      expect(placed).toEqual({
+        left: `${VIEWPORT_WIDTH - 800}px`,
+        top: `${VIEWPORT_HEIGHT - 500}px`,
+      });
+      expect({ left: panel.style.left, top: panel.style.top }).toEqual(placed);
     });
   });
 });

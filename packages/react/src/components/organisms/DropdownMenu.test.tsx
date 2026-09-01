@@ -218,8 +218,13 @@ describe('DropdownMenu anchoring', () => {
   it('forwards the side option through to the positioner', () => {
     const { menu } = renderMenu({ side: 'top' });
 
+    /* `top: auto` is what proves the option reached the positioner: the
+       default side pins a top and releases the bottom. The offset itself is
+       the shift's — measured from the trigger's top edge the menu would sit
+       772px up from the bottom of a 768px viewport, which is off the top of
+       it, so it slides back to the last offset a 500px panel fits at. */
     expect(menu.style.top).toBe('auto');
-    expect(menu.style.bottom).toBe('772px');
+    expect(menu.style.bottom).toBe('268px');
   });
 
   // The inline declaration outranks the stylesheet, so writing the trigger's

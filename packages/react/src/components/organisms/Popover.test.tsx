@@ -76,8 +76,12 @@ describe('Popover anchoring', () => {
 
     const panel = screen.getByRole('dialog');
     expect(panel.style.position).toBe('fixed');
-    // Bottom of the stubbed 500x500 trigger rect, plus the shared 4px gap.
-    expect(panel.style.top).toBe('504px');
+    /* The stub gives trigger and panel the same 500x500 rect, so hanging the
+       panel off the trigger's bottom edge plus the shared 4px gap would put it
+       504px down a 768px viewport and 236px past the end of it. What is
+       asserted is where the shift leaves it: the last offset a 500px panel
+       fits at. See useAnchoredPosition. */
+    expect(panel.style.top).toBe('268px');
   });
 
   // #180: the positioning options existed but PopoverContent forwarded none of

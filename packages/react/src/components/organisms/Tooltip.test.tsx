@@ -69,8 +69,11 @@ describe('Tooltip', () => {
     const tooltip = screen.getByRole('tooltip');
     expect(tooltip.style.position).toBe('fixed');
     expect(tooltip.style.transform).toBe('translateX(-50%)');
-    // Bottom of the stubbed 500x500 trigger rect, plus the shared 4px gap.
-    expect(tooltip.style.top).toBe('504px');
+    /* Trigger and panel share the stub's 500x500 rect, so the 504px this would
+       hang at — the trigger's bottom edge plus the shared 4px gap — is 236px
+       past the end of a 768px viewport, and the tooltip is shifted back to the
+       last offset it fits at. See useAnchoredPosition. */
+    expect(tooltip.style.top).toBe('268px');
   });
 
   // Anchoring used to be a getBoundingClientRect read in the render body, so
@@ -88,6 +91,6 @@ describe('Tooltip', () => {
       window.dispatchEvent(new Event('resize'));
     });
 
-    expect(tooltip.style.top).toBe('504px');
+    expect(tooltip.style.top).toBe('268px');
   });
 });

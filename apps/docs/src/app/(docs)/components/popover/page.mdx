@@ -54,11 +54,13 @@ There's no `PopoverClose` — unlike `Dialog`, closing programmatically means ca
   right edge pins its right edge to the trigger's instead — the `side` and `align` you pass to
   `PopoverContent` are preferences, not guarantees. Each axis flips at most once per open and
   never flips back, so it can't oscillate while you scroll.
-- It does not clamp: content that fits on neither side stays where it was asked to go, and
-  that isn't a clip but a squeeze — a `position: fixed` panel with no width shrinks into
-  whatever space is left beside its pinned edge, so the content reflows and wraps. Unlike
-  `DropdownMenu`, `PopoverContent` sets no `min-width` of its own, so the trigger's width is
-  the only floor — give your content `--anchored-min-width` if it needs a wider one.
+- Content that fits on neither side is shifted rather than shrunk: it keeps its width and
+  slides along the axis until it is back inside the viewport, so it never reflows into whatever
+  space is left beside a pinned edge. It stops being edge-aligned with its trigger, and may
+  overlap it, but it doesn't narrow. Content taller than the viewport takes a `max-height` of
+  the viewport and scrolls instead, since no offset makes that fit. Unlike `DropdownMenu`,
+  `PopoverContent` sets no `min-width` of its own, so the trigger's width is the only floor —
+  give your content `--anchored-min-width` if it needs a wider one.
   See [`useAnchoredPosition`](/components/hooks#useanchoredposition).
 
 <DoDont
