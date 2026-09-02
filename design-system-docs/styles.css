@@ -23,6 +23,7 @@
 @import '../packages/react/src/components/molecules/Breadcrumb.css';
 @import '../packages/react/src/components/molecules/Card.css';
 @import '../packages/react/src/components/molecules/Chip.css';
+@import '../packages/react/src/components/molecules/DecisionCard.css';
 @import '../packages/react/src/components/molecules/EmptyState.css';
 @import '../packages/react/src/components/molecules/FormField.css';
 @import '../packages/react/src/components/molecules/Pagination.css';
@@ -37,7 +38,6 @@
 @import '../packages/react/src/components/organisms/Combobox.css';
 @import '../packages/react/src/components/organisms/CommandPalette.css';
 @import '../packages/react/src/components/organisms/DatePicker.css';
-@import '../packages/react/src/components/molecules/DecisionCard.css';
 @import '../packages/react/src/components/organisms/Dialog.css';
 @import '../packages/react/src/components/organisms/DropdownMenu.css';
 @import '../packages/react/src/components/organisms/NavigationMenu.css';
