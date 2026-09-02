@@ -5,8 +5,7 @@
  * for tokens, component stylesheets and the component API; the design project
  * is the source for guidelines, ui_kits, templates, slides and patterns. This
  * script emits only the first set, so a push built from it can never clobber
- * the design work — the thing that makes the Storybook-shaped `.design-sync`
- * pipeline the wrong tool for this project.
+ * the design work.
  *
  * Two output roots, both of them written every run:
  *
@@ -22,10 +21,13 @@
  * Content generation lives in ../src/artifacts/*. This file is orchestration:
  * read the inputs, hand them to a builder, decide where the bytes land.
  *
- * Note this is NOT `.design-sync/`. That pipeline converts Storybook into a
- * flat generated bundle and targets a different project; pointing it at this
- * one would overwrite the guidelines, ui_kits, templates and slides that only
- * exist there.
+ * The narrow write boundary is the whole design, not an implementation detail.
+ * A converter that regenerates a project wholesale — the shape a Storybook-to-
+ * design-system importer naturally takes — deletes whatever its own build did
+ * not emit, which here is the guidelines, ui_kits, templates, slides and
+ * patterns that exist ONLY in the project and have no source in this repo.
+ * Anything pushed to this project must keep emitting a subset and deleting
+ * nothing.
  */
 
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
