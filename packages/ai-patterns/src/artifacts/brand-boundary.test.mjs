@@ -21,26 +21,33 @@
  * others (#214). The claim and the check are the same sentence now, which is the only
  * arrangement in which the docblock is worth trusting.
  *
+ * The reading of `files` itself moved to published-files.test-helper.mjs when
+ * dependency-boundary.test.mjs came to need the same answer (#220). One reader, because
+ * npm's negation semantics are subtle enough that a second one would get them wrong in
+ * the direction that passes.
+ *
  * Two terms are deliberately absent from the denylist, both recorded decisions:
  * "Miltinson Design System" is the system's own name, and `miltinson` is a palette and a
  * pack identifier. Matching is therefore term-plus-context, not bare substring.
  */
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { readFileSync, statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const repo = join(here, '..', '..', '..', '..');
-const packagesDir = join(repo, 'packages');
+import { filesUnder, publishedFiles, repoRoot as repo } from './published-files.test-helper.mjs';
 
-/* npm publishes these whether or not `files` names them. That is npm's rule and not this
-   repo's, so it is written down once, here, rather than copied into six manifests.
-   `package.json` ships too and is deliberately absent: its fields are registry metadata,
-   and `author` naming a person is provenance rather than guidance the system asserts. */
-const ALWAYS_PUBLISHED = ['README.md', 'LICENSE'];
+const here = dirname(fileURLToPath(import.meta.url));
+
+/* Nothing in a PNG or a font file can be grepped for a brand term, and reading one as
+   utf8 yields mojibake that would match nothing and cost a case each. The filter lives
+   here rather than in the shared walk because it is this suite's concern: what
+   dependency-boundary.test.mjs can read is a different list, and a shared walk that
+   pre-decided for both would be the same "a second list quietly shrinks the scan"
+   mistake this file was rewritten to close. */
+const READABLE = ({ file }) => !/\.(png|jpg|jpeg|webp|woff2?|ico|svg)$/i.test(file);
 
 /* Business facts about one consumer. Not "Miltinson" alone: the system's name contains
    it, and so do the palette and pack identifiers, all three kept on purpose. */
@@ -106,84 +113,6 @@ function withoutVoiceSection(source) {
   return source.slice(0, start) + (next === -1 ? '' : rest.slice(next));
 }
 
-function filesUnder(dir) {
-  if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) return [];
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) return filesUnder(path);
-    if (/\.(png|jpg|jpeg|webp|woff2?|ico|svg)$/i.test(entry.name)) return [];
-    return [path];
-  });
-}
-
-/* One negation from a `files` field, as a RegExp over a package-relative path.
- *
- * npm's patterns, not a general glob: `*` stops at a separator and `**` crosses them. The
- * detail that matters is what an INTERIOR `**` means. This package's negation for test
- * files has to exclude `src/foo.test.mjs` as well as `src/voice/foo.test.mjs`, and npm
- * reads it that way; a required run of segments would quietly stop excluding the shallow
- * half of the pattern's own job. So an interior `**` is an optional run and only a
- * trailing one is the greedy "everything below here". Getting this backwards does not
- * fail loudly — it publishes a test fixture and passes. */
-function toRegExp(pattern) {
-  const segments = pattern.split('/');
-  const source = segments
-    .map((segment, index) => {
-      const last = index === segments.length - 1;
-      if (segment === '**') return last ? '.*' : '(?:.*/)?';
-      const literal = segment.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*');
-      return last ? literal : `${literal}/`;
-    })
-    .join('');
-  return new RegExp(`^${source}$`);
-}
-
-/* Everything the registry would receive, read from the manifests that decide it.
- *
- * Derived rather than listed because a second list is a second thing to update, and the
- * first one drifted: see the note in this file's header. The negations come from the
- * manifest too, so the test never decides on its own that a file is unpublished — drop
- * the `__fixtures__` negation tomorrow and the fixtures start being checked without
- * anyone touching this file, which is the correct direction for that mistake. */
-function publishedFiles() {
-  return readdirSync(packagesDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .flatMap((entry) => {
-      const packageDir = join(packagesDir, entry.name);
-      const manifestPath = join(packageDir, 'package.json');
-      if (!statSync(manifestPath, { throwIfNoEntry: false })) return [];
-
-      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-      const declared = manifest.files ?? [];
-      const excluded = declared
-        .filter((pattern) => pattern.startsWith('!'))
-        .map((pattern) => toRegExp(pattern.slice(1)));
-
-      const included = declared.filter((pattern) => !pattern.startsWith('!'));
-
-      return [...included, ...ALWAYS_PUBLISHED].flatMap((include) => {
-        const target = join(packageDir, include);
-        const stat = statSync(target, { throwIfNoEntry: false });
-
-        /* An npm-implicit file may legitimately not exist — most packages here have no
-           README. A `files` entry that resolves to nothing is different: the scan just
-           got smaller and nobody chose that. `dist` is the one that goes missing, and a
-           silently shorter file list is exactly how this suite would go green while
-           checking half of what it claims, so it throws instead. */
-        if (!stat) {
-          if (ALWAYS_PUBLISHED.includes(include)) return [];
-          throw new Error(
-            `${manifest.name} publishes "${include}", which does not exist — run \`pnpm build\``,
-          );
-        }
-
-        return (stat.isDirectory() ? filesUnder(target) : [target])
-          .filter((path) => !excluded.some((pattern) => pattern.test(relative(packageDir, path))))
-          .map((path) => ({ file: relative(repo, path), path }));
-      });
-    });
-}
-
 describe('the brand boundary', () => {
   const permitted = permittedFiles();
 
@@ -201,7 +130,7 @@ describe('the brand boundary', () => {
   });
 
   describe('no published file asserts one consumer as a rule of the system', () => {
-    const published = publishedFiles();
+    const published = publishedFiles().filter(READABLE);
 
     it('found published files to check — run `pnpm build` first', () => {
       expect(published.length).toBeGreaterThan(0);
@@ -255,7 +184,10 @@ describe('the brand boundary', () => {
      distribution channel that no `files` field describes. The promise is about the
      templates, not about the tarball that happens to carry them. */
   it('the ds init --agents templates carry no brand at all', () => {
-    for (const path of filesUnder(join(here, '..', 'agents'))) {
+    const templates = filesUnder(join(here, '..', 'agents')).filter((path) =>
+      READABLE({ file: path }),
+    );
+    for (const path of templates) {
       const source = readFileSync(path, 'utf8');
       expect(BRAND_TERMS.filter((term) => source.includes(term))).toEqual([]);
     }
