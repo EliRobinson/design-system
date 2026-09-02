@@ -7,6 +7,23 @@ Project: `Miltinson Design System (Code)` — `d6aec269-c6ad-4fad-8af5-454ca4008
 (The pre-existing `Miltinson Design System` project is the hand-authored brand
 kit from `design-system-docs/` — a DIFFERENT project. Never sync into it.)
 
+> **2026-09-02: the pinned project no longer exists.** `get_project` on
+> `d6aec269-…` returns HTTP 404, and `list_projects` shows only the brand-kit
+> project. The pin is deliberately left in `config.json` so the next run 404s
+> loudly and lands here, rather than silently creating a duplicate. Running
+> this pipeline again means a **first-time import** into a new project: 50
+> components, 99 stories, every one re-graded from scratch, because the deleted
+> project took `_ds_sync.json` — the only carry-forward anchor — with it.
+>
+> The brand-kit project is still current: it is fed by
+> `pnpm -F @elirobinson/ai-patterns build:design-project`, a separate,
+> narrower pipeline that writes 66 files and deletes nothing. See the header
+> comment in `packages/ai-patterns/scripts/build-design-project.mjs` for why
+> that one, not this one, owns that project. Do not "consolidate" them by
+> pointing `.design-sync` at the brand kit: its delete pass covers
+> `components/`, `guidelines/`, `tokens/`, `_preview/`, `_vendor/` and `fonts/`,
+> which is where that project's hand-authored guideline and token cards live.
+
 ## Setup facts
 
 - Shape: **storybook**. Config dir `apps/storybook/.storybook`; storybook
