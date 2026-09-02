@@ -14,7 +14,10 @@
   "files": [
     "dist",
     "src",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/test/**"
   ],
   "peerDependencies": {
     "react": "^19.0.0",
