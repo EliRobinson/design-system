@@ -18,33 +18,39 @@
    a bug rather than a feature.
 
    ---------------------------------------------------------------------------
-   Four blocks, not a matrix
+   Flat blocks, not a matrix
    ---------------------------------------------------------------------------
-   Two palettes times two themes is four combinations, and they resolve out of
-   four flat blocks with no `!important`, no `@layer`, and no build step:
+   Every palette times two themes resolves out of flat blocks with no
+   `!important`, no `@layer`, and no build step. Two blocks per palette, in
+   this order:
 
-     1. `:root`                                            ember  light  (0,1,0)
-     2. `[data-theme='dark'], .dark`                        ember  dark   (0,1,0)
-     3. `[data-palette='slate']`                            slate  light  (0,1,0)
+     1. `:root`                                        ember      light  (0,1,0)
+     2. `[data-theme='dark'], .dark`                    ember      dark   (0,1,0)
+     3. `[data-palette='slate']`                        slate      light  (0,1,0)
      4. `[data-palette='slate'][data-theme='dark'],
-         [data-palette='slate'].dark`                       slate  dark   (0,2,0)
+         [data-palette='slate'].dark`                   slate      dark   (0,2,0)
+     5. `[data-palette='miltinson']`                    miltinson  light  (0,1,0)
+     6. `[data-palette='miltinson'][data-theme='dark'],
+         [data-palette='miltinson'].dark`               miltinson  dark   (0,2,0)
 
-   Block 4 is the only one that carries two compound conditions, so it is the
-   only one with (0,2,0), and it outranks the other three wherever it applies.
-   The first three tie at (0,1,0) and are decided by source order, which is why
-   the order above is the order below and must stay that way.
+   A palette's dark block is the only one of its pair that carries two compound
+   conditions, so it is the only one with (0,2,0), and it outranks every other
+   block wherever it applies. Every light block and the ember dark block tie at
+   (0,1,0) and are decided by source order, which is why the order above is the
+   order below and must stay that way.
 
    The consequence a reviewer has to check: on `slate` + `dark`, blocks 1, 2, 3
    and 4 all match, and the tie between 2 and 3 goes to 3 — the *later* one —
    which is slate's LIGHT block. So block 4 cannot be a thin diff over block 2;
    anything block 3 declares that dark needs to change, block 4 must restate.
-   Rather than track which tokens that is, all four blocks declare the complete
+   Rather than track which tokens that is, every block declares the complete
    semantic set. Identical values get repeated. That is the price of the
-   omission never being silent, and `contrast.test.mjs` measures all four
-   combinations so a token that leaks across a block is a failing build.
+   omission never being silent, and `contrast.test.mjs` measures every
+   palette × theme combination so a token that leaks across a block is a
+   failing build.
 
    Ramps are palette-level, not theme-level, so `--signal-*` and `--anchor-*`
-   are declared in blocks 1 and 3 only. Status and chart are theme-level but
+   are declared in each palette's light block only. Status and chart are theme-level but
    not palette-level, so they are declared in blocks 1 and 2 only.
 
    ---------------------------------------------------------------------------
@@ -53,7 +59,7 @@
    Two blocks — `[data-palette='<name>']` and
    `[data-palette='<name>'][data-theme='dark'], [data-palette='<name>'].dark` —
    appended after the ones below, each declaring the same complete set, plus
-   four measured columns in the ratio tables. Nothing else in the system
+   two more measured columns in the ratio tables. Nothing else in the system
    changes: tokens.css never names a ramp step, and no component may assume
    which palette is mounted or which way its hover moves.
 
