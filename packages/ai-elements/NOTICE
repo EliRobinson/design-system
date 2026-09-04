@@ -54,6 +54,20 @@ release they are, in full:
                          the emitted `dist/` resolves under Node's ESM resolver
                          rather than only under a bundler's.
 
+  - token-skin           Class names inside string literals are rewritten from
+                         literal values to design system tokens. Two kinds:
+                         Tailwind's own palette colours (`text-zinc-400`,
+                         `bg-red-100 dark:bg-red-900/30`, `text-white`,
+                         `bg-black/50`) and one literal radius, which no theme
+                         variable can re-point; and shadcn/ui's `--accent`,
+                         whose meaning upstream (a subtle hover tint) differs
+                         from its meaning here (the brand signal colour), so
+                         `bg-accent` becomes `bg-surface-2`. Where a light
+                         value and its `dark:` counterpart both map to the same
+                         token, the pair collapses to one class, since a token
+                         already carries both themes. No behaviour, structure,
+                         geometry or API is changed.
+
 No other change is made to the upstream source. The file contents are otherwise
 byte-identical to the pinned upstream release.
 

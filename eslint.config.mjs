@@ -1,10 +1,32 @@
-import designSystem, { mcpStdio } from '@elirobinson/eslint-config';
+import designSystem, { mcpStdio, plugin as designSystemPlugin } from '@elirobinson/eslint-config';
 import js from '@eslint/js';
 import prettierConfig from 'eslint-config-prettier';
 import globals from 'globals';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
+
+/**
+ * The vendored AI Elements tree, which is nobody's to edit.
+ *
+ * Every file under it is written by `pnpm sync:elements` from the pinned
+ * upstream release, so a lint FIX applied to one is reverted by the next bump —
+ * and until then it reads as local divergence and makes that bump fail as a
+ * conflict, which is the whole point of the sync check. So the general rule set
+ * is kept off it, and this is spelled as a per-config `ignores` rather than a
+ * global one so that exactly one rule can be pointed back at it below.
+ * (Measured at ai-elements@1.9.0: 3 no-unused-vars errors, all on deliberate
+ * `_`-prefixed discards upstream keeps for documentation.) Our own rules still
+ * apply to code we can actually change: the package's scripts/ and types/ are
+ * NOT covered by this.
+ */
+const VENDORED_ELEMENTS = ['packages/ai-elements/src/**'];
+
+/** `config` with VENDORED_ELEMENTS added to whatever it already ignores. */
+const offVendoredElements = (config) => ({
+  ...config,
+  ignores: [...(config.ignores ?? []), ...VENDORED_ELEMENTS],
+});
 
 export default tseslint.config(
   {
@@ -22,21 +44,13 @@ export default tseslint.config(
       // Staged copies of the same brand material, served by the docs site.
       'apps/docs/public/brand/**',
       '.nx/**',
-      // Vendored verbatim from vercel/ai-elements. Every file here is written
-      // by `pnpm sync:elements` from the pinned upstream release, so a lint fix
-      // applied to one is reverted by the next bump — and until then it reads
-      // as local divergence and makes that bump fail as a conflict, which is
-      // the whole point of the sync check. Our own rules apply to code we can
-      // actually change: the package's scripts/ and types/ are NOT ignored.
-      // (Measured at ai-elements@1.9.0: 3 no-unused-vars errors, all on
-      // deliberate `_`-prefixed discards upstream keeps for documentation.)
-      'packages/ai-elements/src/**',
     ],
   },
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
+  offVendoredElements(js.configs.recommended),
+  ...tseslint.configs.recommended.map(offVendoredElements),
   {
     files: ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
+    ignores: VENDORED_ELEMENTS,
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -104,6 +118,55 @@ export default tseslint.config(
         entry.rules['@elirobinson/no-hardcoded-design-values'],
     },
   })),
+  // The one rule that IS pointed at the vendored tree, and the reason
+  // VENDORED_ELEMENTS is a per-config ignore rather than a global one.
+  //
+  // `@elirobinson/tokens/tailwind.css` is what makes AI Elements render in
+  // Miltinson colours with no edits to its source: it maps Tailwind's whole
+  // colour namespace onto the tokens, `@theme inline`, so every utility the
+  // components already use compiles to `var(--token)` and answers to all three
+  // dials. The one thing that defeats it is a literal — `text-zinc-500`,
+  // `bg-red-100 dark:bg-red-900/30`, `bg-[#71717b]` — because no alias can
+  // re-point Tailwind's own palette. `scripts/ai-elements-patches/skin.mjs`
+  // rewrites the ones the pinned release ships; this is what stops the next
+  // bump from quietly putting one back.
+  //
+  // Only this rule, and it has no fixer, so `eslint . --fix` still writes
+  // nothing here and the sync check keeps its "every difference is
+  // attributable" property.
+  //
+  // The `allow` list is the pressure valve for upstream churn, and it is kept
+  // as close to empty as the tree allows — an entry is a literal we have agreed
+  // to live with, so each one carries its reason. It is NOT the place to park a
+  // colour: a literal colour has a token behind it by definition, and the fix
+  // is a line in skin.mjs.
+  {
+    name: '@elirobinson/design-system/vendored-elements',
+    files: ['packages/ai-elements/src/**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tseslint.parser,
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    plugins: { '@elirobinson': designSystemPlugin },
+    rules: {
+      '@elirobinson/no-hardcoded-design-values': [
+        'error',
+        {
+          allow: [
+            // speech-input's listening rings: three concentric `animate-ping`s
+            // on a 2s loop, offset 0.3s apart. The motion ramp is a UI
+            // transition ramp — 80ms to 420ms — and deliberately has no step
+            // for an ambient loop an order of magnitude longer, so there is no
+            // token to point this at. Mapping it to `--dur-slow` would be a
+            // fifth of the intended period, which is a different animation.
+            '2s',
+          ],
+        },
+      ],
+    },
+  },
   // Same bargain for the copy rule, and it reaches the docs site too: the
   // component library ships default strings, and the docs app renders chrome
   // around its editorial prose. We publish this at `warn` so an upgrade cannot

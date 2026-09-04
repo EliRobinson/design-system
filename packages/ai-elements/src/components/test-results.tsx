@@ -8,6 +8,7 @@
  *
  * Local modifications, applied by scripts/ai-elements-transforms.mjs:
  *   - workspace-alias: rewrote @repo/shadcn-ui/* imports to paths inside this package
+ *   - token-skin: rewrote literal colours and radii, and shadcn’s accent-as-hover-tint, to design system tokens
  *
  * Re-pull with `pnpm sync:elements`. An edit made here instead is detected
  * as local divergence and makes the next upstream bump fail loudly rather
@@ -111,7 +112,7 @@ export const TestResultsSummary = ({
       {children ?? (
         <>
           <Badge
-            className="gap-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+            className="gap-1 bg-success-tint text-success-ink"
             variant="secondary"
           >
             <CheckCircle2Icon className="size-3" />
@@ -119,7 +120,7 @@ export const TestResultsSummary = ({
           </Badge>
           {summary.failed > 0 && (
             <Badge
-              className="gap-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+              className="gap-1 bg-destructive-tint text-destructive-ink"
               variant="secondary"
             >
               <XCircleIcon className="size-3" />
@@ -128,7 +129,7 @@ export const TestResultsSummary = ({
           )}
           {summary.skipped > 0 && (
             <Badge
-              className="gap-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+              className="gap-1 bg-warning-tint text-warning-ink"
               variant="secondary"
             >
               <CircleIcon className="size-3" />
@@ -193,11 +194,11 @@ export const TestResultsProgress = ({
         <>
           <div className="flex h-2 overflow-hidden rounded-full bg-muted">
             <div
-              className="bg-green-500 transition-all"
+              className="bg-success transition-all"
               style={{ width: `${passedPercent}%` }}
             />
             <div
-              className="bg-red-500 transition-all"
+              className="bg-destructive transition-all"
               style={{ width: `${failedPercent}%` }}
             />
           </div>
@@ -236,10 +237,10 @@ const TestSuiteContext = createContext<TestSuiteContextType>({
 });
 
 const statusStyles: Record<TestStatus, string> = {
-  failed: "text-red-600 dark:text-red-400",
-  passed: "text-green-600 dark:text-green-400",
-  running: "text-blue-600 dark:text-blue-400",
-  skipped: "text-yellow-600 dark:text-yellow-400",
+  failed: "text-destructive-ink",
+  passed: "text-success-ink",
+  running: "text-info-ink",
+  skipped: "text-warning-ink",
 };
 
 const statusIcons: Record<TestStatus, React.ReactNode> = {
@@ -323,17 +324,17 @@ export const TestSuiteStats = ({
     {children ?? (
       <>
         {passed > 0 && (
-          <span className="text-green-600 dark:text-green-400">
+          <span className="text-success-ink">
             {passed} passed
           </span>
         )}
         {failed > 0 && (
-          <span className="text-red-600 dark:text-red-400">
+          <span className="text-destructive-ink">
             {failed} failed
           </span>
         )}
         {skipped > 0 && (
-          <span className="text-yellow-600 dark:text-yellow-400">
+          <span className="text-warning-ink">
             {skipped} skipped
           </span>
         )}
@@ -465,7 +466,7 @@ export const TestError = ({
 }: TestErrorProps) => (
   <div
     className={cn(
-      "mt-2 rounded-md bg-red-50 p-3 dark:bg-red-900/20",
+      "mt-2 rounded-md bg-destructive-tint p-3",
       className
     )}
     {...props}
@@ -483,7 +484,7 @@ export const TestErrorMessage = ({
 }: TestErrorMessageProps) => (
   <p
     className={cn(
-      "font-medium text-red-700 text-sm dark:text-red-400",
+      "font-medium text-destructive-ink text-sm",
       className
     )}
     {...props}
@@ -501,7 +502,7 @@ export const TestErrorStack = ({
 }: TestErrorStackProps) => (
   <pre
     className={cn(
-      "mt-2 overflow-auto font-mono text-red-600 text-xs dark:text-red-400",
+      "mt-2 overflow-auto font-mono text-destructive-ink text-xs",
       className
     )}
     {...props}

@@ -156,6 +156,66 @@ describe('no-hardcoded-design-values: colour', () => {
   });
 });
 
+// `text-zinc-500` is `bg-[#71717b]` with a friendlier spelling: a literal from
+// Tailwind's own palette, which no `@theme` alias re-points. It survives a theme
+// flip, a palette flip and a tokens bump unchanged, which is the same failure
+// the hex case already reports — so it reports as a colour too.
+describe('no-hardcoded-design-values: Tailwind palette utilities', () => {
+  it.each([
+    ['<div className="text-zinc-500" />', 'text-zinc-500'],
+    ['<div className="bg-red-50" />', 'bg-red-50'],
+    ['<div className="border-slate-950" />', 'border-slate-950'],
+    ['<div className="text-white" />', 'text-white'],
+    ['<div className="bg-black/50" />', 'bg-black/50'],
+    // The variant chain is not part of the literal, so one `allow` entry covers
+    // every spelling of the same colour.
+    ['<div className="dark:text-red-400" />', 'text-red-400'],
+    ['<div className="[&_svg]:text-zinc-400" />', 'text-zinc-400'],
+    ['<div className="hover:bg-emerald-100/30" />', 'bg-emerald-100/30'],
+  ])('flags %s', (code, value) => {
+    const results = lint(`export const A = () => (${code})`);
+
+    expect(rulesOf(results)).toEqual(['@elirobinson/no-hardcoded-design-values']);
+    expect(results[0].message).toContain(`Hardcoded colour "${value}"`);
+  });
+
+  it('reports each distinct literal in one className', () => {
+    const results = lint(
+      'export const A = () => <div className="bg-red-100 text-red-700 dark:bg-red-900/30" />',
+    );
+
+    expect(results.map((result) => result.message.match(/"([^"]+)"/)[1])).toEqual([
+      'bg-red-100',
+      'text-red-700',
+      'bg-red-900/30',
+    ]);
+  });
+
+  it('takes the utility verbatim in `allow`', () => {
+    const results = lint('export const A = () => <div className="text-zinc-500" />', {
+      options: { hardcodedValues: { allow: ['text-zinc-500'] } },
+    });
+
+    expect(results).toHaveLength(0);
+  });
+
+  // A rule that fires on the system's own vocabulary is a rule people turn off.
+  // None of these names is one of Tailwind's 22 ramps, so none of them matches.
+  it.each([
+    '<div className="bg-background text-foreground border-border" />',
+    '<div className="bg-destructive-tint text-destructive-ink" />',
+    '<div className="bg-accent-tint text-accent-ink bg-surface-2" />',
+    '<div className="from-chart-1 via-chart-4 to-chart-8" />',
+    '<div className="bg-scrim text-warning-ink border-warning-tint-edge" />',
+    '<div className="dark:bg-destructive/60 dark:text-muted-foreground" />',
+    // Neither of these is a colour utility, though both contain a ramp name.
+    '<div className="whitespace-nowrap text-nowrap" />',
+    '<div className="my-red-500-thing subtext-white" />',
+  ])('allows %s', (code) => {
+    expect(lint(`export const A = () => (${code})`)).toHaveLength(0);
+  });
+});
+
 describe('no-hardcoded-design-values: radius, shadow, motion', () => {
   it.each([
     ['<div className="rounded-[8px]" />', 'radius'],

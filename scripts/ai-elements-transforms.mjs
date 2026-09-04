@@ -16,6 +16,8 @@
  */
 import { posix } from 'node:path';
 
+import * as skin from './ai-elements-patches/skin.mjs';
+
 /**
  * Upstream is a pnpm monorepo, so its components import their shadcn/ui
  * primitives through a workspace package name. We vendor both tiers into one
@@ -123,6 +125,25 @@ const RULES = [
       return { source: out, fired };
     },
   },
+
+  // --- The skin -------------------------------------------------------------
+  // Last, and the only rule here about how a component LOOKS rather than about
+  // where it imports from. Ordering is not delicate — it edits class lists and
+  // a module specifier is not one — but last is where a presentational rule
+  // belongs, after the file is structurally what this package needs.
+  //
+  // Its scope is deliberately small. `@elirobinson/tokens/tailwind.css` already
+  // maps Tailwind's colour, radius, shadow and font namespaces onto the tokens
+  // with `@theme inline`, so `bg-background`, `text-muted-foreground`,
+  // `border-border` and `rounded-md` compile to `var(--token)` and answer to
+  // every dial at runtime: almost the whole vendored tree is on-brand untouched.
+  // This rule reaches only the residue the bridge cannot — Tailwind's own
+  // palette literals, which nothing re-points, and shadcn's `--accent`, which
+  // means "subtle hover tint" upstream and "Miltinson Amber" here.
+  //
+  // The tables and the colour-by-colour reasoning live in the module rather than
+  // in this list, which is meant to stay readable at a glance.
+  { id: skin.id, describe: skin.describe, apply: skin.apply },
 ];
 
 function header({ upstreamPath, upstream, applied }) {

@@ -33,8 +33,9 @@
    for the utilities that use it.
 
    ---------------------------------------------------------------------------
-   Three things worth knowing about — the first two are name collisions, the
-   third is how to re-point a font family:
+   Four things worth knowing about — the first two are name collisions, the
+   third is how to re-point a font family, and the fourth is what `dark:` means
+   once this file is loaded:
 
    1. The shadcn/ui variable contract overlaps ours with different meanings.
       shadcn's `--accent` is a subtle hover tint; ours is Miltinson Amber, a
@@ -69,7 +70,31 @@
       directly instead is the trap: tokens.css is unlayered, so an override
       inside `@layer base` loses to it. `--ds-font-*-override` is declared
       nowhere, so it wins from any layer.
+
+   4. `dark:` is re-pointed at the theme dial, and it has to be. Tailwind's
+      stock `dark` variant is `@media (prefers-color-scheme: dark)`, while this
+      system themes on `[data-theme="dark"]` (`.dark` accepted alongside it).
+      Left alone those are two independent switches, so `dark:bg-muted` fires
+      from the operating system while `bg-muted` follows the page — a theme
+      toggle moves every token and none of the `dark:` utilities, and a reader
+      whose OS is dark gets the `dark:` half of a light page. The variant below
+      makes the two agree.
+
+      Most token-driven markup needs no `dark:` at all: a token already carries
+      both themes, so `bg-muted` is the whole answer and `dark:bg-muted` beside
+      it is a no-op. Where `dark:` earns its place is a value the token layer
+      deliberately does not theme — a third-party widget's own variables, an
+      asset that needs `dark:invert` — and those now switch with the dial like
+      everything else.
    ========================================================================== */
+
+/* See note 4. `:where()` keeps the added selector at zero specificity, so a
+   `dark:` utility still ranks exactly as it did under the media query and is
+   decided by source order rather than by winning a specificity fight. Both
+   spellings of the dial are matched, and both as the element itself and as an
+   ancestor, because the attribute lives on <html> and the utility is on a
+   descendant. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *, .dark, .dark *));
 
 :root {
   /* Cycle-breaking aliases. See note 2 above. */
