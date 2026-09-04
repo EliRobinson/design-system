@@ -11,10 +11,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ai-sdk/react": "^3.0.278",
     "@elirobinson/ai-elements": "workspace:*",
     "@elirobinson/ai-patterns": "workspace:*",
     "@elirobinson/react": "workspace:*",
     "@elirobinson/tokens": "workspace:*",
+    "ai": "^6.0.275",
+    "motion": "^12.43.0",
     "next": "^16.3.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
@@ -22,7 +25,6 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
-    "@ai-sdk/react": "^3.0.41",
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
     "@next/mdx": "^16.3.0",
@@ -30,7 +32,6 @@
     "@types/mdx": "^2.0.13",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "ai": "^6.0.105",
     "shiki": "^4.4.2",
     "tailwindcss": "^4.3.3",
     "vitest": "^3.2.4",

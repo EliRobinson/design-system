@@ -1,0 +1,16 @@
+/* Animation is off on this route, unconditionally.
+
+   These 48 pages exist to be photographed. Shimmer, the speech-input ping
+   rings and every Radix transition are each enough to make a baseline
+   disagree with itself between two runs of the same commit, and a suite that
+   is reliably red carries no information — #101 is this repo's own record of
+   what that costs.
+
+   Scoped to the fixture stage rather than applied site-wide, because the docs
+   site's own motion is covered by tokens.css's reduced-motion handling and is
+   not this route's business. */
+.fixture-stage,
+.fixture-stage * {
+  animation: none !important;
+  transition: none !important;
+}
