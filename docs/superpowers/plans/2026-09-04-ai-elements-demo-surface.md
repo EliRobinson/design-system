@@ -86,7 +86,7 @@ Expected: a clean build, **87 static routes**. Record the number; Task 4 changes
 - [ ] **Step 2: Add the dependencies**
 
 ```bash
-pnpm --filter @elirobinson/docs add -D @tailwindcss/postcss tailwindcss
+pnpm --filter docs add -D @tailwindcss/postcss tailwindcss
 pnpm sync:deps
 ```
 
@@ -155,7 +155,7 @@ This is the step that catches the silent failure. A `@source` pointing at nothin
 ```bash
 rm -rf apps/docs/.next
 pnpm nx run docs:build
-grep -rl "is-assistant\|group-\[.is-user\]" apps/docs/.next/static/css/ | head
+grep -rl "is-assistant\|group-\[.is-user\]" apps/docs/.next/static/chunks/ | head
 ```
 
 Expected: at least one CSS file listed. **If nothing is listed the `@source` path is wrong** — pnpm symlinks the workspace package, so resolve the real path with `node -p "require.resolve('@elirobinson/ai-elements/package.json')"` from `apps/docs` and re-point it. Do not proceed until this grep matches.
@@ -548,7 +548,7 @@ MSG
 The fixtures import `ai` and `lucide-react` and the route imports `MotionConfig`. `ai` and `@ai-sdk/react` are currently devDependencies of `apps/docs`, which was correct while the examples were only read as text. This route mounts them.
 
 ```bash
-pnpm --filter @elirobinson/docs add ai @ai-sdk/react motion
+pnpm --filter docs add ai @ai-sdk/react motion
 pnpm sync:deps
 ```
 
