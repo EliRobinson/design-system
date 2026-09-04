@@ -1,0 +1,21 @@
+/* The stylesheet a consumer of @elirobinson/ai-elements is told to write.
+
+   Three imports in the order @elirobinson/tokens/tailwind.css documents, which
+   is what makes a vendored component render in Miltinson colours with no edit
+   to its source: `@theme inline` maps Tailwind's colour, radius, shadow and
+   font namespaces onto the tokens, so `bg-background` and `rounded-md` compile
+   to `var(--token)` and answer to all three dials at runtime.
+
+   A file of its own, never an addition to site.css. site.css is the docs
+   chrome and its cascade is load-bearing for every existing baseline; keeping
+   the two apart means a Tailwind regression cannot be mistaken for a chrome
+   regression, in either direction. */
+@import 'tailwindcss';
+@import '@elirobinson/tokens/tokens.css';
+@import '@elirobinson/tokens/tailwind.css';
+
+/* Tailwind scans source files for class names. The vendored tree is in another
+   package and its utilities are the entire reason this file exists, so it has
+   to be named explicitly. A @source that matches nothing produces no error and
+   no utilities — see the verification step in the plan. */
+@source '../../../../packages/ai-elements/src';
