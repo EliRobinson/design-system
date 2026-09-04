@@ -1,0 +1,89 @@
+import { ElementsDemo } from '@/components/docs/ElementsDemo';
+import { ElementsPatchTable } from '@/components/docs/ElementsPatchTable';
+
+export const metadata = { title: 'Suggestions and plans', order: 10 };
+
+# Suggestions and plans
+
+What the model offers to do next, and what it says it is going to do. `Suggestion` is the
+chip row above a composer, `Plan` is the card it writes its intent into, `Queue` is the list
+of work waiting, and `Checkpoint` is a marker you can return to.
+
+<ElementsDemo component="suggestion" />
+
+## Import
+
+```tsx
+import { Suggestion, Suggestions } from '@elirobinson/ai-elements/components/suggestion';
+import {
+  Plan,
+  PlanContent,
+  PlanDescription,
+  PlanHeader,
+  PlanTitle,
+  PlanTrigger,
+} from '@elirobinson/ai-elements/components/plan';
+import {
+  Queue,
+  QueueItem,
+  QueueList,
+  QueueSection,
+  QueueSectionContent,
+  QueueSectionLabel,
+  QueueSectionTrigger,
+} from '@elirobinson/ai-elements/components/queue';
+import { Checkpoint, CheckpointTrigger } from '@elirobinson/ai-elements/components/checkpoint';
+```
+
+## Suggestions
+
+`Suggestion` calls `onClick(suggestion)` with the **string**, not with the event — it is
+built to be handed straight to `sendMessage`. It is a real `<button type="button">`,
+classified dense at 32px because it is a chip and a chip that is a control is dense
+everywhere else in this system.
+
+`Suggestions` wraps the row in a horizontal scroll area whose scrollbar is hidden
+(`<ScrollBar className="hidden">`), so a row wider than its container scrolls with no visible
+affordance saying so.
+
+## Plan
+
+<ElementsDemo component="plan" />
+
+Two things about `Plan` that its name does not tell you:
+
+- It is a **card wrapped in a collapsible with no `defaultOpen`**, so it starts closed. The
+  demo above passes `defaultOpen`.
+- There is no step or item export. `Plan` gives you a header, a description, a content region
+  and a footer; the steps inside it are whatever you render — `Task` from
+  [Tools and tasks](/components/ai-elements/tools) is the shape it is drawn for.
+
+`PlanTitle` and `PlanDescription` swap themselves for a `Shimmer` while `isStreaming`, which
+is the same unguarded animation described on
+[Reasoning](/components/ai-elements/reasoning). `PlanTrigger` is an icon button carrying an
+`sr-only` "Toggle plan".
+
+## Queue and checkpoint
+
+<ElementsDemo component="queue" />
+
+`QueueList` renders a `<ul>` and `QueueItem` an `<li>`, so the queue is a list to a screen
+reader and not just visually. `QueueSectionTrigger` is a real `<button>` floored to
+`var(--target)` — see below.
+
+**`QueueItemAction` is `opacity-0` until its row is hovered, with no focus-visible reveal.**
+A keyboard user can tab to an action they cannot see. It is the same pattern as
+`AttachmentRemove` on [Prompt input](/components/ai-elements/prompt-input), and it is worth
+fixing at the call site with a `group-focus-within:opacity-100` until it is fixed upstream.
+
+<ElementsDemo component="checkpoint" />
+
+`Checkpoint` is a row with a trailing separator; `CheckpointTrigger` is a `Button`, and
+passing `tooltip` wraps it in a tooltip rather than changing the control.
+
+## What this system changed
+
+<ElementsPatchTable
+  components={['suggestion', 'plan', 'queue', 'checkpoint']}
+  also={['button-floor']}
+/>

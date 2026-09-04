@@ -1,0 +1,87 @@
+import { ElementsDemo } from '@/components/docs/ElementsDemo';
+import { ElementsPatchTable } from '@/components/docs/ElementsPatchTable';
+
+export const metadata = { title: 'Sources and context', order: 9 };
+
+# Sources and context
+
+Where an answer came from, and what it cost. `Sources` is the collapsed list under a turn,
+`InlineCitation` is the marker inside the prose, and `Context` is the token budget.
+
+<ElementsDemo component="sources" />
+
+## Import
+
+```tsx
+import {
+  Source,
+  Sources,
+  SourcesContent,
+  SourcesTrigger,
+} from '@elirobinson/ai-elements/components/sources';
+import {
+  InlineCitation,
+  InlineCitationCard,
+  InlineCitationCardBody,
+  InlineCitationCardTrigger,
+  InlineCitationText,
+} from '@elirobinson/ai-elements/components/inline-citation';
+import {
+  Context,
+  ContextContent,
+  ContextTrigger,
+} from '@elirobinson/ai-elements/components/context';
+```
+
+## The link, and what it says
+
+`Source` renders an `<a href target="_blank" rel="noreferrer">`. Three things follow from
+that, and they matter because these URLs came from a model, which got them from retrieved
+content:
+
+- `rel` is `noreferrer` — not `noopener noreferrer`. `{...props}` is spread last, so
+  `<Source rel="noopener noreferrer" …>` sets whatever you want without a fork.
+- **The visible text is the `title` you pass, not the host of the `href`.** Nothing derives
+  the label from the URL, so a link can say one thing and go somewhere else unless you make
+  the label from the URL yourself.
+- `SourcesTrigger` reads "Used N sources" from its `count` prop. The count is a number you
+  give it; it is not derived from the children.
+
+## Inline citations
+
+<ElementsDemo component="inline-citation" variant="Closed" />
+
+This demo and the one below it are shown closed. Both previews are hover cards, which render
+into a portal on `document.body` — open by default they would sit on top of the page rather
+than inside the box — so opening one is the reader's move.
+
+`InlineCitationCardTrigger` is **not** a number. It renders `new URL(sources[0]).hostname`,
+plus `+N` when there is more than one — so the marker in the prose is the host, and it is
+derived from the URL rather than supplied beside it.
+
+Two consequences worth knowing before you wire it to model output:
+
+- `new URL()` throws on anything that is not an absolute URL. A relative or malformed href
+  from a model takes the render down with it; validate before you pass it.
+- The trigger is a `Badge`, which renders a `<span>`. It has no `tabindex` and no `role`, so
+  it is not in the tab order and the hover card is a pointer-only affordance. Pass your own
+  focusable element as the trigger if the preview has to be reachable.
+
+`InlineCitationCarouselPrev` and `…Next` are real buttons with `aria-label`s of "Previous"
+and "Next", both floored to `var(--target)` — see below.
+
+## Context
+
+<ElementsDemo component="context" variant="Closed" />
+
+`ContextTrigger`'s default child is a `Button`, so unlike the citation marker this hover card
+**does** open on focus as well as on hover. The percentage it shows is
+`usedTokens / maxTokens` formatted with a hard-coded `en-US` locale; pass your own child to
+format it yourself.
+
+## What this system changed
+
+<ElementsPatchTable
+  components={['sources', 'inline-citation', 'context']}
+  also={['button-floor']}
+/>
