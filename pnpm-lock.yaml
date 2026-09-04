@@ -103,6 +103,9 @@ importers:
 
   apps/docs:
     dependencies:
+      '@elirobinson/ai-elements':
+        specifier: workspace:*
+        version: link:../../packages/ai-elements
       '@elirobinson/ai-patterns':
         specifier: workspace:*
         version: link:../../packages/ai-patterns
@@ -128,6 +131,9 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1(supports-color@7.2.0)
     devDependencies:
+      '@ai-sdk/react':
+        specifier: ^3.0.41
+        version: 3.0.278(react@19.2.5)(zod@4.5.4)
       '@mdx-js/loader':
         specifier: ^3.1.0
         version: 3.1.1(supports-color@7.2.0)
@@ -146,12 +152,18 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.14)
+      ai:
+        specifier: ^6.0.105
+        version: 6.0.275(zod@4.5.4)
       shiki:
         specifier: ^4.4.2
         version: 4.4.2
       vitest:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jiti@2.7.0)(jsdom@26.1.0(supports-color@7.2.0))(lightningcss@1.32.0)(supports-color@7.2.0)(tsx@4.21.0)(yaml@2.8.3)
+      zod:
+        specifier: ^4.5.4
+        version: 4.5.4
 
   packages/ai-elements:
     dependencies:
@@ -236,7 +248,7 @@ importers:
     devDependencies:
       '@ai-sdk/react':
         specifier: ^3.0.41
-        version: 3.0.278(react@19.2.5)(zod@4.3.6)
+        version: 3.0.278(react@19.2.5)(zod@4.5.4)
       '@elirobinson/tokens':
         specifier: workspace:*
         version: link:../tokens
@@ -6913,6 +6925,13 @@ snapshots:
       '@vercel/oidc': 3.2.0
       zod: 4.3.6
 
+  '@ai-sdk/gateway@3.0.187(zod@4.5.4)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.15
+      '@ai-sdk/provider-utils': 4.0.50(zod@4.5.4)
+      '@vercel/oidc': 3.2.0
+      zod: 4.5.4
+
   '@ai-sdk/gateway@4.0.74(zod@4.5.4)':
     dependencies:
       '@ai-sdk/provider': 4.0.10
@@ -6927,6 +6946,14 @@ snapshots:
       eventsource-parser: 3.1.1
       undici: 6.28.0
       zod: 4.3.6
+
+  '@ai-sdk/provider-utils@4.0.50(zod@4.5.4)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.15
+      '@standard-schema/spec': 1.1.0
+      eventsource-parser: 3.1.1
+      undici: 6.28.0
+      zod: 4.5.4
 
   '@ai-sdk/provider-utils@5.0.36(zod@4.5.4)':
     dependencies:
@@ -6945,10 +6972,10 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@3.0.278(react@19.2.5)(zod@4.3.6)':
+  '@ai-sdk/react@3.0.278(react@19.2.5)(zod@4.5.4)':
     dependencies:
-      '@ai-sdk/provider-utils': 4.0.50(zod@4.3.6)
-      ai: 6.0.275(zod@4.3.6)
+      '@ai-sdk/provider-utils': 4.0.50(zod@4.5.4)
+      ai: 6.0.275(zod@4.5.4)
       react: 19.2.5
       swr: 2.5.1(react@19.2.5)
       throttleit: 2.1.0
@@ -8281,16 +8308,16 @@ snapshots:
       eventsource-parser: 3.1.1
       jose: 6.2.8
       pkce-challenge: 5.0.1
-      zod: 4.3.6
+      zod: 4.5.4
 
   '@modelcontextprotocol/core@2.0.0':
     dependencies:
-      zod: 4.3.6
+      zod: 4.5.4
 
   '@modelcontextprotocol/server@2.0.0':
     dependencies:
       '@modelcontextprotocol/core': 2.0.0
-      zod: 4.3.6
+      zod: 4.5.4
 
   '@napi-rs/wasm-runtime@0.2.4':
     dependencies:
@@ -10262,6 +10289,14 @@ snapshots:
       '@ai-sdk/provider-utils': 4.0.50(zod@4.3.6)
       '@opentelemetry/api': 1.9.1
       zod: 4.3.6
+
+  ai@6.0.275(zod@4.5.4):
+    dependencies:
+      '@ai-sdk/gateway': 3.0.187(zod@4.5.4)
+      '@ai-sdk/provider': 3.0.15
+      '@ai-sdk/provider-utils': 4.0.50(zod@4.5.4)
+      '@opentelemetry/api': 1.9.1
+      zod: 4.5.4
 
   ai@7.0.92(zod@4.5.4):
     dependencies:

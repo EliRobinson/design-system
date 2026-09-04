@@ -77,6 +77,7 @@ describe('siteSections', () => {
       'Components',
       'Patterns',
       'Guidelines',
+      'AI Elements',
       'Brand',
       'UI Kits',
       'Resources',

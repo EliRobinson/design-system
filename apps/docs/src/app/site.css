@@ -1101,3 +1101,35 @@
   padding: var(--space-5);
   max-width: 100%;
 }
+
+/* --- AI Elements ---------------------------------------------------------- */
+
+/* The generated index's export lists. `details` collapses them because the
+   long components export dozens of names, and a page that opens with 74 of
+   those lists expanded is unreadable — but the names have to be on the page
+   rather than behind a command, because that is the whole point of generating
+   it from the manifest. */
+.elements-index__exports {
+  margin: var(--space-2) 0 0;
+  max-width: 48ch;
+  font-size: var(--fs-sm);
+  color: var(--fg-2);
+}
+
+/* One worked example: the path of the file it was read from, then the file.
+   The caption is above the code rather than below it, because it is an
+   identifier for what follows and not a description of it. */
+.example-source {
+  margin: 0 0 var(--space-6);
+}
+
+.example-source__path {
+  margin-bottom: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--fg-3);
+}
+
+.example-source .code-block {
+  margin: 0;
+}

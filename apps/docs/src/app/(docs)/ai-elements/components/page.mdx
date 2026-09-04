@@ -1,0 +1,32 @@
+import { AiElementsIndex } from '@/components/docs/AiElementsIndex';
+import { elements, elementsVersion, upstream, upstreamReleaseUrl } from '@/lib/ai-elements';
+
+export const metadata = {
+  title: 'AI Elements components',
+  navTitle: 'Components',
+  order: 3,
+};
+
+# AI Elements components
+
+Every subpath `@elirobinson/ai-elements` publishes, and what each one exports. There are{' '}
+{elements.length} of them at version <code>{elementsVersion}</code>, vendored from <a href={upstreamReleaseUrl()}><code>{upstream.ref}</code></a>.
+
+This page is generated from `@elirobinson/ai-elements/manifest`, which the package rebuilds
+from its emitted declaration files on every build. Nothing here is typed by hand, which is
+the only way it can be right: the roster is upstream's, `pnpm sync:elements --write` can add
+and remove entries in one commit, and a list written into a page would go wrong silently.
+The same data is a one-liner away from your own terminal.
+
+```bash
+node -p "require('@elirobinson/ai-elements/manifest').entries.map(e => e.subpath).join('\n')"
+```
+
+There is no barrel — a bare `@elirobinson/ai-elements` import does not resolve. The import
+column below is the specifier you write, verbatim.
+
+Prop types are omitted from the export lists: every component ships one named after it
+(`MessageContent` and `MessageContentProps`), and printing both would double the page
+without saying anything. They are in the manifest and in the declaration files.
+
+<AiElementsIndex />

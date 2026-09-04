@@ -1,0 +1,107 @@
+export const metadata = {
+  title: 'Installing AI Elements',
+  navTitle: 'Installation',
+  order: 2,
+};
+
+# Installing AI Elements
+
+`@elirobinson/ai-elements` publishes to the same registry as the rest of the system and is
+authenticated the same way, so if you already have the tokens and components installed the
+first two steps are done. If you do not, do
+[the GitHub Packages step on the Installation page](/installation#authenticate-with-github-packages)
+first — the `.npmrc`, the scope, and where the token goes are all there, and none of it
+differs here.
+
+## Install the package
+
+```bash
+pnpm add @elirobinson/ai-elements
+```
+
+## Peer dependencies
+
+Four, and your package manager will tell you about them, so the point of this section is
+which ones you have to act on:
+
+| Peer               | Why                                                                                                  |
+| ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `tailwindcss` ^4   | Load-bearing. Every component is Tailwind utility markup; without the framework it renders unstyled. |
+| `react` ^19        | Same React the rest of the system needs.                                                             |
+| `ai` ^6            | The AI SDK's types. **v6, not v7** — see below.                                                      |
+| `@ai-sdk/react` ^3 | `useChat` and the client bindings the components are shaped around.                                  |
+
+The `ai` pin is the one that surprises people. `ai@7` restructured `LanguageModelUsage`, and
+the vendored `components/context` reads the v6 shape; the pinned upstream release declares
+`ai: ^6.0.105` itself. `pnpm sync:elements` diffs upstream's ranges on every run, so the day
+upstream moves, this moves with it.
+
+## Wire up the styles
+
+Three imports in your app's entry stylesheet, in this order:
+
+```css
+@import 'tailwindcss';
+@import '@elirobinson/tokens/tokens.css';
+@import '@elirobinson/tokens/tailwind.css';
+```
+
+- `tailwindcss` is the framework itself. Elements needs v4; the `@import` form above is the
+  v4 spelling, and a v3 `@tailwind` triple will not work.
+- `tokens.css` declares the custom properties. It has to be loaded — the next file aliases
+  its variables, it does not define them.
+- `tailwind.css` is the bridge. It maps Tailwind's colour, radius, shadow and font
+  namespaces onto the tokens with `@theme inline`, so the utilities the vendored components
+  already use compile to `var(--token)`. It is what makes Elements render on-brand with no
+  edits, and it is also where `dark:` gets re-pointed at `[data-theme="dark"]`.
+
+If you are also using `@elirobinson/react` on the same page, its stylesheet goes in as usual
+— the two do not overlap. Elements carries no stylesheet of its own.
+
+```tsx
+import '@elirobinson/react/styles.css';
+```
+
+### Tell Tailwind to scan the package
+
+Tailwind v4 only emits the utilities it can see, and it does not scan `node_modules`. Name
+the package's source tree next to the imports above — the path is relative to the stylesheet
+the directive is written in, so adjust the `../` to wherever yours lives:
+
+```css
+@source '../node_modules/@elirobinson/ai-elements/src';
+```
+
+The package ships `src` alongside `dist` for exactly this. Without the directive the
+components mount and produce no styles — the same symptom as a missing Tailwind, from a
+different cause. This is also the configuration the accessibility sweep measures against:
+its harness stylesheet is these three imports and this directive, and nothing else.
+
+## Import a component
+
+There is no barrel, exactly as in `@elirobinson/react`. Every import names a subpath, and
+the three namespaces mean different things:
+
+```tsx
+import { Message, MessageContent } from '@elirobinson/ai-elements/components/message';
+import { Button } from '@elirobinson/ai-elements/ui/button';
+import { cn } from '@elirobinson/ai-elements/lib/utils';
+```
+
+- `components/*` — AI Elements proper.
+- `ui/*` — the shadcn/ui primitives those components are built on. Reach for one when you
+  are extending an Element. For the rest of a page, `@elirobinson/react` is the layer with
+  the keyboard contracts and the props tables.
+- `lib/*` — the helpers the tree shares.
+
+What exists and what each subpath exports is data, not documentation: read
+[the component index](/ai-elements/components), or the manifest it is generated from.
+
+```bash
+node -p "require('@elirobinson/ai-elements/manifest').entries.map(e => e.subpath).join('\n')"
+```
+
+## Next step
+
+[Examples](/ai-elements/examples) wires the client components to
+`@elirobinson/ai-patterns/server` and shows the round trip.

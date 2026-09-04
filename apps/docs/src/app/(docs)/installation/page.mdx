@@ -47,9 +47,15 @@ pnpm add @elirobinson/tokens @elirobinson/react
 
 `@elirobinson/tokens` carries the design tokens as CSS custom properties and JSON.
 `@elirobinson/react` carries the {components.length} components and {hooks.length} interaction
-hooks. If you're building
-AI features, `@elirobinson/ai-patterns` adds prompt patterns and machine-checkable UX
-contracts.
+hooks.
+
+Two more are opt-in, and both are about building AI features.
+`@elirobinson/ai-patterns` adds prompt patterns, machine-checkable UX contracts, and a
+server entry that wraps AI SDK Core with the house voice —
+[Build with AI](/build-with-ai) covers it. `@elirobinson/ai-elements` is the assistant tier:
+conversation logs, prompt inputs and tool panels, vendored from Vercel's AI Elements at a
+pinned release. It is a separate package because it requires Tailwind 4, which the two above
+do not — see [AI Elements](/ai-elements/overview).
 
 ## Wire up the styles
 
