@@ -65,10 +65,13 @@ documents, so the table cannot drift away from the code.
 | `--product-caveat-fg`       | `--status-warning-fg`     | That caveat's text. The second channel, so the caution is not carried by one thin rule alone (SC 1.4.1). 6.97:1 light, 11.86:1 dark.                                                                                  |
 
 Which components read which is derivable — `grep -r 'var(--product-' packages/react/src`
-— so it is not restated here. Today it is `ai/ChatMessage`, `ai/StreamingCaret` and
-`molecules/VerdictBadge`. `molecules/DecisionCard` inherits the verdict palette through
-the `VerdictBadge` it composes rather than reading it itself, which is the shape to copy:
-a component that composes another should not re-read that component's variables.
+— so it is not restated here. Today it is `ai/ChatMessage` (**deprecated** in favour of
+`Message` from `@elirobinson/ai-elements`, which does not read this layer),
+`ai/StreamingCaret` and `molecules/VerdictBadge`. `molecules/DecisionCard` inherits the
+verdict palette through the `VerdictBadge` it composes rather than reading it itself,
+which is the shape to copy: a component that composes another should not re-read that
+component's variables — and it is the shape to copy for the vendored tier too, where the
+product layer reaches a component only through one of ours that wraps it.
 
 ## How a consumer adopts it
 
