@@ -1,6 +1,6 @@
 {
   "name": "@elirobinson/ai-elements",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "AI Elements vendored from vercel/ai-elements at a pinned upstream release, published as per-component subpaths.",
   "repository": {
     "type": "git",
