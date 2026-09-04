@@ -43,7 +43,7 @@ The vendored files have been modified from their upstream form, as required by
 section 4(b) of the License. Every modification is produced mechanically by
 `scripts/ai-elements-transforms.mjs` in the source repository, and the rules
 that fired on a given file are listed in that file's header comment. As of this
-release they are, in full:
+release the layer is five rules, and they are, in full:
 
   - workspace-alias      Upstream imports its shadcn/ui primitives through the
                          `@repo/shadcn-ui` workspace package name. Both tiers
@@ -66,6 +66,24 @@ release they are, in full:
                          one way rather than the other, are listed in
                          `scripts/ai-elements-patches/a11y.mjs` in the source
                          repository.
+
+  - reduced-motion       One component's scroll default is changed from a
+                         smooth animation to an instant jump. `Conversation`
+                         in `src/components/conversation.tsx` is a
+                         `role="log"` that scrolls itself on first paint and
+                         on every content resize, and nothing in the vendored
+                         tree guards that animation with
+                         `prefers-reduced-motion`; an instant jump has no
+                         motion to reduce. `{...props}` is spread last
+                         upstream, so a consumer who wants the animation back
+                         passes `initial="smooth"` — the default changes, the
+                         API does not. No colour, copy, structure or geometry
+                         is changed. The patched attributes, and the reason
+                         this is a rule of its own rather than part of the one
+                         above, are recorded in
+                         `scripts/ai-elements-patches/motion.mjs` in the
+                         source repository.
+
   - token-skin           Class names inside string literals are rewritten from
                          literal values to design system tokens. Two kinds:
                          Tailwind's own palette colours (`text-zinc-400`,
@@ -80,8 +98,9 @@ release they are, in full:
                          already carries both themes. No behaviour, structure,
                          geometry or API is changed.
 
-No other change is made to the upstream source. The file contents are otherwise
-byte-identical to the pinned upstream release.
+No other change is made to the upstream source. Apart from what these five
+rules rewrite, and the generated provenance header at the top of each file, the
+file contents are byte-identical to the pinned upstream release.
 
 --------------------------------------------------------------------------------
 shadcn/ui
