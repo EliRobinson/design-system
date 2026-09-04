@@ -38,3 +38,7 @@ allowBuilds:
 overrides:
   '@types/react': ^19.2.14
   '@types/react-dom': ^19.2.3
+
+minimumReleaseAgeExclude:
+  - '@ai-sdk/gateway@4.0.74'
+  - ai@7.0.92
