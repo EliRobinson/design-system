@@ -746,6 +746,14 @@ export async function checkFocusVisible(page, options = {}) {
       const control = controls.nth(index);
       if (!(await control.isVisible())) continue;
 
+      // Same reason as the programmatic branch below: a control that already
+      // holds focus would be snapshotted in its focused state and then
+      // "focused" again, and the two would match. Blur first so `before` is
+      // the unfocused state it claims to be.
+      await control.evaluate((element) => {
+        if (document.activeElement === element) element.blur();
+      });
+
       const before = await control.evaluate(snapshotStyle);
       await control.focus();
       // Leave and re-enter by keyboard so :focus-visible is unambiguous.
@@ -804,6 +812,22 @@ export async function checkFocusVisible(page, options = {}) {
         if (element.disabled) continue;
         const rect = element.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) continue;
+
+        // The quiet twin of the inert-control case below, and it fails in the
+        // same shape for the opposite reason. If this control ALREADY holds
+        // focus when the sweep reaches it, `before` is a snapshot of the
+        // *focused* state, `.focus()` is a no-op, and the two match — so a
+        // control whose ring is present and correct is reported as having
+        // none. It is not hypothetical or rare: a component that manages focus
+        // on mount hands it to one of its own controls, which is exactly what
+        // Radix's Dialog does with its close button, so every open dialog on a
+        // page reported a missing ring on the one control that had just proved
+        // it had one.
+        //
+        // Blurring first is what makes the comparison a comparison. The guard
+        // below still catches the inert case: a control that refuses focus is
+        // skipped whether it was focused a moment ago or not.
+        if (document.activeElement === element) element.blur();
 
         const before = snapshot(element);
         element.focus();

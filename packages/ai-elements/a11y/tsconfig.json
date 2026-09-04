@@ -1,0 +1,20 @@
+{
+  /* The harness is typechecked against the same settings the vendored tree
+     compiles under — Bundler resolution and `lib: ES2023` — because it consumes
+     that tree's own declarations. It is deliberately NOT part of the package's
+     `build`: nothing here is published, and including it would put fixtures
+     into dist/ and into the generated manifest.
+
+     `noEmit`, so this config only ever answers "do the fixtures call these
+     components correctly", which is the question that matters: a fixture that
+     passes the wrong props renders nothing, and a check over nothing reports a
+     clean sweep. */
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "..",
+    "jsx": "react-jsx",
+    "types": ["node"]
+  },
+  "include": ["./**/*.ts", "./**/*.tsx"]
+}

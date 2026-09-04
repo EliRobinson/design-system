@@ -54,6 +54,18 @@ release they are, in full:
                          the emitted `dist/` resolves under Node's ESM resolver
                          rather than only under a bundler's.
 
+  - a11y-touch-targets   Class strings and JSX attributes on interactive
+                         elements are amended to meet the design system's
+                         touch-target contracts: a `var(--target)` (44x44)
+                         minimum hit area on primary controls, and a
+                         `data-touch-target="dense"` classification on
+                         deliberately compact inline affordances, which are held
+                         to `var(--target-min)` (24x24, WCAG 2.2 AA SC 2.5.8)
+                         instead. No colour, copy or behaviour is changed. The
+                         controls affected, and the reason each was classified
+                         one way rather than the other, are listed in
+                         `scripts/ai-elements-patches/a11y.mjs` in the source
+                         repository.
   - token-skin           Class names inside string literals are rewritten from
                          literal values to design system tokens. Two kinds:
                          Tailwind's own palette colours (`text-zinc-400`,

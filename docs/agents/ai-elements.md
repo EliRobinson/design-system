@@ -64,6 +64,19 @@ entry carries the reason it is not a token.
 system's dial instead of the reader's operating system. Every `dark:` utility upstream
 ships — and every one a consumer writes — moves with the theme toggle because of it.
 
+The third is `a11y-touch-targets`, and it is the one that carries judgement. It lives in
+its own module, `scripts/ai-elements-patches/a11y.mjs`, and runs last. Every entry there
+names one control, the geometry a browser measured for it, which of the two touch-target
+floors it was held to, and why it is that one and not the other — see
+[AI Elements accessibility](ai-elements-accessibility.md) for the audit that produced them
+and `contracts.json`'s `vendoredElementTargets` for the published list.
+
+Its anchors are exact and its misses are fatal. A patch whose anchor no longer appears
+throws by name during `pnpm sync:elements` rather than quietly not applying, so an upstream
+bump that moves one of these class strings stops and tells you which control to re-measure.
+That is the intended failure: a dropped accessibility fix that reports a clean bump is the
+outcome the whole arrangement exists to prevent.
+
 ## Re-syncing
 
 ```bash

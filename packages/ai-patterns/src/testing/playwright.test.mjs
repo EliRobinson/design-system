@@ -1056,6 +1056,33 @@ describeBrowser('browser contract checks', () => {
       expect(await checkFocusVisible(page)).toEqual([]);
     });
 
+    /* The opposite failure, and the one that reads as a real finding rather
+       than as a skip: a control that ALREADY holds focus when the sweep reaches
+       it gets a `before` snapshot of its focused state, so `.focus()` changes
+       nothing and its perfectly good ring is reported missing. Radix's Dialog
+       moves focus to its close button on open, so every open dialog on a page
+       produced one of these. */
+    it('passes a control that already had focus when the sweep started', async () => {
+      await render(`<style>
+          button { width: 48px; height: 48px; outline: none; }
+          button:focus-visible { outline: 2px solid #000; }
+        </style>
+        <button id="first">x</button>`);
+      await page.evaluate(() => document.getElementById('first').focus());
+
+      expect(await checkFocusVisible(page)).toEqual([]);
+    });
+
+    it('still flags an already-focused control that has no ring', async () => {
+      await render(`<style>
+          button { width: 48px; height: 48px; outline: none !important; border: 0; }
+        </style>
+        <button id="first">x</button>`);
+      await page.evaluate(() => document.getElementById('first').focus());
+
+      expect(await checkFocusVisible(page)).toHaveLength(1);
+    });
+
     it('still flags a ringless control once the modal is closed', async () => {
       await render(`<style>
           button { width: 48px; height: 48px; outline: none !important; border: 0; }

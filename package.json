@@ -27,7 +27,9 @@
     "typecheck": "tsc --noEmit -p ./tsconfig.typecheck.json",
     "format:check": "prettier --check .",
     "sync:deps": "node scripts/sync-workspace-deps.mjs",
-    "sync:elements": "node scripts/sync-ai-elements.mjs"
+    "sync:elements": "node scripts/sync-ai-elements.mjs",
+    "prea11y:elements": "nx run-many -t build --projects=ai-elements && tsc --noEmit -p packages/ai-elements/a11y/tsconfig.json && vite build -c packages/ai-elements/a11y/vite.config.ts",
+    "a11y:elements": "playwright test -c packages/ai-elements/a11y/playwright.config.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",

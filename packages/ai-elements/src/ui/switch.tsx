@@ -8,6 +8,7 @@
  *
  * Local modifications, applied by scripts/ai-elements-transforms.mjs:
  *   - workspace-alias: rewrote @repo/shadcn-ui/* imports to paths inside this package
+ *   - a11y-touch-targets: applied the design system touch-target contracts — a var(--target) floor for primary controls, and a data-touch-target="dense" classification for compact inline affordances (see scripts/ai-elements-patches/a11y.mjs for the per-control verdicts)
  *
  * Re-pull with `pnpm sync:elements`. An edit made here instead is detected
  * as local divergence and makes the next upstream bump fail loudly rather
@@ -28,7 +29,7 @@ function Switch({
     <SwitchPrimitive.Root
       data-slot="switch"
       className={cn(
-        "peer data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:border-ring focus-visible:ring-ring/50 dark:data-[state=unchecked]:bg-input/80 inline-flex h-[1.15rem] w-8 shrink-0 items-center rounded-full border border-transparent shadow-xs transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+        "peer relative before:absolute before:top-1/2 before:left-1/2 before:size-[var(--target)] before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:border-ring focus-visible:ring-ring/50 dark:data-[state=unchecked]:bg-input/80 inline-flex h-[1.15rem] w-8 shrink-0 items-center rounded-full border border-transparent shadow-xs transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
