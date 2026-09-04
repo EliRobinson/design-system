@@ -45,7 +45,7 @@ matters to a reader who cannot see it, say it in the content.
 
 - `MessageResponse` renders its children as markdown through Streamdown. `MessageContent`
   does not — it renders what you give it.
-- `MessageAction` is the icon affordance in the toolbar. It puts `label ?? tooltip` in an
+- `MessageAction` is the icon affordance in the toolbar. It puts `label || tooltip` in an
   `sr-only` span, so a `MessageAction` with neither is a button with no name.
 - `MessageBranchPrevious` and `MessageBranchNext` carry their own `aria-label` and disable
   themselves when there is only one branch. `MessageBranchPage` renders "1 of 2" as text.

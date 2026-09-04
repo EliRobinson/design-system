@@ -2,11 +2,13 @@
 '@elirobinson/ai-elements': patch
 ---
 
-Fix three reference fixtures that rendered an empty box.
+Fix three reference fixtures that were not rendering what they composed: two produced an
+empty box, and one silently dropped its title.
 
 `fixtures/index.tsx` says in its own header that a fixture rendering no
-controls is how an audit ends up green without having looked at anything.
-Three of them were doing exactly that, and it only surfaced when the
+controls is how an audit ends up green without having looked at anything. Two
+of these were doing exactly that; the third was measuring and photographing a
+composition it did not actually contain. None of it surfaced until the
 documentation site started mounting them where a person could see them:
 
 - `confirmation` passed no `approval`, and `<Confirmation>` returns `null`

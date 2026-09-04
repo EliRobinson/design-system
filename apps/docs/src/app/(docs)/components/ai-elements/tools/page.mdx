@@ -78,6 +78,10 @@ show only in the states they are named for, so the same tree covers the ask and 
   and it is worth deciding on purpose.
 - `ConfirmationAction` does not merge `className` — it spreads props after its own, so a
   `className` you pass replaces its sizing rather than adding to it.
+- **`Confirmation` renders the shared `Alert`, which sets `role="alert"`** — an assertive
+  live region. So the gate announces itself on insertion whatever `aria-live` you put on the
+  thread around it. It is the only component in this family that lands inside a live region,
+  and it is the one where that is probably right.
 
 ## Task
 
