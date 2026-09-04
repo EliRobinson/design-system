@@ -965,7 +965,7 @@ Both components still work. They are removed on the next major.
 ```bash
 git add packages/react/src/components/ai apps/docs/src/app/\(docs\)/components/chat-thread apps/docs/src/app/\(docs\)/components/chat-message .changeset/react-deprecate-chat-thread-message.md
 git commit -m "$(cat <<'MSG'
-feat(react)!: deprecate ChatThread and ChatMessage
+feat(react): deprecate ChatThread and ChatMessage
 
 C1's decision. use-stick-to-bottom already implements the one behaviour
 ChatThread was written for; its smooth-scroll default was the gap, and
