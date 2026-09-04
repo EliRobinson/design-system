@@ -148,7 +148,6 @@ const RULES = [
     },
   },
 
-
   // --- The skin -------------------------------------------------------------
   // Last, and the only rule here about how a component LOOKS rather than about
   // where it imports from. Ordering is not delicate — it edits class lists and

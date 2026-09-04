@@ -311,7 +311,19 @@ for (const [upstreamPath, source] of [...upstreamSources].sort()) {
   }
 
   const upstreamChanged = record.upstream !== upstreamDigest;
-  const locallyEdited = sha256(onDisk) !== record.vendored;
+  // A file byte-identical to what the transform layer produces right now is not
+  // a local edit, whatever the lockfile last recorded — it IS the pipeline's own
+  // output, and the recorded digest is merely behind, because a rule was added
+  // to scripts/ai-elements-transforms.mjs since the last re-pin. Without this,
+  // adding a rule makes every file that rule does not touch report as LOCAL EDIT
+  // permanently: the branch below deliberately keeps the stale digest, so the
+  // divergence can never be re-baselined, and `--force` does not reach it either
+  // (it only overrides CONFLICT).
+  //
+  // The guard is unchanged for a real hand edit. Those bytes are not what the
+  // transform layer produces, so they still report and still keep their recorded
+  // digest.
+  const locallyEdited = sha256(onDisk) !== record.vendored && sha256(onDisk) !== expectedDigest;
 
   if (upstreamChanged && locallyEdited) {
     conflicts.push({ vendorTarget, upstreamPath, onDisk, content });

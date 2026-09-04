@@ -80,12 +80,12 @@ const controlsExceptAttribution = PRIMARY_CONTROL_SELECTOR.split(', ')
  *
  * Both causes are recorded in docs/agents/ai-elements-accessibility.md. */
 const CONTRAST_OWNED_ELSEWHERE = new Map([
-  [
-    'agent',
-    "syntax-highlighted JSON: shiki's `dark:` overrides never fire, so github-light token colours are painted on the dark surface",
-  ],
-  ['code-block', 'same shiki `dark:` cause as agent'],
-  ['tool', 'same shiki `dark:` cause as agent'],
+  /* `agent`, `code-block` and `tool` were here for the shiki cause: their `dark:`
+     overrides never fired, so github-light token colours painted on the dark
+     surface (1.43:1, 1.58:1, 3.33:1). The token bridge now re-points Tailwind's
+     `dark` variant at [data-theme="dark"], those overrides fire, and all three
+     stopped failing — so this list told us to delete them, which is the second
+     direction working exactly as intended. */
   [
     'transcription',
     '`text-muted-foreground/60` measures 2.31-3.28:1 — an opacity modifier on a token, which is a colour decision',
