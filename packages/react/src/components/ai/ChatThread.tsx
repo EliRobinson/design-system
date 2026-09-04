@@ -52,7 +52,7 @@ export type ChatThreadProps = HTMLAttributes<HTMLDivElement> & {
  * this component was written for: follow the newest turn only for a reader who
  * is already at the bottom. Its smooth-scroll default was the gap, and the
  * transform layer now pins it to `instant` — see
- * `scripts/ai-elements-patches/a11y.mjs`, `conversation-initial-instant`.
+ * `scripts/ai-elements-patches/motion.mjs`, `conversation-initial-instant`.
  *
  * The one thing that does not carry over is the `announce` prop. `Conversation`
  * spreads `{...props}` last over its `role="log"`, so write the attributes
