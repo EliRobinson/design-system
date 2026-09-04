@@ -26,7 +26,7 @@ Components live under `packages/react/src/components/<tier>/`:
 - **atoms/** — single-purpose, not further divisible (e.g. `Button`, `Input`).
 - **molecules/** — a few atoms combined into one functional unit, no portal/overlay orchestration (e.g. `Card`, `Alert`).
 - **organisms/** — compound components with internal state and/or overlay orchestration: portals, focus trapping, keyboard nav (e.g. `Dialog`, `Select`).
-- **ai/** — surfaces that only mean anything inside an assistant interaction (e.g. `ChatThread`, `StreamingCaret`).
+- **ai/** — surfaces that only mean anything inside an assistant interaction (e.g. `StreamingCaret`). Building a chat surface starts at `@elirobinson/ai-elements`, not here: `ChatThread` and `ChatMessage` are deprecated in favour of its `Conversation` and `Message`.
 
 Boundary rule: if a component renders into a portal, traps focus, or manages open/closed state across multiple sub-elements, it's an organism. If it's assembled from 2+ atoms with no such orchestration, it's a molecule. Otherwise it's an atom.
 
@@ -237,14 +237,14 @@ Ported up from a product built on this system, where every one of them had been 
 because the library had no equivalent. Import them via the tiered subpath
 (`@elirobinson/react/components/<tier>/<Name>`, see above).
 
-| Tier      | Export           | Notes                                                                                                                                                                                                                                                                                                                                                                                              |
-| --------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ai        | `ChatThread`     | `role="log"`, `aria-live="polite"`, `aria-relevant="additions text"`. `label` is required — the accessible name is a prop, never copy in the component. `announce={false}` sets `aria-live="off"` for a closed or replayed thread. `followNewMessages` defaults true and follows only a reader already at the bottom — see below.                                                                  |
-| ai        | `ChatMessage`    | One turn. `avatar` is a **required** node — there is no role-derived fallback — framed by `ds-avatar ds-avatar--md`, so the circle is an `Avatar` and not a size of ChatMessage's own. `actions` is a node, not an `[{ label, onClick }]` array. `variant` is `sent` \| `received`; a sent turn reads as settled via `--fg-2`, never `opacity`. There is deliberately no `role` union — see below. |
-| ai        | `StreamingCaret` | Returns `null` when `active` is false, so it cannot be left mounted on a finished message. `label` promotes it to `role="status"`; without one it is `aria-hidden`. Honours `prefers-reduced-motion`.                                                                                                                                                                                              |
-| molecules | `VerdictBadge`   | A decision marker that survives both themes. Carries a glyph **and** a word — `Badge` has no state that does either. The glyph is `aria-hidden`; the word is the accessible text.                                                                                                                                                                                                                  |
-| molecules | `StubCard`       | A summary that reads as a ticket stub: a body column plus a perforated stub column. The perforation is structure, so it is a dashed `--border-control`.                                                                                                                                                                                                                                            |
-| molecules | `DecisionCard`   | A headline verdict, figures broken out by `kind`, a contrast figure, a caveat, and a **conditional** action. Composes `VerdictBadge`. `headline` is a real heading element — `headingLevel` is 2–6, default 2. See the footer guarantee below.                                                                                                                                                     |
+| Tier      | Export                                                                                                     | Notes                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ai        | `ChatThread` **(deprecated — use `Conversation` from `@elirobinson/ai-elements/components/conversation`)** | `role="log"`, `aria-live="polite"`, `aria-relevant="additions text"`. `label` is required — the accessible name is a prop, never copy in the component. `announce={false}` sets `aria-live="off"` for a closed or replayed thread. `followNewMessages` defaults true and follows only a reader already at the bottom — see below.                                                                  |
+| ai        | `ChatMessage` **(deprecated — use `Message` from `@elirobinson/ai-elements/components/message`)**          | One turn. `avatar` is a **required** node — there is no role-derived fallback — framed by `ds-avatar ds-avatar--md`, so the circle is an `Avatar` and not a size of ChatMessage's own. `actions` is a node, not an `[{ label, onClick }]` array. `variant` is `sent` \| `received`; a sent turn reads as settled via `--fg-2`, never `opacity`. There is deliberately no `role` union — see below. |
+| ai        | `StreamingCaret`                                                                                           | Returns `null` when `active` is false, so it cannot be left mounted on a finished message. `label` promotes it to `role="status"`; without one it is `aria-hidden`. Honours `prefers-reduced-motion`.                                                                                                                                                                                              |
+| molecules | `VerdictBadge`                                                                                             | A decision marker that survives both themes. Carries a glyph **and** a word — `Badge` has no state that does either. The glyph is `aria-hidden`; the word is the accessible text.                                                                                                                                                                                                                  |
+| molecules | `StubCard`                                                                                                 | A summary that reads as a ticket stub: a body column plus a perforated stub column. The perforation is structure, so it is a dashed `--border-control`.                                                                                                                                                                                                                                            |
+| molecules | `DecisionCard`                                                                                             | A headline verdict, figures broken out by `kind`, a contrast figure, a caveat, and a **conditional** action. Composes `VerdictBadge`. `headline` is a real heading element — `headingLevel` is 2–6, default 2. See the footer guarantee below.                                                                                                                                                     |
 
 ### `DecisionCard` renders no footer when there is no action
 
@@ -320,13 +320,20 @@ release of ours, and `admin` mapping to `received` is now a visible product choi
 than a fact buried in a union. `design-system-docs/_project-mirror/ui_kits/ai-assistant/Assistant.jsx`
 is the worked example.
 
-### `ChatThread` follows the newest turn, and only when you are on it
+### Following the newest turn, and only when you are on it
 
-`followNewMessages` defaults to `true` and is not a preference. A `role="log"` live region
+**`ChatThread` is deprecated** — build on `Conversation` from
+`@elirobinson/ai-elements/components/conversation`. This section stays because its third
+constraint is why the vendored component is patched, and because the first two describe
+behaviour `Conversation` already has and that a wrapper must not undo.
+
+`followNewMessages` defaulted to `true` and was not a preference. A `role="log"` live region
 that renders the announced turn below the fold is a defect for precisely the readers the live
 region exists for, so _when_ to scroll is the system's problem, not a product's.
+`use-stick-to-bottom`, which backs `Conversation`, already implements exactly that, which is
+what made the deprecation possible.
 
-Three constraints are load-bearing, and each is a thing to leave alone:
+Three constraints were load-bearing, and each is still a thing to leave alone:
 
 - **It follows only a reader already at the bottom.** Unconditional following yanks someone
   who scrolled up to re-read. The measurement is `scrollHeight - scrollTop - clientHeight`
@@ -340,15 +347,19 @@ Three constraints are load-bearing, and each is a thing to leave alone:
   sidesteps `prefers-reduced-motion` rather than taking on the care an animation inside a live
   region would owe. `ChatThread.css` pins `scroll-behavior: auto` so an inherited
   `html { scroll-behavior: smooth }` from a consumer's reset cannot turn it into one.
+  **This is the one `Conversation` did not have**, and it is why the vendored tree carries a
+  `reduced-motion` transform rule pinning its `initial` and `resize` to `"instant"` — see
+  `scripts/ai-elements-patches/motion.mjs` and [AI Elements](ai-elements.md). Carrying the
+  reasoning forward rather than the component is what that rule is.
 
-None of this changes the tier. A `useLayoutEffect` is not a portal, a focus trap, or
-open/closed state, so the boundary rule above still puts `ChatThread` where it is; `ai` is
-answering "what is this for" regardless. The ref is merged through `lib/useMergedRef`, so the
-caller still receives the element exactly as before.
+None of this changed the tier while the component was live. A `useLayoutEffect` is not a
+portal, a focus trap, or open/closed state, so the boundary rule above still puts
+`ChatThread` where it is; `ai` is answering "what is this for" regardless. The ref is merged
+through `lib/useMergedRef`, so the caller still receives the element exactly as before.
 
 ### Product theming
 
-`ChatMessage`, `StreamingCaret` and `VerdictBadge` read the optional
+`ChatMessage` (deprecated), `StreamingCaret` and `VerdictBadge` read the optional
 product token layer (`DecisionCard` inherits it through the `VerdictBadge` it composes) — see [Product token layer](product-token-layer.md). Every read falls
 back to a system token, so the layer is always optional and Miltinson Amber stays the
 default. Which components read it is derivable
@@ -387,6 +398,6 @@ as the register.
 | —                                                        | `VerdictBadge` — no shadcn primitive; a decision marker carrying a glyph and a word, so the verdict is never colour alone                                           |
 | —                                                        | `StubCard` — no shadcn primitive; a body column beside a perforated stub column, the perforation drawn as a dashed `--border-control`                               |
 | —                                                        | `DecisionCard` — no shadcn primitive; a verdict, its figures, and an action that does not exist when the verdict allows none                                        |
-| —                                                        | `ChatThread` — no shadcn primitive; the `role="log"` live region for a conversation, with the accessible name as a required prop                                    |
-| —                                                        | `ChatMessage` — no shadcn primitive; one turn, avatar and attribution and body in one grid                                                                          |
+| —                                                        | `Conversation` from `@elirobinson/ai-elements` — the `role="log"` live region for a conversation. (`ChatThread` here is **deprecated** in favour of it)             |
+| —                                                        | `Message` from `@elirobinson/ai-elements` — one turn, fed a `UIMessage` role. (`ChatMessage` here is **deprecated** in favour of it)                                |
 | —                                                        | `StreamingCaret` — no shadcn primitive; an infinite blink, so it carries its own `prefers-reduced-motion` rule rather than the global clamp                         |
