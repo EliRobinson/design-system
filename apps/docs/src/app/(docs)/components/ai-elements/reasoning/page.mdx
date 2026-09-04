@@ -1,0 +1,81 @@
+import { ElementsDemo } from '@/components/docs/ElementsDemo';
+import { ElementsPatchTable } from '@/components/docs/ElementsPatchTable';
+
+export const metadata = { title: 'Reasoning', order: 7 };
+
+# Reasoning
+
+A disclosure for the model's thinking. `Reasoning` opens itself while a stream is arriving
+and closes itself once it stops, and reports how long the thinking took.
+
+<ElementsDemo component="reasoning" />
+
+## Import
+
+```tsx
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from '@elirobinson/ai-elements/components/reasoning';
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtHeader,
+  ChainOfThoughtStep,
+} from '@elirobinson/ai-elements/components/chain-of-thought';
+import { Shimmer } from '@elirobinson/ai-elements/components/shimmer';
+```
+
+## How it opens and closes
+
+`isStreaming` drives the whole thing, and the rules are worth reading before you fight them:
+
+- It **auto-opens** whenever `isStreaming` is true and it is closed — unless you passed
+  `defaultOpen={false}`, which is the one opt-out. This effect re-runs, so a reader who
+  closes the panel mid-stream has it reopened.
+- It **auto-closes** one second after `isStreaming` goes false, and only once per mount.
+  After that single auto-close, reopening the panel sticks.
+- `duration` is measured from when streaming started to when it stopped, in whole seconds,
+  and the trigger reads "Thought for N seconds" — or "Thought for a few seconds" when there
+  is no duration to report, which is what the demo above shows. Pass `duration` to control
+  it.
+- While streaming, the trigger's label is a `Shimmer` reading "Thinking...".
+
+`ReasoningContent` takes a **string** and renders it as markdown through Streamdown.
+
+## Chain of thought
+
+<ElementsDemo component="chain-of-thought" />
+
+`ChainOfThoughtStep` takes `label`, an optional `description`, an icon, and a `status` of
+`complete`, `active` or `pending`, which is styled rather than announced — the status is
+colour and icon only.
+
+## Motion
+
+`Shimmer` is the sweeping-highlight text used for "Thinking..." and for a streaming
+`PlanTitle`. It animates through Framer Motion on an infinite linear repeat.
+
+<ElementsDemo component="shimmer" />
+
+**Nothing in the vendored tree reads `prefers-reduced-motion`** — not `Shimmer`, and not the
+`animate-in` entrance each `ChainOfThoughtStep` plays. The demos on this page are frozen:
+every demo is wrapped in a `MotionConfig` with `reducedMotion="always"` and the stage
+disables CSS animation, which is the only reason the visual suite can photograph them. In
+your app they move. If you are honouring reduced motion, that is yours to enforce at the
+boundary.
+
+## Accessibility
+
+- `ReasoningTrigger` and `ChainOfThoughtHeader` are full-width disclosure rows, both floored
+  to `var(--target)` — see below. Both come from the shared collapsible, so `Enter` and
+  `Space` toggle them and `aria-expanded` follows the state.
+- **Neither component sets `aria-live`.** Nothing in the vendored tree does; the only live
+  region it ships is `Conversation`'s `role="log"`. So whether a reasoning stream is
+  announced is decided by where you render it and by the `aria-live` you put on the thread —
+  see [Conversation and messages](/components/ai-elements/conversation).
+
+## What this system changed
+
+<ElementsPatchTable components={['reasoning', 'chain-of-thought', 'shimmer']} />

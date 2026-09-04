@@ -1,0 +1,95 @@
+import { ElementsDemo } from '@/components/docs/ElementsDemo';
+import { ElementsPatchTable } from '@/components/docs/ElementsPatchTable';
+
+export const metadata = { title: 'Code and artifacts', order: 11 };
+
+# Code and artifacts
+
+What a turn produces rather than says: a highlighted code block, a copyable one-liner, a
+generated image, and a container for a document the model is working on.
+
+<ElementsDemo component="code-block" />
+
+## Import
+
+```tsx
+import { CodeBlock, CodeBlockCopyButton } from '@elirobinson/ai-elements/components/code-block';
+import {
+  Artifact,
+  ArtifactAction,
+  ArtifactActions,
+  ArtifactClose,
+  ArtifactContent,
+  ArtifactHeader,
+  ArtifactTitle,
+} from '@elirobinson/ai-elements/components/artifact';
+import { Image } from '@elirobinson/ai-elements/components/image';
+import {
+  Snippet,
+  SnippetCopyButton,
+  SnippetInput,
+} from '@elirobinson/ai-elements/components/snippet';
+```
+
+## CodeBlock brings its own highlighter
+
+`CodeBlock` creates a Shiki highlighter **in the browser**, one per language, cached at
+module level. Three consequences:
+
+- The themes are hard-coded to `github-light` and `github-dark`. They are not read from the
+  tokens, so a code block is the one surface in this package that does not answer to the
+  brand dials.
+- Highlighting is asynchronous. Until the highlighter for a language resolves, the code
+  renders as plain unhighlighted lines and is swapped for tokens when it arrives.
+- If your app already runs Shiki, this is a second highlighter in the same page. Nothing here
+  reuses yours.
+
+The tokens are rendered as React elements into `<pre><code>` — there is no
+`dangerouslySetInnerHTML` on this path, so code from a model is text.
+
+**`CodeBlockCopyButton` has no accessible name.** It renders an icon and nothing else: no
+`aria-label`, no `sr-only` text. Give it one. `SnippetCopyButton`, which does the same job in
+the next component down, sets `aria-label="Copy"` — the inconsistency is upstream's, and the
+audit that measured both checks geometry, contrast and focus, not names.
+
+## Snippet
+
+<ElementsDemo component="snippet" />
+
+A command in a read-only input with a copy button beside it. `SnippetInput` is `readOnly`
+with the `code` as its value, so the text is selectable. `SnippetCopyButton` writes through
+`navigator.clipboard`, falls back to calling `onError` when the API is not available, and
+flips its icon to a check for two seconds.
+
+## Artifact
+
+<ElementsDemo component="artifact" />
+
+`Artifact` is a **`<div>`** — a bordered container with a header, an actions cluster and a
+content region. It is not a dialog and not a panel: no `role`, no focus trap, no open or
+closed state, and nothing that positions it. Where it sits, and what dismisses it, is yours;
+`ArtifactClose` is a button that renders an `sr-only` "Close" and calls whatever `onClick`
+you give it.
+
+`ArtifactAction` takes `icon`, `label` and `tooltip`, and puts `label ?? tooltip` in an
+`sr-only` span — so an action with neither is a button with no name. All three header buttons
+are classified dense together, for the reason recorded below.
+
+## Image
+
+`Image` takes the AI SDK's generated-image shape and renders an `<img>` whose `src` is a
+`data:` URI built from `base64` and `mediaType`.
+
+<ElementsDemo component="image" />
+
+**It has no default `alt`.** It passes through the `alt` you give it and invents nothing, so
+an `Image` without one renders an `<img>` with no `alt` attribute at all — which is the worst
+of the three options for a screen reader. Pass `alt=""` for decoration or a real description
+otherwise.
+
+## What this system changed
+
+<ElementsPatchTable
+  components={['code-block', 'artifact', 'image', 'snippet']}
+  also={['button-floor']}
+/>

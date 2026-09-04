@@ -1,0 +1,97 @@
+import { ElementsDemo } from '@/components/docs/ElementsDemo';
+import { ElementsPatchTable } from '@/components/docs/ElementsPatchTable';
+
+export const metadata = { title: 'Tools and tasks', order: 8 };
+
+# Tools and tasks
+
+A tool call rendered as what it is: a state machine with parameters going in and a result or
+an error coming back. `Confirmation` is the gate in front of the ones that should not run
+unasked.
+
+<ElementsDemo component="tool" />
+
+## Import
+
+```tsx
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from '@elirobinson/ai-elements/components/tool';
+import {
+  Confirmation,
+  ConfirmationAction,
+  ConfirmationActions,
+  ConfirmationRequest,
+  ConfirmationTitle,
+} from '@elirobinson/ai-elements/components/confirmation';
+import { Task, TaskContent, TaskItem, TaskTrigger } from '@elirobinson/ai-elements/components/task';
+```
+
+## The states
+
+`ToolHeader` takes the `state` off the AI SDK's tool part and renders a badge for it. Seven
+states, each with its own label and icon: `input-streaming` (Pending), `input-available`
+(Running), `output-available` (Completed), `output-error` (Error), `approval-requested`
+(Awaiting Approval), `approval-responded` (Responded) and `output-denied` (Denied).
+
+<ElementsDemo component="tool" variant="Input streaming" />
+
+<ElementsDemo component="tool" variant="Output available" />
+
+<ElementsDemo component="tool" variant="Output error" />
+
+`ToolInput` renders whatever `input` you hand it regardless of state, so a call that was
+denied still shows what was declined as long as the panel contains one. `ToolOutput` renders
+nothing at all when it has neither an output nor an `errorText`.
+
+## Everything is escaped
+
+Tool arguments and results are never treated as markup:
+
+- `ToolInput` runs the input through `JSON.stringify` and hands the string to `CodeBlock`.
+- `ToolOutput` does the same for an object, treats a string as code, and puts anything else
+  in a plain `<div>` as React children.
+- `errorText` goes into a `<div>` as a text child.
+- `CodeBlock` builds React token elements from Shiki's tokenizer and renders them into
+  `<pre><code>`. There is no `dangerouslySetInnerHTML` on this path.
+
+Model-authored content reaching this component is rendered as text, not as HTML.
+
+## Confirmation
+
+<ElementsDemo component="confirmation" />
+
+`Confirmation` renders `null` unless it has an `approval` **and** the state has moved past
+`input-streaming` / `input-available` — so the gate cannot appear before there is something
+to approve. `ConfirmationRequest`, `ConfirmationAccepted` and `ConfirmationRejected` each
+show only in the states they are named for, so the same tree covers the ask and both answers.
+
+- `ConfirmationAction` is a real `<button type="button">` with no dense classification, so
+  `button-floor` applies: 44×44, not the 32px its own `h-8` asks for.
+- **Nothing here moves focus.** No component in this family sets `autoFocus` or calls
+  `focus()`, so nothing is focused when the gate appears and the buttons enter the tab order
+  in the order you render them. Which action a keyboard user reaches first is your DOM order,
+  and it is worth deciding on purpose.
+- `ConfirmationAction` does not merge `className` — it spreads props after its own, so a
+  `className` you pass replaces its sizing rather than adding to it.
+
+## Task
+
+<ElementsDemo component="task" />
+
+`Task` is a collapsible that starts open. **`TaskTrigger` renders its default content with
+`asChild`, and that default content is a `<div>`** — it takes the click handler and the
+expanded state, but a `<div>` is not a tab stop, so the default trigger cannot be reached or
+operated from the keyboard. Pass a `<button>` as its child when the disclosure has to work
+for everyone.
+
+## What this system changed
+
+<ElementsPatchTable components={['tool', 'confirmation', 'task']} also={['button-floor']} />
+
+No entry names `tool.tsx`, `confirmation.tsx` or `task.tsx`: every control in this family is
+a shared primitive, and the floor it gets is the one above.

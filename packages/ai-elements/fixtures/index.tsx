@@ -41,6 +41,8 @@ import {
 } from '@elirobinson/ai-elements/components/artifact';
 import {
   Attachment,
+  AttachmentInfo,
+  AttachmentPreview,
   AttachmentRemove,
   Attachments,
 } from '@elirobinson/ai-elements/components/attachments';
@@ -186,6 +188,7 @@ import { Panel } from '@elirobinson/ai-elements/components/panel';
 import { Persona } from '@elirobinson/ai-elements/components/persona';
 import {
   Plan,
+  PlanAction,
   PlanContent,
   PlanDescription,
   PlanHeader,
@@ -377,8 +380,12 @@ export const fixtures: Record<string, ComponentType> = {
     </Artifact>
   ),
 
+  /* The `list` variant, fully composed. The grid default renders a 96px tile
+     whose contents are all opt-in — no preview, no name, and an
+     <AttachmentRemove> that returns null without an `onRemove` — so the
+     obvious mount is an empty box with nothing for the sweep to measure. */
   attachments: () => (
-    <Attachments>
+    <Attachments variant="list">
       <Attachment
         data={{
           filename: 'diagram.png',
@@ -387,7 +394,10 @@ export const fixtures: Record<string, ComponentType> = {
           type: 'file',
           url: '',
         }}
+        onRemove={() => {}}
       >
+        <AttachmentPreview />
+        <AttachmentInfo showMediaType />
         <AttachmentRemove />
       </Attachment>
     </Attachments>
@@ -459,8 +469,12 @@ export const fixtures: Record<string, ComponentType> = {
     </Commit>
   ),
 
+  /* `approval` is not optional in practice: <Confirmation> returns null
+     without one, so a fixture that omits it renders nothing and every check in
+     the sweep passes over an empty page — the exact false green this file's
+     header warns about. */
   confirmation: () => (
-    <Confirmation state="approval-requested">
+    <Confirmation approval={{ id: 'call-1' }} state="approval-requested">
       <ConfirmationRequest>
         <ConfirmationTitle>Run the migration?</ConfirmationTitle>
         <ConfirmationActions>
@@ -698,12 +712,17 @@ export const fixtures: Record<string, ComponentType> = {
 
   persona: () => <Persona state="idle" />,
 
+  /* PlanTitle is a sibling of PlanTrigger, not its child: PlanTrigger spreads
+     its props into a <Button> that already has JSX children, and JSX children
+     win — so a title nested inside it is silently dropped and neither the
+     sweep nor the demo ever renders one. */
   plan: () => (
     <Plan {...open}>
       <PlanHeader>
-        <PlanTrigger>
-          <PlanTitle>Ship the audit</PlanTitle>
-        </PlanTrigger>
+        <PlanTitle>Ship the audit</PlanTitle>
+        <PlanAction>
+          <PlanTrigger />
+        </PlanAction>
       </PlanHeader>
       <PlanContent>
         <PlanDescription>Measure, classify, patch, record.</PlanDescription>

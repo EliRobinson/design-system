@@ -17,6 +17,37 @@
 import type { ComponentType } from 'react';
 
 import {
+  Context,
+  ContextContent,
+  ContextContentBody,
+  ContextContentHeader,
+  ContextInputUsage,
+  ContextOutputUsage,
+  ContextTrigger,
+} from '@elirobinson/ai-elements/components/context';
+import {
+  InlineCitation,
+  InlineCitationCard,
+  InlineCitationCardBody,
+  InlineCitationCardTrigger,
+  InlineCitationCarousel,
+  InlineCitationCarouselContent,
+  InlineCitationCarouselHeader,
+  InlineCitationCarouselItem,
+  InlineCitationCarouselNext,
+  InlineCitationCarouselPrev,
+  InlineCitationQuote,
+  InlineCitationText,
+} from '@elirobinson/ai-elements/components/inline-citation';
+import {
+  ModelSelector,
+  ModelSelectorContent,
+  ModelSelectorItem,
+  ModelSelectorList,
+  ModelSelectorName,
+  ModelSelectorTrigger,
+} from '@elirobinson/ai-elements/components/model-selector';
+import {
   Tool,
   ToolContent,
   ToolHeader,
@@ -24,7 +55,87 @@ import {
   ToolOutput,
 } from '@elirobinson/ai-elements/components/tool';
 
+/* The closed half of the three components whose open state is portalled.
+ *
+ * `./index.tsx` opens every collapsible, dialog and hover card it mounts,
+ * because the audit cannot measure a control that is not in the DOM and each
+ * fixture has a whole page to itself. A documentation page does not: a Radix
+ * dialog or hover card renders into a portal on document.body, so an
+ * open-by-default one escapes the demo's box and lands on top of the prose and
+ * the sidebar — verified in a browser against the built site, where the open
+ * model selector covered the page it was supposed to be illustrating.
+ *
+ * So the demo pages mount these closed and let the reader open them, which is
+ * also the interaction worth showing. The default mount is unchanged and the
+ * audit still measures the open state.
+ */
 export const variants: Record<string, Record<string, ComponentType>> = {
+  context: {
+    Closed: () => (
+      <Context
+        maxTokens={200_000}
+        usage={{
+          inputTokenDetails: { cacheReadTokens: 0, cacheWriteTokens: 0, noCacheTokens: 900 },
+          inputTokens: 900,
+          outputTokenDetails: { reasoningTokens: 0, textTokens: 300 },
+          outputTokens: 300,
+          totalTokens: 1200,
+        }}
+        usedTokens={1200}
+      >
+        <ContextTrigger />
+        <ContextContent>
+          <ContextContentHeader />
+          <ContextContentBody>
+            <ContextInputUsage />
+            <ContextOutputUsage />
+          </ContextContentBody>
+        </ContextContent>
+      </Context>
+    ),
+  },
+
+  'inline-citation': {
+    Closed: () => (
+      <p>
+        <InlineCitation>
+          <InlineCitationText>Target Size (Minimum) is 24 by 24.</InlineCitationText>
+          <InlineCitationCard>
+            <InlineCitationCardTrigger sources={['https://example.com/wcag']} />
+            <InlineCitationCardBody>
+              <InlineCitationCarousel>
+                <InlineCitationCarouselHeader>
+                  <InlineCitationCarouselPrev />
+                  <InlineCitationCarouselNext />
+                </InlineCitationCarouselHeader>
+                <InlineCitationCarouselContent>
+                  <InlineCitationCarouselItem>
+                    <InlineCitationQuote>Targets are at least 24 by 24.</InlineCitationQuote>
+                  </InlineCitationCarouselItem>
+                </InlineCitationCarouselContent>
+              </InlineCitationCarousel>
+            </InlineCitationCardBody>
+          </InlineCitationCard>
+        </InlineCitation>
+      </p>
+    ),
+  },
+
+  'model-selector': {
+    Closed: () => (
+      <ModelSelector>
+        <ModelSelectorTrigger>Claude Opus</ModelSelectorTrigger>
+        <ModelSelectorContent>
+          <ModelSelectorList>
+            <ModelSelectorItem value="opus">
+              <ModelSelectorName>Claude Opus</ModelSelectorName>
+            </ModelSelectorItem>
+          </ModelSelectorList>
+        </ModelSelectorContent>
+      </ModelSelector>
+    ),
+  },
+
   tool: {
     'Input streaming': () => (
       <Tool defaultOpen>

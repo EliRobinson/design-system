@@ -1,0 +1,113 @@
+import { ElementsDemo } from '@/components/docs/ElementsDemo';
+import { ElementsPatchTable } from '@/components/docs/ElementsPatchTable';
+
+export const metadata = { title: 'Prompt input', order: 6 };
+
+# Prompt input
+
+The composer: an auto-growing textarea inside a real `<form>`, a row of inline tool buttons,
+a send control that becomes a stop control, attachment handling that produces the
+`FileUIPart` shape `sendMessage` accepts, and a model picker.
+
+<ElementsDemo component="prompt-input" />
+
+## Import
+
+```tsx
+import {
+  PromptInput,
+  PromptInputBody,
+  PromptInputButton,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+} from '@elirobinson/ai-elements/components/prompt-input';
+import {
+  Attachment,
+  AttachmentRemove,
+  Attachments,
+} from '@elirobinson/ai-elements/components/attachments';
+import {
+  ModelSelector,
+  ModelSelectorContent,
+  ModelSelectorItem,
+  ModelSelectorList,
+  ModelSelectorTrigger,
+} from '@elirobinson/ai-elements/components/model-selector';
+```
+
+## The keyboard contract
+
+`PromptInputTextarea` handles `Enter` itself:
+
+- `Enter` submits — but it calls your own `onKeyDown` **first**, and if that handler calls
+  `preventDefault()` the internal behaviour does not run at all. That is the supported way to
+  change what `Enter` does, on a phone or anywhere else.
+- `Shift+Enter` inserts a newline.
+- An IME composition swallows `Enter`, so composing a character never sends the message.
+- Before submitting, it looks for a `button[type="submit"]` in the form and does nothing if
+  that button is disabled — so a disabled send is disabled for the keyboard too.
+- **`Backspace` in an empty textarea removes the last attachment.** Worth knowing before a
+  reader discovers it.
+
+## Send and stop
+
+`PromptInputSubmit` is one control with two jobs, keyed to `status`:
+
+- `aria-label` is `"Submit"`, or `"Stop"` while `status` is `submitted` or `streaming`.
+- Its `type` is `submit` normally, and `button` while generating **if** you passed `onStop` —
+  a stop that would otherwise submit the form is the failure this avoids.
+- The icon follows the same state: enter arrow, spinner, square, and a cross on `error`.
+
+It carries no dense classification, so `button-floor` applies to it and it is the 44×44
+control in a footer of 32px ones — the size difference is what says which one sends the
+message.
+
+## Attachments
+
+<ElementsDemo component="attachments" />
+
+The demo is the `list` variant. `Attachments` defaults to `grid`, which is a 96×96 tile whose
+contents are all opt-in — no preview, no name, and an `AttachmentRemove` that renders nothing
+until you supply an `onRemove`.
+
+- `AttachmentRemove` renders nothing at all unless the surrounding `Attachment` was given an
+  `onRemove`.
+- It sets `aria-label` (default `"Remove"`) and repeats it in an `sr-only` span, so it always
+  has a name.
+- **In the `grid` and `inline` variants it is `opacity-0` until the attachment is hovered,
+  and there is no focus-visible reveal.** A keyboard user can land on a control they cannot
+  see. The `list` variant has no opacity gate.
+- The label a chip shows falls back through `filename`, then `"Image"` or `"Attachment"`; a
+  `source-document` falls back through `title`, `filename`, `"Source"`.
+
+## Model selector
+
+<ElementsDemo component="model-selector" variant="Closed" />
+
+The demo is the closed state — open it, and the palette is a modal dialog.
+`ModelSelector` is not a select. It is a dialog containing a command palette — filter as you
+type, arrow keys to move, `Enter` to choose — which is why it takes `ModelSelectorInput` and
+`ModelSelectorList` rather than options. `ModelSelectorContent` gives the dialog an `sr-only`
+title (default `"Model Selector"`) so it is never an unnamed dialog, and clears
+`aria-describedby` because there is no description to point at.
+
+`PromptInputSelect` in the same module is a different thing: the shadcn/Radix `Select`, for
+picking something small inline in the composer.
+
+## Accessibility
+
+- The file input is a real `<input type="file">` with `display: none`. It is not a tab stop
+  and not in the accessibility tree; the visible button that opens it is the control, and
+  that button is a `<button>`.
+- `PromptInput` renders a `<form>`, so submitting works without JavaScript wiring and
+  `requestSubmit` runs your validation.
+- `PromptInputButton` — the inline tool row — is classified dense on purpose. See below.
+
+## What this system changed
+
+<ElementsPatchTable
+  components={['prompt-input', 'attachments', 'model-selector']}
+  also={['button-floor', 'command-item-floor', 'dialog-close-hit-area']}
+/>
