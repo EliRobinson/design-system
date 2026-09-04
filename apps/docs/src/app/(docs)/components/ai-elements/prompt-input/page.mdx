@@ -101,8 +101,10 @@ picking something small inline in the composer.
 - The file input is a real `<input type="file">` with `display: none`. It is not a tab stop
   and not in the accessibility tree; the visible button that opens it is the control, and
   that button is a `<button>`.
-- `PromptInput` renders a `<form>`, so submitting works without JavaScript wiring and
-  `requestSubmit` runs your validation.
+- `PromptInput` renders a real `<form>` — but `onSubmit` is required and its handler calls
+  `preventDefault()` unconditionally, so nothing here degrades without JavaScript. What the
+  form buys you is one path: `requestSubmit()` runs native constraint validation, and `Enter`
+  and the send button both go through it.
 - `PromptInputButton` — the inline tool row — is classified dense on purpose. See below.
 
 ## What this system changed

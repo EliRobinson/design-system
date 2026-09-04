@@ -71,10 +71,14 @@ boundary.
 - `ReasoningTrigger` and `ChainOfThoughtHeader` are full-width disclosure rows, both floored
   to `var(--target)` — see below. Both come from the shared collapsible, so `Enter` and
   `Space` toggle them and `aria-expanded` follows the state.
-- **Neither component sets `aria-live`.** Nothing in the vendored tree does; the only live
-  region it ships is `Conversation`'s `role="log"`. So whether a reasoning stream is
-  announced is decided by where you render it and by the `aria-live` you put on the thread —
-  see [Conversation and messages](/components/ai-elements/conversation).
+- **Neither component sets `aria-live`** — and neither does anything else in the package:
+  there is no explicit `aria-live` attribute in the vendored tree. Three roles imply one, and
+  none of them is on this page: `Conversation`'s `role="log"`, the shared alert's
+  `role="alert"` (which `Confirmation` renders — see
+  [Tools and tasks](/components/ai-elements/tools)), and the shared spinner's
+  `role="status"`. So whether a reasoning stream is announced is decided by where you render
+  it and by the `aria-live` you put on the thread — see
+  [Conversation and messages](/components/ai-elements/conversation).
 
 ## What this system changed
 

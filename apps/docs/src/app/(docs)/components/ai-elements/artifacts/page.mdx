@@ -71,7 +71,7 @@ closed state, and nothing that positions it. Where it sits, and what dismisses i
 `ArtifactClose` is a button that renders an `sr-only` "Close" and calls whatever `onClick`
 you give it.
 
-`ArtifactAction` takes `icon`, `label` and `tooltip`, and puts `label ?? tooltip` in an
+`ArtifactAction` takes `icon`, `label` and `tooltip`, and puts `label || tooltip` in an
 `sr-only` span — so an action with neither is a button with no name. All three header buttons
 are classified dense together, for the reason recorded below.
 

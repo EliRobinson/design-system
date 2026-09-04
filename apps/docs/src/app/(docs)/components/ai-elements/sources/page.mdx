@@ -35,15 +35,16 @@ import {
 
 ## The link, and what it says
 
-`Source` renders an `<a href target="_blank" rel="noreferrer">`. Three things follow from
-that, and they matter because these URLs came from a model, which got them from retrieved
-content:
+`Source` renders an `<a href target="_blank" rel="noreferrer">`. Three things follow:
 
-- `rel` is `noreferrer` — not `noopener noreferrer`. `{...props}` is spread last, so
-  `<Source rel="noopener noreferrer" …>` sets whatever you want without a fork.
+- `rel` is `noreferrer`, and that is the whole of it: the HTML spec defines `noreferrer` as
+  implying `noopener`, and a `target="_blank"` link is implicitly `noopener` in current
+  browsers regardless. There is nothing to add. `{...props}` is spread last, so the only
+  reason to override it is wanting the referrer sent — `<Source rel="noopener" …>`.
 - **The visible text is the `title` you pass, not the host of the `href`.** Nothing derives
-  the label from the URL, so a link can say one thing and go somewhere else unless you make
-  the label from the URL yourself.
+  the label from the URL. This is the one that matters, because these URLs came from a model
+  which got them from retrieved content: a link can say one thing and go somewhere else
+  unless you build the label out of the URL yourself.
 - `SourcesTrigger` reads "Used N sources" from its `count` prop. The count is a number you
   give it; it is not derived from the children.
 
