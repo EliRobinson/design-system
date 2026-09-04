@@ -18,7 +18,19 @@ export type ChatMessageProps = HTMLAttributes<HTMLDivElement> & {
   actions?: ReactNode;
 };
 
-/** A single turn in a conversation: avatar, optional attribution, content, and actions. */
+/**
+ * A single turn in a conversation: avatar, optional attribution, content, and actions.
+ *
+ * @deprecated Use `Message` from `@elirobinson/ai-elements/components/message`.
+ *
+ * `Message` takes a `UIMessage` role directly, renders markdown through
+ * Streamdown, and carries branch navigation and per-turn actions. This
+ * component takes an avatar, a name and a timestamp. Both are turns; theirs is
+ * the one the AI SDK feeds.
+ *
+ * Published and in use, so this is a deprecation and not a removal. It goes on
+ * the next major.
+ */
 export const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(function ChatMessage(
   { className, variant = 'received', avatar, name, timestamp, actions, children, ...props },
   ref,
