@@ -37,24 +37,33 @@ const STORY_FILE = /^apps\/storybook\/src\/stories\/([A-Z][A-Za-z0-9]*)\.stories
 const DOCS_PAGE = /^apps\/docs\/src\/app\/\(docs\)\/(.+)\/page\.(mdx|tsx)$/;
 const DEMO_FILE = /^apps\/docs\/src\/components\/demos\/([^/]+)\//;
 
-/* A page in one of the three DERIVED sidebar sections — Foundations,
-   Patterns, Guidelines. site-map.ts's derivedSection() builds those sections
-   by reading each page's own `metadata.title` / `navTitle` / `order` off
-   disk, and that sidebar renders on all 142 docs pages. So editing one of
+/* A page in one of the four DERIVED sidebar sections — Foundations, Patterns,
+   Guidelines, and AI Elements. site-map.ts's derivedSection() builds those
+   sections by reading each page's own `metadata.title` / `navTitle` / `order`
+   off disk, and that sidebar renders on all 136 docs pages. So editing one of
    these files — not adding or deleting it, merely EDITING it — can retitle or
    reorder a sidebar entry that appears in every single docs shot.
-   `[^/]+` mirrors derivedSection's own one-level readdir: only a page.mdx
-   directly under the section directory is part of the derived list.
 
-   Component pages, `(docs)/components/*`, are deliberately NOT in here and
-   must stay narrow. Their sidebar entries come from the generated component
-   manifest (`manifest.ts`, itself a SIDEBAR_SOURCE), not from the page file —
-   so editing one changes that one page. That distinction is the whole reason
-   this rule is "pages in the derived sections" rather than the far simpler
-   "all page files": making it all page files would run 142 docs shots for
-   every routine component-doc edit, which is most of them. */
+   The path shape mirrors derivedSection's own walk, which is one level deep
+   and now also picks up a `page.mdx` at the section root: hence the optional
+   middle segment. A root page.mdx exists only under `components/ai-elements`
+   today (it is the generated component index the prose pages hang off), and
+   it carries sidebar metadata exactly like its siblings.
+
+   `components/ai-elements` is the one section prefix here that also lives
+   under `components/`, and the derived rule has to win for it — the two rules
+   are about different things and this path satisfies the derived one. Ordinary
+   component pages, `(docs)/components/<slug>/page.mdx`, are deliberately NOT
+   matched and must stay narrow: their sidebar entries come from the generated
+   component manifest (`manifest.ts`, itself a SIDEBAR_SOURCE), not from the
+   page file, so editing one changes that one page. The alternation keeps both
+   true — `components/ai-elements/...` matches on the literal section prefix,
+   and `components/badge/page.mdx` matches nothing here — which is the whole
+   reason this rule is "pages in the derived sections" rather than the far
+   simpler "all page files": making it all page files would run every docs shot
+   for the most routine docs edit there is. */
 const DERIVED_SECTION_PAGE =
-  /^apps\/docs\/src\/app\/\(docs\)\/(?:foundations|patterns|guidelines)\/[^/]+\/page\.(?:mdx|tsx)$/;
+  /^apps\/docs\/src\/app\/\(docs\)\/(?:foundations|patterns|guidelines|components\/ai-elements)\/(?:[^/]+\/)?page\.(?:mdx|tsx)$/;
 
 /* A change to the *set* of things in the registry changes every docs page,
    because site-map.ts derives the sidebar from the component manifest and the
@@ -67,6 +76,15 @@ const SIDEBAR_SOURCES = [
   'apps/docs/src/app/(docs)/layout.tsx',
   'apps/docs/src/components/SiteHeader.tsx',
   'apps/docs/src/app/site.css',
+  /* Imported by the ROOT layout, so it is on every docs page, and it begins
+     `@import 'tailwindcss'` — a whole utility framework plus Preflight.
+     Nothing churned when it landed, and the reason is a property of today's
+     CSS rather than a guarantee: Tailwind v4 puts Preflight in `@layer base`,
+     and site.css is unlayered, so site.css wins over it regardless of import
+     order. Change either side of that — layer site.css, or add an unlayered
+     rule here — and this file moves pixels on all 136 docs pages. If it can
+     change a pixel it has to be named here, and it can. */
+  'apps/docs/src/app/elements.css',
 ];
 
 /* Nx's import graph cannot see these edges: playwright.config.ts and the
