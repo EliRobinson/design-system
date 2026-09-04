@@ -103,6 +103,9 @@ importers:
 
   apps/docs:
     dependencies:
+      '@ai-sdk/react':
+        specifier: ^3.0.278
+        version: 3.0.278(react@19.2.5)(zod@4.5.4)
       '@elirobinson/ai-elements':
         specifier: workspace:*
         version: link:../../packages/ai-elements
@@ -115,6 +118,12 @@ importers:
       '@elirobinson/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
+      ai:
+        specifier: ^6.0.275
+        version: 6.0.275(zod@4.5.4)
+      motion:
+        specifier: ^12.43.0
+        version: 12.43.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       next:
         specifier: ^16.3.0
         version: 16.3.0(@babel/core@7.29.0(supports-color@7.2.0))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@25.6.0)(babel-plugin-macros@3.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -131,9 +140,6 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1(supports-color@7.2.0)
     devDependencies:
-      '@ai-sdk/react':
-        specifier: ^3.0.41
-        version: 3.0.278(react@19.2.5)(zod@4.5.4)
       '@mdx-js/loader':
         specifier: ^3.1.0
         version: 3.1.1(supports-color@7.2.0)
@@ -155,9 +161,6 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.14)
-      ai:
-        specifier: ^6.0.105
-        version: 6.0.275(zod@4.5.4)
       shiki:
         specifier: ^4.4.2
         version: 4.4.2
