@@ -641,7 +641,15 @@ rm -rf apps/docs/.next
 pnpm nx run docs:build 2>&1 | tail -20
 ```
 
-Expected: the build passes `apps/docs/scripts/assert-static-routes.mjs` — a `generateStaticParams` route counts as static via `prerender-manifest.json`'s `dynamicRoutes`. The route count rises from **87** to **135** (87 + 48). If any fixture throws at build time, the build fails and names it; report that rather than working around it.
+Expected: the build passes `apps/docs/scripts/assert-static-routes.mjs` — a `generateStaticParams` route counts as static via `prerender-manifest.json`'s `dynamicRoutes`.
+
+**Two different counts exist here and they must not be confused.**
+`assert-static-routes.mjs` counts route _templates_, so one dynamic segment
+adds exactly **1** no matter how many pages it expands to: 87 → **88**. The
+visual sweep's `docsRoutes()` expands `generateStaticParams`, so it sees all
+48: **81 → 129**. Verify both, and expect those numbers.
+
+If any fixture throws at build time, the build fails and names it; report that rather than working around it.
 
 - [ ] **Step 6: Expect `terminal` to fail here**
 
@@ -1499,9 +1507,20 @@ Expected: `sync:elements` exits 0; **10 projects** build and test; lint, typeche
 ```bash
 rm -rf apps/docs/.next
 pnpm nx run docs:build 2>&1 | tail -5
+node --input-type=module --eval "const {docsRoutes}=await import('./tests/visual/docs/routes.ts');const r=docsRoutes();console.log('visual routes:',r.length,'| fixtures:',r.filter(x=>x.startsWith('/fixtures/')).length)"
 ```
 
-Expected: **142 static routes** — 87 before, plus 48 fixture routes, plus 7 family pages. If the number differs, account for it before pushing.
+Expected, and these are two different measures — do not conflate them:
+
+| Measure                                          | Before this plan | After Task 4 | After Task 8 |
+| ------------------------------------------------ | ---------------- | ------------ | ------------ |
+| `assert-static-routes.mjs` (route **templates**) | 87               | 88           | **95**       |
+| `docsRoutes()` (expanded, drives the **shots**)  | 81               | 129          | **136**      |
+
+The template count rises by only 1 for Task 4 because `[component]` is one
+template however many pages it expands to. The shot count is what matters for
+baselines, and it is the second row. If either number differs, account for it
+before pushing.
 
 - [ ] **Step 3: Verify one shot's logic locally**
 
@@ -1521,7 +1540,16 @@ git push
 gh pr checks 228
 ```
 
-Expect scoped red. CI mints baselines for genuinely new shots. Changed shots will include the sidebar and header chrome, because seven pages joined the AI Elements group — that is a real pixel change and it belongs in exactly one baseline each.
+Expect scoped red. CI mints baselines for genuinely new shots.
+
+The expected churn, in full. Anything outside this list is investigated, not accepted:
+
+- **96 new** — 48 fixture routes × 2 themes.
+- **14 new** — 7 family pages × 2 themes.
+- **4 changed** — `/components/chat-thread` and `/components/chat-message` × 2
+  themes, from Task 6's deprecation note.
+- **chrome changed** — sidebar and header, because seven pages joined the AI
+  Elements group. A real pixel change, in exactly one baseline each.
 
 - [ ] **Step 5: Accept baselines carefully**
 
