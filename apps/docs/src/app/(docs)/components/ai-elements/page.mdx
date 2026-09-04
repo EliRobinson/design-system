@@ -3,14 +3,19 @@ import { elements, elementsVersion, upstream, upstreamReleaseUrl } from '@/lib/a
 
 export const metadata = {
   title: 'AI Elements components',
-  navTitle: 'Components',
-  order: 3,
+  navTitle: 'Component index',
+  order: 2,
 };
 
 # AI Elements components
 
 Every subpath `@elirobinson/ai-elements` publishes, and what each one exports. There are{' '}
 {elements.length} of them at version <code>{elementsVersion}</code>, vendored from <a href={upstreamReleaseUrl()}><code>{upstream.ref}</code></a>.
+
+**These need a Tailwind 4 build, and nothing in [the other tiers](/components) does.** They are
+a separate package for that reason — see [Installing AI Elements](/components/ai-elements/installation)
+before you copy a subpath out of this page, and [Overview](/components/ai-elements/overview) for
+what vendoring at a pinned release means for you.
 
 This page is generated from `@elirobinson/ai-elements/manifest`, which the package rebuilds
 from its emitted declaration files on every build. Nothing here is typed by hand, which is
@@ -24,6 +29,10 @@ node -p "require('@elirobinson/ai-elements/manifest').entries.map(e => e.subpath
 
 There is no barrel — a bare `@elirobinson/ai-elements` import does not resolve. The import
 column below is the specifier you write, verbatim.
+
+Reach into `ui/` when you are extending an Element. For the rest of a page,
+`@elirobinson/react` is the layer with the keyboard contracts, the props tables and no
+build requirement.
 
 Prop types are omitted from the export lists: every component ships one named after it
 (`MessageContent` and `MessageContentProps`), and printing both would double the page

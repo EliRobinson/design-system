@@ -1,7 +1,7 @@
 export const metadata = {
   title: 'Installing AI Elements',
   navTitle: 'Installation',
-  order: 2,
+  order: 3,
 };
 
 # Installing AI Elements
@@ -95,7 +95,7 @@ import { cn } from '@elirobinson/ai-elements/lib/utils';
 - `lib/*` — the helpers the tree shares.
 
 What exists and what each subpath exports is data, not documentation: read
-[the component index](/ai-elements/components), or the manifest it is generated from.
+[the component index](/components/ai-elements), or the manifest it is generated from.
 
 ```bash
 node -p "require('@elirobinson/ai-elements/manifest').entries.map(e => e.subpath).join('\n')"
@@ -103,5 +103,5 @@ node -p "require('@elirobinson/ai-elements/manifest').entries.map(e => e.subpath
 
 ## Next step
 
-[Examples](/ai-elements/examples) wires the client components to
+[Examples](/components/ai-elements/examples) wires the client components to
 `@elirobinson/ai-patterns/server` and shows the round trip.

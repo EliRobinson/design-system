@@ -13,6 +13,19 @@ export const TIER_INTRO: Record<string, string> = {
     'Compound components with internal state or overlay orchestration — portals, focus management, keyboard navigation.',
 };
 
+/* The same, for the namespaces @elirobinson/ai-elements vendors. A separate map
+   rather than more keys in the one above: these are directories in somebody
+   else's repository, not tiers of this system's atomic scale, and the tier
+   boundary in docs/agents/components.md does not decide them. Rendered on both
+   /components (as the group's cards) and the index page itself, so the two
+   cannot describe the same namespace differently. */
+export const ELEMENTS_TIER_INTRO: Record<string, string> = {
+  components:
+    'The assistant surfaces themselves — conversation and message logs, prompt inputs, tool and reasoning panels, artifact and canvas views.',
+  ui: 'The shadcn/ui primitives those components are built on, vendored because they are what those components import.',
+  lib: 'The helpers the tree shares.',
+};
+
 /* Which components consume each hook — usage prose, sourced from
    docs/agents/components.md and the component imports themselves. */
 export const HOOK_USED_BY: Record<string, string> = {
