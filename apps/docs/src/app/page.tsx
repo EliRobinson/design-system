@@ -57,6 +57,11 @@ export default function HomePage() {
       body: 'Voice, the accessibility standard, tier boundaries, and how to contribute.',
     },
     {
+      title: 'AI Elements',
+      href: firstPageOf('AI Elements').href,
+      body: 'The assistant tier — conversation logs, prompt inputs, tool panels — vendored from Vercel at a pinned release and skinned with the tokens.',
+    },
+    {
       title: 'Build with AI',
       href: firstPageOf('Build with AI').href,
       body: 'llms.txt, per-component JSON, and prompt templates that ship with the packages.',
@@ -77,9 +82,10 @@ export default function HomePage() {
             Practical components, honestly built<span className="home-hero__dot">.</span>
           </h1>
           <p className="home-hero__lead">
-            Design tokens, React components, and AI patterns, published as versioned packages. The
-            props tables, token values, and search index on this site are generated from the
-            packages themselves, so what you read here is what you install.
+            Design tokens, React components, AI patterns, and a vendored AI Elements tier, published
+            as versioned packages. The props tables, token values, component indexes, and search
+            index on this site are generated from the packages themselves, so what you read here is
+            what you install.
           </p>
           <div className="home-hero__actions">
             <Link className="ds-button ds-button--accent ds-button--lg" href="/installation">

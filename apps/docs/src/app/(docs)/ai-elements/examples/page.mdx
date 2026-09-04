@@ -1,0 +1,85 @@
+import { ExampleSource } from '@/components/docs/ExampleSource';
+
+export const metadata = {
+  title: 'AI Elements examples',
+  navTitle: 'Examples',
+  order: 4,
+};
+
+# AI Elements examples
+
+Three round trips, end to end. The server halves use
+`@elirobinson/ai-patterns/server` — AI SDK Core with the house voice and the house stream
+defaults already applied — and the client halves use the vendored components.
+
+Every file below is a real file in this repository, shown by reading it at build time. They
+are compiled by the repo's own `tsc --noEmit`, so an example that stops matching the
+published types is a red build rather than a page that quietly teaches the wrong API. The
+`'use client'` line is stripped from the client files here; put it back at the top when you
+copy one.
+
+## A chat, end to end
+
+The route is six lines because the house voice, forwarded reasoning, forwarded sources and a
+safe error shape are all inside `streamHouseText` and `toHouseUIMessageResponse`. The one
+thing it cannot supply is the model: the provider and the model id are yours, so the example
+declares the shape rather than picking one. Pass `anthropic('…')`, `openai('…')`, or
+whatever you configured.
+
+<ExampleSource root="ai-patterns" file="chat-route.ts" />
+
+The client is `useChat` and three vendored components. `Conversation` keeps the log pinned
+to the bottom while tokens arrive, `Message` renders one turn, and `PromptInput` is a real
+form — its `onSubmit` hands over the typed text, so there is no controlled-input state to
+hold. Nothing here imports a stylesheet: the markup is Tailwind utilities compiled through
+`@elirobinson/tokens/tailwind.css`, so it is already on-brand and already follows the theme
+dial.
+
+<ExampleSource root="docs" file="chat-client.tsx" />
+
+## A tool call a person can read
+
+`tool()` carries a description written for the model and a schema, and nothing else. The name
+the stream carries is whatever key the tool set was declared under, so a tool panel has
+nothing human to lead with and shows `searchCatalogue` to a reader. That is a gap in the SDK
+rather than in the UI — the UI renders what the stream contains.
+
+`withToolDisplay` attaches the label beside the tool, where the person who named it is
+already looking, and `toolDisplayManifest` turns the whole set into plain JSON: no symbols,
+no schemas, no functions.
+
+<ExampleSource root="ai-patterns" file="tool-route.ts" />
+
+On the client, `ToolHeader` takes a `title`. `toolDisplayName` is the function that never
+returns an identifier — it reads the manifest, and falls back to a humanised form of the name
+for a tool nobody labelled, so the panel does not have to branch on absence.
+
+<ExampleSource root="docs" file="tool-panel.tsx" />
+
+## A structured surface
+
+Not everything an assistant returns is prose. A surface is a Zod schema and the renderer for
+it, shipped from one subpath, so the model's output is the props of a component with no
+mapping step on either side of the wire.
+
+<ExampleSource root="ai-patterns" file="decision-route.ts" />
+
+The client renders `rendered.props` straight into the component. Note where that component
+comes from: a structured surface is one the system owns, from `@elirobinson/react`, with the
+keyboard contract and the stylesheet that implies. Elements is the conversational chrome
+around it, not a replacement for it.
+
+<ExampleSource root="docs" file="decision-client.tsx" />
+
+`kind` is the dispatch key, deliberately kept apart from the props: a page that can render
+more than one surface switches on it, and never has to infer a component from the shape of an
+object. Three surfaces ship today —
+`@elirobinson/ai-patterns/server/surfaces/decision-card`, `/verdict-badge` and `/stub-card` —
+each exporting its schema and its renderer.
+
+## What is not on this page
+
+The house system prompt. It is read from `contracts.json` at run time by
+`houseSystemPrompt()`, never copied into a file, and `streamHouseText` applies it for you —
+so there is nothing here to paste and nothing to keep in step. Pass `system` to add your
+product's own instructions after it; it is additive, and you can say more but never less.

@@ -118,6 +118,11 @@ export function siteSections(): SiteSection[] {
     },
     derivedSection('Patterns', join(APP_DIR, 'patterns'), '/patterns'),
     derivedSection('Guidelines', join(APP_DIR, 'guidelines'), '/guidelines'),
+    /* The vendored tier. Derived like Patterns and Guidelines rather than
+       listed, and deliberately not a component-per-page section: the roster
+       belongs to vercel/ai-elements, so the one page that names components is
+       generated from the manifest. */
+    derivedSection('AI Elements', join(APP_DIR, 'ai-elements'), '/ai-elements'),
     {
       /* Rendered from the brand manifest — page.tsx routes, so listed here
          rather than derived from page.mdx files. */

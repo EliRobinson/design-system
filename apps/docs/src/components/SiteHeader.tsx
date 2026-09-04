@@ -6,7 +6,14 @@ import { ThemeToggle } from './ThemeToggle';
 
 /* Which sections get a top-level entry is editorial; where each one points
    derives from the section list, so the hrefs cannot drift from it. */
-const NAV_SECTIONS = ['Foundations', 'Components', 'Patterns', 'Guidelines', 'Build with AI'];
+const NAV_SECTIONS = [
+  'Foundations',
+  'Components',
+  'Patterns',
+  'Guidelines',
+  'AI Elements',
+  'Build with AI',
+];
 
 export function SiteHeader() {
   return (
