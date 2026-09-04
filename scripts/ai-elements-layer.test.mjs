@@ -37,12 +37,20 @@ describe('the AI Elements transform layer, versus what is published about it', (
   it('names every rule id in the published NOTICE', () => {
     const notice = readFileSync(noticePath, 'utf8');
 
+    // The Modifications section lists each rule as its own bulleted entry:
+    //   "  - <id>      <description...>" at the start of a line. A bare
+    // substring match would also accept an id that only appears inside prose
+    // — `reduced-motion` occurs inside `prefers-reduced-motion`, which is in
+    // that rule's own paragraph body — so this anchors to the list-entry
+    // shape instead: the id, at the start of a line (allowing for leading
+    // whitespace), immediately after a "- " bullet marker.
     for (const id of ruleIds) {
+      const listEntry = new RegExp(`^[ \\t]*-[ \\t]+${id}\\b`, 'm');
       expect(
-        notice,
+        listEntry.test(notice),
         `NOTICE's "in full" modification list does not mention the "${id}" rule. ` +
           "Add its paragraph — the list is this package's Apache-2.0 section 4(b) statement.",
-      ).toContain(id);
+      ).toBe(true);
     }
   });
 
