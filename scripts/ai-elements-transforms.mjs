@@ -18,6 +18,7 @@ import { posix } from 'node:path';
 
 import * as skin from './ai-elements-patches/skin.mjs';
 import { applyA11yPatches } from './ai-elements-patches/a11y.mjs';
+import { applyMotionPatches } from './ai-elements-patches/motion.mjs';
 
 /**
  * Upstream is a pnpm monorepo, so its components import their shadcn/ui
@@ -145,6 +146,27 @@ const RULES = [
       '(see scripts/ai-elements-patches/a11y.mjs for the per-control verdicts)',
     apply(source, ctx) {
       return applyA11yPatches(source, ctx.upstreamPath);
+    },
+  },
+
+  /* Reduced motion, and the reason it is a separate rule from the one above
+     rather than another entry in it: `a11y-touch-targets` classifies control
+     geometry against one of two published touch-target floors, and this rule
+     does not — a live region animating its own scroll is not a control with a
+     size, so it has no floor to be measured against. Keeping the two rules
+     (and their patch files) apart is what lets `a11y.mjs`'s patch ids stay in
+     lockstep with `contracts.json`'s `vendoredElementTargets`, which
+     `elements-classification-parity.test.mjs` enforces name-for-name.
+     Anchored the same way and for the same reason: exact, and a miss throws
+     rather than silently not applying. */
+  {
+    id: 'reduced-motion',
+    describe:
+      'replaced an unconditional smooth-scroll default with an instant one inside a ' +
+      'role="log" that nothing in the vendored tree guards with prefers-reduced-motion ' +
+      '(see scripts/ai-elements-patches/motion.mjs)',
+    apply(source, ctx) {
+      return applyMotionPatches(source, ctx.upstreamPath);
     },
   },
 
