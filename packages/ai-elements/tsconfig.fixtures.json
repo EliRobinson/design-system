@@ -1,0 +1,21 @@
+{
+  /* The fixtures, compiled into dist/fixtures and published as
+     `@elirobinson/ai-elements/fixtures`.
+
+     A config of its own because the package's tsconfig.json pins
+     `rootDir: "./src"` — the vendored tree is what that build is for, and
+     widening the root would move every emitted file. Everything else is
+     inherited, so the fixtures compile under exactly the settings the tree
+     they mount compiles under: Bundler resolution and `lib: ES2023`.
+
+     The manifest generator walks dist/components, dist/ui and dist/lib and
+     nothing else, so this emit cannot appear in the roster. */
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./fixtures",
+    "outDir": "./dist/fixtures",
+    "jsx": "react-jsx",
+    "declaration": true
+  },
+  "include": ["./fixtures/**/*"]
+}

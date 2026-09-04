@@ -34,6 +34,10 @@
       "types": "./dist/lib/*.d.ts",
       "import": "./dist/lib/*.js"
     },
+    "./fixtures": {
+      "types": "./dist/fixtures/index.d.ts",
+      "import": "./dist/fixtures/index.js"
+    },
     "./manifest": {
       "types": "./dist/manifest.d.ts",
       "default": "./dist/manifest.json"
@@ -88,7 +92,7 @@
   },
   "scripts": {
     "prepublishOnly": "pnpm run build",
-    "build": "rm -rf dist && tsc -p ./tsconfig.json && node ./scripts/generate-manifest.mjs",
+    "build": "rm -rf dist && tsc -p ./tsconfig.json && tsc -p ./tsconfig.fixtures.json && node ./scripts/generate-manifest.mjs",
     "lint": "echo 'No lint configured for ai-elements (vendored source is excluded repo-wide)'",
     "test": "echo 'No tests configured for ai-elements'"
   }

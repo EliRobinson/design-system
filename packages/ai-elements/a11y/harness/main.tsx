@@ -1,7 +1,7 @@
 import { Component, type ReactNode, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { fixtures } from '../fixtures/index.js';
+import { fixtures } from '../../fixtures/index.js';
 import './harness.css';
 
 /* One fixture per page load, selected by query string, with the three dials
