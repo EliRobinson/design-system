@@ -10,6 +10,14 @@
   "exclude": [
     "./node_modules",
     "./dist",
+    /* Vendored from vercel/ai-elements, and it needs `lib: ES2023` for
+       `Array.prototype.toReversed`. This sweep is a single flat program, so it
+       cannot hold both that and the ES2022 every other project compiles under.
+       Nothing is lost by excluding it: `pretypecheck` runs `nx run-many -t
+       build` first, and packages/ai-elements' build IS `tsc -p` against its own
+       tsconfig, with `strict` on and no check relaxed. A type error there fails
+       `pnpm typecheck` in the build step rather than the sweep step. */
+    "./packages/ai-elements/**/*",
     "./templates/**/*",
     "./apps/docs/.next/**/*",
     "./design-system-docs/**/*",

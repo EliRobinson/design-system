@@ -1,0 +1,74 @@
+@elirobinson/ai-elements
+Part of the Miltinson Design System.
+
+This product includes software developed at Vercel, Inc.
+
+Substantially all of this package is vendored third-party source, and `LICENSE`
+carries the Apache License 2.0 that governs it. The package's own scaffolding —
+`package.json`, `tsconfig.json`, `README.md` and `scripts/` — is the design
+system's, under the terms in the LICENSE file at the root of the source
+repository.
+
+--------------------------------------------------------------------------------
+AI Elements
+--------------------------------------------------------------------------------
+
+Everything under `src/components/`, `src/ui/` and `src/lib/` is derived from:
+
+    vercel/ai-elements
+    https://github.com/vercel/ai-elements
+    Copyright 2023 Vercel, Inc.
+    Licensed under the Apache License, Version 2.0
+
+The exact upstream release those files were taken from is recorded in
+`elements.lock.json` (`upstream.ref` and `upstream.commit`), and each vendored
+file carries the same reference plus its own upstream path in a header comment.
+Both are generated, not hand-written, so neither can drift from the source they
+describe.
+
+A copy of the Apache License, Version 2.0 is included in this package as
+`LICENSE`. You may also obtain it at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied.
+
+--------------------------------------------------------------------------------
+Modifications
+--------------------------------------------------------------------------------
+
+The vendored files have been modified from their upstream form, as required by
+section 4(b) of the License. Every modification is produced mechanically by
+`scripts/ai-elements-transforms.mjs` in the source repository, and the rules
+that fired on a given file are listed in that file's header comment. As of this
+release they are, in full:
+
+  - workspace-alias      Upstream imports its shadcn/ui primitives through the
+                         `@repo/shadcn-ui` workspace package name. Both tiers
+                         are vendored into this one published package, so those
+                         specifiers are rewritten to paths within it.
+
+  - relative-extensions  Relative import specifiers gain a `.js` extension, so
+                         the emitted `dist/` resolves under Node's ESM resolver
+                         rather than only under a bundler's.
+
+No other change is made to the upstream source. The file contents are otherwise
+byte-identical to the pinned upstream release.
+
+--------------------------------------------------------------------------------
+shadcn/ui
+--------------------------------------------------------------------------------
+
+The primitives under `src/ui/` (and `src/lib/utils.ts`) originate with:
+
+    shadcn/ui
+    https://github.com/shadcn-ui/ui
+    Copyright (c) 2023 shadcn
+    Licensed under the MIT License
+
+They reach this package as redistributed within vercel/ai-elements, which is why
+they carry the same Apache-2.0 provenance header as the rest of the vendored
+tree. The MIT License permits this redistribution; the copyright notice above is
+reproduced to satisfy it.

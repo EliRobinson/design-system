@@ -1,6 +1,8 @@
 # AI Agent Rules
 
-Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobinson/react`, `@elirobinson/ai-patterns`, `@elirobinson/eslint-config`, and `@elirobinson/design-system-mcp`.
+Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobinson/react`, `@elirobinson/ai-elements`, `@elirobinson/ai-patterns`, `@elirobinson/eslint-config`, and `@elirobinson/design-system-mcp`.
+
+`@elirobinson/ai-elements` is the one package whose source is not ours: it is vendored from `vercel/ai-elements` at a pinned release. Never hand-edit `packages/ai-elements/src/` — see [AI Elements](docs/agents/ai-elements.md).
 
 **Nothing we publish may require a consumer to update prose when this repo changes.** A consumer bumps a version and is current. Anything they would otherwise have to copy into their own docs — a component list, a token table, a Tailwind mapping, a lint rule — is a bug in what we publish. Ship it as a command, a manifest, a stylesheet, or a rule instead.
 
@@ -21,6 +23,7 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 - [Layout patterns](docs/agents/layout-patterns.md)
 - [Product token layer](docs/agents/product-token-layer.md) — the optional `--product-*` override convention
 - [Brand boundary](docs/agents/brand-boundary.md) — what is the system's and what is a consumer's, and the test that enforces it
+- [AI Elements](docs/agents/ai-elements.md) — the vendored tier, `pnpm sync:elements`, and why `src/` is never hand-edited
 - [AI patterns](docs/agents/ai-patterns.md) — the `ds` discovery CLI, contracts, agent templates
 - [Consumer tooling](docs/agents/consumer-tooling.md) — what a consuming app installs, and why each piece lives here
 - [Publishing](docs/agents/publishing.md)

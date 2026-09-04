@@ -1,0 +1,39 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    /* Bundler resolution, unlike @elirobinson/react's NodeNext — and the
+       difference is forced, not stylistic. Under NodeNext, `import Ansi from
+       "ansi-to-react"` types as the CommonJS namespace object rather than the
+       default export, because that is what Node really hands back; the same
+       goes for react-jsx-parser. Both are vendored call sites we may not edit,
+       so the choice is Bundler resolution or two hand-patched files, and those
+       patches would be reverted by the next `pnpm sync:elements`.
+       It is also the honest description of this package: every file is Tailwind
+       v4 markup behind a "use client" directive, several import CSS, and
+       `tailwindcss` is a required peer. There is no consumer of this package
+       that is not a bundler. The emitted relative specifiers still carry `.js`
+       (the `relative-extensions` rule in scripts/ai-elements-transforms.mjs),
+       so dist/ stays resolvable by Node as well. */
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    /* ES2023 for `Array.prototype.toReversed`, used by
+       src/components/jsx-preview.tsx. The base config stops at ES2022 because
+       nothing else here needs more, and `target` deliberately stays there: this
+       widens what the vendored source may reference without changing emit.
+       It is also why packages/ai-elements is excluded from
+       tsconfig.typecheck.json — the root sweep is one flat program and cannot
+       hold two `lib` settings. The package is typechecked by its own `build`,
+       which `pretypecheck` runs first. */
+    "lib": ["ES2023", "DOM", "DOM.Iterable"]
+    /* No check is relaxed here. `strict` is on and inherited, and the vendored
+       tree passes it — verified by removing every candidate relaxation and
+       re-running. If a future upstream release does not, the fix belongs in
+       scripts/ai-elements-transforms.mjs or in a wrapper we own, never as a
+       hand edit under src/: `pnpm sync:elements` would revert it on the next
+       bump, and until then it would register as local divergence and block
+       that bump. */
+  },
+  "include": ["./src/**/*", "./types/**/*"]
+}
