@@ -1,0 +1,93 @@
+{
+  "name": "@elirobinson/ai-elements",
+  "version": "0.0.0",
+  "description": "AI Elements vendored from vercel/ai-elements at a pinned upstream release, published as per-component subpaths.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EliRobinson/design-system.git",
+    "directory": "packages/ai-elements"
+  },
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "type": "module",
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "NOTICE",
+    "elements.lock.json",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    "./components/*": {
+      "types": "./dist/components/*.d.ts",
+      "import": "./dist/components/*.js"
+    },
+    "./ui/*": {
+      "types": "./dist/ui/*.d.ts",
+      "import": "./dist/ui/*.js"
+    },
+    "./lib/*": {
+      "types": "./dist/lib/*.d.ts",
+      "import": "./dist/lib/*.js"
+    },
+    "./manifest": {
+      "types": "./dist/manifest.d.ts",
+      "default": "./dist/manifest.json"
+    },
+    "./upstream": "./elements.lock.json"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "peerDependencies": {
+    "@ai-sdk/react": "^3.0.41",
+    "ai": "^6.0.105",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.0"
+  },
+  "dependencies": {
+    "@radix-ui/react-use-controllable-state": "^1.2.2",
+    "@rive-app/react-webgl2": "^4.26.1",
+    "@streamdown/cjk": "^1.0.2",
+    "@streamdown/code": "^1.1.0",
+    "@streamdown/math": "^1.0.2",
+    "@streamdown/mermaid": "^1.0.2",
+    "@xyflow/react": "^12.10.0",
+    "ansi-to-react": "^6.2.6",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "embla-carousel-react": "^8.6.0",
+    "katex": "^0.16.28",
+    "lucide-react": "^0.577.0",
+    "media-chrome": "^4.17.2",
+    "motion": "^12.26.2",
+    "nanoid": "^5.1.6",
+    "radix-ui": "^1.4.3",
+    "react-jsx-parser": "^2.2.0",
+    "shiki": "^3.22.0",
+    "streamdown": "^2.4.0",
+    "tailwind-merge": "^3.4.0",
+    "tokenlens": "^1.3.1",
+    "use-stick-to-bottom": "^1.1.3"
+  },
+  "devDependencies": {
+    "@ai-sdk/react": "^3.0.41",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "ai": "^6.0.105",
+    "tailwindcss": "^4.1.16",
+    "typescript": "^6.0.3"
+  },
+  "scripts": {
+    "prepublishOnly": "pnpm run build",
+    "build": "rm -rf dist && tsc -p ./tsconfig.json && node ./scripts/generate-manifest.mjs",
+    "lint": "echo 'No lint configured for ai-elements (vendored source is excluded repo-wide)'",
+    "test": "echo 'No tests configured for ai-elements'"
+  }
+}

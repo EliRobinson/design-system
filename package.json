@@ -26,7 +26,8 @@
     "pretypecheck": "nx run-many -t build",
     "typecheck": "tsc --noEmit -p ./tsconfig.typecheck.json",
     "format:check": "prettier --check .",
-    "sync:deps": "node scripts/sync-workspace-deps.mjs"
+    "sync:deps": "node scripts/sync-workspace-deps.mjs",
+    "sync:elements": "node scripts/sync-ai-elements.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",

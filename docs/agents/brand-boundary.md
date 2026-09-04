@@ -75,6 +75,7 @@ does not list it in `files`, so it is not published and is not listed here.
 
 | path                                      | why                                          |
 | ----------------------------------------- | -------------------------------------------- |
+| `packages/ai-elements/CHANGELOG.md`       | published history; generated from changesets |
 | `packages/ai-patterns/CHANGELOG.md`       | published history; generated from changesets |
 | `packages/design-system-mcp/CHANGELOG.md` | published history; generated from changesets |
 | `packages/react/CHANGELOG.md`             | published history; generated from changesets |

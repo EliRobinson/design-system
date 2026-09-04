@@ -1,0 +1,407 @@
+{
+  "refreshWith": "pnpm sync:elements --write",
+  "upstream": {
+    "repo": "vercel/ai-elements",
+    "ref": "ai-elements@1.9.0",
+    "commit": "bc871264341cf54a7ea1fee36d951688ed2a1ff7",
+    "committedAt": "2026-03-12T07:47:49Z",
+    "license": "Apache-2.0"
+  },
+  "upstreamDependencies": {
+    "@radix-ui/react-use-controllable-state": "^1.2.2",
+    "@repo/shadcn-ui": "workspace:*",
+    "@rive-app/react-webgl2": "^4.26.1",
+    "@streamdown/cjk": "^1.0.2",
+    "@streamdown/code": "^1.1.0",
+    "@streamdown/math": "^1.0.2",
+    "@streamdown/mermaid": "^1.0.2",
+    "@xyflow/react": "^12.10.0",
+    "ai": "^6.0.105",
+    "ansi-to-react": "^6.2.6",
+    "class-variance-authority": "^0.7.1",
+    "katex": "^0.16.28",
+    "lucide-react": "^0.577.0",
+    "media-chrome": "^4.17.2",
+    "motion": "^12.26.2",
+    "nanoid": "^5.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-jsx-parser": "^2.2.0",
+    "shiki": "3.22.0",
+    "streamdown": "^2.4.0",
+    "tokenlens": "^1.3.1",
+    "use-stick-to-bottom": "^1.1.3"
+  },
+  "files": {
+    "src/components/agent.tsx": {
+      "from": "packages/elements/src/agent.tsx",
+      "upstream": "sha256:7d96005ace889eaa790b293ae75883d62546b6c7983aec3e7e6784c0392e30c7",
+      "vendored": "sha256:714bb430c0479b99b18ef69251ca99095dea913f292a90c006b3a30a3143a7fc"
+    },
+    "src/components/artifact.tsx": {
+      "from": "packages/elements/src/artifact.tsx",
+      "upstream": "sha256:6e5017f85105164b95861b1d10a78c956c312682c5ecd17e2619870ba5993aba",
+      "vendored": "sha256:bb61addf5bedf714fe79060e0e09963cfbbb8b9bd6818bd2606f3eebe276c112"
+    },
+    "src/components/attachments.tsx": {
+      "from": "packages/elements/src/attachments.tsx",
+      "upstream": "sha256:91c42be9a592fe8ff2468352b8636f6bc364567779618ac3a075f1080b378fad",
+      "vendored": "sha256:fb109ab51225f3c4c3d7218403df7da52f4730b537777394e7131d8330cbae73"
+    },
+    "src/components/audio-player.tsx": {
+      "from": "packages/elements/src/audio-player.tsx",
+      "upstream": "sha256:375c174c83cf3770f1cf8b56a3e18584a773bce2141e451bfefc779d4901b5f3",
+      "vendored": "sha256:0a356ab175d42f09b9b699664de837a53a0a78c1902bc2a322a8f0122e0ceb51"
+    },
+    "src/components/canvas.tsx": {
+      "from": "packages/elements/src/canvas.tsx",
+      "upstream": "sha256:7bc92905e97c182c9a2f52b421a4d70414c8700a66039af9a4466587f74d2687",
+      "vendored": "sha256:6694df436e21c60ee7a8b4aa41c8382a488ae9993514d8388d97dc3fe4624a66"
+    },
+    "src/components/chain-of-thought.tsx": {
+      "from": "packages/elements/src/chain-of-thought.tsx",
+      "upstream": "sha256:ddc63b036299d636483b2041599248226e05ef01afd9c5e32724e3a849def8c4",
+      "vendored": "sha256:8afbe21319988745da6dfd21974d3b88c3c80116195c543473f9703baa94463f"
+    },
+    "src/components/checkpoint.tsx": {
+      "from": "packages/elements/src/checkpoint.tsx",
+      "upstream": "sha256:8649b28c7969c6c58bd9a8643279810c13da332198a4fcbc5b8a75000673eb5b",
+      "vendored": "sha256:3deb78d1b9e2c5609930c46e8eb0c647d42692b76569d9b027bd9bbd1a281886"
+    },
+    "src/components/code-block.tsx": {
+      "from": "packages/elements/src/code-block.tsx",
+      "upstream": "sha256:5c7285171c5aa741749a1642a85f492a9b5e80dc4ccb704b5c3f58c45efebd04",
+      "vendored": "sha256:04bb876ae5197aef0a85234d658cccc64f781f868157814d328569cd471c4c61"
+    },
+    "src/components/commit.tsx": {
+      "from": "packages/elements/src/commit.tsx",
+      "upstream": "sha256:877708682428984f5776dafb774da222fbee837804f220ce699956e32938fa1b",
+      "vendored": "sha256:1d71ae1ae0664d74b6ea0406f14903b6de2c36daff12a4566672f1981eef2ae4"
+    },
+    "src/components/confirmation.tsx": {
+      "from": "packages/elements/src/confirmation.tsx",
+      "upstream": "sha256:62aafcb7db41853faaf91b0247b6fce044b7a985e336e21b802e8778e7d1af7a",
+      "vendored": "sha256:31b9ceb6c1ada8976a7c4a0ed542bfa98882d4ff0247fcda609ac20f6bf7e007"
+    },
+    "src/components/connection.tsx": {
+      "from": "packages/elements/src/connection.tsx",
+      "upstream": "sha256:3da80a551da8a7eb4949a0b64b5329af463037dc15e6945e60ae66dcd903e71f",
+      "vendored": "sha256:1ce99a5569d770d7ff565e2d33940456e43da678da2c7f50a7351c9f213e7ef2"
+    },
+    "src/components/context.tsx": {
+      "from": "packages/elements/src/context.tsx",
+      "upstream": "sha256:e511015bd0d58d4dcc179d672fe2de980ff923654a53541d4396f209bf02c243",
+      "vendored": "sha256:97b3a33b552a46d54cb8ad2aa66d8fc2e182f4eb8388ded26f3d236493183eaa"
+    },
+    "src/components/controls.tsx": {
+      "from": "packages/elements/src/controls.tsx",
+      "upstream": "sha256:3f851a1906a1a8e017899983507c4537b300849b098dc38c51a4a36dbf52d085",
+      "vendored": "sha256:a203d4c347e6a67661badef71da518da057aea6272fc45de2eeb9abec022dc51"
+    },
+    "src/components/conversation.tsx": {
+      "from": "packages/elements/src/conversation.tsx",
+      "upstream": "sha256:d7ac46f1e7bc8e46bc49f67c768fc93aebdf17d816397cb35a40deff7173e875",
+      "vendored": "sha256:ec9b8e63ad00885e3fb4a2185c062c789a5d99ef93993ff351d7b5ffc14cb737"
+    },
+    "src/components/edge.tsx": {
+      "from": "packages/elements/src/edge.tsx",
+      "upstream": "sha256:f7929c87f5f2828d9e5cf65b9dffd73dec0a0fc8c8c0dce8f7ef55e33b610049",
+      "vendored": "sha256:0829fb0625bd85bf3cf127f1d3f1c7fccab9a95f7f7a1e5c1fc0fa2f2e6ef5b4"
+    },
+    "src/components/environment-variables.tsx": {
+      "from": "packages/elements/src/environment-variables.tsx",
+      "upstream": "sha256:6b685aacb47e7bcb62e15b74b4e0b0bd7beffb892f3769ad7fc3580e00aae88b",
+      "vendored": "sha256:943c8bf0bc1c0f7ad95219b3ab37d51666bae23c41bcd24372a79528aab2d784"
+    },
+    "src/components/file-tree.tsx": {
+      "from": "packages/elements/src/file-tree.tsx",
+      "upstream": "sha256:9b6946171369d224d5d10df686c3c18ce7608aa4a4792744fc5c313499cec0cb",
+      "vendored": "sha256:a2727d57759ceb07f03b13f2171a0010ae78a26baacc85c71ca4f9dce554e4a9"
+    },
+    "src/components/image.tsx": {
+      "from": "packages/elements/src/image.tsx",
+      "upstream": "sha256:91e305eda8139c5ee8024bec75576e0608d7fbf471e1c00395a2bdfda4a65747",
+      "vendored": "sha256:330761e1567a92260bf0cf7a32308ec8ced2377039bfe7a33e3822a34a5ee02f"
+    },
+    "src/components/inline-citation.tsx": {
+      "from": "packages/elements/src/inline-citation.tsx",
+      "upstream": "sha256:c7dc2a67386bc06d23fa42344f48f3b45e51f1f91b22e44801a2902acdf64018",
+      "vendored": "sha256:167389fbd6cb797efe06d253535940b4ff21f71cf79e1665da2e775cac059811"
+    },
+    "src/components/jsx-preview.tsx": {
+      "from": "packages/elements/src/jsx-preview.tsx",
+      "upstream": "sha256:0701c0610bd651fbe1d8f2cf35ec3598571381d2641b5da6daac9c677eac5d8d",
+      "vendored": "sha256:9febea4f03236fbb5b3c2c25cb86dfcfb7ddf8f003a0b04f07e6efcef13884a2"
+    },
+    "src/components/message.tsx": {
+      "from": "packages/elements/src/message.tsx",
+      "upstream": "sha256:19c7755740e116f221e4247f7b6d4f20b57a44e4c4fcf66d2db5e1f111476509",
+      "vendored": "sha256:205f6e91abd00868013124ec2426f041b03a3d1fdb2eb31f8044ccc701d9921f"
+    },
+    "src/components/mic-selector.tsx": {
+      "from": "packages/elements/src/mic-selector.tsx",
+      "upstream": "sha256:3b69b527315f81114fb99518f5078a183092f16ad4cf4105ef94861da1724dce",
+      "vendored": "sha256:5961a9d100c88ed0a6970be1b467f44cf85a818f763c2a5fcee5295b330fc383"
+    },
+    "src/components/model-selector.tsx": {
+      "from": "packages/elements/src/model-selector.tsx",
+      "upstream": "sha256:a4d51f76ddf5197cb86b7f70ba62bd62327468a9acae1351a0b1adcb3710ec0a",
+      "vendored": "sha256:f04afcb1b80820ab35babd39b03d22c8d7b1a7f5f26a26c3b656141ff485fe06"
+    },
+    "src/components/node.tsx": {
+      "from": "packages/elements/src/node.tsx",
+      "upstream": "sha256:67c30837d32aefcc1fc012f779a58465de86e2df8dd287f28da9a678d90ada61",
+      "vendored": "sha256:cc8c765e76b9388775fc542d9a8b197d3b12afe4e47846fc9fbebafa50dc037e"
+    },
+    "src/components/open-in-chat.tsx": {
+      "from": "packages/elements/src/open-in-chat.tsx",
+      "upstream": "sha256:0370a813ed09e9b23857717cff0704a028049d2cf014dbd11e5f56d05db6db33",
+      "vendored": "sha256:e580e452c1a8990f7fe4f8562a148e9e9702cb0e66b286a18ada763ac10968ff"
+    },
+    "src/components/package-info.tsx": {
+      "from": "packages/elements/src/package-info.tsx",
+      "upstream": "sha256:f6cb384a2f76acd7b305481e5a7b28a78c290e02fcda1867badf8801d29cf242",
+      "vendored": "sha256:902f334710ee0647e24d2879aeff89f553493be56c778d45986d96051c5d2b00"
+    },
+    "src/components/panel.tsx": {
+      "from": "packages/elements/src/panel.tsx",
+      "upstream": "sha256:ed0a5e6bf2f11b5b9654c073a67391a8fbeacfd262ad0cb91f962970c9bc8028",
+      "vendored": "sha256:6df8cd5d6e65e25ccfdc2ea18ee659cb88cf0c4655cc84f183a7d3d5b1748557"
+    },
+    "src/components/persona.tsx": {
+      "from": "packages/elements/src/persona.tsx",
+      "upstream": "sha256:5c649409c4c08408959eff5ec43a179ca6f585ec101ca7f8322348510b6b0375",
+      "vendored": "sha256:e9192e9001872afb30ce9ba350464cd038f359e1fd9daa52e9088914d820c84e"
+    },
+    "src/components/plan.tsx": {
+      "from": "packages/elements/src/plan.tsx",
+      "upstream": "sha256:bfa20e90199fa40e5f714be131798406dc07b23051f8c48c590e91c65ade99d8",
+      "vendored": "sha256:a74ccfb8958c4040ee3d18ccb67d4ef2ed5c4993231fa70a00251907fc8b6396"
+    },
+    "src/components/prompt-input.tsx": {
+      "from": "packages/elements/src/prompt-input.tsx",
+      "upstream": "sha256:cf43baf5baa444b4ae06d250643b3fb2efd329c85f9b31a43e3aaf481dd27305",
+      "vendored": "sha256:b4e590428b2169626219dfe76cc2d3f6899a14a8393e6a3270e282fecd926117"
+    },
+    "src/components/queue.tsx": {
+      "from": "packages/elements/src/queue.tsx",
+      "upstream": "sha256:c823f565e0430749ba0b09db33e76eeb675eea4838bed10245bca392bffd6cfa",
+      "vendored": "sha256:581264e54cae292268474d1c5fb022e4ddbf2ea0ac86ab93d4cc3c66bffe72d6"
+    },
+    "src/components/reasoning.tsx": {
+      "from": "packages/elements/src/reasoning.tsx",
+      "upstream": "sha256:f138cddde35854f73632ff51d48230f8d6e16e0a49a74b44a93b51993a65550e",
+      "vendored": "sha256:b45bd8ecf2bb2465240a55fdd5ec05382200562ccd6cadabf101f35065647ff7"
+    },
+    "src/components/sandbox.tsx": {
+      "from": "packages/elements/src/sandbox.tsx",
+      "upstream": "sha256:0a7ceffac784fdcfcf137f6532f33723a7e8c9e3c54c1bd45c594d1322d4ac3c",
+      "vendored": "sha256:a17a52456ded176630f31d08039a946417d4e89079ae0a6bcf182c3350b8929f"
+    },
+    "src/components/schema-display.tsx": {
+      "from": "packages/elements/src/schema-display.tsx",
+      "upstream": "sha256:805ca0b043ff5beb21f15b616df19df995fd4ecd3c48f8a9bc2ce588c86adfe7",
+      "vendored": "sha256:ea1312451ba262c0f6e1914d0ecb8161914347bb5d2f4bf121d197230c0fc4b7"
+    },
+    "src/components/shimmer.tsx": {
+      "from": "packages/elements/src/shimmer.tsx",
+      "upstream": "sha256:89d2284ee165aa57fec960e17c6c71078d22ad3fb3798ca683d7e3d850919a46",
+      "vendored": "sha256:5435610018fced62fb895431c5653858e3673f06a5717f1a5cc62a779d2ed242"
+    },
+    "src/components/snippet.tsx": {
+      "from": "packages/elements/src/snippet.tsx",
+      "upstream": "sha256:2b4f1b9ebc82eb2e188d8f71246540446dd89ef9a89bd9e3946cfc6a018a6849",
+      "vendored": "sha256:c1883f0eaed5d553bdfa6c04006b1e0f03e436af4e332ea63768d7ca2901f51b"
+    },
+    "src/components/sources.tsx": {
+      "from": "packages/elements/src/sources.tsx",
+      "upstream": "sha256:1454af3ac2c58766a155a881d119d1f9321632a4922d3f74581ba37f52b4707a",
+      "vendored": "sha256:bf8f61a491058ca38b92c80348a04dd28358d50b9b8b37c1f13caa84f2a685ca"
+    },
+    "src/components/speech-input.tsx": {
+      "from": "packages/elements/src/speech-input.tsx",
+      "upstream": "sha256:25747138c9c41cca6f96caf69faa9ff6e39910dabac534c84eba41cbd9ba54d3",
+      "vendored": "sha256:e9ee7a8a021bdaeee97563d73eecfc7bce2a20ba2349f1b97293ca5dde0bf1ac"
+    },
+    "src/components/stack-trace.tsx": {
+      "from": "packages/elements/src/stack-trace.tsx",
+      "upstream": "sha256:a2d31824b2b09df91fc6fc5921f2a7610abe2c839655d51770d9c3072db7e546",
+      "vendored": "sha256:81c1a32073141d5e25e288534b157dbdfec9d514d71bc616a78ae19d473cbda7"
+    },
+    "src/components/suggestion.tsx": {
+      "from": "packages/elements/src/suggestion.tsx",
+      "upstream": "sha256:0703d777b4153ae20e93514acb9e8327eb03dd2ed2fd0230e03cf22271c7a249",
+      "vendored": "sha256:8b9548c3934c5dbddeb1b278fedc43c76082152767649a915844d9cf2e0aa933"
+    },
+    "src/components/task.tsx": {
+      "from": "packages/elements/src/task.tsx",
+      "upstream": "sha256:cc9fb7138ded75f17c37c28a2b23425c98f4d06bead436531ad6e65ae553507e",
+      "vendored": "sha256:4bb1616b9e9d5f0019c4c8e6721e0e26487c7b2eca834188e5948bc8eea48a2e"
+    },
+    "src/components/terminal.tsx": {
+      "from": "packages/elements/src/terminal.tsx",
+      "upstream": "sha256:04b9b534925054cfe67fdc3bc212eb7261b4912e6e970c4844a195907d3a9a93",
+      "vendored": "sha256:a23a53578ccb0bcb0db700a81dfd4186b24e48f2649341f9ab66c3eaaac2bff4"
+    },
+    "src/components/test-results.tsx": {
+      "from": "packages/elements/src/test-results.tsx",
+      "upstream": "sha256:71fb2b77cfa34e6d7d3b1cc06a765622f755bcec193d3d539f4bead0e937f346",
+      "vendored": "sha256:ae14f952654b880727c12d7f3403244f27cbc38e0413ef12a0498b9267fa94e6"
+    },
+    "src/components/tool.tsx": {
+      "from": "packages/elements/src/tool.tsx",
+      "upstream": "sha256:5b520e0c33792cba0ceb04e1cb18c69b212cffacdb52d7297e292c7af568dda4",
+      "vendored": "sha256:f73c7103b56d2fb7263f70256601f5671b5781dea2a849a7665ee8cce29e7936"
+    },
+    "src/components/toolbar.tsx": {
+      "from": "packages/elements/src/toolbar.tsx",
+      "upstream": "sha256:36715bf898d1012dfca0fee6be0afa73b4e9564e64853476b766dcd07dc391b0",
+      "vendored": "sha256:75e9e702be0f45baeb615cf0139f41a52f8433d0a80815c412a0ecdd3aef2107"
+    },
+    "src/components/transcription.tsx": {
+      "from": "packages/elements/src/transcription.tsx",
+      "upstream": "sha256:c9edab6a677ec9fdd09fdd5657bf56fcc674457e52ab7c6f686107c6ba787e29",
+      "vendored": "sha256:b767139dffafe0243d8fbe4fe41b03367cfba2851fb98ce2110928b4803f7f53"
+    },
+    "src/components/voice-selector.tsx": {
+      "from": "packages/elements/src/voice-selector.tsx",
+      "upstream": "sha256:c777aa17525ea3664880f52e762dc1f49d4e9b32f0b815cc839677bff406aa3d",
+      "vendored": "sha256:0973954dd4247c2bf9af8a42af656df1e024752dff7626719ec9b9f4b2ac9f28"
+    },
+    "src/components/web-preview.tsx": {
+      "from": "packages/elements/src/web-preview.tsx",
+      "upstream": "sha256:7ae44586766db67c5341b36a30340b202e6f45c205457ad98f0817968d162d2c",
+      "vendored": "sha256:6af682bff74440c7d59d865baf828046eb6921e43a02cc96104ccb14b231518f"
+    },
+    "src/lib/utils.ts": {
+      "from": "packages/shadcn-ui/lib/utils.ts",
+      "upstream": "sha256:7c8c3dfc0cdd370d44932828eb067ef771c8fe7996693221d5d4b90af6d54f2d",
+      "vendored": "sha256:04bdca3f95f7ba4eb1d81d2948a3faa12862f7bbeb478b81cc13e90603fceea2"
+    },
+    "src/ui/accordion.tsx": {
+      "from": "packages/shadcn-ui/components/ui/accordion.tsx",
+      "upstream": "sha256:5868c50faad843d18f8805b9173ce7a90e15eb4da711d2ee47b36edc5b307fe8",
+      "vendored": "sha256:c0926113ec40c901d873fcdd6fb548827888fdb5acc7e61a7e6c516347956d2b"
+    },
+    "src/ui/alert.tsx": {
+      "from": "packages/shadcn-ui/components/ui/alert.tsx",
+      "upstream": "sha256:3d1ebed4f4685ee7689db9f05c48389df00ec54b28061b7cea2795cf5189199f",
+      "vendored": "sha256:750e72b0b41a1afc439d64202986a83357d0fb402530331e2ffdc6e4d233c53d"
+    },
+    "src/ui/avatar.tsx": {
+      "from": "packages/shadcn-ui/components/ui/avatar.tsx",
+      "upstream": "sha256:de3d562080b8f4770ea7d33bc6c5dd2d9b7cf0d1a2f37725f4f6079c6ad036b7",
+      "vendored": "sha256:d098eb2d114e522a94c54b12cec2443bcee620eeb4185739f04a18693ffbd840"
+    },
+    "src/ui/badge.tsx": {
+      "from": "packages/shadcn-ui/components/ui/badge.tsx",
+      "upstream": "sha256:145cf69448e20e027dd99e8e013507279aaa0922c30f63dabb54b75ab15222aa",
+      "vendored": "sha256:9d69030a6c2ece375af1e74937f9b4478454bc043e4272dd266db70f8f2fbbb7"
+    },
+    "src/ui/button-group.tsx": {
+      "from": "packages/shadcn-ui/components/ui/button-group.tsx",
+      "upstream": "sha256:1b0147f3d6ee8770524363f9bc9a57db83de8d2a0733c6e635e51034219e4c1e",
+      "vendored": "sha256:7ef145cf42d579efa718812f1c3dc39490648b7eb483b26bcd3b7779b2034b45"
+    },
+    "src/ui/button.tsx": {
+      "from": "packages/shadcn-ui/components/ui/button.tsx",
+      "upstream": "sha256:208d8cf515ccd73c1ca0030a11de1ba460a9fcd6c83faafeadc000833790d22e",
+      "vendored": "sha256:18629c15664d6b0beea560f1c2e2b350b18703dcc7934c081df4f215d77fc464"
+    },
+    "src/ui/card.tsx": {
+      "from": "packages/shadcn-ui/components/ui/card.tsx",
+      "upstream": "sha256:1c0537a8fa6adb76a9a275b8c569a744b92fa70fd1edbdca05d3b7234923be1a",
+      "vendored": "sha256:db04a7b0a1716695ff75e8861c8762f25e9e9f2d7de0775e694f55965c99539b"
+    },
+    "src/ui/carousel.tsx": {
+      "from": "packages/shadcn-ui/components/ui/carousel.tsx",
+      "upstream": "sha256:200433be223d6fa69378ff6f0babb69e52fa04595394aadf0d3f4004938ec45b",
+      "vendored": "sha256:cf0b46307296f546d0dab08e18386d6e749024a70964264744e9c4850b41ece5"
+    },
+    "src/ui/collapsible.tsx": {
+      "from": "packages/shadcn-ui/components/ui/collapsible.tsx",
+      "upstream": "sha256:c6598e5584f4258b5d9fefadbc5ad6a66888ad58729f4b634a0bb2d9c513188b",
+      "vendored": "sha256:75e76544ba2d31169b07bbfb39c73f6f9e7df85ac166bb52dec4f83e3359a591"
+    },
+    "src/ui/command.tsx": {
+      "from": "packages/shadcn-ui/components/ui/command.tsx",
+      "upstream": "sha256:53be7fe88f0ddbb2f6d97c64c07c1b4816050494880a582c92c0c3c62117b03c",
+      "vendored": "sha256:904741c869dfa3d58fbf012e56d93acd7241597fc193ac923e9750bc1f6bbd59"
+    },
+    "src/ui/dialog.tsx": {
+      "from": "packages/shadcn-ui/components/ui/dialog.tsx",
+      "upstream": "sha256:c7d128632214c9c78706a91a0616659ecf3be5119492b2ca66607bd83901b802",
+      "vendored": "sha256:3436d3daba12b9576d7579604dafad85a2b435a2bdae5a6ed65809924d0e306f"
+    },
+    "src/ui/dropdown-menu.tsx": {
+      "from": "packages/shadcn-ui/components/ui/dropdown-menu.tsx",
+      "upstream": "sha256:9384b044d08c59be883888a3dd66c3816156316f8debbcf107ef90b1e383d022",
+      "vendored": "sha256:efd11fb8cc1c0929e10e08e474dcb1e1325277fbeee53456e6a4b78dc52d768e"
+    },
+    "src/ui/hover-card.tsx": {
+      "from": "packages/shadcn-ui/components/ui/hover-card.tsx",
+      "upstream": "sha256:cf19544ba82d332ce2f882f9ae64d9e848c475f13e79fa0353492f2ce7afe1ef",
+      "vendored": "sha256:6446471e85e218ca3845aff6342a89799ea9217881fa4a5992a86d2dd0c71301"
+    },
+    "src/ui/input-group.tsx": {
+      "from": "packages/shadcn-ui/components/ui/input-group.tsx",
+      "upstream": "sha256:d347e89600f0750a438f31559c85bb91833eeef51a56e70c2af5ef5d8d2acdd2",
+      "vendored": "sha256:2e6269050155ac9d53e13b372f5c234f174c48f2df092c2cc5fcf91f7f5947e8"
+    },
+    "src/ui/input.tsx": {
+      "from": "packages/shadcn-ui/components/ui/input.tsx",
+      "upstream": "sha256:96207e020d2624fba7241b91a1f2e5a971510003b9c0becc9d0c02a535b15067",
+      "vendored": "sha256:2809fd80b8713368abeec5a74fe7cd53d26635d6d7d3e4fd4c196eaa7d9df6c6"
+    },
+    "src/ui/popover.tsx": {
+      "from": "packages/shadcn-ui/components/ui/popover.tsx",
+      "upstream": "sha256:381c7e91747142d14b87efaf6211707c348aa090ba3c843001f4c99ede32e27b",
+      "vendored": "sha256:81aedd6f366e3ee9e583d9fa5fd98a0a7b1378afcebc46ee73291294a0913ba9"
+    },
+    "src/ui/progress.tsx": {
+      "from": "packages/shadcn-ui/components/ui/progress.tsx",
+      "upstream": "sha256:fc7e2a5570f711d99ac0b5df15b0d1e65b4f18cf6fe4b5ea016f1b781f2db284",
+      "vendored": "sha256:bb5613e8ea0122b25ef7761fe9a59c1369223c488ce172a0d1933bfc967b17e8"
+    },
+    "src/ui/scroll-area.tsx": {
+      "from": "packages/shadcn-ui/components/ui/scroll-area.tsx",
+      "upstream": "sha256:e7d38bb90960e5cd95069bb0ced0177d4284a7d029a65171ac5772b6ab42ff46",
+      "vendored": "sha256:884ec8ec7f8e44e3b712c4d57a06307ce620971148b59506e59aa2f93dc7a095"
+    },
+    "src/ui/select.tsx": {
+      "from": "packages/shadcn-ui/components/ui/select.tsx",
+      "upstream": "sha256:a0eefd67e05688a6318a3a86080a6951723c6b5d323e1fa92b9d1b7fee777995",
+      "vendored": "sha256:f1efe543d3f6e2c7293541d00140cd166e2696d721fdd11794c3dcd9cb68780d"
+    },
+    "src/ui/separator.tsx": {
+      "from": "packages/shadcn-ui/components/ui/separator.tsx",
+      "upstream": "sha256:47885bfbdf6468a740999cf934b5cb563ecddb709502c2c501cea524f78d5ce3",
+      "vendored": "sha256:f9546d7dcddd181724c55167be8f49ebff95ee2b7f318e1fcf65930ff9d7b063"
+    },
+    "src/ui/spinner.tsx": {
+      "from": "packages/shadcn-ui/components/ui/spinner.tsx",
+      "upstream": "sha256:acf4f2aeb7fc29bd8aa22a6501b85dd4462d196e831dc5424be93ffdb49e21b4",
+      "vendored": "sha256:ddd51a04d4d2f58d5aa89256ffce0118769769da49865916b82dd974cd632397"
+    },
+    "src/ui/switch.tsx": {
+      "from": "packages/shadcn-ui/components/ui/switch.tsx",
+      "upstream": "sha256:120f1ec71d5e55e73d88bbc3cbb1423ffc00761026c010c49e05a83a2cb369ab",
+      "vendored": "sha256:414749ec39221c6fd7344ac209a6eff73cb3a0a0a0bcd5a69c6c10fb9d2c879f"
+    },
+    "src/ui/tabs.tsx": {
+      "from": "packages/shadcn-ui/components/ui/tabs.tsx",
+      "upstream": "sha256:bfb5cbe5c5b7809031844145f6744661882b9f32c7bf4c6b483d3d3d2b5d0f55",
+      "vendored": "sha256:ce833bf1dd0ec51ae84f0b408b61038e8ff2e89b7a91c91509fdcf688026b3bd"
+    },
+    "src/ui/textarea.tsx": {
+      "from": "packages/shadcn-ui/components/ui/textarea.tsx",
+      "upstream": "sha256:0b7fc00f5a0fa6ace377c5f61ef14a30b3d190bc2761c2728ec6886809a1a0c8",
+      "vendored": "sha256:7b9fcc891f92a68755288afe993216a95f6f64127483938ba67533cb3de896ca"
+    },
+    "src/ui/tooltip.tsx": {
+      "from": "packages/shadcn-ui/components/ui/tooltip.tsx",
+      "upstream": "sha256:f459111a16d346aaa64d1bb6557cca986f7332b150ad3a29001e8fef3aea973a",
+      "vendored": "sha256:59f7e45f4fa9179c1b219b48b234c44499a8f6efdf1f2354670d966ab9b32b94"
+    }
+  }
+}

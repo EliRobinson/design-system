@@ -22,6 +22,15 @@ export default tseslint.config(
       // Staged copies of the same brand material, served by the docs site.
       'apps/docs/public/brand/**',
       '.nx/**',
+      // Vendored verbatim from vercel/ai-elements. Every file here is written
+      // by `pnpm sync:elements` from the pinned upstream release, so a lint fix
+      // applied to one is reverted by the next bump — and until then it reads
+      // as local divergence and makes that bump fail as a conflict, which is
+      // the whole point of the sync check. Our own rules apply to code we can
+      // actually change: the package's scripts/ and types/ are NOT ignored.
+      // (Measured at ai-elements@1.9.0: 3 no-unused-vars errors, all on
+      // deliberate `_`-prefixed discards upstream keeps for documentation.)
+      'packages/ai-elements/src/**',
     ],
   },
   js.configs.recommended,
@@ -67,6 +76,7 @@ export default tseslint.config(
     files: [
       'packages/create-elirobinson-design-system/src/cli.mjs',
       'packages/react/scripts/**/*.mjs',
+      'packages/ai-elements/scripts/**/*.mjs',
       'scripts/**/*.mjs',
     ],
     rules: {

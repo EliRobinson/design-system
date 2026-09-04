@@ -22,3 +22,19 @@ linkWorkspacePackages: true
 allowBuilds:
   esbuild: true
   nx: true
+
+# This workspace is React 19 everywhere — root declares react 19 and every
+# package peers on ^19.0.0. Several packages in the vendored AI Elements tree
+# (@rive-app/react-webgl2, ansi-to-react, react-jsx-parser) still declare a
+# React 18 peer, and pnpm honours that by resolving a *second* @types/react into
+# their subtree. Two copies of the React types in one program are structurally
+# incompatible: `ReactNode` from one is not assignable to `ReactNode` from the
+# other (React 19 added `bigint`), so every `children` prop crossing the boundary
+# fails to typecheck and their default exports stop being valid JSX element
+# types. Measured: 18 build errors in packages/ai-elements before this, 0 after.
+#
+# Forcing the single version the repo actually installs is the fix, not a
+# workaround — there is no build here in which React 18 types are correct.
+overrides:
+  '@types/react': ^19.2.14
+  '@types/react-dom': ^19.2.3

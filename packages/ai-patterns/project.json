@@ -34,5 +34,23 @@
         "cwd": "packages/ai-patterns"
       }
     }
-  }
+  },
+  /* brand-boundary.test.mjs and dependency-boundary.test.mjs scan EVERY
+     publishable package in the workspace, reading each manifest's `files` field
+     and then the paths it names — `dist` included. That is a dependency on
+     every publishable package's build, and for react and tokens it is already
+     satisfied by `^build`, because this package devDepends on both. Nothing
+     imports @elirobinson/ai-elements, so it had no edge at all, and
+     `nx run-many -t test` scheduled `ai-patterns:test` beside
+     `ai-elements:build` — whose first act is `rm -rf dist`. Observed as
+     `@elirobinson/ai-elements publishes "dist", which does not exist`, from a
+     suite that passes when run on its own.
+     Naming it here rather than adding a devDependency nothing imports: this is
+     a build-ordering fact, not a code dependency, and scripts/project.json
+     already settled that shape for the same failure. `implicitDependencies`
+     rather than a `dependsOn` on `test`, for the reason recorded there — a
+     per-project `dependsOn` REPLACES the nx.json default instead of adding to
+     it, so spelling it here would silently drop the `^build`/`build` that #165
+     put in nx.json. */
+  "implicitDependencies": ["@elirobinson/ai-elements"]
 }
