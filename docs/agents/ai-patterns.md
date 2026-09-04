@@ -143,6 +143,51 @@ consumer's are the same code pointed at different builds. Repo-specific values �
 build directories, which routes this docs site cannot hold still — stay in
 `tests/visual/`, and they are the only thing that differs.
 
+## SDK core: the `./server` entry
+
+`@elirobinson/ai-patterns/server` wraps AI SDK Core so a consumer's route handler emits a
+stream our components can render without a mapping layer. It is the non-visual half of the
+AI tier: client UI renders whatever the stream contains and has nothing to say about what
+the model was told, and that half is ours.
+
+Four things live there, and one rule holds all of them together.
+
+| Subpath                    | What it is                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| `./server`                 | `streamText` / `generateObject` / `streamObject` with the house prompt applied |
+| `./server/prompt`          | The prompt itself, rendered from `contracts.json`                              |
+| `./server/tools`           | Display metadata for tools — the layer `tool()` has no room for                |
+| `./server/surfaces/<name>` | One structured surface: its Zod schema and its renderer, together              |
+
+**The prompt is read, never written down.** `houseSystemPrompt()` renders
+`contracts.json → systemPromptStyle` at run time, and a consumer's own `system` string is
+_appended_ to it rather than replacing it. That is the CLAUDE.md rule applied to prompts:
+a route that pasted our voice would be wrong the next time the contract moved, and nothing
+would fail. `prompt.test.mjs` holds both ends of the derivation — every contract value
+reaches the rendered prompt, and none of them appears as a literal in the module.
+
+Three more constraints, each with a check behind it:
+
+- **`ai` and `zod` are optional peers.** The consumer owns the version and there is never a
+  second copy in the process. `dependency-boundary.test.mjs` covers this across the repo;
+  `server/exports.test.mjs` names the file when it is one of these.
+- **Nothing server-only leaks into a browser bundle.** The `./server…` subpaths declare
+  `types` and `import` and no `require` condition — `ai` is ESM-only, so a CommonJS require
+  would resolve and then die inside the SDK. `exports.test.mjs` resolves every subpath in a
+  real Node process and reads every module for browser globals and undeclared imports.
+- **A model, never a model id.** `LanguageModel` accepts a string, which the SDK routes
+  through its own gateway — so a string, or a provider that has not been called yet, is
+  rejected with the call that fixes it.
+
+The three structured surfaces (`DecisionCard`, `VerdictBadge`, `StubCard`) are the one
+place this package restates another package's prop names. `surfaces.test.mjs` checks every
+key against `@elirobinson/react/manifest` and holds an exclusion list to the same standard
+the dependency boundary holds its permitted imports: a prop is left out for a stated
+reason, and an exclusion naming a prop that no longer exists fails the suite.
+
+Worked routes are in `packages/ai-patterns/docs/examples/`, and the repo's `tsc` compiles
+them, so they cannot drift from the export map.
+
 ## Agent templates
 
 `src/agents/` holds the generic instruction surfaces — Claude Code skill, Cursor rule,

@@ -65,6 +65,30 @@
       "types": "./src/testing/preflight-sweep.d.ts",
       "import": "./src/testing/preflight-sweep.mjs",
       "require": "./src/testing/preflight-sweep.mjs"
+    },
+    "./server": {
+      "types": "./src/server/stream.d.ts",
+      "import": "./src/server/stream.mjs"
+    },
+    "./server/prompt": {
+      "types": "./src/server/prompt.d.ts",
+      "import": "./src/server/prompt.mjs"
+    },
+    "./server/tools": {
+      "types": "./src/server/tools.d.ts",
+      "import": "./src/server/tools.mjs"
+    },
+    "./server/surfaces/decision-card": {
+      "types": "./src/server/surfaces/decision-card.d.ts",
+      "import": "./src/server/surfaces/decision-card.mjs"
+    },
+    "./server/surfaces/verdict-badge": {
+      "types": "./src/server/surfaces/verdict-badge.d.ts",
+      "import": "./src/server/surfaces/verdict-badge.mjs"
+    },
+    "./server/surfaces/stub-card": {
+      "types": "./src/server/surfaces/stub-card.d.ts",
+      "import": "./src/server/surfaces/stub-card.mjs"
     }
   },
   "engines": {
@@ -72,13 +96,21 @@
   },
   "peerDependencies": {
     "@playwright/test": ">=1.40.0",
-    "axe-core": ">=4.8.0"
+    "ai": ">=5.0.0",
+    "axe-core": ">=4.8.0",
+    "zod": ">=3.25.76"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {
       "optional": true
     },
+    "ai": {
+      "optional": true
+    },
     "axe-core": {
+      "optional": true
+    },
+    "zod": {
       "optional": true
     }
   },
@@ -94,8 +126,10 @@
   "devDependencies": {
     "@elirobinson/react": "workspace:*",
     "@elirobinson/tokens": "workspace:*",
+    "ai": "^7.0.92",
     "axe-core": "^4.11.0",
     "playwright": "^1.56.0",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "zod": "^4.5.4"
   }
 }
