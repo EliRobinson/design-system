@@ -1104,6 +1104,17 @@
 
 /* --- AI Elements ---------------------------------------------------------- */
 
+/* The Tailwind 4 requirement on the /components index. A hairline note rather
+   than a coloured banner: this is a fact a reader has to meet before they copy
+   an import, not a warning about something that has gone wrong, and the system
+   marks emphasis with a border rather than with a second loud colour. */
+.index-group__requirement {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+}
+
 /* The generated index's export lists. `details` collapses them because the
    long components export dozens of names, and a page that opens with 74 of
    those lists expanded is unreadable — but the names have to be on the page

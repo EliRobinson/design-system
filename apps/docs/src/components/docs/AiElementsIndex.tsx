@@ -1,9 +1,5 @@
-import {
-  ELEMENTS_TIERS,
-  componentExports,
-  elementsByTier,
-  type ElementsTier,
-} from '../../lib/ai-elements';
+import { ELEMENTS_TIERS, componentExports, elementsByTier } from '../../lib/ai-elements';
+import { ELEMENTS_TIER_INTRO } from '../../lib/editorial';
 
 /* The roster of @elirobinson/ai-elements, rendered from the manifest the
    package generates on every build.
@@ -12,15 +8,9 @@ import {
    around it does either. The tree is upstream's: `pnpm sync:elements --write`
    can add six components and remove one in a single commit, and a list written
    here would be wrong from that commit until somebody noticed. What is
-   hand-written is the sentence introducing each tier, which is a fact about the
-   directory rather than about its contents. */
-
-const TIER_INTRO: Record<ElementsTier, string> = {
-  components:
-    'AI Elements proper — the assistant surfaces. Conversation and message logs, prompt inputs, tool and reasoning panels, artifact and canvas views.',
-  ui: 'The shadcn/ui primitives the components above are built on, vendored with them because they are what those components import. Reach for them when you are extending an Element; for the rest of a page, the system’s own components are the ones with the keyboard contracts.',
-  lib: 'The helpers the tree shares.',
-};
+   hand-written is the sentence introducing each namespace, which is a fact
+   about the directory rather than about its contents — and it lives in
+   editorial.ts because /components renders the same three. */
 
 function EntryRow({ subpath, exports }: { subpath: string; exports: string[] }) {
   return (
@@ -61,7 +51,7 @@ export function AiElementsIndex() {
                 {tier} ({entries.length})
               </a>
             </h2>
-            <p>{TIER_INTRO[tier]}</p>
+            <p>{ELEMENTS_TIER_INTRO[tier]}</p>
             <div className="table-scroll">
               <table>
                 <thead>

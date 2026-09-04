@@ -24,16 +24,25 @@ import { ELEMENTS_TIERS, componentExports, elements, elementsByTier } from './ai
 import { EXAMPLES, examplePath, readExample } from './examples';
 import { siteSections } from './site-map';
 
-const SECTION_DIR = join(process.cwd(), 'src/app/(docs)/ai-elements');
+const SECTION_ROUTE = '/components/ai-elements';
+const SECTION_DIR = join(process.cwd(), `src/app/(docs)${SECTION_ROUTE}`);
 
-/** Every `page.mdx` in the section, as `[route, source]`. */
+/** Every `page.mdx` in the section, as `[route, source]`.
+    The root page counts: it is the generated index, and it is the page most
+    likely to grow a hand-typed list. */
 function sectionPages(): [string, string][] {
-  return readdirSync(SECTION_DIR, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry): [string, string] => [
-      `/ai-elements/${entry.name}`,
-      readFileSync(join(SECTION_DIR, entry.name, 'page.mdx'), 'utf8'),
-    ]);
+  const pages: [string, string][] = [
+    [SECTION_ROUTE, readFileSync(join(SECTION_DIR, 'page.mdx'), 'utf8')],
+  ];
+  for (const entry of readdirSync(SECTION_DIR, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      pages.push([
+        `${SECTION_ROUTE}/${entry.name}`,
+        readFileSync(join(SECTION_DIR, entry.name, 'page.mdx'), 'utf8'),
+      ]);
+    }
+  }
+  return pages;
 }
 
 /* The fenced code on a page, and nothing else.
@@ -243,10 +252,10 @@ describe('the worked examples', () => {
  * deletes this table's ability to rot, by failing when a permission stops being
  * used.
  *
- * All three are on the installation page, teaching the *shape* of a subpath —
- * one per namespace, which is the smallest set that shows what `components/`,
- * `ui/` and `lib/` mean. They are not a roster, and if upstream ever drops one
- * the specifier test above goes red first. */
+ * All three are on `/components/ai-elements/installation`, teaching the *shape*
+ * of a subpath — one per namespace, which is the smallest set that shows what
+ * `components/`, `ui/` and `lib/` mean. They are not a roster, and if upstream
+ * ever drops one the specifier test above goes red first. */
 const NAMEABLE = [
   {
     subpath: '@elirobinson/ai-elements/components/message',
@@ -299,5 +308,18 @@ describe('the section is reachable', () => {
         .map(([route]) => route)
         .sort(),
     );
+  });
+
+  it('is reached from the /components index, with the Tailwind requirement stated there', () => {
+    /* The placement decision, as an assertion. The vendored tier lives under
+       /components so the system reads as one thing, and the cost of that is
+       that somebody browsing the atomic tiers can walk straight into a package
+       with a build requirement the others do not have. The link and the
+       requirement are what pay for it, and neither is any use if a later edit
+       quietly drops one — this fails rather than letting a reader find out from
+       a page that renders unstyled with no error. */
+    const source = readFileSync(join(process.cwd(), 'src/app/(docs)/components/page.tsx'), 'utf8');
+    expect(source).toContain(`href="${SECTION_ROUTE}/installation"`);
+    expect(source).toMatch(/Tailwind 4/);
   });
 });

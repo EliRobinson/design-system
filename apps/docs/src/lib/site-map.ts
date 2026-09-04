@@ -74,14 +74,28 @@ export function parsePageMetadata(source: string, file: string): PageMetadata {
    directory, ordered by their metadata's explicit `order` — adding a page to
    the section is adding one file. */
 export function derivedSection(title: string, dir: string, hrefBase: string): SiteSection {
-  const pages = readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && existsSync(join(dir, entry.name, 'page.mdx')))
-    .map((entry) => {
-      const file = join(dir, entry.name, 'page.mdx');
+  /* A `page.mdx` at the section root is a page of the section like any other:
+     `hrefBase` itself, ordered by its own metadata rather than pinned to the
+     front. Sections that have no such file are unaffected, which is all of them
+     but AI Elements — whose root page is the generated component index, and
+     whose prose pages hang off it. Without this the one route a section is
+     named after would be the one route missing from the sidebar, and
+     site-structure.test.ts's "reach every page that exists on disk" would fail
+     on it, correctly. */
+  const rootPage = existsSync(join(dir, 'page.mdx'))
+    ? [{ name: '', file: join(dir, 'page.mdx') }]
+    : [];
+  const pages = [
+    ...rootPage,
+    ...readdirSync(dir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && existsSync(join(dir, entry.name, 'page.mdx')))
+      .map((entry) => ({ name: entry.name, file: join(dir, entry.name, 'page.mdx') })),
+  ]
+    .map(({ name, file }) => {
       const metadata = parsePageMetadata(readFileSync(file, 'utf8'), file);
       return {
         title: metadata.navTitle ?? metadata.title,
-        href: `${hrefBase}/${entry.name}`,
+        href: name === '' ? hrefBase : `${hrefBase}/${name}`,
         order: metadata.order,
       };
     })
@@ -116,13 +130,24 @@ export function siteSections(): SiteSection[] {
         { title: 'Interaction hooks', href: '/components/hooks' },
       ],
     },
+    /* The vendored tier, next to the components it sits beside in the URL
+       space rather than off in a section of its own. Derived like Patterns and
+       Guidelines, and deliberately not a component-per-page section: the roster
+       belongs to vercel/ai-elements, so the one page that names components is
+       generated from the manifest.
+
+       A separate sidebar heading under /components, not a merge into the
+       Components section above: it is a second package with a Tailwind 4
+       requirement the first one does not have, and a reader has to be able to
+       see which of the two they are looking at. Where the tier boundary
+       eventually puts it is P1's question, not this section list's. */
+    derivedSection(
+      'AI Elements',
+      join(APP_DIR, 'components/ai-elements'),
+      '/components/ai-elements',
+    ),
     derivedSection('Patterns', join(APP_DIR, 'patterns'), '/patterns'),
     derivedSection('Guidelines', join(APP_DIR, 'guidelines'), '/guidelines'),
-    /* The vendored tier. Derived like Patterns and Guidelines rather than
-       listed, and deliberately not a component-per-page section: the roster
-       belongs to vercel/ai-elements, so the one page that names components is
-       generated from the manifest. */
-    derivedSection('AI Elements', join(APP_DIR, 'ai-elements'), '/ai-elements'),
     {
       /* Rendered from the brand manifest — page.tsx routes, so listed here
          rather than derived from page.mdx files. */

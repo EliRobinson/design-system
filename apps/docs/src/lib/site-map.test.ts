@@ -40,6 +40,27 @@ describe('derivedSection', () => {
     });
   });
 
+  it('includes a page.mdx at the section root, ordered with the rest', () => {
+    /* AI Elements' root page is the generated component index and its prose
+       pages hang off it, so the section's own href is a page of the section.
+       Ordered by its metadata like everything else rather than pinned first:
+       the index is second there, behind the overview. */
+    const root = fixtureDir();
+    writeFileSync(
+      join(root, 'page.mdx'),
+      "export const metadata = { title: 'Index', order: 2 };\n\n# Page\n",
+    );
+    page(root, 'intro', "{ title: 'Intro', order: 1 }");
+
+    expect(derivedSection('Things', root, '/things')).toEqual({
+      title: 'Things',
+      pages: [
+        { title: 'Intro', href: '/things/intro' },
+        { title: 'Index', href: '/things' },
+      ],
+    });
+  });
+
   it('throws, naming the file, when a page has no order', () => {
     const root = fixtureDir();
     page(root, 'gamma', "{ title: 'Gamma' }");
@@ -75,9 +96,9 @@ describe('siteSections', () => {
       'Molecules',
       'Organisms',
       'Components',
+      'AI Elements',
       'Patterns',
       'Guidelines',
-      'AI Elements',
       'Brand',
       'UI Kits',
       'Resources',

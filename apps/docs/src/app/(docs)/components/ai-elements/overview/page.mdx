@@ -20,7 +20,7 @@ That requirement is the entire reason this is a separate package. `@elirobinson/
 no UI dependencies; Elements needs Tailwind 4, shadcn/ui, Radix and `lucide-react`. Folding
 them into `@elirobinson/react` would force Tailwind on every consumer of `Button` and
 `Input` for a feature most of them will never use. Installing this package is how you opt
-in — see [Installation](/ai-elements/installation), which is three stylesheet imports and one
+in — see [Installation](/components/ai-elements/installation), which is three stylesheet imports and one
 directive.
 
 It also means the two tiers are not alternatives. Use `@elirobinson/react` for the product
@@ -93,15 +93,17 @@ Redistributing the package means shipping the `NOTICE` with it.
 There are {elements.length} vendored files across three subpath namespaces, and no page on
 this site keeps a list of them. The roster is upstream's, it changes on a re-sync, and a list
 written into prose would be wrong from that commit onward — so
-[the component index](/ai-elements/components) is generated from
+[the component index](/components/ai-elements) is generated from
 `@elirobinson/ai-elements/manifest`, which is rebuilt from the emitted declaration files on
 every build and cannot name a component the package does not ship.
 
 ## Next steps
 
-- [Installation](/ai-elements/installation) — the package, its peers, and the three
-  stylesheet imports.
-- [Components](/ai-elements/components) — the generated index of every subpath and what it
+- [Component index](/components/ai-elements) — the generated list of every subpath and what it
   exports.
-- [Examples](/ai-elements/examples) — a chat round trip, a tool panel that reads, and a
+- [Installation](/components/ai-elements/installation) — the package, its peers, and the three
+  stylesheet imports.
+- [Examples](/components/ai-elements/examples) — a chat round trip, a tool panel that reads, and a
   structured surface.
+- [All components](/components) — the two tiers side by side, which is where this one is
+  reached from.
