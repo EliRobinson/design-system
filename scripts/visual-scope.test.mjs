@@ -185,14 +185,31 @@ describe('layer 1a: the sidebar fan-out', () => {
     }
   });
 
-  it('fans out for a MODIFIED page in each of the three derived sections', () => {
-    for (const section of ['foundations', 'patterns', 'guidelines']) {
+  it('fans out for a MODIFIED page in each of the four derived sections', () => {
+    /* AI Elements is the fourth, and the one that arrives under
+       `components/` — which the rule below deliberately keeps narrow. Both
+       have to hold at once, which is why they are asserted side by side. */
+    for (const section of ['foundations', 'patterns', 'guidelines', 'components/ai-elements']) {
       const result = plan([
         { status: 'M', path: `apps/docs/src/app/(docs)/${section}/anything/page.mdx` },
       ]);
       for (const pattern of fullRoutePatterns) {
         expect(result.grep).toContain(pattern);
       }
+    }
+  });
+
+  it('fans out for a MODIFIED page.mdx at a derived section ROOT', () => {
+    /* derivedSection() reads a section-root page.mdx as a page of the section
+       like any other, ordered by its own metadata — see its comment. Only AI
+       Elements has one today. Without the optional middle segment in
+       DERIVED_SECTION_PAGE this narrowed to the section's own route while the
+       sidebar entry it carries renders on every docs page. */
+    const result = plan([
+      { status: 'M', path: 'apps/docs/src/app/(docs)/components/ai-elements/page.mdx' },
+    ]);
+    for (const pattern of fullRoutePatterns) {
+      expect(result.grep).toContain(pattern);
     }
   });
 
