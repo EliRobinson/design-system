@@ -935,3 +935,5 @@ export const fixtures: Record<string, ComponentType> = {
     </WebPreview>
   ),
 };
+
+export { variants } from './variants.js';
