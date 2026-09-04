@@ -20,7 +20,14 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { ELEMENTS_TIERS, componentExports, elements, elementsByTier } from './ai-elements';
+import {
+  ELEMENTS_PACKAGE,
+  ELEMENTS_TIERS,
+  componentExports,
+  elements,
+  elementsByTier,
+} from './ai-elements';
+import { FAMILIES, familySubpaths } from './ai-element-families';
 import { EXAMPLES, examplePath, readExample } from './examples';
 import { siteSections } from './site-map';
 
@@ -280,9 +287,23 @@ describe('no page writes down the roster', () => {
        "message", "context" and "plan" are ordinary English and "conversation" is
        the subject of the section. A specifier is unambiguous. */
     const allowed = new Set(NAMEABLE.map((entry) => entry.subpath));
+    /* A demo page documents specific components, so it must name their
+       subpaths — that is the code a reader copies. The permission is derived
+       from the family map rather than granted page-by-page, so a page that
+       grows a mention of a component it does not document is still red, and a
+       component upstream removes fails the family test above first. */
+    const byRoute = new Map<string, Set<string>>();
+    for (const family of FAMILIES) {
+      byRoute.set(
+        `${SECTION_ROUTE}/${family.slug}`,
+        new Set(familySubpaths(family, ELEMENTS_PACKAGE)),
+      );
+    }
+
     for (const [route, source] of sectionPages()) {
+      const ownFamily = byRoute.get(route) ?? new Set<string>();
       for (const entry of elements) {
-        if (allowed.has(entry.subpath)) {
+        if (allowed.has(entry.subpath) || ownFamily.has(entry.subpath)) {
           continue;
         }
         expect(
@@ -296,6 +317,44 @@ describe('no page writes down the roster', () => {
   it.each(NAMEABLE)('still needs its permission for $subpath', ({ subpath }) => {
     const sources = sectionPages().map(([, source]) => source);
     expect(sources.some((source) => source.includes(subpath))).toBe(true);
+  });
+});
+
+describe('the demo families', () => {
+  it('name only components the package ships', () => {
+    const names = new Set(elements.map((entry) => entry.name));
+    for (const family of FAMILIES) {
+      for (const name of family.components) {
+        expect(
+          names.has(name),
+          `family '${family.slug}' names '${name}', which is not shipped`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('do not claim the same component twice', () => {
+    /* Two pages documenting one component is two places for it to go stale,
+       and the roster guard below would then permit its subpath on both. */
+    const seen = new Map<string, string>();
+    for (const family of FAMILIES) {
+      for (const name of family.components) {
+        expect(
+          seen.has(name),
+          `'${name}' is in both '${seen.get(name)}' and '${family.slug}'`,
+        ).toBe(false);
+        seen.set(name, family.slug);
+      }
+    }
+  });
+
+  it('each have a page on disk', () => {
+    for (const family of FAMILIES) {
+      expect(
+        existsSync(join(SECTION_DIR, family.slug, 'page.mdx')),
+        `family '${family.slug}' has no page`,
+      ).toBe(true);
+    }
   });
 });
 
