@@ -150,14 +150,25 @@ fails the build on any server-rendered route, so this must be static, and a
 
 Motion is frozen two ways, because CSS alone does not stop it:
 
-- The route wraps its mount in `<MotionConfig reducedMotion="user">` from
-  `motion/react`. `Shimmer` animates through Framer Motion's Web Animations
-  path, which `animation: none` in CSS does not reach.
-- The visual projects covering this route set `reducedMotion: 'reduce'`, and the
-  route's stylesheet neutralises `animation` and `transition` inside the fixture
-  root under `prefers-reduced-motion: reduce`. That guard is a real one — there
-  is none anywhere in the vendored tree today — so it serves readers as well as
-  the suite.
+> **As shipped, both bullets below are stronger than what they specify. Recorded
+> here rather than rewritten silently, since the difference is deliberate.**
+
+- The route wraps its mount in `<MotionConfig reducedMotion="always">` from
+  `motion/react` — `"always"`, not the specified `"user"`. `Shimmer` animates
+  through Framer Motion's Web Animations path, which `animation: none` in CSS
+  does not reach, and these pages exist to be photographed: keying the freeze to
+  the viewer's OS setting would have made the baseline depend on the machine.
+- No Playwright project sets `reducedMotion` — none was added, and the route
+  does not depend on one. `fixtures.css` kills `animation` and `transition`
+  inside `.fixture-stage` **unconditionally**, not under a
+  `prefers-reduced-motion: reduce` media query. Same reason: a media-query guard
+  is only as reliable as the emulation setting that triggers it. It is scoped to
+  the fixture stage rather than applied site-wide, because the docs site's own
+  motion is already handled in `tokens.css`.
+
+The vendored tree still has no `prefers-reduced-motion` guard of its own, and
+that is the gap `scripts/ai-elements-patches/motion.mjs` closes for the one
+component where it was a defect rather than a decoration — see §5.
 
 ### 4. Seven demo pages
 
@@ -183,14 +194,22 @@ all 48 and remains the only complete list.
 
 ### 5. The C1 patch and deprecation
 
-Two anchored replacements in `conversation.tsx`, added to
-`scripts/ai-elements-patches/a11y.mjs` with a header stating the measurement they
-come from — it is a live-region motion defect, which is that file's subject.
-`assertPatch` fails loudly if upstream moves either string.
+Two anchored replacements in `conversation.tsx`. **As shipped these went in a new
+module, `scripts/ai-elements-patches/motion.mjs`, under a new transform rule
+(`reduced-motion`), not into `a11y.mjs`** — that file's ids are pinned name-for-name
+to `contracts.json`'s `vendoredElementTargets`, whose every entry is a control
+measured against one of two touch-target floors, and a live region's scroll
+behaviour has no floor and so no honest verdict to publish there. The module's
+header carries the argument. `assertPatch` fails loudly if upstream moves either
+string, exactly as specified.
 
 `use-stick-to-bottom` accepting `"instant"` for `initial` and `resize` is
 **asserted, not assumed**: verified against the installed version's types before
-the patch is written, and covered by a rendering assertion afterwards.
+the patch is written, and covered afterwards by
+`scripts/ai-elements-layer.test.mjs`, which re-reads the vendored
+`conversation.tsx` for both attributes. That is the second pin — `assertPatch`
+catches upstream moving the anchor, and this catches the patch being deleted to
+force a bump through.
 
 ## Testing
 

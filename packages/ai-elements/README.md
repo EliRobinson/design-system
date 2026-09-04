@@ -44,6 +44,36 @@ The manifest is regenerated from the emitted declaration files on every build, s
 cannot name a component the package does not ship. Nothing here lists components in
 prose, and nothing downstream should either.
 
+## Fixtures
+
+`@elirobinson/ai-elements/fixtures` is a published subpath in its own right, and the one
+the manifest does not reach — `generate-manifest.mjs` walks `components/`, `ui/` and `lib/`
+only, so `require('…/manifest')` will not tell you these exist.
+
+```tsx
+import { fixtures, variants } from '@elirobinson/ai-elements/fixtures';
+```
+
+`fixtures` is one realistic mount per vendored component, keyed by the component's name in
+the manifest — the exact render inputs the accessibility sweep measures, importing through
+this package's own published subpaths so what is measured is what you install.
+`variants` is keyed the same way, then by a label, for the states worth seeing more
+than once (a tool pending, running, errored).
+
+**What is stable and what is not.** The subpath, the two exported names, and the shape of
+the keys (a manifest component name) are API. **The composition inside any one fixture is
+not, and neither is a variant label.** They exist to be measured and to be looked at, and
+they are rewritten whenever a fixture turns out to render nothing worth measuring — three
+were rewritten in a patch release for exactly that. If you render one, pin the version; if
+you assert on one, assert on your own fixture instead.
+
+If you use these, add a second `@source` alongside the one for `src/` — their class strings
+are emitted into `dist/fixtures`, which Tailwind will not otherwise see:
+
+```css
+@source '../node_modules/@elirobinson/ai-elements/dist/fixtures';
+```
+
 ## Provenance and licensing
 
 The vendored tree is Apache-2.0. `LICENSE` carries the licence text, `NOTICE` carries
@@ -55,8 +85,10 @@ itself is `elements.lock.json`, also published, as `@elirobinson/ai-elements/ups
 node -p "require('@elirobinson/ai-elements/upstream').upstream.ref"
 ```
 
-Every one of those is generated from the same source of truth, so none of them can
-drift from the code.
+The lockfile and the per-file headers are generated from the same source of truth, so
+neither can drift from the code. `NOTICE` is not: it is hand-written, and its list of
+modifications is kept complete by a check in the source repository
+(`scripts/ai-elements-layer.test.mjs`) that holds every transform-rule id against it.
 
 ## Re-syncing (maintainers)
 
