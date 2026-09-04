@@ -10,6 +10,21 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-04-ai-elements-demo-surface-design.md`
 
+## Expected red: `scripts:test`, from Task 4 until Task 9
+
+`tests/visual/visual-shots.test.mjs` asserts that the shot list computed from
+the routes equals the baseline PNGs on disk. Task 4 adds 48 routes, so from that
+commit onward `pnpm nx run scripts:test` fails with exactly one assertion — a
+list diff naming `fixtures-ai-elements-*.png` files that do not exist yet — and
+`pnpm nx run-many -t build,test` reports 9/10 projects.
+
+**This is expected and it is not yours to fix** in Tasks 5-8. Baselines cannot be
+minted on a developer machine; they come from CI's `visual-accept` label, or from
+the pinned container via `pnpm test:visual:update`. Task 9 is where that happens.
+
+Do not delete a route, skip the test, or hand-write a PNG to make it green.
+Verify the failure is that one assertion and nothing else, then carry on.
+
 ## Global Constraints
 
 - **Never hand-edit `packages/ai-elements/src/**`.** Every modification goes through `scripts/ai-elements-transforms.mjs`, which runs `ai-elements-patches/a11y.mjs`then`skin.mjs`, in that order. `pnpm sync:elements --pinned` must exit 0 at the end of every task that touches the vendored tree.
