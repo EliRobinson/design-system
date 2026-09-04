@@ -73,9 +73,11 @@ around it, not a replacement for it.
 
 `kind` is the dispatch key, deliberately kept apart from the props: a page that can render
 more than one surface switches on it, and never has to infer a component from the shape of an
-object. Three surfaces ship today —
-`@elirobinson/ai-patterns/server/surfaces/decision-card`, `/verdict-badge` and `/stub-card` —
-each exporting its schema and its renderer.
+object. Every surface lives under the `@elirobinson/ai-patterns/server/surfaces/` subpath and
+exports its schema and its renderer; the register is that package's `exports` map, which your
+editor completes from the installed version. This page does not list them — a roster typed
+out here is one a consumer would have to re-read our prose to keep current, and a bumped
+version already tells them.
 
 ## What is not on this page
 

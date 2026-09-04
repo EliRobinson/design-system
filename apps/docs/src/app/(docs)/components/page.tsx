@@ -54,7 +54,12 @@ export default function ComponentsIndexPage() {
           index without reading its installation page has a build that renders
           unstyled HTML and no error to explain it. */}
       <section>
-        <h2>AI Elements ({elements.length})</h2>
+        {/* Named, not bare. Every other heading on this page counts
+            components in one tier; this number is every vendored FILE across
+            all three of the package's namespaces (components, ui, lib), which
+            is a different unit sitting in a row of numbers that look alike.
+            The prose below is careful about it and the heading was not. */}
+        <h2>AI Elements ({elements.length} vendored modules)</h2>
         <p>
           The assistant tier — vendored from{' '}
           <a href="https://github.com/vercel/ai-elements">vercel/ai-elements</a> at a pinned release

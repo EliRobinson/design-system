@@ -19,3 +19,10 @@
    to be named explicitly. A @source that matches nothing produces no error and
    no utilities — see the verification step in the plan. */
 @source '../../../../packages/ai-elements/src';
+/* The published audit fixtures, whose class strings live in dist/ rather than
+   src/. Today every utility they use also appears in src/, so nothing is
+   broken without this — which is exactly why it has to be here rather than
+   added the day it breaks: a fixture reaching for a utility src/ does not
+   would render unstyled, in this app and in a consumer's, with no error
+   anywhere. The installation page tells consumers to write the same pair. */
+@source '../../../../packages/ai-elements/dist/fixtures';

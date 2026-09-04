@@ -21,13 +21,14 @@ pnpm add @elirobinson/ai-elements
 
 ## Peer dependencies
 
-Four, and your package manager will tell you about them, so the point of this section is
+Five, and your package manager will tell you about them, so the point of this section is
 which ones you have to act on:
 
 | Peer               | Why                                                                                                  |
 | ------------------ | ---------------------------------------------------------------------------------------------------- |
 | `tailwindcss` ^4   | Load-bearing. Every component is Tailwind utility markup; without the framework it renders unstyled. |
 | `react` ^19        | Same React the rest of the system needs.                                                             |
+| `react-dom` ^19    | Several components portal or measure; it is a peer in its own right, not implied by `react`.         |
 | `ai` ^6            | The AI SDK's types. **v6, not v7** — see below.                                                      |
 | `@ai-sdk/react` ^3 | `useChat` and the client bindings the components are shaped around.                                  |
 
@@ -70,7 +71,13 @@ the directive is written in, so adjust the `../` to wherever yours lives:
 
 ```css
 @source '../node_modules/@elirobinson/ai-elements/src';
+@source '../node_modules/@elirobinson/ai-elements/dist/fixtures';
 ```
+
+The second line is the published audit fixtures. They are ordinary render inputs a
+consumer can mount, and their class strings live in `dist/` rather than `src/`, so a
+fixture using a utility no vendored component uses would otherwise mount unstyled with no
+error. Drop it only if you never import `@elirobinson/ai-elements/fixtures`.
 
 The package ships `src` alongside `dist` for exactly this. Without the directive the
 components mount and produce no styles — the same symptom as a missing Tailwind, from a
