@@ -120,35 +120,40 @@ specific to Elements.
 
 ## Handover: colour, and the Tailwind bridge
 
-All of this is F2's. Nothing in this card changed a colour value.
+Nothing in this card changed a colour value. The sweep found two colour causes and handed
+both to the token bridge. The first is now fixed; the second is still open.
 
-**1. Tailwind's `dark` variant never fires (89 utilities, 17 files).**
-`@elirobinson/tokens/tailwind.css` defines no `@custom-variant dark`, so Tailwind falls
-back to its default `dark` variant. This system's dark dial is
-`[data-theme="dark"]` on `<html>`, which that default does not match, so **every
-`dark:`-prefixed utility in the vendored tree is dead**. Count it:
+**1. Tailwind's `dark` variant never fired (89 utilities, 17 files). Fixed.**
+`@elirobinson/tokens/tailwind.css` defined no `@custom-variant dark`, so Tailwind fell back
+to its default `dark` variant — `@media (prefers-color-scheme: dark)`. This system's dark
+dial is `[data-theme="dark"]` on `<html>`, which that default does not match, so **every
+`dark:`-prefixed utility in the vendored tree was dead**, answering to the reader's
+operating system rather than to the dial.
 
-```bash
-grep -rohE 'dark:[A-Za-z0-9!\[\]/_.:^-]+' packages/ai-elements/src | wc -l   # 89
-```
-
-That is the direct cause of 20 of the 24 contrast findings. `code-block.tsx` sets
+That was the direct cause of 18 of the 24 contrast findings. `code-block.tsx` sets
 `dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)]` to swap shiki to its dark
-theme; the swap never happens, so github-light token colours are painted on the dark
+theme; the swap never happened, so github-light token colours were painted on the dark
 surface — measured at **1.43:1** (`#24292e` on `#000000`), **1.58:1** and **3.33:1** in
-`agent`, `code-block` and `tool`. It is a one-line fix in the bridge and it repairs far
-more than contrast: 89 utilities' worth of dark-theme intent across the tree.
+`agent`, `code-block` and `tool`.
 
-**2. `text-muted-foreground/60` fails AA in both themes.**
+The bridge now declares the variant, so those utilities fire and all three components
+stopped failing. They have been deleted from `CONTRAST_OWNED_ELSEWHERE` — the gate below
+went red and said to, which is the second direction working. The fix repairs far more than
+contrast: 89 utilities' worth of dark-theme intent across the tree, plus every `dark:`
+class a consumer writes.
+
+**2. `text-muted-foreground/60` fails AA in both themes. Still open.**
 `transcription.tsx` paints an unplayed segment at 60% of `--fg-3`. Measured **2.31-2.32:1**
 in light and **3.27-3.28:1** in dark, against 4.5:1. The opacity modifier is the problem,
 not the token: `--fg-3` on its own passes. It varies slightly by palette (ember and
 miltinson 3.27, slate 3.28), so it is not a single-palette accident.
 
-Both are gated rather than ignored. `elements.a11y.spec.ts` lists these four components in
-`CONTRAST_OWNED_ELSEWHERE` and asserts **in both directions**: a contrast finding in any
+Both are gated rather than ignored. `elements.a11y.spec.ts` lists the still-open components
+in `CONTRAST_OWNED_ELSEWHERE` and asserts **in both directions**: a contrast finding in any
 other component fails, and a listed component that has _stopped_ failing also fails, with a
-message saying to delete the entry. It cannot rot into a suppression list.
+message saying to delete the entry. It cannot rot into a suppression list — cause 1 is the
+proof, since the list is what forced its removal rather than letting it sit there passing.
+Only `transcription` remains.
 
 ## Two things that are not accessibility findings
 

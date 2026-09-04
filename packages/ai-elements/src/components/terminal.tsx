@@ -9,6 +9,7 @@
  * Local modifications, applied by scripts/ai-elements-transforms.mjs:
  *   - workspace-alias: rewrote @repo/shadcn-ui/* imports to paths inside this package
  *   - a11y-touch-targets: applied the design system touch-target contracts — a var(--target) floor for primary controls, and a data-touch-target="dense" classification for compact inline affordances (see scripts/ai-elements-patches/a11y.mjs for the per-control verdicts)
+ *   - token-skin: rewrote literal colours and radii, and shadcn’s accent-as-hover-tint, to design system tokens
  *
  * Re-pull with `pnpm sync:elements`. An edit made here instead is detected
  * as local divergence and makes the next upstream bump fail loudly rather
@@ -53,7 +54,7 @@ export const TerminalHeader = ({
 }: TerminalHeaderProps) => (
   <div
     className={cn(
-      "flex items-center justify-between border-zinc-800 border-b px-4 py-2",
+      "flex items-center justify-between border-border border-b px-4 py-2",
       className
     )}
     {...props}
@@ -70,7 +71,7 @@ export const TerminalTitle = ({
   ...props
 }: TerminalTitleProps) => (
   <div
-    className={cn("flex items-center gap-2 text-sm text-zinc-400", className)}
+    className={cn("flex items-center gap-2 text-sm text-foreground-2", className)}
     {...props}
   >
     <TerminalIcon className="size-4" />
@@ -93,7 +94,7 @@ export const TerminalStatus = ({
 
   return (
     <div
-      className={cn("flex items-center gap-2 text-xs text-zinc-400", className)}
+      className={cn("flex items-center gap-2 text-xs text-foreground-2", className)}
       {...props}
     >
       {children}
@@ -159,7 +160,7 @@ export const TerminalCopyButton = ({
   return (
     <Button
       className={cn(
-        "size-7 shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100",
+        "size-7 shrink-0 text-foreground-2 hover:bg-surface-3 hover:text-foreground",
         className
       )}
       data-touch-target="dense"
@@ -189,7 +190,7 @@ export const TerminalClearButton = ({
   return (
     <Button
       className={cn(
-        "size-7 shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100",
+        "size-7 shrink-0 text-foreground-2 hover:bg-surface-3 hover:text-foreground",
         className
       )}
       onClick={onClear}
@@ -231,7 +232,7 @@ export const TerminalContent = ({
         <pre className="whitespace-pre-wrap break-words">
           <Ansi>{output}</Ansi>
           {isStreaming && (
-            <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-zinc-100" />
+            <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-foreground" />
           )}
         </pre>
       )}
@@ -264,7 +265,7 @@ export const Terminal = ({
     <TerminalContext.Provider value={contextValue}>
       <div
         className={cn(
-          "flex flex-col overflow-hidden rounded-lg border bg-zinc-950 text-zinc-100",
+          "flex flex-col overflow-hidden rounded-lg border bg-background-muted text-foreground",
           className
         )}
         {...props}
