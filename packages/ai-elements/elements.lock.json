@@ -101,7 +101,7 @@
     "src/components/conversation.tsx": {
       "from": "packages/elements/src/conversation.tsx",
       "upstream": "sha256:d7ac46f1e7bc8e46bc49f67c768fc93aebdf17d816397cb35a40deff7173e875",
-      "vendored": "sha256:edf8b0c8a0a9477d07b8bb9fbc11b9ae28843dc279518a16ef81659c943a4b33"
+      "vendored": "sha256:9437c33760af8814dbe23f92ab223cbc25f619e01accdb687b9ead6f3e0c3f7c"
     },
     "src/components/edge.tsx": {
       "from": "packages/elements/src/edge.tsx",
