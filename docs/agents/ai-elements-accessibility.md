@@ -10,7 +10,13 @@ The classifications themselves are **not here**. They are in
 consumer has to be able to read them without reading this repo — `ds contracts` prints
 them, and the MCP server serves them. A parity test
 (`packages/ai-patterns/src/testing/elements-classification-parity.test.mjs`) fails if that
-list and the transform layer ever disagree. This page is the method and the leftovers.
+list and `scripts/ai-elements-patches/a11y.mjs` ever disagree — that one file, not the
+transform layer as a whole. The layer's other judgement rule, `reduced-motion`
+(`scripts/ai-elements-patches/motion.mjs`), is deliberately outside
+`vendoredElementTargets`: a live region's scroll behaviour has no touch-target floor to be
+held to, so it has no verdict to publish there, and the parity test neither sees it nor
+should. It is pinned instead by `scripts/ai-elements-layer.test.mjs`. This page is the
+method and the leftovers.
 
 ## How it was measured
 

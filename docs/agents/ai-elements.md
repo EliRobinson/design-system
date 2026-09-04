@@ -30,9 +30,11 @@ being true:
 
 A change we actually need goes in `scripts/ai-elements-transforms.mjs`, where it is
 re-applied on every bump and reviewable as one file, or in a wrapper component in our own
-package. As of `ai-elements@1.9.0` the transform layer is three rules. Two are mechanical:
-rewriting upstream's `@repo/shadcn-ui/*` workspace imports to paths inside the package,
-and adding `.js` to relative specifiers. The third is the skin.
+package. As of `ai-elements@1.9.0` the transform layer is five rules, in this order.
+Two are mechanical: `workspace-alias` rewrites upstream's `@repo/shadcn-ui/*` workspace
+imports to paths inside the package, and `relative-extensions` adds `.js` to relative
+specifiers. Then come the two that carry judgement — `a11y-touch-targets` and
+`reduced-motion`, below — and last, the skin.
 
 ## The skin
 
@@ -64,18 +66,34 @@ entry carries the reason it is not a token.
 system's dial instead of the reader's operating system. Every `dark:` utility upstream
 ships — and every one a consumer writes — moves with the theme toggle because of it.
 
-The third is `a11y-touch-targets`, and it is the one that carries judgement. It lives in
-its own module, `scripts/ai-elements-patches/a11y.mjs`, and runs last. Every entry there
+## The two rules that carry judgement
+
+`a11y-touch-targets` is third of the five, after the two specifier rules and before the
+skin. It lives in its own module, `scripts/ai-elements-patches/a11y.mjs`. Every entry there
 names one control, the geometry a browser measured for it, which of the two touch-target
 floors it was held to, and why it is that one and not the other — see
 [AI Elements accessibility](ai-elements-accessibility.md) for the audit that produced them
 and `contracts.json`'s `vendoredElementTargets` for the published list.
 
-Its anchors are exact and its misses are fatal. A patch whose anchor no longer appears
-throws by name during `pnpm sync:elements` rather than quietly not applying, so an upstream
-bump that moves one of these class strings stops and tells you which control to re-measure.
-That is the intended failure: a dropped accessibility fix that reports a clean bump is the
-outcome the whole arrangement exists to prevent.
+`reduced-motion` is fourth, and lives in `scripts/ai-elements-patches/motion.mjs`. It is
+one finding: `Conversation` is a `role="log"` that scrolls itself smoothly on first paint
+and on every content resize, and nothing in the vendored tree reads
+`prefers-reduced-motion`, so the vendored copy defaults both to `"instant"` instead.
+`{...props}` is spread last upstream, so `<Conversation initial="smooth">` puts the
+animation back — the default moves, the API does not. It is a separate module and a
+separate rule from `a11y.mjs` on purpose: that file's ids are pinned name-for-name to
+`contracts.json`'s `vendoredElementTargets`, and a live region's scroll behaviour is not a
+control with a size, so it has no touch-target floor and no honest verdict to publish
+there. The module's header carries the full argument.
+
+Both modules' anchors are exact and their misses are fatal. A patch whose anchor no longer
+appears throws **by name** during `pnpm sync:elements` rather than quietly not applying, so
+an upstream bump that moves one of these class strings or attributes stops and tells you
+which control to re-measure. That is the intended failure: a dropped accessibility or
+motion fix that reports a clean bump is the outcome the whole arrangement exists to
+prevent. The fix is a new anchor, never a deleted patch entry — `ai-elements-layer.test.mjs`
+in `scripts/` re-reads the vendored `conversation.tsx` for `initial="instant"` and
+`resize="instant"` so that deleting the motion patch to get a bump through goes red.
 
 ## Re-syncing
 
@@ -92,6 +110,21 @@ upstream dependency range that moved. `--write` picks up components upstream add
 component list is discovered from the upstream tree, and the shadcn/ui primitives from
 the transitive closure of their imports, so neither is a list anyone maintains here.
 
+### What a bump does not check
+
+`sync:elements` compares bytes. It knows nothing about behaviour, and it exits 0 having
+verified none of the following — each is a handover note, not a test:
+
+- **The seven family pages under `/components/ai-elements`** (`conversation`, `reasoning`,
+  `tools`, `sources`, `artifacts`, `planning`, `prompt-input`, plus `overview`,
+  `installation` and `examples`) make on the order of ninety behavioural claims — what a
+  component does on stream, what it renders when a prop is absent, which element carries
+  the live region — that were written true against the pinned release and are unverified
+  again the moment it moves. Nothing enumerates them. Re-read them after a bump.
+- **The fixtures under `packages/ai-elements/fixtures/`** are hand-composed against
+  upstream's prop shapes. A renamed prop compiles-errors; a re-interpreted one does not.
+- **`NOTICE`'s modification paragraphs** — see Licensing below.
+
 ## What is published, and what must not be restated
 
 The component roster is `dist/manifest.json`, generated from the emitted declaration
@@ -99,14 +132,25 @@ files on every build and exported as `@elirobinson/ai-elements/manifest`. The up
 is `elements.lock.json`, exported as `@elirobinson/ai-elements/upstream`. Per the root
 rule, no doc, template or comment may list the components — point at the manifest.
 
+The audit fixtures are published too, as `@elirobinson/ai-elements/fixtures` — the same
+render inputs the a11y sweep drives every control with, built from `fixtures/` to
+`dist/fixtures/`. They are **not** in the manifest: `generate-manifest.mjs` walks
+`components/`, `ui/` and `lib/` only, so "read the manifest" does not reach them. See
+`packages/ai-elements/README.md` for the published surface and what is and is not stable
+about a fixture.
+
 ## Licensing
 
 The vendored tree is Apache-2.0. The package ships `LICENSE` (the licence text), `NOTICE`
 (attribution to Vercel and shadcn, plus the complete list of modifications required by
 §4(b)), and a generated provenance header on every vendored file naming the upstream
-release and that file's upstream path. All three are generated or checked from the same
-lockfile, so none can drift from the code. If the transform layer gains a rule, `NOTICE`
-must gain the matching paragraph.
+release and that file's upstream path. The per-file headers are generated from the same
+lockfile as the vendored bytes, so they cannot drift. **`NOTICE` is not generated.** It is
+hand-written prose, and its "in full" modification list is only true because somebody keeps
+it true: if the transform layer gains a rule, `NOTICE` must gain the matching paragraph in
+the same commit. The one thing checking that is `scripts/ai-elements-layer.test.mjs`, which
+asserts every id in `ruleIds` appears somewhere in `NOTICE`. That catches a missing rule; it
+cannot tell you the paragraph you wrote is accurate. Read the four beside it and match them.
 
 ## Two things that will surprise you
 
