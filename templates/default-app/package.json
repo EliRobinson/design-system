@@ -9,8 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@elirobinson/react": "^3.2.2",
-    "@elirobinson/tokens": "^0.14.3",
+    "@elirobinson/react": "^3.2.3",
+    "@elirobinson/tokens": "^0.15.0",
     "next": "^15.3.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
