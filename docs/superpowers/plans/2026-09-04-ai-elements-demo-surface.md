@@ -1560,7 +1560,11 @@ Expect scoped red. CI mints baselines for genuinely new shots.
 The expected churn, in full. Anything outside this list is investigated, not accepted:
 
 - **96 new** — 48 fixture routes × 2 themes.
-- **14 new** — 7 family pages × 2 themes.
+- **22 new** — the section's pages × 2 themes. Not 14: the seven family pages
+  account for 14, and the other 8 are the four pre-existing section pages whose
+  baselines commit `2aa8a85` dropped when the routes moved under `/components`.
+  Measured, not derived — `pnpm nx run scripts:test` reports 118 missing
+  (96 `fixtures-ai-elements-*` + 22 `components-ai-elements-*`) and 0 extra.
 - **4 changed** — `/components/chat-thread` and `/components/chat-message` × 2
   themes, from Task 6's deprecation note.
 - **chrome changed** — sidebar and header, because seven pages joined the AI
