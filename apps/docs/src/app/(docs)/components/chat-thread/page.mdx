@@ -9,6 +9,13 @@ export const metadata = { title: 'ChatThread' };
 
 <ComponentHeader slug="chat-thread" />
 
+> **Deprecated.** Use `Conversation` from `@elirobinson/ai-elements`. It is backed by
+> `use-stick-to-bottom`, which already follows the newest turn only for a reader who is
+> already at the bottom, and this system pins its scroll to instant rather than smooth.
+> The `announce` prop has no direct equivalent — write the attributes instead:
+> `aria-live="polite"` and `aria-relevant="additions text"`, or `aria-live="off"` for a
+> replayed thread. This component still works and is removed on the next major.
+
 <DemoBlock file="chat-thread/Basic.tsx">
   <Basic />
 </DemoBlock>

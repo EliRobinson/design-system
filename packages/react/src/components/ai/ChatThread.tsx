@@ -43,7 +43,25 @@ export type ChatThreadProps = HTMLAttributes<HTMLDivElement> & {
   followNewMessages?: boolean;
 };
 
-/** A scrolling conversation region that announces new turns to assistive technology. */
+/**
+ * A scrolling conversation region that announces new turns to assistive technology.
+ *
+ * @deprecated Use `Conversation` from `@elirobinson/ai-elements/components/conversation`.
+ *
+ * `use-stick-to-bottom`, which backs it, already implements the one behaviour
+ * this component was written for: follow the newest turn only for a reader who
+ * is already at the bottom. Its smooth-scroll default was the gap, and the
+ * transform layer now pins it to `instant` — see
+ * `scripts/ai-elements-patches/a11y.mjs`, `conversation-initial-instant`.
+ *
+ * The one thing that does not carry over is the `announce` prop. `Conversation`
+ * spreads `{...props}` last over its `role="log"`, so write the attributes
+ * directly: `<Conversation aria-live="polite" aria-relevant="additions text">`,
+ * or `aria-live="off"` for a closed or replayed thread.
+ *
+ * Published and in use, so this is a deprecation and not a removal. It goes on
+ * the next major.
+ */
 export const ChatThread = forwardRef<HTMLDivElement, ChatThreadProps>(function ChatThread(
   { className, label, announce = true, followNewMessages = true, children, ...props },
   ref,
