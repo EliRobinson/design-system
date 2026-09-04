@@ -8,7 +8,7 @@
  *
  * Local modifications, applied by scripts/ai-elements-transforms.mjs:
  *   - workspace-alias: rewrote @repo/shadcn-ui/* imports to paths inside this package
- *   - token-skin: rewrote literal colours and radii, and shadcn’s accent-as-hover-tint, to design system tokens
+ *   - a11y-touch-targets: applied the design system touch-target contracts — a var(--target) floor for primary controls, and a data-touch-target="dense" classification for compact inline affordances (see scripts/ai-elements-patches/a11y.mjs for the per-control verdicts)
  *
  * Re-pull with `pnpm sync:elements`. An edit made here instead is detected
  * as local divergence and makes the next upstream bump fail loudly rather
@@ -58,7 +58,7 @@ export const InlineCitationText = ({
   ...props
 }: InlineCitationTextProps) => (
   <span
-    className={cn("transition-colors group-hover:bg-surface-2", className)}
+    className={cn("transition-colors group-hover:bg-accent", className)}
     {...props}
   />
 );
@@ -226,7 +226,7 @@ export const InlineCitationCarouselPrev = ({
   return (
     <button
       aria-label="Previous"
-      className={cn("shrink-0", className)}
+      className={cn("flex min-h-[var(--target)] min-w-[var(--target)] shrink-0 items-center justify-center", className)}
       onClick={handleClick}
       type="button"
       {...props}
@@ -253,7 +253,7 @@ export const InlineCitationCarouselNext = ({
   return (
     <button
       aria-label="Next"
-      className={cn("shrink-0", className)}
+      className={cn("flex min-h-[var(--target)] min-w-[var(--target)] shrink-0 items-center justify-center", className)}
       onClick={handleClick}
       type="button"
       {...props}

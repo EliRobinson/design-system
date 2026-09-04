@@ -1,0 +1,36 @@
+/* The stylesheet a consumer of @elirobinson/ai-elements is told to write, and
+   nothing else. Three imports, in the order @elirobinson/tokens/tailwind.css
+   documents at the top of its own file.
+
+   That ordering is the point of this file rather than an incidental detail.
+   The audit is only worth anything if the geometry and the computed colour it
+   measures are the geometry and colour a consumer gets, so the harness must not
+   invent a theme of its own. Every shadcn/ui variable the vendored tree reads —
+   `--color-primary`, `--color-ring`, `--color-border`, `--color-muted`,
+   `--color-destructive` — is already aliased onto a design system token by
+   `@elirobinson/tokens/tailwind.css`, so importing that file IS the bridge.
+
+   `tokens.css` also brings `palettes.css` and `mobile.css` with it, which is
+   what makes the `data-palette` and `data-platform` dials in the spec real
+   rather than decorative. The `[data-platform='mobile']` touch-target floor at
+   the foot of tokens.css applies to a vendored `<button>` exactly as it applies
+   to one of ours — that is measured here, not assumed. */
+@import 'tailwindcss';
+@import '@elirobinson/tokens/tokens.css';
+@import '@elirobinson/tokens/tailwind.css';
+
+/* Tailwind scans source files for class names. The vendored tree is in a
+   different package from this stylesheet, and its utilities are what the whole
+   audit is about, so it has to be named explicitly. */
+@source '../../src';
+@source '../fixtures';
+
+/* Fixtures are mounted in isolation, so the page has no app chrome to give the
+   body a surface. Without this the harness renders on Tailwind's transparent
+   default and every contrast reading is taken against white in both themes. */
+body {
+  background: var(--bg);
+  color: var(--fg);
+  margin: 0;
+  padding: 16px;
+}

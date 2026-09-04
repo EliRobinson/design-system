@@ -8,7 +8,7 @@
  *
  * Local modifications, applied by scripts/ai-elements-transforms.mjs:
  *   - workspace-alias: rewrote @repo/shadcn-ui/* imports to paths inside this package
- *   - token-skin: rewrote literal colours and radii, and shadcn’s accent-as-hover-tint, to design system tokens
+ *   - a11y-touch-targets: applied the design system touch-target contracts — a var(--target) floor for primary controls, and a data-touch-target="dense" classification for compact inline affordances (see scripts/ai-elements-patches/a11y.mjs for the per-control verdicts)
  *
  * Re-pull with `pnpm sync:elements`. An edit made here instead is detected
  * as local divergence and makes the next upstream bump fail loudly rather
@@ -193,7 +193,8 @@ export const FileTreeFolder = ({
           >
             <CollapsibleTrigger asChild>
               <button
-                className="flex shrink-0 cursor-pointer items-center border-none bg-transparent p-0"
+                className="flex size-[var(--target-min)] shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0"
+                data-touch-target="dense"
                 type="button"
               >
                 <ChevronRightIcon
@@ -205,15 +206,15 @@ export const FileTreeFolder = ({
               </button>
             </CollapsibleTrigger>
             <button
-              className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left"
+              className="flex min-w-0 flex-1 min-h-[var(--target)] cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left"
               onClick={handleSelect}
               type="button"
             >
               <FileTreeIcon>
                 {isExpanded ? (
-                  <FolderOpenIcon className="size-4 text-info-ink" />
+                  <FolderOpenIcon className="size-4 text-blue-500" />
                 ) : (
-                  <FolderIcon className="size-4 text-info-ink" />
+                  <FolderIcon className="size-4 text-blue-500" />
                 )}
               </FileTreeIcon>
               <FileTreeName>{name}</FileTreeName>

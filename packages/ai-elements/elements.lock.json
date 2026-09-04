@@ -41,17 +41,17 @@
     "src/components/artifact.tsx": {
       "from": "packages/elements/src/artifact.tsx",
       "upstream": "sha256:6e5017f85105164b95861b1d10a78c956c312682c5ecd17e2619870ba5993aba",
-      "vendored": "sha256:bb61addf5bedf714fe79060e0e09963cfbbb8b9bd6818bd2606f3eebe276c112"
+      "vendored": "sha256:6c4a3e1af7fba7e5263b19f3b7e9ba0a92a355f8f86f70a9d748f4b921012a68"
     },
     "src/components/attachments.tsx": {
       "from": "packages/elements/src/attachments.tsx",
       "upstream": "sha256:91c42be9a592fe8ff2468352b8636f6bc364567779618ac3a075f1080b378fad",
-      "vendored": "sha256:033f2656622418b6d61c12bf27c7aca2db1ed83573c5aedfa62de4bb11b7bb72"
+      "vendored": "sha256:fb109ab51225f3c4c3d7218403df7da52f4730b537777394e7131d8330cbae73"
     },
     "src/components/audio-player.tsx": {
       "from": "packages/elements/src/audio-player.tsx",
       "upstream": "sha256:375c174c83cf3770f1cf8b56a3e18584a773bce2141e451bfefc779d4901b5f3",
-      "vendored": "sha256:0a356ab175d42f09b9b699664de837a53a0a78c1902bc2a322a8f0122e0ceb51"
+      "vendored": "sha256:3433d91822498ef289fbca310bf9a109be8c243d34456b6580cec0568a9786d6"
     },
     "src/components/canvas.tsx": {
       "from": "packages/elements/src/canvas.tsx",
@@ -61,7 +61,7 @@
     "src/components/chain-of-thought.tsx": {
       "from": "packages/elements/src/chain-of-thought.tsx",
       "upstream": "sha256:ddc63b036299d636483b2041599248226e05ef01afd9c5e32724e3a849def8c4",
-      "vendored": "sha256:8afbe21319988745da6dfd21974d3b88c3c80116195c543473f9703baa94463f"
+      "vendored": "sha256:8b92a978fcf6fff2d20180b3aec09db3785e9572b7f1731b73a254bcac1210b7"
     },
     "src/components/checkpoint.tsx": {
       "from": "packages/elements/src/checkpoint.tsx",
@@ -71,12 +71,12 @@
     "src/components/code-block.tsx": {
       "from": "packages/elements/src/code-block.tsx",
       "upstream": "sha256:5c7285171c5aa741749a1642a85f492a9b5e80dc4ccb704b5c3f58c45efebd04",
-      "vendored": "sha256:04bb876ae5197aef0a85234d658cccc64f781f868157814d328569cd471c4c61"
+      "vendored": "sha256:1e3350965a45a9f76ef716d70004e155d90f94557aeaa3b7612ee5ca528dc11b"
     },
     "src/components/commit.tsx": {
       "from": "packages/elements/src/commit.tsx",
       "upstream": "sha256:877708682428984f5776dafb774da222fbee837804f220ce699956e32938fa1b",
-      "vendored": "sha256:4b1340a9772b7db9a575c145ac6f47e33ebd10d8df96c8e8e00f9cd2aec667c1"
+      "vendored": "sha256:4a8623a27deaad8ae16fa31dfd67571c2debbe93f8bc46aa6a9ca9ca2f27361f"
     },
     "src/components/confirmation.tsx": {
       "from": "packages/elements/src/confirmation.tsx",
@@ -96,7 +96,7 @@
     "src/components/controls.tsx": {
       "from": "packages/elements/src/controls.tsx",
       "upstream": "sha256:3f851a1906a1a8e017899983507c4537b300849b098dc38c51a4a36dbf52d085",
-      "vendored": "sha256:a203d4c347e6a67661badef71da518da057aea6272fc45de2eeb9abec022dc51"
+      "vendored": "sha256:853877299061549bdc7fbbd22b7997cac1c24c7f55897a07abfa55e73db4bd7e"
     },
     "src/components/conversation.tsx": {
       "from": "packages/elements/src/conversation.tsx",
@@ -116,7 +116,7 @@
     "src/components/file-tree.tsx": {
       "from": "packages/elements/src/file-tree.tsx",
       "upstream": "sha256:9b6946171369d224d5d10df686c3c18ce7608aa4a4792744fc5c313499cec0cb",
-      "vendored": "sha256:a196d9e1b7265f6b87a442a0b30e4589c4b17cad3ec4ec389eb6ef43a290a0e6"
+      "vendored": "sha256:eb334c21a6a5067dc388c36c443eceb51584f4b44cb98f20e03d750b7d02d6ff"
     },
     "src/components/image.tsx": {
       "from": "packages/elements/src/image.tsx",
@@ -126,7 +126,7 @@
     "src/components/inline-citation.tsx": {
       "from": "packages/elements/src/inline-citation.tsx",
       "upstream": "sha256:c7dc2a67386bc06d23fa42344f48f3b45e51f1f91b22e44801a2902acdf64018",
-      "vendored": "sha256:1bb4957cfda53296c175c011d822a24c9fa362209e05da8f7118a43ad018151b"
+      "vendored": "sha256:ab7f37ddf4f50392dd911b327521ea73d70a9d6224810cfa8df39be4c2fa1b2d"
     },
     "src/components/jsx-preview.tsx": {
       "from": "packages/elements/src/jsx-preview.tsx",
@@ -136,7 +136,7 @@
     "src/components/message.tsx": {
       "from": "packages/elements/src/message.tsx",
       "upstream": "sha256:19c7755740e116f221e4247f7b6d4f20b57a44e4c4fcf66d2db5e1f111476509",
-      "vendored": "sha256:205f6e91abd00868013124ec2426f041b03a3d1fdb2eb31f8044ccc701d9921f"
+      "vendored": "sha256:bd57de81f86f443e2705974425125fa39cca111414d4db67ea0d54099f4c2e3b"
     },
     "src/components/mic-selector.tsx": {
       "from": "packages/elements/src/mic-selector.tsx",
@@ -161,7 +161,7 @@
     "src/components/package-info.tsx": {
       "from": "packages/elements/src/package-info.tsx",
       "upstream": "sha256:f6cb384a2f76acd7b305481e5a7b28a78c290e02fcda1867badf8801d29cf242",
-      "vendored": "sha256:26e080f262f3da36d02541e01e3a915c6806968865f6c93bbd0ab0404eef3574"
+      "vendored": "sha256:902f334710ee0647e24d2879aeff89f553493be56c778d45986d96051c5d2b00"
     },
     "src/components/panel.tsx": {
       "from": "packages/elements/src/panel.tsx",
@@ -181,17 +181,17 @@
     "src/components/prompt-input.tsx": {
       "from": "packages/elements/src/prompt-input.tsx",
       "upstream": "sha256:cf43baf5baa444b4ae06d250643b3fb2efd329c85f9b31a43e3aaf481dd27305",
-      "vendored": "sha256:f74cd0eb918d26cb44f8e7ed5063cd4a8ced8ed0a1cca5108eaaf536476bcdec"
+      "vendored": "sha256:c6b3660f07af898e3ee031df321ad37afe3d1fc28ef87f64a186410ee83b4426"
     },
     "src/components/queue.tsx": {
       "from": "packages/elements/src/queue.tsx",
       "upstream": "sha256:c823f565e0430749ba0b09db33e76eeb675eea4838bed10245bca392bffd6cfa",
-      "vendored": "sha256:581264e54cae292268474d1c5fb022e4ddbf2ea0ac86ab93d4cc3c66bffe72d6"
+      "vendored": "sha256:ade70b6fc016cf17d21df3d5edcb2574418a5532db9eec0916cdbe697e8eb067"
     },
     "src/components/reasoning.tsx": {
       "from": "packages/elements/src/reasoning.tsx",
       "upstream": "sha256:f138cddde35854f73632ff51d48230f8d6e16e0a49a74b44a93b51993a65550e",
-      "vendored": "sha256:b45bd8ecf2bb2465240a55fdd5ec05382200562ccd6cadabf101f35065647ff7"
+      "vendored": "sha256:38ab0cc87f1480408748812f076e82db167642e664bb04ff68fd10a61c592bea"
     },
     "src/components/sandbox.tsx": {
       "from": "packages/elements/src/sandbox.tsx",
@@ -201,7 +201,7 @@
     "src/components/schema-display.tsx": {
       "from": "packages/elements/src/schema-display.tsx",
       "upstream": "sha256:805ca0b043ff5beb21f15b616df19df995fd4ecd3c48f8a9bc2ce588c86adfe7",
-      "vendored": "sha256:df9a28e40f5cd741034d9f0ed94ee74bed8b644a1eff8fe2ad7ac751e3864327"
+      "vendored": "sha256:ea1312451ba262c0f6e1914d0ecb8161914347bb5d2f4bf121d197230c0fc4b7"
     },
     "src/components/shimmer.tsx": {
       "from": "packages/elements/src/shimmer.tsx",
@@ -216,22 +216,22 @@
     "src/components/sources.tsx": {
       "from": "packages/elements/src/sources.tsx",
       "upstream": "sha256:1454af3ac2c58766a155a881d119d1f9321632a4922d3f74581ba37f52b4707a",
-      "vendored": "sha256:bf8f61a491058ca38b92c80348a04dd28358d50b9b8b37c1f13caa84f2a685ca"
+      "vendored": "sha256:320a139fad4c8ac0aba68e3922fc414927d3d9b8b083e39dc86a4a0fa852a7dc"
     },
     "src/components/speech-input.tsx": {
       "from": "packages/elements/src/speech-input.tsx",
       "upstream": "sha256:25747138c9c41cca6f96caf69faa9ff6e39910dabac534c84eba41cbd9ba54d3",
-      "vendored": "sha256:e23440e0d9246f050038af35eb2147679974f2c6bc40e1779ade1247bda9988c"
+      "vendored": "sha256:e9ee7a8a021bdaeee97563d73eecfc7bce2a20ba2349f1b97293ca5dde0bf1ac"
     },
     "src/components/stack-trace.tsx": {
       "from": "packages/elements/src/stack-trace.tsx",
       "upstream": "sha256:a2d31824b2b09df91fc6fc5921f2a7610abe2c839655d51770d9c3072db7e546",
-      "vendored": "sha256:81c1a32073141d5e25e288534b157dbdfec9d514d71bc616a78ae19d473cbda7"
+      "vendored": "sha256:3e2a0e4e9ba239574018180dd1478e16e73d564968cd20b561411542e49dd7fe"
     },
     "src/components/suggestion.tsx": {
       "from": "packages/elements/src/suggestion.tsx",
       "upstream": "sha256:0703d777b4153ae20e93514acb9e8327eb03dd2ed2fd0230e03cf22271c7a249",
-      "vendored": "sha256:8b9548c3934c5dbddeb1b278fedc43c76082152767649a915844d9cf2e0aa933"
+      "vendored": "sha256:a54d95d411e83e5f73efa6666103a4062ef458e4aa3caf471cfb6c71dff6f527"
     },
     "src/components/task.tsx": {
       "from": "packages/elements/src/task.tsx",
@@ -241,17 +241,17 @@
     "src/components/terminal.tsx": {
       "from": "packages/elements/src/terminal.tsx",
       "upstream": "sha256:04b9b534925054cfe67fdc3bc212eb7261b4912e6e970c4844a195907d3a9a93",
-      "vendored": "sha256:f1628290bd6b3f8d005b855233b957c4908a455c192e2c238872ffe9b472b71a"
+      "vendored": "sha256:740929fa5d61769b4890bf53237e2d55422e8e6bdec5f4f58366d82672d32a46"
     },
     "src/components/test-results.tsx": {
       "from": "packages/elements/src/test-results.tsx",
       "upstream": "sha256:71fb2b77cfa34e6d7d3b1cc06a765622f755bcec193d3d539f4bead0e937f346",
-      "vendored": "sha256:7c0a3d9e65198c15a2cb0da6bb917f1122b2f66ad535ce741c95cb78464f51b8"
+      "vendored": "sha256:ae14f952654b880727c12d7f3403244f27cbc38e0413ef12a0498b9267fa94e6"
     },
     "src/components/tool.tsx": {
       "from": "packages/elements/src/tool.tsx",
       "upstream": "sha256:5b520e0c33792cba0ceb04e1cb18c69b212cffacdb52d7297e292c7af568dda4",
-      "vendored": "sha256:f4552fbd0f5cb18e8f03633807d410f38b94a5da5664333563b3f9cdec60eb5f"
+      "vendored": "sha256:f73c7103b56d2fb7263f70256601f5671b5781dea2a849a7665ee8cce29e7936"
     },
     "src/components/toolbar.tsx": {
       "from": "packages/elements/src/toolbar.tsx",
@@ -261,7 +261,7 @@
     "src/components/transcription.tsx": {
       "from": "packages/elements/src/transcription.tsx",
       "upstream": "sha256:c9edab6a677ec9fdd09fdd5657bf56fcc674457e52ab7c6f686107c6ba787e29",
-      "vendored": "sha256:b767139dffafe0243d8fbe4fe41b03367cfba2851fb98ce2110928b4803f7f53"
+      "vendored": "sha256:339f3fdc160347698dbb02f98dc6404e0b1f3c35df3bea37b58ac51617e95276"
     },
     "src/components/voice-selector.tsx": {
       "from": "packages/elements/src/voice-selector.tsx",
@@ -271,7 +271,7 @@
     "src/components/web-preview.tsx": {
       "from": "packages/elements/src/web-preview.tsx",
       "upstream": "sha256:7ae44586766db67c5341b36a30340b202e6f45c205457ad98f0817968d162d2c",
-      "vendored": "sha256:d1737aaf67f2b460fd253bb98db41b31f8eec95a05a9fafb2154f01b53eb90bb"
+      "vendored": "sha256:6af682bff74440c7d59d865baf828046eb6921e43a02cc96104ccb14b231518f"
     },
     "src/lib/utils.ts": {
       "from": "packages/shadcn-ui/lib/utils.ts",
@@ -281,7 +281,7 @@
     "src/ui/accordion.tsx": {
       "from": "packages/shadcn-ui/components/ui/accordion.tsx",
       "upstream": "sha256:5868c50faad843d18f8805b9173ce7a90e15eb4da711d2ee47b36edc5b307fe8",
-      "vendored": "sha256:c0926113ec40c901d873fcdd6fb548827888fdb5acc7e61a7e6c516347956d2b"
+      "vendored": "sha256:29130d84928ed3e4f1a570d92725234fbfd171b7d8cf4f5773d38db74691850c"
     },
     "src/ui/alert.tsx": {
       "from": "packages/shadcn-ui/components/ui/alert.tsx",
@@ -296,7 +296,7 @@
     "src/ui/badge.tsx": {
       "from": "packages/shadcn-ui/components/ui/badge.tsx",
       "upstream": "sha256:145cf69448e20e027dd99e8e013507279aaa0922c30f63dabb54b75ab15222aa",
-      "vendored": "sha256:9e73cd0ba735883eaf16817d3e3e9d94c128c8608e79fc683bb720366b278a4d"
+      "vendored": "sha256:9d69030a6c2ece375af1e74937f9b4478454bc043e4272dd266db70f8f2fbbb7"
     },
     "src/ui/button-group.tsx": {
       "from": "packages/shadcn-ui/components/ui/button-group.tsx",
@@ -306,7 +306,7 @@
     "src/ui/button.tsx": {
       "from": "packages/shadcn-ui/components/ui/button.tsx",
       "upstream": "sha256:208d8cf515ccd73c1ca0030a11de1ba460a9fcd6c83faafeadc000833790d22e",
-      "vendored": "sha256:89739851a2530ddd94fbe5c1e43597571e6c8c04ea957de5996ecb95358958fb"
+      "vendored": "sha256:10e02e15b578639149a7a2e98a078374e1f1b775ca45cfd45cdf686be6bbc093"
     },
     "src/ui/card.tsx": {
       "from": "packages/shadcn-ui/components/ui/card.tsx",
@@ -326,17 +326,17 @@
     "src/ui/command.tsx": {
       "from": "packages/shadcn-ui/components/ui/command.tsx",
       "upstream": "sha256:53be7fe88f0ddbb2f6d97c64c07c1b4816050494880a582c92c0c3c62117b03c",
-      "vendored": "sha256:a68ed9daf5f2f96b2b19b5704dfa8fc6d372287f97d9630b3089369ba19e9869"
+      "vendored": "sha256:aee57037450ad233a51116b12bb782bc9ecf6f1d2399cf446919929955cb2322"
     },
     "src/ui/dialog.tsx": {
       "from": "packages/shadcn-ui/components/ui/dialog.tsx",
       "upstream": "sha256:c7d128632214c9c78706a91a0616659ecf3be5119492b2ca66607bd83901b802",
-      "vendored": "sha256:7a9ed5acdb3f1fcf9d7a1a3040e014215b282276973e5257f9c42025caf0077c"
+      "vendored": "sha256:d64ec7b0296335fc5acf01c05d772c04532e5a3457d0b62f5c3a098e6daee792"
     },
     "src/ui/dropdown-menu.tsx": {
       "from": "packages/shadcn-ui/components/ui/dropdown-menu.tsx",
       "upstream": "sha256:9384b044d08c59be883888a3dd66c3816156316f8debbcf107ef90b1e383d022",
-      "vendored": "sha256:989a7d389e7b934112f7fe50def063898f684078c60d62f6ddcb88c2d18e6bd3"
+      "vendored": "sha256:0048f6f83f72e7543bb11deefd35f6fbcde86bbc22cbba6094a064c25c07fa78"
     },
     "src/ui/hover-card.tsx": {
       "from": "packages/shadcn-ui/components/ui/hover-card.tsx",
@@ -371,7 +371,7 @@
     "src/ui/select.tsx": {
       "from": "packages/shadcn-ui/components/ui/select.tsx",
       "upstream": "sha256:a0eefd67e05688a6318a3a86080a6951723c6b5d323e1fa92b9d1b7fee777995",
-      "vendored": "sha256:d4e72039d8ca3f7e62a0e1606816d5a04610af0342ecebcb23e6edf38b48fdb5"
+      "vendored": "sha256:69cc8f157bf92ce96461167f8b06c979e7b4adf159a64e3c493ad66fe235b3c3"
     },
     "src/ui/separator.tsx": {
       "from": "packages/shadcn-ui/components/ui/separator.tsx",
@@ -386,12 +386,12 @@
     "src/ui/switch.tsx": {
       "from": "packages/shadcn-ui/components/ui/switch.tsx",
       "upstream": "sha256:120f1ec71d5e55e73d88bbc3cbb1423ffc00761026c010c49e05a83a2cb369ab",
-      "vendored": "sha256:414749ec39221c6fd7344ac209a6eff73cb3a0a0a0bcd5a69c6c10fb9d2c879f"
+      "vendored": "sha256:af34155c8934fa8835ddf9b7665c55370f9fe6a538afe435059233341c4fbe15"
     },
     "src/ui/tabs.tsx": {
       "from": "packages/shadcn-ui/components/ui/tabs.tsx",
       "upstream": "sha256:bfb5cbe5c5b7809031844145f6744661882b9f32c7bf4c6b483d3d3d2b5d0f55",
-      "vendored": "sha256:ce833bf1dd0ec51ae84f0b408b61038e8ff2e89b7a91c91509fdcf688026b3bd"
+      "vendored": "sha256:cd1f5d49d6c8af7d8a392aea852102c1d9e79ed723765b4f39d8ab9b7131780d"
     },
     "src/ui/textarea.tsx": {
       "from": "packages/shadcn-ui/components/ui/textarea.tsx",
@@ -401,7 +401,7 @@
     "src/ui/tooltip.tsx": {
       "from": "packages/shadcn-ui/components/ui/tooltip.tsx",
       "upstream": "sha256:f459111a16d346aaa64d1bb6557cca986f7332b150ad3a29001e8fef3aea973a",
-      "vendored": "sha256:205f91670b25edfc367d029e3f0dce0b9fc6b9f5fabe3e03d80020a4fff1b194"
+      "vendored": "sha256:59f7e45f4fa9179c1b219b48b234c44499a8f6efdf1f2354670d966ab9b32b94"
     }
   }
 }

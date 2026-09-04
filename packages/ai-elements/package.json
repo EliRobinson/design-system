@@ -78,6 +78,8 @@
   },
   "devDependencies": {
     "@ai-sdk/react": "^3.0.41",
+    "@elirobinson/tokens": "workspace:*",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "ai": "^6.0.105",

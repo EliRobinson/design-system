@@ -17,6 +17,7 @@
 import { posix } from 'node:path';
 
 import * as skin from './ai-elements-patches/skin.mjs';
+import { applyA11yPatches } from './ai-elements-patches/a11y.mjs';
 
 /**
  * Upstream is a pnpm monorepo, so its components import their shadcn/ui
@@ -125,6 +126,28 @@ const RULES = [
       return { source: out, fired };
     },
   },
+  /* The accessibility layer, and the one rule here that is a judgement rather
+     than a mechanism.
+     It is last on purpose. Every rule above rewrites import specifiers; this one
+     rewrites className strings and JSX attributes, and running it after them
+     means its anchors never have to account for a specifier that has already
+     moved. It is also the only rule that can fail: its anchors are exact, and a
+     missing one throws rather than silently not applying — see the file's header
+     for why that is the safe direction.
+     Everything about WHICH control gets which floor, and why, lives in that one
+     file rather than being spread across this list. The rest of this module
+     stays what it was: two mechanical rules stated in a sentence each. */
+  {
+    id: 'a11y-touch-targets',
+    describe:
+      'applied the design system touch-target contracts — a var(--target) floor for primary controls, ' +
+      'and a data-touch-target="dense" classification for compact inline affordances ' +
+      '(see scripts/ai-elements-patches/a11y.mjs for the per-control verdicts)',
+    apply(source, ctx) {
+      return applyA11yPatches(source, ctx.upstreamPath);
+    },
+  },
+
 
   // --- The skin -------------------------------------------------------------
   // Last, and the only rule here about how a component LOOKS rather than about
