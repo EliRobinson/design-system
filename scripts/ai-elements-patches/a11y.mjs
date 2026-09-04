@@ -455,6 +455,48 @@ export const PATCHES = [
     find: 'data-slot="transcription-segment"',
     replace: `data-slot="transcription-segment"\n      ${DENSE}`,
   },
+
+  /* Motion inside a live region, which is this file's subject even though it
+     is not a touch target. `Conversation` is a `role="log"`, and it scrolls
+     itself smoothly on every new turn and every resize. Nothing in the
+     vendored tree reads prefers-reduced-motion, so that animation is
+     unconditional for every reader.
+
+     Our own ChatThread — which C1 retires in favour of this component — used
+     a plain `scrollTop` assignment for exactly this reason, recorded in its
+     source: an instant jump has no motion to reduce, so it sidesteps the care
+     an animation in a live region would otherwise need. That property is the
+     one thing theirs lacked, and it is two words.
+
+     `{...props}` is spread last upstream, so a consumer who wants the
+     animation back writes `<Conversation initial="smooth">`. This changes the
+     default, not the API. `initial` and `resize` both type as `Animation =
+     ScrollBehavior | SpringAnimation`, and "instant" is a ScrollBehavior. */
+  {
+    id: 'conversation-initial-instant',
+    upstreamPath: 'packages/elements/src/conversation.tsx',
+    control: 'conversation.tsx — Conversation, first paint',
+    verdict: 'primary',
+    measured: 'animated smooth scroll on mount inside role="log"',
+    why:
+      'A live region that animates itself has no reduced-motion guard anywhere in ' +
+      'the vendored tree. An instant jump has no motion to reduce, which is why our ' +
+      'own retired ChatThread assigned scrollTop directly.',
+    find: 'initial="smooth"',
+    replace: 'initial="instant"',
+  },
+  {
+    id: 'conversation-resize-instant',
+    upstreamPath: 'packages/elements/src/conversation.tsx',
+    control: 'conversation.tsx — Conversation, on resize',
+    verdict: 'primary',
+    measured: 'animated smooth scroll on every content resize inside role="log"',
+    why:
+      'Same region, same reason, and this is the one that fires on every streamed ' +
+      'token rather than once on mount.',
+    find: 'resize="smooth"',
+    replace: 'resize="instant"',
+  },
 ];
 
 function assertPatch(patch, source) {
