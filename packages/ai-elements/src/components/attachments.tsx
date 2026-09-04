@@ -8,6 +8,7 @@
  *
  * Local modifications, applied by scripts/ai-elements-transforms.mjs:
  *   - workspace-alias: rewrote @repo/shadcn-ui/* imports to paths inside this package
+ *   - token-skin: rewrote literal colours and radii, and shadcn’s accent-as-hover-tint, to design system tokens
  *
  * Re-pull with `pnpm sync:elements`. An edit made here instead is detected
  * as local divergence and makes the next upstream bump fail loudly rather
@@ -224,11 +225,11 @@ export const Attachment = ({
             "flex h-8 cursor-pointer select-none items-center gap-1.5",
             "rounded-md border border-border px-1.5",
             "font-medium text-sm transition-all",
-            "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+            "hover:bg-surface-2 hover:text-foreground dark:hover:bg-surface-2/50",
           ],
           variant === "list" && [
             "flex w-full items-center gap-3 rounded-lg border p-3",
-            "hover:bg-accent/50",
+            "hover:bg-surface-2/50",
           ],
           className
         )}

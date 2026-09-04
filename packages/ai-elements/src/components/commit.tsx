@@ -8,6 +8,7 @@
  *
  * Local modifications, applied by scripts/ai-elements-transforms.mjs:
  *   - workspace-alias: rewrote @repo/shadcn-ui/* imports to paths inside this package
+ *   - token-skin: rewrote literal colours and radii, and shadcn’s accent-as-hover-tint, to design system tokens
  *
  * Re-pull with `pnpm sync:elements`. An edit made here instead is detected
  * as local divergence and makes the next upstream bump fail loudly rather
@@ -337,10 +338,10 @@ export const CommitFileInfo = ({
 );
 
 const fileStatusStyles = {
-  added: "text-green-600 dark:text-green-400",
-  deleted: "text-red-600 dark:text-red-400",
-  modified: "text-yellow-600 dark:text-yellow-400",
-  renamed: "text-blue-600 dark:text-blue-400",
+  added: "text-success-ink",
+  deleted: "text-destructive-ink",
+  modified: "text-warning-ink",
+  renamed: "text-info-ink",
 };
 
 const fileStatusLabels = {
@@ -430,7 +431,7 @@ export const CommitFileAdditions = ({
 
   return (
     <span
-      className={cn("text-green-600 dark:text-green-400", className)}
+      className={cn("text-success-ink", className)}
       {...props}
     >
       {children ?? (
@@ -459,7 +460,7 @@ export const CommitFileDeletions = ({
 
   return (
     <span
-      className={cn("text-red-600 dark:text-red-400", className)}
+      className={cn("text-destructive-ink", className)}
       {...props}
     >
       {children ?? (

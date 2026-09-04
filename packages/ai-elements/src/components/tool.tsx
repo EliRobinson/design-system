@@ -9,6 +9,7 @@
  * Local modifications, applied by scripts/ai-elements-transforms.mjs:
  *   - workspace-alias: rewrote @repo/shadcn-ui/* imports to paths inside this package
  *   - relative-extensions: appended .js to relative specifiers, so dist/ resolves under Node too
+ *   - token-skin: rewrote literal colours and radii, and shadcn’s accent-as-hover-tint, to design system tokens
  *
  * Re-pull with `pnpm sync:elements`. An edit made here instead is detected
  * as local divergence and makes the next upstream bump fail loudly rather
@@ -71,13 +72,13 @@ const statusLabels: Record<ToolPart["state"], string> = {
 };
 
 const statusIcons: Record<ToolPart["state"], ReactNode> = {
-  "approval-requested": <ClockIcon className="size-4 text-yellow-600" />,
-  "approval-responded": <CheckCircleIcon className="size-4 text-blue-600" />,
+  "approval-requested": <ClockIcon className="size-4 text-warning-ink" />,
+  "approval-responded": <CheckCircleIcon className="size-4 text-info-ink" />,
   "input-available": <ClockIcon className="size-4 animate-pulse" />,
   "input-streaming": <CircleIcon className="size-4" />,
-  "output-available": <CheckCircleIcon className="size-4 text-green-600" />,
-  "output-denied": <XCircleIcon className="size-4 text-orange-600" />,
-  "output-error": <XCircleIcon className="size-4 text-red-600" />,
+  "output-available": <CheckCircleIcon className="size-4 text-success-ink" />,
+  "output-denied": <XCircleIcon className="size-4 text-accent-ink" />,
+  "output-error": <XCircleIcon className="size-4 text-destructive-ink" />,
 };
 
 export const getStatusBadge = (status: ToolPart["state"]) => (

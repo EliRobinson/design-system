@@ -46,7 +46,7 @@
     "src/components/attachments.tsx": {
       "from": "packages/elements/src/attachments.tsx",
       "upstream": "sha256:91c42be9a592fe8ff2468352b8636f6bc364567779618ac3a075f1080b378fad",
-      "vendored": "sha256:fb109ab51225f3c4c3d7218403df7da52f4730b537777394e7131d8330cbae73"
+      "vendored": "sha256:033f2656622418b6d61c12bf27c7aca2db1ed83573c5aedfa62de4bb11b7bb72"
     },
     "src/components/audio-player.tsx": {
       "from": "packages/elements/src/audio-player.tsx",
@@ -76,7 +76,7 @@
     "src/components/commit.tsx": {
       "from": "packages/elements/src/commit.tsx",
       "upstream": "sha256:877708682428984f5776dafb774da222fbee837804f220ce699956e32938fa1b",
-      "vendored": "sha256:1d71ae1ae0664d74b6ea0406f14903b6de2c36daff12a4566672f1981eef2ae4"
+      "vendored": "sha256:4b1340a9772b7db9a575c145ac6f47e33ebd10d8df96c8e8e00f9cd2aec667c1"
     },
     "src/components/confirmation.tsx": {
       "from": "packages/elements/src/confirmation.tsx",
@@ -116,7 +116,7 @@
     "src/components/file-tree.tsx": {
       "from": "packages/elements/src/file-tree.tsx",
       "upstream": "sha256:9b6946171369d224d5d10df686c3c18ce7608aa4a4792744fc5c313499cec0cb",
-      "vendored": "sha256:a2727d57759ceb07f03b13f2171a0010ae78a26baacc85c71ca4f9dce554e4a9"
+      "vendored": "sha256:a196d9e1b7265f6b87a442a0b30e4589c4b17cad3ec4ec389eb6ef43a290a0e6"
     },
     "src/components/image.tsx": {
       "from": "packages/elements/src/image.tsx",
@@ -126,7 +126,7 @@
     "src/components/inline-citation.tsx": {
       "from": "packages/elements/src/inline-citation.tsx",
       "upstream": "sha256:c7dc2a67386bc06d23fa42344f48f3b45e51f1f91b22e44801a2902acdf64018",
-      "vendored": "sha256:167389fbd6cb797efe06d253535940b4ff21f71cf79e1665da2e775cac059811"
+      "vendored": "sha256:1bb4957cfda53296c175c011d822a24c9fa362209e05da8f7118a43ad018151b"
     },
     "src/components/jsx-preview.tsx": {
       "from": "packages/elements/src/jsx-preview.tsx",
@@ -161,7 +161,7 @@
     "src/components/package-info.tsx": {
       "from": "packages/elements/src/package-info.tsx",
       "upstream": "sha256:f6cb384a2f76acd7b305481e5a7b28a78c290e02fcda1867badf8801d29cf242",
-      "vendored": "sha256:902f334710ee0647e24d2879aeff89f553493be56c778d45986d96051c5d2b00"
+      "vendored": "sha256:26e080f262f3da36d02541e01e3a915c6806968865f6c93bbd0ab0404eef3574"
     },
     "src/components/panel.tsx": {
       "from": "packages/elements/src/panel.tsx",
@@ -181,7 +181,7 @@
     "src/components/prompt-input.tsx": {
       "from": "packages/elements/src/prompt-input.tsx",
       "upstream": "sha256:cf43baf5baa444b4ae06d250643b3fb2efd329c85f9b31a43e3aaf481dd27305",
-      "vendored": "sha256:b4e590428b2169626219dfe76cc2d3f6899a14a8393e6a3270e282fecd926117"
+      "vendored": "sha256:f74cd0eb918d26cb44f8e7ed5063cd4a8ced8ed0a1cca5108eaaf536476bcdec"
     },
     "src/components/queue.tsx": {
       "from": "packages/elements/src/queue.tsx",
@@ -201,7 +201,7 @@
     "src/components/schema-display.tsx": {
       "from": "packages/elements/src/schema-display.tsx",
       "upstream": "sha256:805ca0b043ff5beb21f15b616df19df995fd4ecd3c48f8a9bc2ce588c86adfe7",
-      "vendored": "sha256:ea1312451ba262c0f6e1914d0ecb8161914347bb5d2f4bf121d197230c0fc4b7"
+      "vendored": "sha256:df9a28e40f5cd741034d9f0ed94ee74bed8b644a1eff8fe2ad7ac751e3864327"
     },
     "src/components/shimmer.tsx": {
       "from": "packages/elements/src/shimmer.tsx",
@@ -221,7 +221,7 @@
     "src/components/speech-input.tsx": {
       "from": "packages/elements/src/speech-input.tsx",
       "upstream": "sha256:25747138c9c41cca6f96caf69faa9ff6e39910dabac534c84eba41cbd9ba54d3",
-      "vendored": "sha256:e9ee7a8a021bdaeee97563d73eecfc7bce2a20ba2349f1b97293ca5dde0bf1ac"
+      "vendored": "sha256:e23440e0d9246f050038af35eb2147679974f2c6bc40e1779ade1247bda9988c"
     },
     "src/components/stack-trace.tsx": {
       "from": "packages/elements/src/stack-trace.tsx",
@@ -241,17 +241,17 @@
     "src/components/terminal.tsx": {
       "from": "packages/elements/src/terminal.tsx",
       "upstream": "sha256:04b9b534925054cfe67fdc3bc212eb7261b4912e6e970c4844a195907d3a9a93",
-      "vendored": "sha256:a23a53578ccb0bcb0db700a81dfd4186b24e48f2649341f9ab66c3eaaac2bff4"
+      "vendored": "sha256:f1628290bd6b3f8d005b855233b957c4908a455c192e2c238872ffe9b472b71a"
     },
     "src/components/test-results.tsx": {
       "from": "packages/elements/src/test-results.tsx",
       "upstream": "sha256:71fb2b77cfa34e6d7d3b1cc06a765622f755bcec193d3d539f4bead0e937f346",
-      "vendored": "sha256:ae14f952654b880727c12d7f3403244f27cbc38e0413ef12a0498b9267fa94e6"
+      "vendored": "sha256:7c0a3d9e65198c15a2cb0da6bb917f1122b2f66ad535ce741c95cb78464f51b8"
     },
     "src/components/tool.tsx": {
       "from": "packages/elements/src/tool.tsx",
       "upstream": "sha256:5b520e0c33792cba0ceb04e1cb18c69b212cffacdb52d7297e292c7af568dda4",
-      "vendored": "sha256:f73c7103b56d2fb7263f70256601f5671b5781dea2a849a7665ee8cce29e7936"
+      "vendored": "sha256:f4552fbd0f5cb18e8f03633807d410f38b94a5da5664333563b3f9cdec60eb5f"
     },
     "src/components/toolbar.tsx": {
       "from": "packages/elements/src/toolbar.tsx",
@@ -271,7 +271,7 @@
     "src/components/web-preview.tsx": {
       "from": "packages/elements/src/web-preview.tsx",
       "upstream": "sha256:7ae44586766db67c5341b36a30340b202e6f45c205457ad98f0817968d162d2c",
-      "vendored": "sha256:6af682bff74440c7d59d865baf828046eb6921e43a02cc96104ccb14b231518f"
+      "vendored": "sha256:d1737aaf67f2b460fd253bb98db41b31f8eec95a05a9fafb2154f01b53eb90bb"
     },
     "src/lib/utils.ts": {
       "from": "packages/shadcn-ui/lib/utils.ts",
@@ -296,7 +296,7 @@
     "src/ui/badge.tsx": {
       "from": "packages/shadcn-ui/components/ui/badge.tsx",
       "upstream": "sha256:145cf69448e20e027dd99e8e013507279aaa0922c30f63dabb54b75ab15222aa",
-      "vendored": "sha256:9d69030a6c2ece375af1e74937f9b4478454bc043e4272dd266db70f8f2fbbb7"
+      "vendored": "sha256:9e73cd0ba735883eaf16817d3e3e9d94c128c8608e79fc683bb720366b278a4d"
     },
     "src/ui/button-group.tsx": {
       "from": "packages/shadcn-ui/components/ui/button-group.tsx",
@@ -306,7 +306,7 @@
     "src/ui/button.tsx": {
       "from": "packages/shadcn-ui/components/ui/button.tsx",
       "upstream": "sha256:208d8cf515ccd73c1ca0030a11de1ba460a9fcd6c83faafeadc000833790d22e",
-      "vendored": "sha256:18629c15664d6b0beea560f1c2e2b350b18703dcc7934c081df4f215d77fc464"
+      "vendored": "sha256:89739851a2530ddd94fbe5c1e43597571e6c8c04ea957de5996ecb95358958fb"
     },
     "src/ui/card.tsx": {
       "from": "packages/shadcn-ui/components/ui/card.tsx",
@@ -326,17 +326,17 @@
     "src/ui/command.tsx": {
       "from": "packages/shadcn-ui/components/ui/command.tsx",
       "upstream": "sha256:53be7fe88f0ddbb2f6d97c64c07c1b4816050494880a582c92c0c3c62117b03c",
-      "vendored": "sha256:904741c869dfa3d58fbf012e56d93acd7241597fc193ac923e9750bc1f6bbd59"
+      "vendored": "sha256:a68ed9daf5f2f96b2b19b5704dfa8fc6d372287f97d9630b3089369ba19e9869"
     },
     "src/ui/dialog.tsx": {
       "from": "packages/shadcn-ui/components/ui/dialog.tsx",
       "upstream": "sha256:c7d128632214c9c78706a91a0616659ecf3be5119492b2ca66607bd83901b802",
-      "vendored": "sha256:3436d3daba12b9576d7579604dafad85a2b435a2bdae5a6ed65809924d0e306f"
+      "vendored": "sha256:7a9ed5acdb3f1fcf9d7a1a3040e014215b282276973e5257f9c42025caf0077c"
     },
     "src/ui/dropdown-menu.tsx": {
       "from": "packages/shadcn-ui/components/ui/dropdown-menu.tsx",
       "upstream": "sha256:9384b044d08c59be883888a3dd66c3816156316f8debbcf107ef90b1e383d022",
-      "vendored": "sha256:efd11fb8cc1c0929e10e08e474dcb1e1325277fbeee53456e6a4b78dc52d768e"
+      "vendored": "sha256:989a7d389e7b934112f7fe50def063898f684078c60d62f6ddcb88c2d18e6bd3"
     },
     "src/ui/hover-card.tsx": {
       "from": "packages/shadcn-ui/components/ui/hover-card.tsx",
@@ -371,7 +371,7 @@
     "src/ui/select.tsx": {
       "from": "packages/shadcn-ui/components/ui/select.tsx",
       "upstream": "sha256:a0eefd67e05688a6318a3a86080a6951723c6b5d323e1fa92b9d1b7fee777995",
-      "vendored": "sha256:f1efe543d3f6e2c7293541d00140cd166e2696d721fdd11794c3dcd9cb68780d"
+      "vendored": "sha256:d4e72039d8ca3f7e62a0e1606816d5a04610af0342ecebcb23e6edf38b48fdb5"
     },
     "src/ui/separator.tsx": {
       "from": "packages/shadcn-ui/components/ui/separator.tsx",
@@ -401,7 +401,7 @@
     "src/ui/tooltip.tsx": {
       "from": "packages/shadcn-ui/components/ui/tooltip.tsx",
       "upstream": "sha256:f459111a16d346aaa64d1bb6557cca986f7332b150ad3a29001e8fef3aea973a",
-      "vendored": "sha256:59f7e45f4fa9179c1b219b48b234c44499a8f6efdf1f2354670d966ab9b32b94"
+      "vendored": "sha256:205f91670b25edfc367d029e3f0dce0b9fc6b9f5fabe3e03d80020a4fff1b194"
     }
   }
 }

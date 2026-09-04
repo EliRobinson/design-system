@@ -23,15 +23,46 @@ being true:
 - When both are true of one file it exits `2` and writes nothing, rather than silently
   reverting the local change. A hand edit therefore does not just get lost; it blocks the
   next bump of that file until someone reconciles it.
-- `packages/ai-elements/src` is in `.prettierignore` and in the ESLint ignore list, for
-  the same reason: a formatter or an autofix run across the tree would register as 74
-  local edits and jam every future re-sync at once.
+- `packages/ai-elements/src` is in `.prettierignore`, and the repo ESLint config keeps its
+  general rule set off the tree, for the same reason: a formatter or an autofix run across
+  it would register as 74 local edits and jam every future re-sync at once. Exactly one
+  rule is pointed back at it, and it has no fixer — see "The skin" below.
 
 A change we actually need goes in `scripts/ai-elements-transforms.mjs`, where it is
 re-applied on every bump and reviewable as one file, or in a wrapper component in our own
-package. As of `ai-elements@1.9.0` the transform layer is two rules, both mechanical:
+package. As of `ai-elements@1.9.0` the transform layer is three rules. Two are mechanical:
 rewriting upstream's `@repo/shadcn-ui/*` workspace imports to paths inside the package,
-and adding `.js` to relative specifiers.
+and adding `.js` to relative specifiers. The third is the skin.
+
+## The skin
+
+`@elirobinson/tokens/tailwind.css` is what makes a vendored component render in Miltinson
+colours with no edit to its source. It maps Tailwind's colour, radius, shadow and font
+namespaces onto the tokens with `@theme inline`, so `bg-background`,
+`text-muted-foreground`, `border-border` and `rounded-md` compile to `var(--token)` and
+answer to all three dials at runtime. Measured over the pinned release: all 191 distinct
+colour and radius classes the tree uses compile, and every colour declaration they produce
+resolves through a token.
+
+Two things defeat that, and `scripts/ai-elements-patches/skin.mjs` is the whole answer to
+both:
+
+- **Tailwind's own palette.** `text-zinc-500` and `bg-red-100 dark:bg-red-900/30` are
+  literals with a friendly spelling. No alias re-points them, so they survive a theme
+  flip, a palette flip and a tokens bump unchanged.
+- **shadcn's `--accent`.** Upstream means "subtle hover tint"; this system means Miltinson
+  Amber. `hover:bg-accent` is correct upstream and a brand-amber wash here.
+
+Anything upstream adds later that the skin's tables do not cover reaches `src/` unchanged
+and fails `pnpm lint`: `@elirobinson/no-hardcoded-design-values` is pointed at the vendored
+tree from the root ESLint config. That is deliberate — a new literal failing loudly beats a
+broad regex guessing a token for it. The `allow` list there is the pressure valve, and each
+entry carries the reason it is not a token.
+
+`dark:` is handled once, in the bridge rather than per file: `tailwind.css` declares a
+`@custom-variant dark` pointing at `[data-theme="dark"]`, so the variant follows the
+system's dial instead of the reader's operating system. Every `dark:` utility upstream
+ships — and every one a consumer writes — moves with the theme toggle because of it.
 
 ## Re-syncing
 

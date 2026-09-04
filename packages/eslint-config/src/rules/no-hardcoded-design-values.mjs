@@ -37,6 +37,39 @@ const DURATION_UTILITIES = /^(?:duration|delay|ease|animate)$/;
 // `bg-[#fff]`, `grid-cols-[...rgb()...]` and any future colour-bearing utility
 // are caught without maintaining a list of utility prefixes.
 
+// --- Tailwind's own palette ---------------------------------------------------
+//
+// `text-zinc-500` is `#71717b` with a friendlier spelling. It is not an
+// arbitrary value, so the value-shaped checks above never see it, and it is not
+// a design-system alias, so `@elirobinson/tokens/tailwind.css` never re-points
+// it: it stays that grey under [data-theme="dark"], under [data-palette], and
+// across a tokens bump. That is the same failure the rule already reports for
+// `bg-[#71717b]`, reached by a different spelling, so it reports as `color` too
+// — and the existing `allow` option takes the utility verbatim
+// (`allow: ['text-zinc-500']`) when a literal has to be tolerated for a while.
+//
+// Only Tailwind's 22 default ramps plus white/black are listed. A design system
+// alias — `bg-background`, `text-accent-ink`, `border-warning-tint-edge` — is a
+// token reference and never matches, because none of these names is one.
+const TAILWIND_RAMPS =
+  'slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose';
+
+// Every utility namespace that takes a colour. `to`/`from`/`via` are the
+// gradient stops; `divide` and `inset-ring` are the two whose bare name reads
+// like something else.
+const COLOR_UTILITIES =
+  'text|bg|border|divide|outline|ring|inset-ring|shadow|inset-shadow|drop-shadow|text-shadow|fill|stroke|decoration|caret|accent|placeholder|from|via|to';
+
+// `hover:`, `dark:`, `[&_svg]:` and friends are left to the boundary assertions
+// rather than enumerated: a variant chain always ends in `:` or `[`, neither of
+// which is `[\w-]`, so the lookbehind admits them all and still refuses to match
+// `subtext-white` or `my-red-500-thing`.
+const PALETTE_UTILITY = new RegExp(
+  String.raw`(?<![\w-])(?:(?:${COLOR_UTILITIES})-(?:${TAILWIND_RAMPS})-(?:50|950|[1-9]00)` +
+    String.raw`|(?:${COLOR_UTILITIES})-(?:white|black))(?:\/(?:\d{1,3}|\[[^\]\s]+\]))?(?![\w-])`,
+  'g',
+);
+
 export default {
   meta: {
     type: 'problem',
@@ -121,6 +154,13 @@ export default {
       // A colour literal outside an arbitrary value is still a colour literal.
       const outsideArbitrary = className.replace(/[\w-]+-\[[^\]]+\]/g, '');
       checkColor(node, outsideArbitrary);
+
+      // Read against the untouched string: a palette utility can carry a
+      // variant written as an arbitrary selector (`[&_svg]:text-zinc-400`), and
+      // stripping arbitrary values first would take the variant with it.
+      for (const [utility] of className.matchAll(PALETTE_UTILITY)) {
+        report(node, 'color', utility);
+      }
     }
 
     /** A style-object property: which axis it belongs to decides the check. */
