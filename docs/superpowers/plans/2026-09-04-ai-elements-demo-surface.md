@@ -56,20 +56,20 @@ the transform layer and to its own card.
 
 ## File structure
 
-| Path                                                                | Responsibility                                                                                                                                    |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/docs/postcss.config.mjs`                                      | Create. Registers `@tailwindcss/postcss`.                                                                                                         |
-| `apps/docs/src/app/elements.css`                                    | Create. The three-import Tailwind bridge plus `@source`. Separate from `site.css` so a Tailwind regression cannot be read as a chrome regression. |
-| `packages/ai-elements/fixtures/index.tsx`                           | Move from `a11y/fixtures/index.tsx`. Exports `fixtures` (unchanged) and `variants` (new).                                                         |
-| `packages/ai-elements/fixtures/variants.tsx`                        | Create. The named extra mounts, split out so `index.tsx` does not grow past what fits in context.                                                 |
-| `packages/ai-elements/tsconfig.fixtures.json`                       | Create. `rootDir: ./fixtures`, `outDir: ./dist/fixtures`. Kept out of the main tsconfig, whose `rootDir` is `./src`.                              |
-| `apps/docs/src/app/fixtures/ai-elements/[component]/page.tsx`       | Create. One static page per fixture. **Outside `(docs)`**, so it never reaches the sidebar or the section guard.                                  |
-| `apps/docs/src/lib/ai-element-families.ts`                          | Create. Family → component names, in the shape `NAMEABLE` already uses.                                                                           |
-| `apps/docs/src/app/(docs)/components/ai-elements/<family>/page.mdx` | Create ×7. The demo pages.                                                                                                                        |
-| `apps/docs/src/components/docs/ElementsPatchTable.tsx`              | Create. Renders the patch verdicts from `contracts.json`, generated not retyped.                                                                  |
-| `scripts/ai-elements-patches/a11y.mjs:79`                           | Modify. Two patch entries for `conversation.tsx`.                                                                                                 |
-| `packages/react/src/components/ai/ChatThread.tsx`                   | Modify. `@deprecated` JSDoc.                                                                                                                      |
-| `packages/react/src/components/ai/ChatMessage.tsx`                  | Modify. `@deprecated` JSDoc.                                                                                                                      |
+| Path                                                                | Responsibility                                                                                                                                                                                      |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/docs/postcss.config.mjs`                                      | Create. Registers `@tailwindcss/postcss`.                                                                                                                                                           |
+| `apps/docs/src/app/elements.css`                                    | Create. The three-import Tailwind bridge plus `@source`. Separate from `site.css` so a Tailwind regression cannot be read as a chrome regression.                                                   |
+| `packages/ai-elements/fixtures/index.tsx`                           | Move from `a11y/fixtures/index.tsx`. Exports `fixtures` (unchanged) and `variants` (new).                                                                                                           |
+| `packages/ai-elements/fixtures/variants.tsx`                        | Create. The named extra mounts, split out so `index.tsx` does not grow past what fits in context.                                                                                                   |
+| `packages/ai-elements/tsconfig.fixtures.json`                       | Create. `rootDir: ./fixtures`, `outDir: ./dist/fixtures`. Kept out of the main tsconfig, whose `rootDir` is `./src`.                                                                                |
+| `apps/docs/src/app/fixtures/ai-elements/[component]/page.tsx`       | Create. One static page per fixture. **Outside `(docs)`**, so it never reaches the sidebar or the section guard.                                                                                    |
+| `apps/docs/src/lib/ai-element-families.ts`                          | Create. Family → component names, in the shape `NAMEABLE` already uses.                                                                                                                             |
+| `apps/docs/src/app/(docs)/components/ai-elements/<family>/page.mdx` | Create ×7. The demo pages.                                                                                                                                                                          |
+| `apps/docs/src/components/docs/ElementsPatchTable.tsx`              | Create. Renders the patch verdicts from `contracts.json`, generated not retyped.                                                                                                                    |
+| `scripts/ai-elements-patches/motion.mjs`                            | Create. Two motion patch entries for `conversation.tsx`, in their own module — see the Task 5 ruling; `a11y.mjs` publishes touch-target verdicts and its parity test hard-enforces that vocabulary. |
+| `packages/react/src/components/ai/ChatThread.tsx`                   | Modify. `@deprecated` JSDoc.                                                                                                                                                                        |
+| `packages/react/src/components/ai/ChatMessage.tsx`                  | Modify. `@deprecated` JSDoc.                                                                                                                                                                        |
 
 ---
 
@@ -818,7 +818,7 @@ restores the previous behaviour — this changes the default, not the API.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add scripts/ai-elements-patches/a11y.mjs packages/ai-elements/src/components/conversation.tsx .changeset/ai-elements-conversation-instant-scroll.md
+git add scripts/ai-elements-patches/motion.mjs scripts/ai-elements-transforms.mjs packages/ai-elements/src/components/conversation.tsx packages/ai-elements/elements.lock.json .changeset/ai-elements-conversation-instant-scroll.md
 git commit -m "$(cat <<'MSG'
 fix(ai-elements): stop Conversation animating its own live region
 
@@ -867,7 +867,7 @@ Replace the JSDoc above `export const ChatThread`:
  * this component was written for: follow the newest turn only for a reader who
  * is already at the bottom. Its smooth-scroll default was the gap, and the
  * transform layer now pins it to `instant` — see
- * `scripts/ai-elements-patches/a11y.mjs`, `conversation-initial-instant`.
+ * `scripts/ai-elements-patches/motion.mjs`, `conversation-initial-instant`.
  *
  * The one thing that does not carry over is the `announce` prop. `Conversation`
  * spreads `{...props}` last over its `role="log"`, so write the attributes
