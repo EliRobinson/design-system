@@ -129,12 +129,18 @@ const RULES = [
   },
   /* The accessibility layer, and the one rule here that is a judgement rather
      than a mechanism.
-     It is last on purpose. Every rule above rewrites import specifiers; this one
-     rewrites className strings and JSX attributes, and running it after them
-     means its anchors never have to account for a specifier that has already
-     moved. It is also the only rule that can fail: its anchors are exact, and a
-     missing one throws rather than silently not applying — see the file's header
-     for why that is the safe direction.
+     It runs third, after workspace-alias and relative-extensions and before
+     reduced-motion and token-skin. That position is on purpose, not just
+     current: the two rules above rewrite import specifiers, this one rewrites
+     className strings and JSX attributes, and running it after them means its
+     anchors never have to account for a specifier that has already moved. It
+     is not the only rule that can fail, though — reduced-motion's patches
+     (scripts/ai-elements-patches/motion.mjs) are anchored exactly the same way
+     this rule's are (scripts/ai-elements-patches/a11y.mjs), and both throw by
+     name when an anchor stops appearing the expected number of times, rather
+     than silently not applying — see each file's header for why that is the
+     safe direction. So a bump that moves either one's anchor stops loudly
+     instead of quietly dropping the fix.
      Everything about WHICH control gets which floor, and why, lives in that one
      file rather than being spread across this list. The rest of this module
      stays what it was: two mechanical rules stated in a sentence each. */
