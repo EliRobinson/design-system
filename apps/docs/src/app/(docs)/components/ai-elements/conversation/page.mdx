@@ -1,0 +1,82 @@
+import { ElementsDemo } from '@/components/docs/ElementsDemo';
+import { ElementsPatchTable } from '@/components/docs/ElementsPatchTable';
+
+export const metadata = { title: 'Conversation and messages', order: 5 };
+
+# Conversation and messages
+
+The scrolling log, and the turns inside it. `Conversation` wraps
+[`use-stick-to-bottom`](https://github.com/samdenty/use-stick-to-bottom), which is where the
+follow-the-newest-turn behaviour comes from; the component tracks whether you are at the
+bottom rather than forcing you there, and `ConversationScrollButton` renders only while you
+are not.
+
+Every demo on this page is the same fixture the accessibility audit measures, with motion
+frozen so the visual suite can photograph it.
+
+<ElementsDemo component="conversation" />
+
+The demo is the empty state — `ConversationEmptyState`, which is what the log renders before
+the first turn arrives. Its default title and description are English strings baked into the
+component; pass your own.
+
+## Import
+
+```tsx
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from '@elirobinson/ai-elements/components/conversation';
+import { Message, MessageContent } from '@elirobinson/ai-elements/components/message';
+```
+
+There is no barrel. A bare `@elirobinson/ai-elements` import does not resolve.
+
+## Messages
+
+<ElementsDemo component="message" />
+
+`Message` takes `from` and turns it into a class — `is-user` or `is-assistant` — which is
+what moves a user turn to the right and gives it a filled bubble. It sets no `role` and no
+`aria-*`: who is speaking is carried by layout and colour only, so if the distinction
+matters to a reader who cannot see it, say it in the content.
+
+- `MessageResponse` renders its children as markdown through Streamdown. `MessageContent`
+  does not — it renders what you give it.
+- `MessageAction` is the icon affordance in the toolbar. It puts `label ?? tooltip` in an
+  `sr-only` span, so a `MessageAction` with neither is a button with no name.
+- `MessageBranchPrevious` and `MessageBranchNext` carry their own `aria-label` and disable
+  themselves when there is only one branch. `MessageBranchPage` renders "1 of 2" as text.
+
+## Accessibility
+
+- `Conversation` renders `role="log"`. It does **not** set `aria-live` — nothing in the
+  vendored tree sets `aria-live` anywhere — and `{...props}` is spread last, so state it
+  yourself: `aria-live="polite"` with `aria-relevant="additions text"` for a live thread,
+  `aria-live="off"` for one that is closed or being replayed.
+- Scrolling is instant in this system, not animated. Upstream's default is a smooth scroll
+  on first paint and on every content resize, which is motion inside a live region with
+  nothing in the tree reading `prefers-reduced-motion` behind it. The vendored copy sets
+  `initial="instant"` and `resize="instant"` instead; `{...props}` is spread last there too,
+  so `<Conversation initial="smooth">` puts the animation back. The patch is
+  `conversation-initial-instant` and `conversation-resize-instant` in
+  `scripts/ai-elements-patches/motion.mjs`, and it is a default, not an API change.
+- **`ConversationScrollButton` and `ConversationDownload` are icon-only and set no
+  accessible name of their own.** Both render a real `<button type="button">` and both reach
+  the 44×44 floor through `button-floor` below, but neither has an `aria-label` and neither
+  has `sr-only` text. Pass one.
+- `ConversationDownload` builds the markdown in the browser from the `messages` you hand it
+  and downloads it through an object URL. Nothing leaves the page.
+
+## What this system changed
+
+<ElementsPatchTable components={['conversation', 'message']} also={['button-floor']} />
+
+## Replacing ChatThread
+
+`ChatThread` and `ChatMessage` from `@elirobinson/react` are deprecated in favour of these.
+`use-stick-to-bottom` already implements the follow-the-bottom behaviour `ChatThread` was
+written for. The one thing that does not carry across is the `announce` prop — write
+`aria-live` directly, as above.

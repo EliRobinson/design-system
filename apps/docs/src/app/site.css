@@ -536,6 +536,31 @@
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
+/* An AI Elements demo has no <details> of source under it — the fixture is the
+   source, it lives in the package the accessibility sweep measures, and it is
+   linked rather than inlined — so the stage closes its own bottom corners
+   instead of butting up against one. */
+.demo-block__stage--elements {
+  border-radius: var(--radius-sm);
+}
+
+.demo-block__caption,
+.patch-table__note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--fg-3);
+}
+
+.demo-block__caption {
+  font-family: var(--font-mono);
+  letter-spacing: var(--tr-wide);
+  text-transform: uppercase;
+}
+
+.patch-table__note {
+  margin-bottom: var(--space-6);
+}
+
 .demo-row {
   display: flex;
   flex-wrap: wrap;
