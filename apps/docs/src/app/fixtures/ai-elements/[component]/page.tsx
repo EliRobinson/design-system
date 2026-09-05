@@ -15,11 +15,12 @@ import { FixtureStage } from './FixtureStage';
  * A bare <main>, because the docs sweep clips to `main` and `regionBox` throws
  * on a selector matching nothing rather than quietly framing the whole page.
  *
- * Motion is stopped twice, because CSS alone does not reach it. fixtures.css
- * kills CSS animation and transition; MotionConfig stops Shimmer, which
- * animates through Framer Motion's Web Animations path where `animation: none`
- * has no effect. `reducedMotion="always"` rather than "user" — the freeze must
- * not depend on a browser setting the container might not carry. */
+ * Motion is stopped three ways, because no one of them reaches all of it.
+ * fixtures.css kills CSS animation and transition, and separately pins
+ * Shimmer's `background-position`; MotionConfig covers the Framer Motion
+ * transform and layout animations that CSS cannot see. `reducedMotion="always"`
+ * rather than "user" — the freeze must not depend on a browser setting the
+ * container might not carry. */
 
 /* Only the `components` tier, matching what fixtures/index.tsx actually
  * mounts. manifest.entries also carries the `ui` (shadcn primitives) and
