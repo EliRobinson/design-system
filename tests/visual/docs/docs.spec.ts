@@ -56,7 +56,30 @@ import {
    is not a visual one: if a token moves and the rendered result regresses in
    a way the scope table does not predict, no shot will see it. Do not assume
    this sweep has your back on code blocks. */
-const MASK = [...DEFAULT_MASK, 'pre.shiki'];
+/* `.ai-elements-version` masks the one string on this site that changes on
+   every publish of a package we do not control the timing of. The AI Elements
+   index prints `@elirobinson/ai-elements`'s own package version, read live off
+   its manifest — see apps/docs/src/lib/ai-elements.ts — so a release that only
+   bumps that package's patch version reprints the page with nothing else
+   different, and the baseline goes red. That happened for real: 0.2.0 → 0.3.0
+   in the same release that produced no other diff on this page, and it will
+   happen again on every future bump, because the version is not something a
+   commit to this repo chooses — release-please picks it.
+
+   The upstream ref beside it (`upstream.ref`, e.g. `ai-elements@1.9.0`) is
+   deliberately left uncovered by this mask. That string only moves on a
+   `pnpm sync:elements` bump — a deliberate, reviewed change to the vendored
+   tree — so a shot failing there is real information, the same as any other
+   content diff on this page, and masking it would throw that away for no gain.
+
+   What this gives up: the pixels of the version string itself, and only those
+   — not the surrounding sentence, not the count before it, not the upstream
+   ref after it. A typo in "at version" or a wrong element count still fails
+   the shot. The value masked out is covered instead by
+   apps/docs/src/lib/ai-elements.test.ts, which asserts `elementsVersion`
+   equals the `version` field in packages/ai-elements/package.json — the same
+   bargain `pre.shiki` makes above, moved to a smaller string. */
+const MASK = [...DEFAULT_MASK, 'pre.shiki', '.ai-elements-version'];
 
 /* The docs site is what actually ships to people, so this covers what the
    Storybook sweep structurally cannot: components composed next to each other
