@@ -64,7 +64,9 @@ import {
    different, and the baseline goes red. That happened for real: 0.2.0 → 0.3.0
    in the same release that produced no other diff on this page, and it will
    happen again on every future bump, because the version is not something a
-   commit to this repo chooses — release-please picks it.
+   commit to this repo chooses — `changeset version` picks it, consuming the
+   files under `.changeset/` (see the root `release` and `changeset:version`
+   scripts in package.json).
 
    The upstream ref beside it (`upstream.ref`, e.g. `ai-elements@1.9.0`) is
    deliberately left uncovered by this mask. That string only moves on a
