@@ -49,14 +49,25 @@ Four names carry different values in the two files:
 | `--color-muted-foreground`   | `var(--fg-3)` 4.85:1  | `var(--fg-2)` 8.45:1 |
 | `--color-primary-foreground` | `var(--bg)`           | `var(--fg-inverse)`  |
 
-**In practice the divergence does not reach a Tailwind utility, and that is worth knowing
-before anyone tries to "fix" it.** `tailwind.css` uses `@theme inline`, and `inline` means
-the token reference is substituted into each utility at build time rather than emitted as a
-runtime `--color-*` variable. Measured in this app: `.bg-secondary` compiles to
-`background-color: var(--bg-subtle)`, not `var(--color-secondary)`. So the bridge's
-`--color-*` half is inert for the vendored tree's utilities — the repo's four choices win —
-and what the bridge actually contributes here is its `--xy-*` block, its `--streamdown-*`
-theme pins, and the bare shadcn names.
+**The divergence does not reach a Tailwind utility, and that is worth knowing before anyone
+tries to "fix" it.** `tailwind.css` uses `@theme inline`, and `inline` means the token
+reference is substituted into each utility at build time rather than emitted as a runtime
+`--color-*` variable. Measured in this app: `.bg-secondary` compiles to
+`background-color: var(--bg-subtle)`, not `var(--color-secondary)`. So for a utility, the
+repo's four choices win and the bridge changes nothing.
+
+**The bridge's `--color-*` block is still load-bearing, for a different reason.** Substitution
+only reaches utilities Tailwind generates. Several vendored components read the `--color-*`
+names _directly_ — `audio-player.tsx` builds an inline style object of
+`"--media-primary-color": "var(--color-primary)"` and eight more like it, and `shimmer.tsx`
+puts `var(--color-background)` and `var(--color-muted-foreground)` inside arbitrary-value
+utilities. `@theme inline` emits nothing for those to read, so before this bridge landed they
+resolved to nothing at all. The visual run on the install proves it: `audio-player`,
+`shimmer` and the `Shimmer` inside `/components/ai-elements/reasoning` all moved, in both
+themes, and moved to the intended colours.
+
+So the rule is: for a `bg-*` / `text-*` utility, `tokens/tailwind.css` decides; for a direct
+`var(--color-*)` read, the bridge does — and without the bridge nothing did.
 
 The one consequence with a contrast argument behind it is `--color-muted-foreground`: the
 handoff wants `--fg-2` (8.45:1) rather than `--fg-3` (4.85:1), on the grounds that AI
