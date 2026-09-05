@@ -23,6 +23,23 @@
  * carries its name in a `toolName` field instead, and is not in the manifest, so
  * `toolDisplayName` would label it from its name. Handle those in a second
  * branch when you have them.
+ *
+ * The `.ds-ai-tool*` classes come from `app/ai-theme/ai-agent.css` and are
+ * passed through `className`, which is the vendored package's public API.
+ *
+ * TWO NOTES ON STATUS, BOTH DELIBERATE:
+ *
+ *  - `data-status` carries the AI SDK's own state string, not a translated one.
+ *    The layer's selectors accept both spellings — `[data-status='running']`
+ *    and `[data-status='input-available']` — so the part's state goes on the
+ *    element unchanged and there is no mapping table here to fall out of date.
+ *  - The status badge itself renders three channels already, upstream: a lucide
+ *    glyph, the word from `statusLabels` ("Running", "Completed", "Error"), and
+ *    the colour. That satisfies the accessibility contract without anything
+ *    here, which is why this file does not add a fourth. What it cannot do is
+ *    wear `.ds-ai-tool__status` — `ToolHeader` builds the badge internally and
+ *    exposes no className for it — so the badge keeps its `secondary` variant,
+ *    which the bridge points at `--bg-muted` / `--fg` at 19.5:1.
  */
 
 import { getToolName, isStaticToolUIPart, type UIMessage } from 'ai';
@@ -46,15 +63,20 @@ export function MessageTools({
   return (
     <>
       {message.parts.filter(isStaticToolUIPart).map((part) => (
-        <Tool key={part.toolCallId}>
+        <Tool className="ds-ai-tool" data-status={part.state} key={part.toolCallId}>
           <ToolHeader
+            className="ds-ai-tool__header"
             state={part.state}
             title={toolDisplayName(display, getToolName(part))}
             type={part.type}
           />
-          <ToolContent>
-            <ToolInput input={part.input} />
-            <ToolOutput errorText={part.errorText} output={part.output} />
+          <ToolContent className="ds-ai-tool__body">
+            <ToolInput className="ds-ai-tool__section" input={part.input} />
+            <ToolOutput
+              className="ds-ai-tool__section"
+              errorText={part.errorText}
+              output={part.output}
+            />
           </ToolContent>
         </Tool>
       ))}

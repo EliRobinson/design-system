@@ -1,4 +1,5 @@
 import { ExampleSource } from '@/components/docs/ExampleSource';
+import { WorkflowCanvasDemo } from '@/components/docs/WorkflowCanvasDemo';
 
 export const metadata = {
   title: 'AI Elements examples',
@@ -31,9 +32,16 @@ whatever you configured.
 The client is `useChat` and three vendored components. `Conversation` keeps the log pinned
 to the bottom while tokens arrive, `Message` renders one turn, and `PromptInput` is a real
 form — its `onSubmit` hands over the typed text, so there is no controlled-input state to
-hold. Nothing here imports a stylesheet: the markup is Tailwind utilities compiled through
-`@elirobinson/tokens/tailwind.css`, so it is already on-brand and already follows the theme
-dial.
+hold.
+
+Nothing here imports a stylesheet, and nothing here overrides a vendored component from
+outside. The Tailwind utilities the components carry are compiled through
+`@elirobinson/tokens/tailwind.css` and the AI Elements bridge, so the colour is already
+Miltinson's and already follows all three dials. The `.ds-ai-*` classes are the other half —
+shape, density and the editorial decisions a variable bridge cannot express — and they go in
+through `className`, which is the package's public API. Three of them are decisions rather
+than styling: only the user's turn gets a bubble, a mono eyebrow names the speaker instead
+of a colour implying it, and the honesty footnote under the composer is part of the pattern.
 
 <ExampleSource root="docs" file="chat-client.tsx" />
 
@@ -85,3 +93,20 @@ The house system prompt. It is read from `contracts.json` at run time by
 `houseSystemPrompt()`, never copied into a file, and `streamHouseText` applies it for you —
 so there is nothing here to paste and nothing to keep in step. Pass `system` to add your
 product's own instructions after it; it is additive, and you can say more but never less.
+
+## A workflow canvas, with the keyboard path it requires
+
+A node graph is the one pattern here whose primary interaction is dragging, and the canvas
+stylesheet will not be installed without the alternative. `nodesFocusable` puts every node
+in the tab order and keeps xyflow's arrow-key handler live, so a selected node moves from
+the keyboard and xyflow announces each move in its own live region. Every port is focusable
+too, and focusing one opens the node's toolbar with a button per other node — "Connect to …"
+where no edge exists, "Disconnect from …" where one does. That is create and delete with no
+drag anywhere in the path, and it is the only reason a 12px port is allowed to stay 12px.
+
+Run state renders on three channels: the `data-state` attribute paints the node's rule and
+its label colour, and the glyph and the word sit beside it in the markup.
+
+<WorkflowCanvasDemo />
+
+<ExampleSource root="docs" file="workflow-canvas.tsx" />

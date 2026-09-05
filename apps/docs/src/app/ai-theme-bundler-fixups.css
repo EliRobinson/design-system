@@ -1,0 +1,63 @@
+/* ==========================================================================
+   The one deviation from the AI Elements theme handoff
+   --------------------------------------------------------------------------
+   A separate file, imported last, so that `app/ai-theme/` stays byte-identical
+   to what the handoff shipped and every change made on top of it is in one
+   place somebody can read in a minute.
+
+   WHAT IS WRONG WITHOUT THIS
+
+   `ai-canvas.css` draws a node port at 12px:
+
+     .ds-ai-node__port { block-size: 12px; inline-size: 12px; ... }
+
+   xyflow draws the same element at 6px, in `@xyflow/react/dist/style.css`:
+
+     .react-flow__handle { width: 6px; height: 6px; ... }
+
+   Both selectors are (0,1,0). At equal specificity the later stylesheet wins,
+   and xyflow's is later: the vendored `canvas.tsx` imports that stylesheet from
+   module scope, so Turbopack emits it as the canvas component's own chunk,
+   loaded after the layout's CSS. Measured in this app before this file existed,
+   a port rendered at 6×6 with a 1px edge — half the size of a target the
+   handoff's accessibility argument already places at the floor of what SC
+   2.5.8's equivalent-alternative exemption will carry.
+
+   WHY NOT IMPORT ORDER
+
+   Naming `@xyflow/react/dist/style.css` from elements.css ahead of the canvas
+   layer was tried first and does not work. Turbopack does not dedupe it against
+   the module-scope import: the page ends up with both copies and the later one
+   still wins, so the only thing the hoist achieved was shipping the stylesheet
+   twice.
+
+   WHY THIS IS NOT A DOUBLED SELECTOR
+
+   The handoff's `.ds-ai-x.ds-ai-x` rule is scoped, deliberately, to
+   declarations that contend with a Tailwind group variant, and its README asks
+   that no new ones be added outside that case — a stylesheet of defensive
+   doubles being a different and worse problem. This contends with a
+   third-party stylesheet instead, so it takes the specificity it needs from
+   the structure that is already there: a port is always inside a node.
+   `.ds-ai-node .ds-ai-node__port` is (0,2,0), which clears `.react-flow__handle`
+   without teaching anyone that repeating a class is the house style.
+
+   NOTHING BELOW INTRODUCES A VALUE. Every declaration is copied from the rule
+   in `ai-theme/ai-canvas.css` that it is re-asserting, and if that file's
+   values move these are wrong and must move with them.
+   ========================================================================== */
+
+.ds-ai-node .ds-ai-node__port {
+  background: var(--surface);
+  border: 1.5px solid var(--border-control); /* 3.64:1 */
+  border-radius: var(--radius-pill);
+  block-size: 12px;
+  inline-size: 12px;
+}
+
+/* The mobile floor, re-asserted at the same depth so the dial still moves it.
+   24px is the touch target; 12px is not one, and this is the rule that says so. */
+[data-platform='mobile'] .ds-ai-node .ds-ai-node__port {
+  block-size: var(--target-min);
+  inline-size: var(--target-min);
+}

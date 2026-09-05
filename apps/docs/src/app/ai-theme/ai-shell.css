@@ -1,0 +1,495 @@
+/* ==========================================================================
+   Miltinson × AI Elements — the shell layer
+   --------------------------------------------------------------------------
+   Thread list, Model select, Stop, Error / retry, Rate limit, Greeting.
+
+   The frame around a conversation. None of these are AI Elements components
+   in their own right — they are the parts every assistant app has to build
+   around the package, and the parts that go off-brand first, because they
+   are the ones a team writes at the end of a sprint.
+   ========================================================================== */
+
+/* ==========================================================================
+   Shell — sidebar plus conversation
+
+   Grid, not flex, so the sidebar's width is declared once and the
+   conversation gets `minmax(0, 1fr)` — without the 0 a long unbroken code
+   block in an answer pushes the sidebar off screen.
+   ========================================================================== */
+.ds-ai-shell {
+  background: var(--bg);
+  block-size: 100%;
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+}
+
+.ds-ai-shell__aside {
+  background: var(--bg-subtle);
+  border-inline-end: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  overflow: hidden;
+}
+
+.ds-ai-shell__main {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  min-inline-size: 0;
+}
+
+/* The composer sits under the scrolling log, on the page background with a
+   hairline seam — not a floating bar with a shadow. */
+.ds-ai-shell__composer {
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  padding: var(--space-4) var(--gutter) var(--space-5);
+}
+
+.ds-ai-shell__composer > * {
+  margin-inline: auto;
+  max-inline-size: var(--container-md);
+}
+
+/* ==========================================================================
+   Thread list
+
+   Dates as mono eyebrows, titles as one clamped line. The active thread is
+   marked with a fill and an inline-start rule, and `aria-current="page"` is
+   what the rule below actually reads — so the state exists for a screen
+   reader before it exists for the eye.
+   ========================================================================== */
+.ds-ai-threads {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  min-block-size: 0;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-3) var(--space-5);
+}
+
+.ds-ai-threads__group {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-caps);
+  padding: var(--space-4) var(--space-2) var(--space-1);
+  text-transform: uppercase;
+}
+
+.ds-ai-threads__group:first-child {
+  padding-top: 0;
+}
+
+.ds-ai-thread {
+  border-inline-start: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--fg-2);
+  display: block;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  min-block-size: var(--target-min);
+  overflow: hidden;
+  padding: var(--space-2) var(--space-3);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  transition: background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+/* A global `a:hover` is (0,1,1) and outranks a bare class, so every state
+   here restates `color`. The house rule from ai-core.css, applied to the
+   one place in the shell that is actually a link. */
+.ds-ai-thread:hover {
+  background: var(--bg-muted);
+  color: var(--fg);
+}
+
+.ds-ai-thread:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.ds-ai-thread[aria-current='page'] {
+  background: var(--bg-muted);
+  border-inline-start-color: var(--fg);
+  color: var(--fg);
+  font-weight: var(--fw-medium);
+}
+
+.ds-ai-thread[aria-current='page']:hover {
+  color: var(--fg);
+}
+
+/* New thread. An outline control at 44px — it is the primary action in this
+   column, and amber is spoken for by Send. */
+.ds-ai-threads__new {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  cursor: pointer;
+  display: flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  gap: var(--space-2);
+  justify-content: center;
+  margin: var(--space-4) var(--space-3) 0;
+  min-block-size: var(--target);
+  transition: background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-threads__new:hover {
+  background: var(--bg-muted);
+  border-color: var(--fg-2);
+  color: var(--fg);
+}
+
+.ds-ai-threads__new:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Model select
+
+   A model name is an identifier, so mono — and the identifier is shown in
+   full rather than prettified. "Which model answered this" is provenance,
+   and provenance in this system is never paraphrased.
+   ========================================================================== */
+.ds-ai-model {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--fg-2);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  gap: var(--space-2);
+  letter-spacing: var(--tr-wide);
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-2);
+  transition: color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-model:hover {
+  background: var(--bg-muted);
+  color: var(--fg);
+}
+
+.ds-ai-model:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-ai-model__chevron {
+  color: var(--fg-4);
+}
+
+/* The open list. --surface on --shadow-lg, the system's popover pairing. */
+.ds-ai-model-list {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  min-inline-size: var(--anchored-min-width);
+  padding: var(--space-1);
+}
+
+.ds-ai-model-option {
+  align-items: baseline;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  cursor: pointer;
+  display: grid;
+  gap: var(--space-1) var(--space-3);
+  grid-template-columns: 1fr auto;
+  min-block-size: var(--target-min);
+  padding: var(--space-2) var(--space-3);
+  text-align: start;
+  transition: background var(--dur-fast) var(--ease-out);
+  width: 100%;
+}
+
+.ds-ai-model-option:hover {
+  background: var(--bg-subtle);
+}
+
+.ds-ai-model-option:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.ds-ai-model-option__id {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.ds-ai-model-option__note {
+  color: var(--fg-2);
+  font-size: var(--fs-2xs);
+  grid-column: 1 / -1;
+  line-height: var(--lh-normal);
+}
+
+/* Selected. A checkmark in source plus a weight change — never a tick drawn
+   in colour alone, and never the row's background doing the work, since the
+   hover surface is already a background. */
+.ds-ai-model-option[aria-selected='true'] .ds-ai-model-option__id {
+  font-weight: var(--fw-medium);
+}
+
+.ds-ai-model-option__check {
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+/* ==========================================================================
+   Stop — interrupt a streaming answer
+
+   Replaces Send in place while the model is generating, and takes the
+   amber with it: the caret and this button are the same claim, that
+   something is live right now. Ink glyph on amber is 8.30:1.
+   ========================================================================== */
+.ds-ai-stop {
+  align-items: center;
+  background: var(--accent);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--accent-fg); /* 8.30:1 on the fill */
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  gap: var(--space-2);
+  justify-content: center;
+  min-block-size: var(--target);
+  min-inline-size: var(--target);
+  padding-inline: var(--space-4);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-stop:hover,
+.ds-ai-stop:focus,
+.ds-ai-stop:active {
+  color: var(--accent-fg);
+}
+
+.ds-ai-stop:hover {
+  background: var(--accent-hover);
+}
+
+.ds-ai-stop:active {
+  background: var(--accent-press);
+}
+
+.ds-ai-stop:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Notice — an error, a limit, a warning about the answer
+
+   In the thread, at the point where it happened, not in a toast: a toast
+   that disappears takes the reason the answer is wrong with it. Tint pairs,
+   and every variant states its kind in words before it states it in hue.
+   ========================================================================== */
+.ds-ai-notice {
+  align-items: start;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  display: grid;
+  font-size: var(--fs-sm);
+  gap: var(--space-1) var(--space-3);
+  grid-template-columns: auto 1fr;
+  line-height: var(--lh-relaxed);
+  padding: var(--space-4);
+}
+
+.ds-ai-notice__icon {
+  padding-top: 2px;
+}
+
+.ds-ai-notice__title {
+  font-weight: var(--fw-semibold);
+  margin: 0;
+}
+
+.ds-ai-notice p {
+  grid-column: 2;
+  margin: 0;
+}
+
+.ds-ai-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  grid-column: 2;
+  margin-top: var(--space-2);
+}
+
+.ds-ai-notice--error {
+  background: var(--status-danger-tint);
+  border-color: var(--status-danger-tint-edge);
+  color: var(--status-danger-fg); /* 6.69:1 on the tint */
+}
+
+/* Warning gets its edge from --status-warning-border (3.76:1), because the
+   warning fill is 1.87:1 and a tint-edge hairline is decorative. This is
+   the documented exception in the token set. */
+.ds-ai-notice--warning {
+  background: var(--status-warning-tint);
+  border-color: var(--status-warning-border);
+  color: var(--status-warning-fg); /* 6.24:1 on the tint */
+}
+
+.ds-ai-notice--info {
+  background: var(--status-info-tint);
+  border-color: var(--status-info-tint-edge);
+  color: var(--status-info-fg); /* 6.38:1 on the tint */
+}
+
+/* Retry inside a notice. Transparent with a currentColor edge, so it
+   inherits the notice's own contrast rather than needing a measured pair
+   per variant — and `color` is restated in every state, as always on a
+   coloured surface. */
+.ds-ai-notice__btn {
+  align-items: center;
+  background: none;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-notice__btn:hover,
+.ds-ai-notice__btn:focus,
+.ds-ai-notice__btn:active {
+  color: inherit;
+}
+
+.ds-ai-notice__btn:hover {
+  background: oklch(from currentColor l c h / 0.08);
+}
+
+.ds-ai-notice__btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* The retry countdown. Tabular, so "retrying in 9s" does not reflow to 10s
+   and shift the sentence. */
+.ds-ai-notice__countdown {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Greeting — the empty thread
+
+   The one screen in an assistant that is pure editorial, and the one place
+   the brand voice does the work. Left-aligned, not centred: it is the first
+   line of a document, and the answers that follow start at the same margin.
+   ========================================================================== */
+.ds-ai-greeting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin-inline: auto;
+  max-inline-size: var(--container-md);
+  padding: var(--space-10) var(--gutter) var(--space-7);
+  width: 100%;
+}
+
+.ds-ai-greeting__eyebrow {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tr-caps);
+  text-transform: uppercase;
+}
+
+.ds-ai-greeting__title {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-tight);
+  line-height: var(--lh-snug);
+  margin: 0;
+  max-inline-size: 24ch;
+  text-wrap: pretty;
+}
+
+.ds-ai-greeting__body {
+  color: var(--fg-2);
+  font-size: var(--fs-md);
+  line-height: var(--lh-relaxed);
+  margin: 0;
+  max-inline-size: 52ch;
+  text-wrap: pretty;
+}
+
+/* ==========================================================================
+   Platform — data-platform="mobile"
+
+   The sidebar is not a column on a phone; it is a sheet the app opens, so
+   the grid collapses to one track and the aside is hidden by the app rather
+   than squeezed by CSS.
+   ========================================================================== */
+[data-platform='mobile'] .ds-ai-shell {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+[data-platform='mobile'] .ds-ai-shell__aside {
+  display: none;
+}
+
+[data-platform='mobile'] .ds-ai-shell__aside[data-open] {
+  display: flex;
+}
+
+[data-platform='mobile'] .ds-ai-thread,
+[data-platform='mobile'] .ds-ai-model,
+[data-platform='mobile'] .ds-ai-model-option,
+[data-platform='mobile'] .ds-ai-notice__btn {
+  min-block-size: var(--target);
+}
+
+[data-platform='mobile'] .ds-ai-greeting {
+  padding-block: var(--space-8) var(--space-6);
+}
+
+[data-platform='mobile'] .ds-ai-greeting__title {
+  font-size: var(--fs-2xl);
+}
+
+/* The composer keeps clear of the home indicator. */
+[data-platform='mobile'] .ds-ai-shell__composer {
+  padding-bottom: calc(var(--space-4) + var(--safe-b));
+}

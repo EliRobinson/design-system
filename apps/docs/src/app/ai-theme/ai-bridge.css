@@ -1,0 +1,225 @@
+/* ==========================================================================
+   Miltinson × AI Elements — the token bridge
+   --------------------------------------------------------------------------
+   AI Elements (https://vercel.com/ai-sdk) is shadcn/ui + Tailwind v4. Its
+   components carry no stable class names and no `data-slot` attributes — they
+   are raw utilities — so the only durable way to put them on brand is to
+   re-point the variables those utilities read. That is this file. Import it
+   once in a consuming app, after Miltinson's styles.css:
+
+     @import '@elirobinson/tokens/tokens.css';   // or _ds/<folder>/styles.css
+     @import '@elirobinson/tokens/ai-bridge.css';
+
+   Every value below resolves to a Miltinson semantic token, never a literal.
+   That is what makes the three dials work for free: `data-theme`,
+   `data-palette` and `data-platform` all move the tokens underneath, so this
+   file needs no dark block, no palette block and no platform block. If you
+   find yourself adding one, the value you are bridging is wrong.
+
+   WHAT IS DELIBERATELY NOT HERE
+   -----------------------------
+   Tailwind v4 utilities resolve the `--color-*` namespace, not the bare
+   shadcn names — `bg-accent` reads `--color-accent`. So the bridge lives in
+   `--color-*`, which lets it sidestep two name collisions that would
+   otherwise repaint the whole design system:
+
+   - `--accent`. shadcn's `--accent` is the *hover surface* under a menu item.
+     Miltinson's `--accent` is the amber CTA fill. Same name, opposite jobs:
+     declaring shadcn's meaning at `:root` would turn every Miltinson button,
+     link hover and eyebrow underline into a pale grey. Bridged as
+     `--color-accent` only; the bare token is left alone.
+   - `--border`. Both systems use the bare name and, for once, mean the same
+     thing — so Miltinson's own `--border` already satisfies shadcn and there
+     is nothing to bridge. Note the value: 1.24:1, a decorative hairline. The
+     places AI Elements draws a *control* edge are corrected below through
+     `--color-input`.
+
+   The bare shadcn names that do NOT collide are declared as well, for
+   consumers on a shadcn v3-style setup or anything reading them directly.
+   ========================================================================== */
+
+:root {
+  /* ------------------------------------------------------------------------
+     Surfaces
+     ---------------------------------------------------------------------- */
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--fg);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--fg);
+
+  /* ------------------------------------------------------------------------
+     Primary — ink, not amber.
+
+     shadcn treats `primary` as both a fill and a text colour, and AI Elements
+     uses it as text: sources.tsx sets `text-primary` on the whole citation
+     block. Miltinson Amber measures 2.53:1 on white, so bridging primary to
+     the brand accent would ship a WCAG failure on every answer that cites a
+     source. The brand rule already says the same thing from the other side —
+     amber is a signal, never a large flat fill. So primary is ink, and amber
+     is applied deliberately, by the `.ds-ai-*` layer, to the send button and
+     the streaming caret.
+     ---------------------------------------------------------------------- */
+  --color-primary: var(--fg);
+  --color-primary-foreground: var(--fg-inverse);
+
+  /* ------------------------------------------------------------------------
+     Secondary — the user's message bubble, and the file pill in a Task.
+     ---------------------------------------------------------------------- */
+  --color-secondary: var(--bg-muted);
+  --color-secondary-foreground: var(--fg);
+
+  /* ------------------------------------------------------------------------
+     Muted — every piece of AI Elements meta copy: "Thought for 4 seconds",
+     the tool status row, the branch counter, PARAMETERS / RESULT headings.
+
+     --fg-2 (8.45:1) rather than --fg-3 (4.85:1). AI Elements sets this
+     alongside `text-sm` and `text-xs`, and a 12px label with no headroom is
+     one consumer type-scale change away from failing. Headroom is cheaper
+     than a re-audit.
+     ---------------------------------------------------------------------- */
+  --color-muted: var(--bg-muted);
+  --color-muted-foreground: var(--fg-2);
+
+  /* ------------------------------------------------------------------------
+     Accent — hover surface. See the header note: this is shadcn's meaning,
+     not Miltinson's, and it exists in the --color-* namespace only.
+     ---------------------------------------------------------------------- */
+  --color-accent: var(--bg-subtle);
+  --color-accent-foreground: var(--fg);
+
+  /* ------------------------------------------------------------------------
+     Destructive — a tool error, a denied approval, the danger confirmation.
+     Status tokens, not brand ramps: these must not swap with data-palette.
+     ---------------------------------------------------------------------- */
+  --color-destructive: var(--status-danger);
+  --color-destructive-foreground: var(--status-danger-on);
+
+  /* ------------------------------------------------------------------------
+     Edges and rings
+
+     --color-border is the decorative hairline AI Elements puts around a Tool
+     panel or a Task file pill — correct at 1.24:1, nothing depends on seeing
+     it. --color-input is the composer's own edge, and a composer is a
+     control: SC 1.4.11 wants 3:1, so it takes --border-control (3.64:1).
+     ---------------------------------------------------------------------- */
+  --color-border: var(--border);
+  --color-input: var(--border-control);
+  --color-ring: var(--focus-ring);
+
+  /* ------------------------------------------------------------------------
+     Radii. shadcn derives its scale from a single --radius; Miltinson's radii
+     are sharper and already re-pointed by data-platform="mobile", so each
+     step is named explicitly rather than computed off one number.
+     ---------------------------------------------------------------------- */
+  --radius: var(--radius-md);
+  --radius-shadcn-sm: var(--radius-xs);
+  --radius-shadcn-md: var(--radius-sm);
+  --radius-shadcn-lg: var(--radius-md);
+  --radius-shadcn-xl: var(--radius-lg);
+
+  /* ------------------------------------------------------------------------
+     Data series. shadcn ships five; Miltinson ships eight at one lightness.
+     Palette-independent in both systems, so this is a straight pass-through.
+     ---------------------------------------------------------------------- */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* ------------------------------------------------------------------------
+     Sidebar — the thread list in an assistant shell.
+     ---------------------------------------------------------------------- */
+  --color-sidebar: var(--bg-subtle);
+  --color-sidebar-foreground: var(--fg);
+  --color-sidebar-primary: var(--fg);
+  --color-sidebar-primary-foreground: var(--fg-inverse);
+  --color-sidebar-accent: var(--surface-3);
+  --color-sidebar-accent-foreground: var(--fg);
+  --color-sidebar-border: var(--border);
+  --color-sidebar-ring: var(--focus-ring);
+
+  /* ------------------------------------------------------------------------
+     Bare shadcn names, for a v3-style setup or anything reading them
+     directly. --accent and --border are absent on purpose — see the header.
+     ---------------------------------------------------------------------- */
+  --background: var(--bg);
+  --foreground: var(--fg);
+  --card: var(--surface);
+  --card-foreground: var(--fg);
+  --popover: var(--surface);
+  --popover-foreground: var(--fg);
+  --primary: var(--fg);
+  --primary-foreground: var(--fg-inverse);
+  --secondary: var(--bg-muted);
+  --secondary-foreground: var(--fg);
+  --muted: var(--bg-muted);
+  --muted-foreground: var(--fg-2);
+  --destructive: var(--status-danger);
+  --destructive-foreground: var(--status-danger-on);
+  --input: var(--border-control);
+  --ring: var(--focus-ring);
+}
+
+/* ==========================================================================
+   Fonts — nothing to bridge, and that is worth stating.
+
+   Tailwind v4's font namespace is `--font-sans` / `--font-mono`, which are the
+   names Miltinson's own type tokens already use, for the same thing. So AI
+   Elements inherits Geist for UI and JetBrains Mono for code blocks, tool
+   parameters and terminal output with no mapping at all — as long as the app
+   loads tokens/fonts.css. If the family arrives from `next/font`, set
+   `--ds-font-sans-override` / `--ds-font-mono-override` rather than
+   redeclaring the family: tokens.css documents why.
+   ========================================================================== */
+
+/* ==========================================================================
+   xyflow / React Flow — the Canvas half
+
+   AI Elements' Canvas is @xyflow/react, and unlike the rest of the package it
+   exposes a documented variable surface. So the Canvas needs no class-layer
+   tricks for colour: these nineteen declarations are the whole job.
+
+   They are here rather than in components/ai/ai-canvas.css for the reason
+   this whole file exists — a custom property declared in a stylesheet that
+   Miltinson's styles.css imports becomes part of Miltinson's token surface,
+   and xyflow's knobs are not Miltinson tokens. Same quarantine, different
+   vendor.
+   ========================================================================== */
+:root {
+  --xy-background-color: var(--bg-subtle);
+  --xy-background-pattern-dots-color: var(--border-strong);
+  /* The edge is a meaningful line — it is the whole content of the graph — so
+     --border-control (3.64:1), never --border (1.24:1). */
+  --xy-edge-stroke: var(--border-control);
+  --xy-edge-stroke-width: 1.5;
+  --xy-edge-stroke-selected: var(--fg);
+  --xy-connectionline-stroke: var(--fg-2);
+  --xy-connectionline-stroke-width: 1.5;
+  --xy-attribution-background-color: transparent;
+  --xy-handle-background-color: var(--surface);
+  --xy-handle-border-color: var(--border-control);
+  --xy-selection-background-color: var(--accent-tint);
+  --xy-selection-border: 1px dashed var(--fg-2);
+  --xy-controls-button-background-color: var(--surface);
+  --xy-controls-button-background-color-hover: var(--bg-muted);
+  --xy-controls-button-color: var(--fg-2);
+  --xy-controls-button-color-hover: var(--fg);
+  --xy-controls-button-border-color: var(--border);
+  --xy-minimap-background-color: var(--surface);
+  --xy-minimap-mask-background-color: oklch(from var(--bg) l c h / 0.72);
+}
+
+/* ==========================================================================
+   Streamdown
+
+   AI Elements renders assistant markdown through Streamdown, which ships its
+   own prose styles and its own shiki themes for fenced code. Point both at
+   the system rather than letting a second set of defaults in.
+   ========================================================================== */
+:root {
+  --streamdown-code-theme-light: 'github-light';
+  --streamdown-code-theme-dark: 'github-dark';
+}

@@ -118,6 +118,9 @@ importers:
       '@elirobinson/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
+      '@xyflow/react':
+        specifier: ^12.10.0
+        version: 12.11.6(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       ai:
         specifier: ^6.0.275
         version: 6.0.275(zod@4.5.4)

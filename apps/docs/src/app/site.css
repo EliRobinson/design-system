@@ -1169,3 +1169,18 @@
 .example-source .code-block {
   margin: 0;
 }
+
+/* The workflow-canvas demo stage.
+
+   A canvas has no intrinsic height — `.ds-ai-canvas` is `block-size: 100%`, so
+   an auto-height parent collapses it to nothing. A ratio rather than a pixel
+   height: this file has no magic numbers in it, and a 16/9 box is a proportion
+   rather than a measurement. The padding and the dot grid `.demo-block__stage`
+   draws are dropped because the canvas paints its own, on brand, from
+   ai-canvas.css. */
+.demo-block__stage--canvas {
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  aspect-ratio: 16 / 9;
+}

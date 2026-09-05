@@ -1,0 +1,677 @@
+/* ==========================================================================
+   Miltinson × AI Elements — conversation core
+   --------------------------------------------------------------------------
+   Conversation, Message, PromptInput, Response, Code Block, Suggestion,
+   Loader / Shimmer, Actions.
+
+   HOW THIS LAYER ATTACHES
+   -----------------------
+   The token bridge (tokens/ai-bridge.css) puts AI Elements on brand for
+   colour, radius and type. It cannot change shape, density, or the fact that
+   Miltinson draws a card as a hairline rather than a shadow — and AI Elements
+   exposes no class names or `data-slot` hooks to target for that. What every
+   one of its components does expose is `className`, merged through `cn()`.
+
+   So this layer is a set of classes you pass in:
+
+     <Conversation className="ds-ai-conversation">
+       <ConversationContent className="ds-ai-conversation__content">
+         <Message className="ds-ai-message" from="assistant">
+           <MessageContent className="ds-ai-message__content">
+             <MessageResponse className="ds-ai-response">{text}</MessageResponse>
+
+   Stable across AI Elements upgrades, because it depends on the one part of
+   the API that is public. The `.is-user` / `.is-assistant` markers Message
+   sets on its own wrapper are used as state selectors — those are load-bearing
+   in AI Elements' own stylesheet, so they are as stable as the package.
+
+   A NOTE ON THE DOUBLED CLASS SELECTORS
+   -------------------------------------
+   A few rules below are written `.ds-ai-x.ds-ai-x`. That is not a typo and
+   not an `!important` in disguise. AI Elements styles the user bubble with
+   Tailwind's group variants — `group-[.is-user]:bg-secondary` compiles to
+   `.group.is-user .group-\[\.is-user\]\:bg-secondary`, which is (0,3,0). The
+   natural way to write the override here, `.ds-ai-message.is-user
+   .ds-ai-message__content`, is also (0,3,0) — so which one paints comes down
+   to which stylesheet the bundler happened to emit last. Repeating the class
+   takes it to (0,4,0) and settles it. Only the declarations that genuinely
+   contend with a Tailwind group variant are doubled; the rest are left plain.
+   ========================================================================== */
+
+/* ==========================================================================
+   Conversation — the scrolling log
+   ========================================================================== */
+.ds-ai-conversation {
+  background: var(--bg);
+  position: relative;
+}
+
+/* Editorial measure, not full-bleed. Assistant answers are prose, and prose
+   over 1280px is unreadable — --container-md is the same 768px clamp the docs
+   reader and the marketing body copy use. */
+.ds-ai-conversation__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-width: var(--container-md);
+  margin-inline: auto;
+  padding: var(--space-7) var(--gutter) var(--space-9);
+  width: 100%;
+}
+
+/* The scroll-to-bottom button. AI Elements renders it as a shadcn `outline`
+   icon button, absolutely positioned; the bridge gets the colours right and
+   this gets the edge to 3:1 and the target to 44px. */
+.ds-ai-conversation__scroll {
+  background: var(--surface);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-md);
+  color: var(--fg-2);
+  min-block-size: var(--target);
+  min-inline-size: var(--target);
+  transition: color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-conversation__scroll:hover {
+  border-color: var(--fg-2);
+  color: var(--fg);
+}
+
+.ds-ai-conversation__empty {
+  color: var(--fg-2);
+  padding-block: var(--space-11);
+  text-align: center;
+}
+
+.ds-ai-conversation__empty h3 {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-snug);
+  margin: 0 0 var(--space-2);
+}
+
+.ds-ai-conversation__empty p {
+  font-size: var(--fs-md);
+  line-height: var(--lh-relaxed);
+  margin: 0 auto;
+  max-width: 46ch;
+}
+
+/* ==========================================================================
+   Message
+
+   Two treatments, deliberately unmatched. The user's turn is a quiet bubble,
+   because it is a short utterance and needs to read as one. The assistant's
+   turn is flat editorial prose on the page — no bubble, no card, no avatar
+   tile — because it is the document the user came for, and wrapping a page of
+   prose in a rounded container makes it look like a chat toy. A mono eyebrow
+   names the speaker instead. That is the printed-page reading the brand asks
+   for, and it is also what lets an answer carry headings, tables and code
+   without fighting a container.
+   ========================================================================== */
+.ds-ai-message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Speaker label. Written in sentence case in source, uppercased here — the
+   house rule: uppercase is a typographic device, not a writing one. */
+.ds-ai-message__speaker {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tr-caps);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ds-ai-message__content {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-relaxed);
+}
+
+/* The user's turn. --radius-md, not a pill: --radius-pill is for tags and
+   avatars, and a pill-shaped paragraph is the tell of a generic chat widget.
+   --bg-muted carries --fg at 19.5:1. */
+.ds-ai-message.is-user .ds-ai-message__content.ds-ai-message__content {
+  background: var(--bg-muted);
+  border-radius: var(--radius-md);
+  color: var(--fg);
+  margin-inline-start: auto;
+  max-width: 46ch;
+  padding: var(--space-3) var(--space-4);
+}
+
+.ds-ai-message.is-user .ds-ai-message__speaker {
+  text-align: end;
+}
+
+/* The assistant's turn: nothing. Stated rather than omitted, because AI
+   Elements' MessageContent brings its own padding assumptions and a future
+   version may bring a background with them. */
+.ds-ai-message.is-assistant .ds-ai-message__content.ds-ai-message__content {
+  background: none;
+  max-width: none;
+  padding: 0;
+}
+
+/* A closed or archived thread. Body drops to --fg-2 — still 8.45:1, so this
+   is a change of voice and not a downgrade in legibility. */
+.ds-ai-message[data-sent] .ds-ai-message__content {
+  color: var(--fg-2);
+}
+
+/* Message toolbar — the row under an answer that holds actions on one side
+   and the branch selector on the other. */
+.ds-ai-message__toolbar {
+  align-items: center;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+}
+
+/* ==========================================================================
+   Response — assistant markdown (Streamdown)
+
+   Streamdown emits ordinary markdown elements, so this is a prose stylesheet.
+   It is scoped to .ds-ai-response and reaches its descendants directly, which
+   is the one place in this system that is the right shape: the elements are
+   generated from model output and cannot be given classes.
+   ========================================================================== */
+.ds-ai-response {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-relaxed);
+  text-wrap: pretty;
+}
+
+.ds-ai-response > :first-child {
+  margin-top: 0;
+}
+
+.ds-ai-response > :last-child {
+  margin-bottom: 0;
+}
+
+.ds-ai-response p {
+  margin: 0 0 var(--space-4);
+}
+
+.ds-ai-response h1,
+.ds-ai-response h2,
+.ds-ai-response h3,
+.ds-ai-response h4 {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-snug);
+  line-height: var(--lh-snug);
+  margin: var(--space-7) 0 var(--space-3);
+}
+
+.ds-ai-response h1 {
+  font-size: var(--fs-2xl);
+}
+
+.ds-ai-response h2 {
+  font-size: var(--fs-xl);
+}
+
+.ds-ai-response h3 {
+  font-size: var(--fs-lg);
+}
+
+.ds-ai-response h4 {
+  font-size: var(--fs-md);
+}
+
+.ds-ai-response ul,
+.ds-ai-response ol {
+  margin: 0 0 var(--space-4);
+  padding-inline-start: var(--space-6);
+}
+
+.ds-ai-response li {
+  margin-bottom: var(--space-2);
+}
+
+.ds-ai-response li::marker {
+  color: var(--fg-3);
+}
+
+.ds-ai-response strong {
+  font-weight: var(--fw-semibold);
+}
+
+/* An inline code span. --bg-muted well, mono, no border — a border here turns
+   every technical noun into a button. */
+.ds-ai-response :not(pre) > code {
+  background: var(--bg-muted);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  font-variant-ligatures: none;
+  padding: 0.15em 0.35em;
+}
+
+/* A quotation the model is carrying, not a pull quote. One hairline rule and
+   nothing else — never a coloured left-border stripe. */
+.ds-ai-response blockquote {
+  border-inline-start: 1px solid var(--border-strong);
+  color: var(--fg-2);
+  margin: 0 0 var(--space-4);
+  padding-inline-start: var(--space-4);
+}
+
+.ds-ai-response hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: var(--space-7) 0;
+}
+
+.ds-ai-response table {
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  margin: 0 0 var(--space-4);
+  width: 100%;
+}
+
+.ds-ai-response th {
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--fg);
+  font-weight: var(--fw-medium);
+  padding: var(--space-2) var(--space-3);
+  text-align: start;
+}
+
+.ds-ai-response td {
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+/* Numbers compare in mono, tabular. */
+.ds-ai-response td:not(:first-child) {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-ai-response a {
+  color: var(--link);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.ds-ai-response a:hover {
+  color: var(--link-hover);
+  text-decoration-thickness: 2px;
+}
+
+/* ==========================================================================
+   Code Block
+
+   Streamdown/shiki paints the tokens; this is the frame. Mono filename in the
+   header, hairline seam, no shadow.
+   ========================================================================== */
+.ds-ai-codeblock {
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin: 0 0 var(--space-4);
+  overflow: hidden;
+}
+
+.ds-ai-codeblock__header {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-3);
+  display: flex;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  gap: var(--space-2);
+  justify-content: space-between;
+  letter-spacing: var(--tr-caps);
+  padding: var(--space-2) var(--space-3);
+  text-transform: uppercase;
+}
+
+.ds-ai-codeblock pre {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  margin: 0;
+  overflow-x: auto;
+  padding: var(--space-4);
+  tab-size: 2;
+}
+
+.ds-ai-codeblock code {
+  font-variant-ligatures: none;
+}
+
+/* ==========================================================================
+   Prompt Input — the composer
+
+   The one place amber appears in a conversation, on the submit button, and
+   the one place the honesty line is not optional.
+   ========================================================================== */
+.ds-ai-composer {
+  background: var(--surface);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-inset);
+  display: flex;
+  flex-direction: column;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-composer:focus-within {
+  border-color: var(--fg-2);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-ai-composer__field {
+  background: none;
+  border: 0;
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-relaxed);
+  max-block-size: 40vh;
+  min-block-size: calc(var(--space-6) * 2);
+  outline: none;
+  padding: var(--space-3) var(--space-4);
+  resize: none;
+  width: 100%;
+}
+
+.ds-ai-composer__field::placeholder {
+  color: var(--fg-3);
+}
+
+.ds-ai-composer__toolbar {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+}
+
+.ds-ai-composer__tools {
+  align-items: center;
+  display: flex;
+  gap: var(--space-1);
+}
+
+/* Submit. A filled surface, so it restates `color` in every state — a bare
+   global `a:hover` is (0,1,1) and outranks a single class, which is how this
+   system previously shipped amber-on-amber at 2.31:1. */
+.ds-ai-composer__submit {
+  align-items: center;
+  background: var(--accent);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--accent-fg);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  gap: var(--space-2);
+  justify-content: center;
+  min-block-size: var(--target);
+  min-inline-size: var(--target);
+  padding-inline: var(--space-4);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-composer__submit:hover,
+.ds-ai-composer__submit:focus,
+.ds-ai-composer__submit:active {
+  color: var(--accent-fg);
+}
+
+.ds-ai-composer__submit:hover {
+  background: var(--accent-hover);
+}
+
+.ds-ai-composer__submit:active {
+  background: var(--accent-press);
+  transform: translateY(1px);
+}
+
+.ds-ai-composer__submit:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-ai-composer__submit:disabled {
+  background: var(--ink-100);
+  color: var(--fg-disabled);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* The honesty line. A brand contract, not a placeholder — readme.md says so,
+   and this rule is where it is enforced by being styled as part of the
+   composer rather than as something a consumer remembers to add. */
+.ds-ai-composer__footnote {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tr-wide);
+  line-height: var(--lh-normal);
+  padding: var(--space-2) var(--space-1) 0;
+  text-align: center;
+}
+
+/* ==========================================================================
+   Suggestion — a prompt chip
+
+   Pill is right here: this is a tag, which is exactly what --radius-pill is
+   for, and it is never a CTA.
+   ========================================================================== */
+.ds-ai-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ds-ai-suggestion {
+  background: var(--surface);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-pill);
+  color: var(--fg-2);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  min-block-size: var(--target-min);
+  padding: var(--space-2) var(--space-4);
+  text-align: start;
+  transition: color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.ds-ai-suggestion:hover {
+  background: var(--bg-subtle);
+  border-color: var(--fg-2);
+  color: var(--fg);
+}
+
+.ds-ai-suggestion:active {
+  transform: translateY(1px);
+}
+
+.ds-ai-suggestion:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Actions — copy, retry, feedback
+
+   The dense tier: SC 2.5.8's 24×24 floor rather than the system's 44×44 for
+   primary controls, lifted to --target under data-platform="mobile" further
+   down. gap keeps the expanded hit areas from overlapping.
+   ========================================================================== */
+.ds-ai-actions {
+  align-items: center;
+  display: flex;
+  gap: var(--space-1);
+}
+
+.ds-ai-action {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--fg-3);
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  min-block-size: 32px;
+  min-inline-size: 32px;
+  transition: color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-action:hover {
+  background: var(--bg-subtle);
+  color: var(--fg);
+}
+
+.ds-ai-action:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Colour is never the only channel: a recorded vote keeps the fill *and* is
+   announced through aria-pressed, which is what this selector reads. */
+.ds-ai-action[aria-pressed='true'] {
+  background: var(--accent-tint);
+  color: var(--fg);
+}
+
+/* ==========================================================================
+   Loader, Shimmer, and the streaming caret
+   ========================================================================== */
+.ds-ai-loader {
+  animation: ds-ai-spin var(--dur-slow) linear infinite;
+  block-size: 16px;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  border-top-color: var(--fg-2);
+  display: inline-block;
+  inline-size: 16px;
+}
+
+@keyframes ds-ai-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* Shimmer. AI Elements' own Shimmer reads --color-background and
+   --color-muted-foreground off the theme, which the bridge already supplies,
+   so this class is for the plain-CSS equivalent used in the specimens and
+   anywhere motion has to be authored rather than imported. */
+.ds-ai-shimmer {
+  animation: ds-ai-shimmer 2s linear infinite;
+  background: linear-gradient(
+      90deg,
+      transparent calc(50% - 40px),
+      var(--bg),
+      transparent calc(50% + 40px)
+    ),
+    linear-gradient(var(--fg-2), var(--fg-2));
+  background-clip: text;
+  background-repeat: no-repeat, padding-box;
+  background-size: 250% 100%, auto;
+  color: transparent;
+  display: inline-block;
+}
+
+@keyframes ds-ai-shimmer {
+  from {
+    background-position: 100% center;
+  }
+  to {
+    background-position: 0% center;
+  }
+}
+
+/* The caret. The only amber in an answer, and the reason amber is described
+   as a signal: it marks the one live thing on the page. */
+.ds-ai-caret {
+  animation: ds-ai-blink 1s steps(2, start) infinite;
+  background: var(--accent);
+  display: inline-block;
+  block-size: 1em;
+  inline-size: 2px;
+  margin-inline-start: 2px;
+  translate: 0 0.14em;
+  vertical-align: baseline;
+}
+
+@keyframes ds-ai-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ==========================================================================
+   Platform — data-platform="mobile"
+
+   No colour changes, so every measured ratio holds. Radii and targets only.
+   ========================================================================== */
+[data-platform='mobile'] .ds-ai-conversation__content {
+  gap: var(--space-7);
+  padding: var(--space-5) var(--space-4) var(--space-8);
+}
+
+[data-platform='mobile'] .ds-ai-action {
+  min-block-size: var(--target);
+  min-inline-size: var(--target);
+}
+
+[data-platform='mobile'] .ds-ai-suggestion {
+  min-block-size: var(--target);
+}
+
+/* ==========================================================================
+   Reduced motion. tokens.css already neutralises transitions globally; these
+   are the authored animations, which it cannot reach.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .ds-ai-loader,
+  .ds-ai-shimmer,
+  .ds-ai-caret {
+    animation: none;
+  }
+
+  /* The caret still has to read as "live" without blinking, so it stays lit. */
+  .ds-ai-caret {
+    opacity: 1;
+  }
+
+  .ds-ai-shimmer {
+    background: none;
+    color: var(--fg-2);
+  }
+}
