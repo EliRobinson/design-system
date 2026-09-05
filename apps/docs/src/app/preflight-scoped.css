@@ -1,0 +1,331 @@
+/* Tailwind v4.3.3's preflight.css, rule for rule, reaching only the demo
+   surfaces. Read the header of elements.css first — it says why this exists;
+   this file says how it is built, because both halves of that are load-bearing
+   and both are easy to get subtly wrong.
+
+   TWO PROPERTIES, AND EVERY LINE BELOW SERVES THEM.
+
+   1. It reaches only `.fixture-stage`. That is the one class carried by both
+      surfaces in this app that mount vendored markup —
+      `app/fixtures/ai-elements/[component]/page.tsx` and
+      `components/docs/ElementsDemo.tsx`. (The third place vendored code
+      appears, `src/examples/ai-elements/`, is read as text by ExampleSource
+      and never mounted, so it needs nothing.) A real preflight reaches every
+      page on this site, which is #228: it flattened every heading, unmarked
+      every list, and failed 176 of 692 visual comparisons on pages the branch
+      never touched.
+
+   2. Inside that reach it decides exactly as the real preflight did. Scoping
+      must change WHICH ELEMENTS a rule reaches and never WHO WINS, and the two
+      ways it silently changes the winner are both handled here:
+
+      - SPECIFICITY. `.fixture-stage a` is (0,1,1) where preflight's `a` is
+        (0,0,1), so a plain descendant scope outranks any (0,0,1) rule
+        preflight was designed to lose to — starting with tokens.css's own
+        layered `a { color: var(--link); text-decoration: underline }`. Measured
+        on /fixtures/ai-elements/sources: the source links lost the underline
+        the un-scoped build gave them. `:where()` is why every selector below is
+        spelled the way it is — it contributes zero, so each rule keeps the
+        exact specificity upstream gave it.
+
+      - SOURCE ORDER. Within `@layer base`, later wins at equal specificity, and
+        preflight's position is BEFORE `@elirobinson/tokens/tokens.css` —
+        `@import 'tailwindcss'` comes first in the three-import order the
+        installation page documents. That is what lets tokens.css's `a` rule
+        beat preflight's, which is what a consumer of this system actually
+        sees. Hence the `@import` of this file in elements.css sits between the
+        theme and the tokens, exactly where `@import 'tailwindcss'` put the
+        real one, rather than at the end of the file where it would win.
+
+      Together those two make the demo surfaces render identically to the
+      un-scoped build: 96 of 96 fixture stages byte-identical, both themes.
+
+   WHY A COPY AT ALL. Tailwind v4 has no supported way to scope preflight —
+   `@import 'tailwindcss/preflight.css' layer(base)` is all-or-nothing, and an
+   `@import` cannot be nested inside a selector. A build-time transform (a
+   PostCSS plugin that wraps the file) would avoid the copy at the cost of a
+   piece of bespoke pipeline in an app that has none. This is the cheaper
+   trade, and the drift it invites is what elements-css.test.ts removes: that
+   test reads the real preflight.css out of node_modules and fails if upstream's
+   rule set has moved, naming the selector.
+
+   TWO DEVIATIONS, both deliberate, both recorded in that test:
+
+   - `html, :host` is dropped whole. Its `line-height` and `font-family` never
+     reached the stage anyway — tokens.css's unlayered `body` rule sets both and
+     unlayered beats every layer. What is left is `tab-size`,
+     `-webkit-text-size-adjust` and `-webkit-tap-highlight-color`:
+     document-level settings that belong to site.css, not to a demo surface
+     embedded in it.
+   - `code, kbd, samp, pre` takes its family from `--font-mono` rather than
+     from `--theme(--default-mono-font-family, …)`. Not a change in value:
+     tokens/tailwind.css maps the Tailwind mono namespace onto that same token,
+     so upstream's spelling already resolved to JetBrains Mono here. The direct
+     `var()` says so without routing a font decision through a fallback chain
+     whose default is not ours.
+
+   Not a hand-written reset. Do not "clean it up", reorder it, or drop the
+   rules that look like they cannot matter — the vendored tree is shadcn/Radix
+   markup written against this exact file, and `border: 0 solid` alone is what
+   stands between every <button> and <input> and native browser chrome. */
+
+/* 1. Prevent padding and border from affecting element width.
+   2. Remove default margins and padding.
+   3. Reset all borders. */
+:where(.fixture-stage),
+:where(.fixture-stage) *,
+:where(.fixture-stage)::after,
+:where(.fixture-stage)::before,
+:where(.fixture-stage)::backdrop,
+:where(.fixture-stage) *::after,
+:where(.fixture-stage) *::before,
+:where(.fixture-stage) *::backdrop,
+:where(.fixture-stage) ::file-selector-button {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0 solid;
+}
+
+/* 1. Add the correct height in Firefox.
+   2. Correct the inheritance of border color in Firefox.
+   3. Reset the default border style to a 1px solid border. */
+:where(.fixture-stage) hr {
+  height: 0;
+  color: inherit;
+  border-top-width: 1px;
+}
+
+/* Add the correct text decoration in Chrome, Edge, and Safari. */
+:where(.fixture-stage) abbr:where([title]) {
+  -webkit-text-decoration: underline dotted;
+  text-decoration: underline dotted;
+}
+
+/* Remove the default font size and weight for headings. */
+:where(.fixture-stage) h1,
+:where(.fixture-stage) h2,
+:where(.fixture-stage) h3,
+:where(.fixture-stage) h4,
+:where(.fixture-stage) h5,
+:where(.fixture-stage) h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* Reset links to optimize for opt-in styling instead of opt-out. */
+:where(.fixture-stage) a {
+  color: inherit;
+  -webkit-text-decoration: inherit;
+  text-decoration: inherit;
+}
+
+/* Add the correct font weight in Edge and Safari. */
+:where(.fixture-stage) b,
+:where(.fixture-stage) strong {
+  font-weight: bolder;
+}
+
+/* 1. The brand mono — see the second deviation above.
+   2. Correct the odd `em` font sizing in all browsers. */
+:where(.fixture-stage) code,
+:where(.fixture-stage) kbd,
+:where(.fixture-stage) samp,
+:where(.fixture-stage) pre {
+  font-family: var(--font-mono);
+  font-size: 1em;
+}
+
+/* Add the correct font size in all browsers. */
+:where(.fixture-stage) small {
+  font-size: 80%;
+}
+
+/* Prevent `sub` and `sup` from affecting the line height in all browsers. */
+:where(.fixture-stage) sub,
+:where(.fixture-stage) sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+:where(.fixture-stage) sub {
+  bottom: -0.25em;
+}
+
+:where(.fixture-stage) sup {
+  top: -0.5em;
+}
+
+/* 1. Remove text indentation from table contents in Chrome and Safari.
+   2. Correct table border color inheritance in Chrome and Safari.
+   3. Remove gaps between table borders by default. */
+:where(.fixture-stage) table {
+  text-indent: 0;
+  border-color: inherit;
+  border-collapse: collapse;
+}
+
+/* Use the modern Firefox focus style for all focusable elements. */
+:where(.fixture-stage) :-moz-focusring:where(:not(iframe)) {
+  outline: auto;
+}
+
+/* Add the correct vertical alignment in Chrome and Firefox. */
+:where(.fixture-stage) progress {
+  vertical-align: baseline;
+}
+
+/* Add the correct display in Chrome and Safari. */
+:where(.fixture-stage) summary {
+  display: list-item;
+}
+
+/* Make lists unstyled by default. */
+:where(.fixture-stage) ol,
+:where(.fixture-stage) ul,
+:where(.fixture-stage) menu {
+  list-style: none;
+}
+
+/* 1. Make replaced elements `display: block` by default.
+   2. Add `vertical-align: middle` to align replaced elements more sensibly. */
+:where(.fixture-stage) img,
+:where(.fixture-stage) svg,
+:where(.fixture-stage) video,
+:where(.fixture-stage) canvas,
+:where(.fixture-stage) audio,
+:where(.fixture-stage) iframe,
+:where(.fixture-stage) embed,
+:where(.fixture-stage) object {
+  display: block;
+  vertical-align: middle;
+}
+
+/* Constrain images and videos to the parent width and preserve their intrinsic
+   aspect ratio. */
+:where(.fixture-stage) img,
+:where(.fixture-stage) video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 1. Inherit font styles in all browsers.
+   2. Remove border radius in all browsers.
+   3. Remove background color in all browsers.
+   4. Ensure consistent opacity for disabled states in all browsers. */
+:where(.fixture-stage) button,
+:where(.fixture-stage) input,
+:where(.fixture-stage) select,
+:where(.fixture-stage) optgroup,
+:where(.fixture-stage) textarea,
+:where(.fixture-stage) ::file-selector-button {
+  font: inherit;
+  font-feature-settings: inherit;
+  font-variation-settings: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  border-radius: 0;
+  background-color: transparent;
+  opacity: 1;
+}
+
+/* Restore default font weight. */
+:where(.fixture-stage) :where(select:is([multiple], [size])) optgroup {
+  font-weight: bolder;
+}
+
+/* Restore indentation. */
+:where(.fixture-stage) :where(select:is([multiple], [size])) optgroup option {
+  padding-inline-start: 20px;
+}
+
+/* Restore space after button. */
+:where(.fixture-stage) ::file-selector-button {
+  margin-inline-end: 4px;
+}
+
+/* Reset the default placeholder opacity in Firefox. */
+:where(.fixture-stage) ::placeholder {
+  opacity: 1;
+}
+
+/* Set the default placeholder color to a semi-transparent version of the
+   current text color in browsers that do not crash when using `color-mix()`
+   with `currentcolor`. */
+@supports (not (-webkit-appearance: -apple-pay-button)) /* Not Safari */ or
+  (contain-intrinsic-size: 1px) /* Safari 17+ */ {
+  :where(.fixture-stage) ::placeholder {
+    color: color-mix(in oklab, currentcolor 50%, transparent);
+  }
+}
+
+/* Prevent resizing textareas horizontally by default. */
+:where(.fixture-stage) textarea {
+  resize: vertical;
+}
+
+/* Remove the inner padding in Chrome and Safari on macOS. */
+:where(.fixture-stage) ::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+
+/* 1. Ensure date/time inputs have the same height when empty in iOS Safari.
+   2. Ensure text alignment can be changed on date/time inputs in iOS Safari. */
+:where(.fixture-stage) ::-webkit-date-and-time-value {
+  min-height: 1lh;
+  text-align: inherit;
+}
+
+/* Prevent height from changing on date/time inputs in macOS Safari when the
+   input is set to `display: block`. */
+:where(.fixture-stage) ::-webkit-datetime-edit {
+  display: inline-flex;
+}
+
+/* Remove excess padding from pseudo-elements in date/time inputs to ensure
+   consistent height across browsers. */
+:where(.fixture-stage) ::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+:where(.fixture-stage) ::-webkit-datetime-edit,
+:where(.fixture-stage) ::-webkit-datetime-edit-year-field,
+:where(.fixture-stage) ::-webkit-datetime-edit-month-field,
+:where(.fixture-stage) ::-webkit-datetime-edit-day-field,
+:where(.fixture-stage) ::-webkit-datetime-edit-hour-field,
+:where(.fixture-stage) ::-webkit-datetime-edit-minute-field,
+:where(.fixture-stage) ::-webkit-datetime-edit-second-field,
+:where(.fixture-stage) ::-webkit-datetime-edit-millisecond-field,
+:where(.fixture-stage) ::-webkit-datetime-edit-meridiem-field {
+  padding-block: 0;
+}
+
+/* Center dropdown marker shown on inputs with paired `<datalist>`s. */
+:where(.fixture-stage) ::-webkit-calendar-picker-indicator {
+  line-height: 1;
+}
+
+/* Remove the additional `:invalid` styles in Firefox. */
+:where(.fixture-stage) :-moz-ui-invalid {
+  box-shadow: none;
+}
+
+/* Correct the inability to style the border radius in iOS Safari. */
+:where(.fixture-stage) button,
+:where(.fixture-stage) input:where([type='button'], [type='reset'], [type='submit']),
+:where(.fixture-stage) ::file-selector-button {
+  appearance: button;
+}
+
+/* Correct the cursor style of increment and decrement buttons in Safari. */
+:where(.fixture-stage) ::-webkit-inner-spin-button,
+:where(.fixture-stage) ::-webkit-outer-spin-button {
+  height: auto;
+}
+
+/* Make elements with the HTML hidden attribute stay hidden by default. */
+:where(.fixture-stage) [hidden]:where(:not([hidden='until-found'])) {
+  display: none !important;
+}
