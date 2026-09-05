@@ -132,7 +132,11 @@ import {
   InlineCitationQuote,
   InlineCitationText,
 } from '@elirobinson/ai-elements/components/inline-citation';
-import { JSXPreview } from '@elirobinson/ai-elements/components/jsx-preview';
+import {
+  JSXPreview,
+  JSXPreviewContent,
+  JSXPreviewError,
+} from '@elirobinson/ai-elements/components/jsx-preview';
 import {
   Message,
   MessageAction,
@@ -617,7 +621,20 @@ export const fixtures: Record<string, ComponentType> = {
     </p>
   ),
 
-  'jsx-preview': () => <JSXPreview jsx={'<div className="p-4">Preview</div>'} />,
+  /* `<JSXPreview>` is only the context provider and a `relative` wrapper: it
+     renders its children and nothing else, so the `jsx` string it was handed
+     is never parsed until a `<JSXPreviewContent />` sits inside it. Without
+     that child the mount is an empty div of zero height — the sweep photographs
+     nothing and the audit passes over a component it never saw.
+     `<JSXPreviewError />` is the other half of the pair a consumer writes: it
+     renders null while the parse succeeds, and is what surfaces a bad string
+     when it does not. */
+  'jsx-preview': () => (
+    <JSXPreview jsx={'<article><h3>Release notes</h3><p>1.9.0 moves the toolbar.</p></article>'}>
+      <JSXPreviewContent />
+      <JSXPreviewError />
+    </JSXPreview>
+  ),
 
   message: () => (
     <Message from="assistant">
@@ -708,7 +725,18 @@ export const fixtures: Record<string, ComponentType> = {
     </PackageInfo>
   ),
 
-  panel: () => <Panel>Panel body</Panel>,
+  /* `Panel` wraps React Flow's own `Panel`, which is an overlay:
+     `.react-flow__panel` in @xyflow/react's stylesheet is `position: absolute`,
+     so mounted on its own it leaves the flow entirely and the page around it
+     measures 1280x0. It only has somewhere to sit when a canvas is under it,
+     which is also the only way upstream documents it. */
+  panel: () => (
+    <div style={{ height: 320, width: 640 }}>
+      <Canvas edges={[]} nodes={[]}>
+        <Panel position="top-left">Canvas controls</Panel>
+      </Canvas>
+    </div>
+  ),
 
   persona: () => <Persona state="idle" />,
 
