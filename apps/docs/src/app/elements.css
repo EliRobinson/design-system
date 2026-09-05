@@ -1,16 +1,60 @@
-/* The stylesheet a consumer of @elirobinson/ai-elements is told to write.
+/* The stylesheet a consumer of @elirobinson/ai-elements is told to write —
+   with one deliberate difference, which is what the second half of this
+   comment is about.
 
-   Three imports in the order @elirobinson/tokens/tailwind.css documents, which
-   is what makes a vendored component render in Miltinson colours with no edit
-   to its source: `@theme inline` maps Tailwind's colour, radius, shadow and
-   font namespaces onto the tokens, so `bg-background` and `rounded-md` compile
-   to `var(--token)` and answer to all three dials at runtime.
+   The three imports are the order @elirobinson/tokens/tailwind.css documents,
+   which is what makes a vendored component render in Miltinson colours with no
+   edit to its source: `@theme inline` maps Tailwind's colour, radius, shadow
+   and font namespaces onto the tokens, so `bg-background` and `rounded-md`
+   compile to `var(--token)` and answer to all three dials at runtime.
 
    A file of its own, never an addition to site.css. site.css is the docs
    chrome and its cascade is load-bearing for every existing baseline; keeping
    the two apart means a Tailwind regression cannot be mistaken for a chrome
-   regression, in either direction. */
-@import 'tailwindcss';
+   regression, in either direction.
+
+   TAILWIND IS IMPORTED WITHOUT PREFLIGHT, AND THAT IS THE POINT OF THIS FILE.
+
+   `@import 'tailwindcss'` is three things behind one specifier — the theme,
+   the Preflight reset, and the utilities — and this file is loaded from the
+   ROOT layout (layout.tsx), because ElementsDemo appears on ordinary docs
+   pages and no per-route stylesheet reaches both it and /fixtures. So the
+   reset came with it, site-wide, and reset a site whose chrome is hand-written
+   CSS predating it by 200 commits: headings lost their size and weight, lists
+   lost their markers, and links lost the token colour. 176 of 692 visual
+   comparisons failed, most of them on pages this branch never touched. Nothing
+   local caught it — the build is silent, and the local scripts:test compares
+   the LIST of shots rather than pixels.
+
+   The three-import form below is Tailwind v4's documented spelling for "the
+   framework without the reset": index.css is `@layer theme, base, components,
+   utilities` wrapped around theme.css, preflight.css and utilities.css, and
+   tailwindcss exports each of the three as its own subpath. Two are imported
+   as-is; the third is replaced by ./preflight-scoped.css, which is the same
+   file reaching only the demo surfaces.
+
+   THE ORDER OF THESE FIVE LINES IS THE FIX, not just tidiness:
+
+   - The `@layer` statement comes first and fixes the layer ORDER. Selective
+     imports carry none of their own, so without it `utilities` would be
+     ordered by first appearance and stop outranking `base`.
+   - ./preflight-scoped.css sits where preflight sat — after the theme and
+     BEFORE the tokens. Within `@layer base` later wins at equal specificity,
+     so this is what still lets tokens.css's own `a` rule beat the reset,
+     exactly as it does for a consumer writing `@import 'tailwindcss'` first.
+     Moved to the end of this file it would win instead, and the demos would
+     quietly stop matching what a consumer sees.
+
+   Note this is the docs site's problem and not a consumer's. An app whose UI
+   is Tailwind throughout wants Preflight and should keep writing `@import
+   'tailwindcss'`, which is what the installation page tells them to do. The
+   docs site is the awkward case — a non-Tailwind site embedding Tailwind
+   demos — and it pays for that here rather than making every consumer opt out
+   of something they want. */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import './preflight-scoped.css' layer(base);
+@import 'tailwindcss/utilities.css' layer(utilities);
 @import '@elirobinson/tokens/tokens.css';
 @import '@elirobinson/tokens/tailwind.css';
 
