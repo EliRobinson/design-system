@@ -6,9 +6,11 @@ import { fixtures, variants } from '@elirobinson/ai-elements/fixtures';
 
 /* The same freeze the /fixtures routes use, by import rather than by copy.
    `animation: none` on `.fixture-stage` handles the CSS transitions Radix
-   ships; `MotionConfig` below handles Shimmer, which animates through Framer
-   Motion's Web Animations path where the CSS rule has no effect. Both are
-   needed, and defining either one twice is how they drift apart. */
+   ships, and a second rule in there pins Shimmer's `background-position`,
+   which Framer Motion drives inline and no CSS `animation` rule can reach;
+   `MotionConfig` below handles the transform and layout animations CSS cannot
+   see. All three are needed, and defining any of them twice is how they drift
+   apart. */
 import '@/app/fixtures/ai-elements/fixtures.css';
 
 /* A vendored component, mounted from the same fixture the accessibility audit

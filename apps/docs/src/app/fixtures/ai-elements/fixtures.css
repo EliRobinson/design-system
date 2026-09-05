@@ -14,3 +14,25 @@
   animation: none !important;
   transition: none !important;
 }
+
+/* Shimmer, which neither of the other two freezes reaches.
+
+   The rule above is CSS-only and Framer Motion does not use CSS animation.
+   `<MotionConfig reducedMotion="always">` — wrapped around every fixture in
+   both FixtureStage.tsx and ElementsDemo.tsx — only drops transform and layout
+   animations, and Shimmer animates `background-position`, which is neither.
+   Playwright's own `animations: "disabled"` is likewise scoped to CSS and Web
+   Animations. So the sweep waits for two identical frames of a gradient that
+   never stops sliding, and times out at 60s with no baseline minted.
+
+   Framer writes the value inline on every frame and inline declarations lose
+   to `!important`, so this pins the paint while the animation loop keeps
+   running harmlessly behind it. `100% center` is Shimmer's own `initial`.
+
+   `--spread` is set inline by exactly one component in the vendored tree —
+   shimmer.tsx, from its `spread` prop — which is what makes this precise
+   rather than a blanket `background-position` override over a stage that also
+   holds components positioning a background on purpose. */
+.fixture-stage [style*='--spread'] {
+  background-position: 100% center !important;
+}

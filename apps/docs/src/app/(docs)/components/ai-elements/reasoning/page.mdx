@@ -60,11 +60,15 @@ colour and icon only.
 <ElementsDemo component="shimmer" />
 
 **Nothing in the vendored tree reads `prefers-reduced-motion`** — not `Shimmer`, and not the
-`animate-in` entrance each `ChainOfThoughtStep` plays. The demos on this page are frozen:
-every demo is wrapped in a `MotionConfig` with `reducedMotion="always"` and the stage
-disables CSS animation, which is the only reason the visual suite can photograph them. In
-your app they move. If you are honouring reduced motion, that is yours to enforce at the
-boundary.
+`animate-in` entrance each `ChainOfThoughtStep` plays. The demos on this page are frozen so
+the visual suite can photograph them, and freezing `Shimmer` in particular takes more than
+the two obvious levers: the stage's `animation: none` is CSS-only and Framer Motion does not
+use CSS animation, and `MotionConfig`'s `reducedMotion="always"` drops only transform and
+layout animations — `Shimmer` animates `background-position`, so it survives both. The stage
+pins that one property with `!important`, which beats the value Framer writes inline.
+
+**If you are honouring reduced motion, `reducedMotion="always"` alone will not stop this
+component.** In your app it moves until you stop it yourself, at the boundary.
 
 ## Accessibility
 
