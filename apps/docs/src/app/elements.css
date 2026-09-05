@@ -58,6 +58,47 @@
 @import '@elirobinson/tokens/tokens.css';
 @import '@elirobinson/tokens/tailwind.css';
 
+/* The Miltinson × AI Elements theme, in the order its handoff README gives:
+   Miltinson tokens (above) → the bridge → the class layers actually in use.
+
+   THE BRIDGE IS APP-LEVEL AND STAYS THAT WAY. ai-bridge.css declares shadcn's
+   variable names, not ours. Folding it into @elirobinson/tokens' entry would
+   land shadcn's meanings on Miltinson's token surface — shadcn's `--accent` is
+   a hover tint and ours is the amber CTA fill, so a bare
+   `--accent: var(--bg-subtle)` at :root turns every Miltinson button, link
+   hover and eyebrow underline pale grey. The bridge sidesteps that by living
+   in the `--color-*` namespace only, which is all a Tailwind v4 utility reads.
+
+   It is imported HERE rather than in layout.tsx for the same reason the rest of
+   this file is: the `--color-*` namespace is Tailwind's, and this is the
+   Tailwind entry. site.css is the docs chrome and is not in this conversation.
+
+   Four names overlap @elirobinson/tokens/tailwind.css and carry different
+   values there — --color-accent, --color-secondary, --color-muted-foreground,
+   --color-primary-foreground. The bridge wins, and by cascade origin rather
+   than by luck: `@theme inline` emits into `@layer theme`, these :root blocks
+   are unlayered, and unlayered beats layered whatever the emit order. That
+   divergence is deliberate on the handoff's side and is recorded in
+   docs/agents/ai-elements-theme.md; it reaches only the Tailwind utilities the
+   vendored tree uses, because the docs chrome is hand-written CSS against the
+   bare tokens, which the bridge does not touch.
+
+   All six layers are installed. core/agent/media/shell carry the conversation,
+   the reasoning and tool surfaces, the media surfaces and the assistant frame.
+   canvas.css is installed WITH the keyboard path its header requires — see
+   src/examples/ai-elements/workflow-canvas.tsx — and must not be installed
+   without it. */
+@import './ai-theme/ai-bridge.css';
+@import './ai-theme/ai-core.css';
+@import './ai-theme/ai-agent.css';
+@import './ai-theme/ai-media.css';
+@import './ai-theme/ai-canvas.css';
+@import './ai-theme/ai-shell.css';
+
+/* One deviation from the handoff, and the only one. See the file's own header
+   for what it corrects and why it could not be corrected by import order. */
+@import './ai-theme-bundler-fixups.css';
+
 /* Tailwind scans source files for class names. The vendored tree is in another
    package and its utilities are the entire reason this file exists, so it has
    to be named explicitly. A @source that matches nothing produces no error and

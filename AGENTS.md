@@ -25,6 +25,7 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 - [Brand boundary](docs/agents/brand-boundary.md) — what is the system's and what is a consumer's, and the test that enforces it
 - [AI Elements](docs/agents/ai-elements.md) — the vendored tier, `pnpm sync:elements`, and why `src/` is never hand-edited
 - [AI Elements accessibility](docs/agents/ai-elements-accessibility.md) — `pnpm a11y:elements`, the per-control touch-target verdicts, and what the sweep handed to the token bridge
+- [AI Elements theme](docs/agents/ai-elements-theme.md) — the Miltinson × AI Elements CSS layers, the import chain, and the canvas keyboard path that gates `ai-canvas.css`
 - [AI patterns](docs/agents/ai-patterns.md) — the `ds` discovery CLI, contracts, agent templates
 - [Consumer tooling](docs/agents/consumer-tooling.md) — what a consuming app installs, and why each piece lives here
 - [Publishing](docs/agents/publishing.md)

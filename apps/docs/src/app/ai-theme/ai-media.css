@@ -1,0 +1,445 @@
+/* ==========================================================================
+   Miltinson × AI Elements — the media layer
+   --------------------------------------------------------------------------
+   Web Preview, Image, Attachment, Open In.
+
+   The four patterns where the conversation stops being text. Each one brings
+   a frame problem: a live site, a generated image, a file the user dropped,
+   and a hand-off to somewhere else. The system's answer in all four cases is
+   the same one it gives a card — a hairline, not a shadow, and never a
+   coloured chrome that competes with the content inside it.
+   ========================================================================== */
+
+/* ==========================================================================
+   Web Preview — a live page inside the answer
+
+   Browser chrome, deliberately quiet. The URL is the one thing a user must
+   be able to read and trust, so it is mono, full --fg, and selectable; the
+   navigation around it is --fg-3. A preview whose chrome is louder than the
+   address bar is a preview that helps someone get phished.
+   ========================================================================== */
+.ds-ai-webpreview {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ds-ai-webpreview__bar {
+  align-items: center;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.ds-ai-webpreview__nav {
+  align-items: center;
+  display: flex;
+  gap: var(--space-1);
+}
+
+.ds-ai-webpreview__btn {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--fg-3);
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  min-block-size: var(--target-min);
+  min-inline-size: var(--target-min);
+  transition: color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-webpreview__btn:hover:not(:disabled) {
+  background: var(--bg-muted);
+  color: var(--fg);
+}
+
+.ds-ai-webpreview__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-ai-webpreview__btn:disabled {
+  color: var(--fg-disabled); /* 4.85:1 — a control's own label stays readable */
+  cursor: not-allowed;
+}
+
+/* The address field. --border-control, because this is an input and inputs
+   are controls (SC 1.4.11, 3:1). */
+.ds-ai-webpreview__url {
+  background: var(--surface);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tr-wide);
+  min-block-size: var(--target-min);
+  min-inline-size: 0;
+  overflow: hidden;
+  padding: var(--space-1) var(--space-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-ai-webpreview__url:focus-visible {
+  border-color: var(--fg-2);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* The origin, emphasised inside the full URL — the part that decides whether
+   the rest of it matters. Weight and colour, not a highlight. */
+.ds-ai-webpreview__origin {
+  color: var(--fg);
+  font-weight: var(--fw-medium);
+}
+
+.ds-ai-webpreview__path {
+  color: var(--fg-3);
+}
+
+.ds-ai-webpreview__body {
+  background: var(--bg);
+  border: 0;
+  display: block;
+  inline-size: 100%;
+  min-block-size: 320px;
+}
+
+/* The console drawer. Terminal output, so mono at --fs-xs on --bg-muted, and
+   the levels use the -fg tokens rather than the fills: this is text. */
+.ds-ai-webpreview__console {
+  background: var(--bg-muted);
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  max-block-size: 180px;
+  overflow-y: auto;
+  padding: var(--space-3);
+}
+
+.ds-ai-webpreview__log {
+  color: var(--fg-2);
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 4.5rem 1fr;
+  padding-block: 2px;
+}
+
+.ds-ai-webpreview__log time {
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Levels carry their word in source ("error", "warn") as well as the hue. */
+.ds-ai-webpreview__log[data-level='error'] {
+  color: var(--status-danger-fg); /* 7.54:1 */
+}
+
+.ds-ai-webpreview__log[data-level='warn'] {
+  color: var(--status-warning-fg); /* 6.97:1 */
+}
+
+/* ==========================================================================
+   Image — a generated picture
+
+   Frame, caption, and an honest empty state. The frame is a hairline because
+   a generated image often has near-white edges and would otherwise bleed
+   into the page; --border rather than --border-control, since the frame is
+   decoration and the image is the content.
+   ========================================================================== */
+.ds-ai-image {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.ds-ai-image__frame {
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: block;
+  overflow: hidden;
+  position: relative;
+}
+
+.ds-ai-image__frame img {
+  display: block;
+  block-size: auto;
+  inline-size: 100%;
+}
+
+/* Generating. The frame holds the requested aspect ratio so the answer does
+   not jump when the image lands, and the shimmer from ai-core.css carries
+   the motion — set as a background here, since there is no text to clip. */
+.ds-ai-image__frame[data-state='loading'] {
+  animation: ds-ai-image-pulse 1.8s var(--ease-in-out) infinite;
+}
+
+@keyframes ds-ai-image-pulse {
+  50% {
+    background: var(--bg-subtle);
+  }
+}
+
+/* Failed. Stated in the frame, in words, because a missing image is silent
+   otherwise — the alt text of an image that never arrived says nothing. */
+.ds-ai-image__frame[data-state='error'] {
+  align-items: center;
+  background: var(--status-danger-tint);
+  border-color: var(--status-danger-tint-edge);
+  color: var(--status-danger-fg); /* 6.69:1 on the tint */
+  display: flex;
+  font-size: var(--fs-sm);
+  justify-content: center;
+  min-block-size: 160px;
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.ds-ai-image__caption {
+  color: var(--fg-2);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+/* The prompt that produced it, when it is shown. Mono, because it is a
+   verbatim string, and clamped — a prompt can be a paragraph. */
+.ds-ai-image__prompt {
+  color: var(--fg-3);
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  line-height: var(--lh-normal);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* A row of generated variants. Grid rather than a scroller: four images the
+   user is choosing between should all be visible at once. */
+.ds-ai-image-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+/* ==========================================================================
+   Attachment — what the user brought
+
+   Pills above the composer's field. A tag, so --radius-pill, matching
+   .ds-ai-suggestion — but --bg-muted and borderless, because a bordered pill
+   sitting inside the composer's own bordered box reads as a nested control.
+   ========================================================================== */
+.ds-ai-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) 0;
+}
+
+.ds-ai-attachment {
+  align-items: center;
+  background: var(--bg-muted);
+  border-radius: var(--radius-pill);
+  color: var(--fg);
+  display: inline-flex;
+  gap: var(--space-2);
+  max-inline-size: 22ch;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+}
+
+.ds-ai-attachment__icon {
+  color: var(--fg-3);
+  flex: none;
+}
+
+/* The filename. Mono, and truncated from the START rather than the end (the
+   direction/text-align pair) — a filename's extension is the half that tells
+   you what it is, so it is the half that must survive the ellipsis. */
+.ds-ai-attachment__name {
+  direction: rtl;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-ai-attachment__size {
+  color: var(--fg-3);
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Remove. 24px — the dense tier, and the floor: this is destructive at the
+   scale of one file, and it sits in a row of siblings, so the gap above
+   keeps the expanded hit areas from overlapping. */
+.ds-ai-attachment__remove {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--fg-3);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  justify-content: center;
+  min-block-size: var(--target-min);
+  min-inline-size: var(--target-min);
+  transition: color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-attachment__remove:hover {
+  background: var(--surface-3);
+  color: var(--fg);
+}
+
+.ds-ai-attachment__remove:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* An image attachment shows itself. Square thumb, inset to the pill's own
+   radius so it does not poke out of the left end. */
+.ds-ai-attachment__thumb {
+  background: var(--surface-3);
+  block-size: var(--space-6);
+  border-radius: var(--radius-pill);
+  flex: none;
+  inline-size: var(--space-6);
+  margin-inline-start: calc(var(--space-3) * -1 + var(--space-1));
+  object-fit: cover;
+}
+
+/* Uploading. A determinate rule under the pill, not a spinner inside it —
+   the pill is 24px tall and a spinner at that size is a smudge. */
+.ds-ai-attachment[data-state='uploading'] {
+  position: relative;
+}
+
+.ds-ai-attachment[data-state='uploading']::after {
+  background: var(--fg-2);
+  block-size: 2px;
+  border-radius: var(--radius-pill);
+  content: '';
+  inline-size: var(--ds-ai-progress, 40%);
+  inset-block-end: 0;
+  inset-inline-start: 0;
+  position: absolute;
+}
+
+.ds-ai-attachment[data-state='error'] {
+  background: var(--status-danger-tint);
+  color: var(--status-danger-fg); /* 6.69:1 on the tint */
+}
+
+/* The drop target the composer becomes. Dashed and ink, so it does not need
+   a colour to mean "here" — and the label inside says it in words. */
+.ds-ai-dropzone {
+  align-items: center;
+  background: var(--bg-subtle);
+  border: 2px dashed var(--border-control);
+  border-radius: var(--radius-md);
+  color: var(--fg-2);
+  display: flex;
+  font-size: var(--fs-sm);
+  gap: var(--space-3);
+  justify-content: center;
+  min-block-size: 96px;
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.ds-ai-dropzone[data-state='over'] {
+  background: var(--bg-muted);
+  border-color: var(--fg);
+  color: var(--fg);
+}
+
+/* ==========================================================================
+   Open In — hand the thread somewhere else
+
+   A quiet outline control, never amber. Sending a transcript to a third
+   party is a serious action but not a primary one, and the amber in this
+   system means "the one live thing here".
+   ========================================================================== */
+.ds-ai-openin {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  color: var(--fg-2);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  transition: color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-openin:hover {
+  border-color: var(--fg-2);
+  color: var(--fg);
+}
+
+.ds-ai-openin:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-ai-openin__chevron {
+  color: var(--fg-4);
+}
+
+/* ==========================================================================
+   Platform — data-platform="mobile"
+   ========================================================================== */
+[data-platform='mobile'] .ds-ai-webpreview__btn,
+[data-platform='mobile'] .ds-ai-attachment__remove,
+[data-platform='mobile'] .ds-ai-openin {
+  min-block-size: var(--target);
+  min-inline-size: var(--target);
+}
+
+/* The pill grows with its button rather than letting a 44px target overflow
+   a 32px pill. */
+[data-platform='mobile'] .ds-ai-attachment {
+  padding-block: 2px;
+}
+
+[data-platform='mobile'] .ds-ai-webpreview__body {
+  min-block-size: 240px;
+}
+
+[data-platform='mobile'] .ds-ai-image-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-ai-image__frame[data-state='loading'] {
+    animation: none;
+    background: var(--bg-subtle);
+  }
+}

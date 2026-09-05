@@ -35,6 +35,7 @@ export const EXAMPLES = [
   { root: 'docs', file: 'chat-client.tsx' },
   { root: 'docs', file: 'tool-panel.tsx' },
   { root: 'docs', file: 'decision-client.tsx' },
+  { root: 'docs', file: 'workflow-canvas.tsx' },
 ] as const satisfies readonly { root: ExampleRoot; file: string }[];
 
 export type Example = (typeof EXAMPLES)[number];

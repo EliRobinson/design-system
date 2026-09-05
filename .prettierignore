@@ -16,3 +16,14 @@ apps/docs/public/brand
 # had touched. `pnpm format` must leave this alone; the package's own scripts/
 # and types/ are ours and are NOT ignored.
 packages/ai-elements/src
+
+# The Miltinson × AI Elements theme, landed verbatim from its design handoff.
+# Same reasoning as the vendored tree above and one step weaker: these six files
+# are authored elsewhere and are re-landed whole when the handoff moves, so a
+# formatting pass here turns the next drop into a diff nobody can read. The
+# imports that wire them are in apps/docs/src/app/elements.css, which IS ours
+# and IS formatted.
+apps/docs/src/app/ai-theme
+
+# The design handoff bundle itself — reference material, not our source.
+temp

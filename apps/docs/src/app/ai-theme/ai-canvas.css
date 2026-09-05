@@ -1,0 +1,395 @@
+/* ==========================================================================
+   Miltinson × AI Elements — the canvas layer
+   --------------------------------------------------------------------------
+   Canvas, Node, Edge, Connection, Controls, Panel, Toolbar.
+
+   AI Elements' Canvas is @xyflow/react (React Flow) with shadcn styling on
+   top. Unlike the rest of the package, xyflow *does* expose a documented
+   variable surface — `--xy-*` — so that half is a bridge, and it lives with
+   the other bridge in tokens/ai-bridge.css. It is not here for the same
+   reason nothing else vendor-named is: a custom property declared in a file
+   styles.css imports is part of Miltinson's token surface, and xyflow's
+   nineteen knobs are not Miltinson tokens. This file is the class layer.
+
+   WHERE THIS PATTERN NEEDS MORE THAN COLOUR
+   -----------------------------------------
+   A node graph is the one AI pattern in this set whose primary interaction
+   is dragging: moving a node, and pulling an edge from one handle to
+   another. SC 2.5.7 requires a single-pointer alternative for both, and
+   SC 2.1.1 requires the whole thing to work from a keyboard. CSS cannot
+   supply either — so the styles below assume the app ships:
+
+   - arrow-key nudging on a focused node (xyflow does this when
+     `nodesFocusable` is on), and
+   - a menu path to create and delete a connection ("Connect to…" on a
+     focused handle), not only a drag.
+
+   The focus styling here exists to make that keyboard path visible; if the
+   app has not built it, these rules are decorating something unusable.
+   ========================================================================== */
+
+/* ==========================================================================
+   Canvas — the surface
+   ========================================================================== */
+/* The dot grid is drawn here rather than left to xyflow's <Background>, so a
+   canvas renders on brand before the graph library has mounted. */
+.ds-ai-canvas {
+  background-color: var(--bg-subtle);
+  background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
+  background-size: 16px 16px;
+  block-size: 100%;
+  inline-size: 100%;
+  position: relative;
+}
+
+/* ==========================================================================
+   Node — one step in the graph
+
+   A card, and the densest one in the system: a graph is read by shape and
+   position before it is read by text, so the node's job is to be scannable
+   at 60% zoom. Title in sans at --fs-sm, kind in mono above it, ports on
+   the edges.
+   ========================================================================== */
+.ds-ai-node {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 180px;
+  padding: var(--space-3) var(--space-4);
+  transition: border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-node__kind {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-caps);
+  text-transform: uppercase;
+}
+
+.ds-ai-node__title {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tr-snug);
+  line-height: var(--lh-snug);
+  margin: 0;
+}
+
+.ds-ai-node__meta {
+  color: var(--fg-2);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+/* Selected. Ink border at 2px and a lift — shape, not hue, so a selected
+   node is still distinguishable from a running one. */
+.ds-ai-node.is-selected,
+.ds-ai-node[data-selected] {
+  border-color: var(--fg);
+  border-width: 2px;
+  box-shadow: var(--shadow-sm);
+  padding: calc(var(--space-3) - 1px) calc(var(--space-4) - 1px);
+}
+
+.ds-ai-node:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Run states. The strip is on the inline-start edge — a border, so it never
+   overlaps the ports on the block edges — and the node also carries its
+   state as text in .ds-ai-node__state. */
+.ds-ai-node[data-state='running'] {
+  border-inline-start: 3px solid var(--status-info); /* 5.06:1 */
+}
+
+.ds-ai-node[data-state='complete'] {
+  border-inline-start: 3px solid var(--status-success); /* 5.17:1 */
+}
+
+/* --status-warning-border, not --status-warning: a 3px rule is a non-text
+   element and wants 3:1, which the fill (1.87:1 light) does not have. */
+.ds-ai-node[data-state='blocked'] {
+  border-inline-start: 3px solid var(--status-warning-border); /* 3.76:1 */
+}
+
+.ds-ai-node[data-state='error'] {
+  border-inline-start: 3px solid var(--status-danger); /* 5.41:1 */
+}
+
+.ds-ai-node__state {
+  align-items: center;
+  color: var(--fg-2);
+  display: inline-flex;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  gap: var(--space-1);
+  letter-spacing: var(--tr-wide);
+}
+
+.ds-ai-node[data-state='error'] .ds-ai-node__state {
+  color: var(--status-danger-fg); /* 7.54:1 */
+}
+
+.ds-ai-node[data-state='blocked'] .ds-ai-node__state {
+  color: var(--status-warning-fg); /* 6.97:1 */
+}
+
+.ds-ai-node[data-state='complete'] .ds-ai-node__state {
+  color: var(--status-success-fg); /* 7.35:1 */
+}
+
+/* --- Ports -------------------------------------------------------------
+   12px, which is under the 24×24 target floor — and legitimately so only
+   because the handle is not the sole way to make a connection. See the file
+   header: if "Connect to…" is not in the app, this needs to be 24px and the
+   graph needs to be laid out around it.
+   -------------------------------------------------------------------- */
+.ds-ai-node__port {
+  background: var(--surface);
+  border: 1.5px solid var(--border-control); /* 3.64:1 */
+  border-radius: var(--radius-pill);
+  block-size: 12px;
+  inline-size: 12px;
+}
+
+.ds-ai-node__port:hover,
+.ds-ai-node__port[data-connecting] {
+  background: var(--fg);
+  border-color: var(--fg);
+}
+
+/* The keyboard path made visible. Larger offset than elsewhere because the
+   port sits on the node's edge and a 2px offset would land inside it. */
+.ds-ai-node__port:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* A port that cannot accept the connection being dragged. Danger fill plus
+   `aria-disabled` in the markup — and xyflow's own `isValidConnection`
+   should be refusing it regardless of what this looks like. */
+.ds-ai-node__port[data-valid='false'] {
+  background: var(--status-danger-tint);
+  border-color: var(--status-danger); /* 5.41:1 */
+}
+
+/* ==========================================================================
+   Edge label — what flows along the connection
+   ========================================================================== */
+.ds-ai-edge-label {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--fg-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-wide);
+  padding: 1px var(--space-2);
+}
+
+/* ==========================================================================
+   Toolbar — the node's own actions, floating above it on selection
+   ========================================================================== */
+.ds-ai-canvas-toolbar {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  gap: var(--space-px);
+  padding: var(--space-1);
+}
+
+.ds-ai-canvas-toolbar__btn {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-xs);
+  color: var(--fg-2);
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  min-block-size: var(--target-min);
+  min-inline-size: var(--target-min);
+  transition: color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-canvas-toolbar__btn:hover {
+  background: var(--bg-muted);
+  color: var(--fg);
+}
+
+.ds-ai-canvas-toolbar__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
+.ds-ai-canvas-toolbar__btn[data-variant='danger']:hover {
+  background: var(--status-danger-tint);
+  color: var(--status-danger-fg); /* 6.69:1 on the tint */
+}
+
+/* ==========================================================================
+   Controls — zoom and fit, pinned to the canvas corner
+   ========================================================================== */
+.ds-ai-canvas-controls {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ds-ai-canvas-controls__btn {
+  align-items: center;
+  background: var(--surface);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-2);
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  min-block-size: var(--target-min);
+  min-inline-size: var(--target-min);
+  transition: color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-canvas-controls__btn:last-child {
+  border-bottom: 0;
+}
+
+.ds-ai-canvas-controls__btn:hover {
+  background: var(--bg-muted);
+  color: var(--fg);
+}
+
+.ds-ai-canvas-controls__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* The zoom readout. Tabular, so the panel does not resize between 90% and
+   100% — a control that changes width as you use it is a control you have
+   to re-aim at. */
+.ds-ai-canvas-controls__zoom {
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-variant-numeric: tabular-nums;
+  padding: var(--space-1);
+  text-align: center;
+}
+
+/* ==========================================================================
+   Panel — an inspector docked to the canvas
+   ========================================================================== */
+.ds-ai-canvas-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  inline-size: 280px;
+  max-block-size: 100%;
+  overflow: hidden;
+}
+
+.ds-ai-canvas-panel__header {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+}
+
+.ds-ai-canvas-panel__title {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-snug);
+  margin: 0 auto 0 0;
+}
+
+.ds-ai-canvas-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.ds-ai-canvas-panel__row {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ds-ai-canvas-panel__label {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-caps);
+  text-transform: uppercase;
+}
+
+.ds-ai-canvas-panel__value {
+  color: var(--fg);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.ds-ai-canvas-panel__value code {
+  background: var(--bg-muted);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  font-variant-ligatures: none;
+  padding: 0.1em 0.3em;
+}
+
+/* ==========================================================================
+   Platform — data-platform="mobile"
+
+   A graph on a phone is a viewer, not an editor, so the floating controls
+   go to 44px and the inspector becomes a full-width sheet.
+   ========================================================================== */
+[data-platform='mobile'] .ds-ai-canvas-controls__btn,
+[data-platform='mobile'] .ds-ai-canvas-toolbar__btn {
+  min-block-size: var(--target);
+  min-inline-size: var(--target);
+}
+
+[data-platform='mobile'] .ds-ai-canvas-panel {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  inline-size: 100%;
+}
+
+/* 24px ports are not touchable. On mobile the handle grows, which changes
+   the node's silhouette — accepted, because the alternative is a target no
+   thumb can hit. */
+[data-platform='mobile'] .ds-ai-node__port {
+  block-size: var(--target-min);
+  inline-size: var(--target-min);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-ai-node {
+    transition: none;
+  }
+}

@@ -1,0 +1,945 @@
+/* ==========================================================================
+   Miltinson × AI Elements — the agent layer
+   --------------------------------------------------------------------------
+   Everything an answer says about *how it was made*: Reasoning, Tool, Sources,
+   Inline Citation, Chain of Thought, Task, Context, Artifact, Confirmation,
+   Branch.
+
+   Same contract as ai-core.css — classes you pass through `className`, plus
+   the two state channels AI Elements genuinely exposes: Radix's `data-state`
+   on anything collapsible, and the `data-*` status attributes Tool and Task
+   set from the AI SDK's own part states.
+
+   ONE RULE RUNS THROUGH ALL NINE
+   ------------------------------
+   This is the layer where the model reports on itself, so it is the layer
+   where a wrong colour becomes a wrong claim. Two consequences:
+
+   - Status is never colour alone. Every state that matters — a tool that
+     failed, a step that is done, a context window that is nearly full —
+     carries a glyph and a word as well as a hue. SC 1.4.1, and also just
+     honest: "amber" is not a status a screen reader can read.
+   - Provenance is ink, never amber. A citation, a source host, a tool name
+     are all things a user reads to decide whether to trust the answer.
+     --accent is 2.53:1 in ember; it cannot carry that. Amber stays where
+     ai-core.css put it: the submit button and the live caret.
+   ========================================================================== */
+
+/* ==========================================================================
+   Reasoning — "Thought for 4 seconds"
+
+   A Radix Collapsible. AI Elements opens it while the reasoning streams and
+   closes it when the answer starts, so both states are on the hot path and
+   neither can be the styled-later one.
+
+   The body is set at --fs-sm in --fg-2 (8.45:1) behind a single hairline
+   rule. Not a card, not a tint: reasoning is an aside to the answer, and
+   boxing it gives it the same visual weight as the answer itself.
+   ========================================================================== */
+.ds-ai-reasoning {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ds-ai-reasoning__trigger {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--fg-3);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  gap: var(--space-2);
+  letter-spacing: var(--tr-caps);
+  margin-inline-end: auto;
+  min-block-size: var(--target-min);
+  padding: 0;
+  text-transform: uppercase;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-reasoning__trigger:hover {
+  color: var(--fg);
+}
+
+.ds-ai-reasoning__trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* The disclosure chevron. Rotation is the only channel that needs to move,
+   because the trigger's own text already says open or closed and Radix sets
+   aria-expanded — this is decoration on top of two working channels. */
+.ds-ai-reasoning__chevron {
+  color: var(--fg-4);
+  flex: none;
+  transition: rotate var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-reasoning__trigger[data-state='open'] .ds-ai-reasoning__chevron {
+  rotate: 90deg;
+}
+
+.ds-ai-reasoning__body {
+  border-inline-start: 1px solid var(--border-strong);
+  color: var(--fg-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-relaxed);
+  padding-inline-start: var(--space-4);
+}
+
+.ds-ai-reasoning__body p {
+  margin: 0 0 var(--space-3);
+}
+
+.ds-ai-reasoning__body > :last-child {
+  margin-bottom: 0;
+}
+
+/* Live reasoning. The rule goes amber-adjacent? No — it goes to --fg, because
+   the caret is already the amber on this page and a second live marker in the
+   same colour stops either one meaning "here". */
+.ds-ai-reasoning[data-streaming] .ds-ai-reasoning__body {
+  border-inline-start-color: var(--fg-3);
+}
+
+/* ==========================================================================
+   Tool — a call, its parameters, its result
+
+   The one place in the conversation that gets a real panel, because it is
+   the one place showing machine input and machine output, and a reader has
+   to see where that starts and stops. Hairline, not shadow.
+   ========================================================================== */
+.ds-ai-tool {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ds-ai-tool__header {
+  align-items: center;
+  background: var(--bg-subtle);
+  /* border: 0 first — this is a <button>, and a bare border-bottom leaves the
+     UA's 2px outset edge on the other three sides. */
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  display: flex;
+  gap: var(--space-3);
+  min-block-size: var(--target-min);
+  padding: var(--space-3) var(--space-4);
+  width: 100%;
+}
+
+.ds-ai-tool__header:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* The tool's name, verbatim from the SDK — a symbol, so mono, and not
+   uppercased: `getWeather` is an identifier and case is information. */
+.ds-ai-tool__name {
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  margin-inline-end: auto;
+}
+
+/* --- Status chip -------------------------------------------------------
+   Three channels: a glyph, a word, and a colour, in that order of
+   importance. The tint pairs are used rather than the fills, so the chip
+   reads as a label on the page and not as a button.
+   -------------------------------------------------------------------- */
+.ds-ai-tool__status {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  color: var(--fg-2);
+  display: inline-flex;
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  gap: var(--space-1);
+  letter-spacing: var(--tr-caps);
+  padding: 2px var(--space-2);
+  text-transform: uppercase;
+}
+
+.ds-ai-tool__status[data-status='pending'],
+.ds-ai-tool__status[data-status='input-streaming'] {
+  background: var(--bg-muted);
+  border-color: var(--border-strong);
+  color: var(--fg-2); /* 8.45:1 */
+}
+
+.ds-ai-tool__status[data-status='running'],
+.ds-ai-tool__status[data-status='input-available'] {
+  background: var(--status-info-tint);
+  border-color: var(--status-info-tint-edge);
+  color: var(--status-info-fg); /* 6.38:1 on the tint */
+}
+
+.ds-ai-tool__status[data-status='complete'],
+.ds-ai-tool__status[data-status='output-available'] {
+  background: var(--status-success-tint);
+  border-color: var(--status-success-tint-edge);
+  color: var(--status-success-fg); /* 6.71:1 on the tint */
+}
+
+.ds-ai-tool__status[data-status='error'],
+.ds-ai-tool__status[data-status='output-error'] {
+  background: var(--status-danger-tint);
+  border-color: var(--status-danger-tint-edge);
+  color: var(--status-danger-fg); /* 6.69:1 on the tint */
+}
+
+.ds-ai-tool__body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* PARAMETERS / RESULT. Sections rather than a table: a result is arbitrary
+   JSON and will not sit in two columns. */
+.ds-ai-tool__section {
+  border-top: 1px solid var(--border);
+  padding: var(--space-4);
+}
+
+.ds-ai-tool__section:first-child {
+  border-top: 0;
+}
+
+.ds-ai-tool__label {
+  color: var(--fg-3);
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-caps);
+  margin-bottom: var(--space-2);
+  text-transform: uppercase;
+}
+
+.ds-ai-tool__code {
+  background: var(--bg-muted);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-variant-ligatures: none;
+  line-height: var(--lh-normal);
+  margin: 0;
+  overflow-x: auto;
+  padding: var(--space-3);
+  tab-size: 2;
+}
+
+/* A failed call. The tint carries --status-danger-fg at 6.69:1, and the
+   message is prefixed with the word "Error" in source — the colour is the
+   third channel, not the first. */
+.ds-ai-tool__error {
+  background: var(--status-danger-tint);
+  border-radius: var(--radius-sm);
+  color: var(--status-danger-fg);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  padding: var(--space-3);
+}
+
+/* ==========================================================================
+   Sources — where the answer came from
+
+   A collapsible list under the answer. Numbered in mono so the numbers line
+   up with the inline citations in the prose, which is the whole point of
+   showing them: a reader should be able to jump between the two.
+   ========================================================================== */
+.ds-ai-sources {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ds-ai-sources__trigger {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: var(--fg-3);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  gap: var(--space-2);
+  letter-spacing: var(--tr-caps);
+  margin-inline-end: auto;
+  min-block-size: var(--target-min);
+  padding: 0;
+  text-transform: uppercase;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-sources__trigger:hover {
+  color: var(--fg);
+}
+
+.ds-ai-sources__trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.ds-ai-sources__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-px);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ds-ai-source {
+  align-items: baseline;
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 1.75rem 1fr;
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-source:hover {
+  background: var(--bg-subtle);
+}
+
+.ds-ai-source__index {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/* The link. --link, not --accent, and the whole title is the target so the
+   row clears 24×24 without a padded hitbox. */
+.ds-ai-source__title {
+  color: var(--link);
+  display: block;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.ds-ai-source__title:hover {
+  color: var(--link-hover);
+  text-decoration-thickness: 2px;
+}
+
+.ds-ai-source__title:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-ai-source__host {
+  color: var(--fg-3);
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-wide);
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   Inline Citation — the marker in the prose
+
+   AI Elements' sources.tsx sets `text-primary` on this, which the bridge
+   points at --fg. That is the correction that matters: amber here would be
+   2.53:1 text sitting inside a paragraph.
+
+   Sized as a superscript and left inline. SC 2.5.8's target-size floor
+   exempts targets "in a sentence or block of text", which is exactly this —
+   growing it to 24px would push the line leading apart on every cited
+   sentence. The 24px affordance for the same source is the row in
+   .ds-ai-sources, one screen down.
+   ========================================================================== */
+.ds-ai-cite {
+  background: var(--bg-muted);
+  border-radius: var(--radius-xs);
+  color: var(--fg);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin-inline-start: 2px;
+  padding: 1px 4px;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out);
+  vertical-align: super;
+}
+
+.ds-ai-cite:hover {
+  background: var(--accent-tint);
+  color: var(--fg);
+}
+
+.ds-ai-cite:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* Several citations on one clause. The comma is in source, not generated —
+   ::after content is invisible to some AT and this is punctuation. */
+.ds-ai-cite + .ds-ai-cite {
+  margin-inline-start: 1px;
+}
+
+/* ==========================================================================
+   Chain of Thought — the numbered walk
+
+   Distinct from Reasoning: reasoning is unstructured text the model emitted,
+   a chain of thought is a list of discrete steps with states. So it is a
+   list, with a rule running through the markers.
+   ========================================================================== */
+.ds-ai-cot {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ds-ai-cot__step {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: var(--space-6) 1fr;
+  padding-bottom: var(--space-5);
+  position: relative;
+}
+
+.ds-ai-cot__step:last-child {
+  padding-bottom: 0;
+}
+
+/* The connector. Drawn on the step, not between them, so a step that is
+   removed takes its own rule with it. */
+.ds-ai-cot__step:not(:last-child)::before {
+  background: var(--border-strong);
+  content: '';
+  inline-size: 1px;
+  inset-block: var(--space-6) 0;
+  inset-inline-start: calc(var(--space-3) - 0.5px);
+  position: absolute;
+}
+
+.ds-ai-cot__marker {
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-pill);
+  block-size: var(--space-6);
+  color: var(--fg-2);
+  display: flex;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-variant-numeric: tabular-nums;
+  inline-size: var(--space-6);
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* Done. Ink fill and an inverted glyph — the check is in source, so the
+   state survives with colour switched off. */
+.ds-ai-cot__step[data-state='complete'] .ds-ai-cot__marker {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--fg-inverse);
+}
+
+/* Active. Ink ring, not a fill, so "doing" and "done" are different shapes
+   and not just different weights of the same one. */
+.ds-ai-cot__step[data-state='active'] .ds-ai-cot__marker {
+  border-color: var(--fg);
+  border-width: 2px;
+  color: var(--fg);
+}
+
+.ds-ai-cot__step[data-state='pending'] .ds-ai-cot__marker {
+  color: var(--fg-3);
+}
+
+.ds-ai-cot__label {
+  color: var(--fg);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-snug);
+  padding-top: 3px;
+}
+
+.ds-ai-cot__step[data-state='pending'] .ds-ai-cot__label {
+  color: var(--fg-2);
+  font-weight: var(--fw-regular);
+}
+
+.ds-ai-cot__detail {
+  color: var(--fg-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-relaxed);
+  margin: var(--space-1) 0 0;
+}
+
+/* ==========================================================================
+   Task — the agent's plan, as a checklist
+
+   Same three states as a chain of thought, drawn as a checklist rather than
+   a walk, because a plan is something a user scans for what is left.
+   ========================================================================== */
+.ds-ai-task {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.ds-ai-task__title {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-caps);
+  margin: 0 0 var(--space-3);
+  text-transform: uppercase;
+}
+
+.ds-ai-task__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ds-ai-task__item {
+  align-items: baseline;
+  color: var(--fg);
+  display: grid;
+  font-size: var(--fs-sm);
+  gap: var(--space-3);
+  grid-template-columns: 1rem 1fr;
+  line-height: var(--lh-normal);
+}
+
+/* The glyph column. Filled in source per state (✓ / → / ·) — the attribute
+   selectors below only change colour and weight, never the mark itself, so
+   the state is legible in plain text. */
+.ds-ai-task__glyph {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+.ds-ai-task__item[data-state='complete'] .ds-ai-task__glyph {
+  color: var(--status-success-fg); /* 7.35:1 */
+}
+
+.ds-ai-task__item[data-state='complete'] .ds-ai-task__text {
+  color: var(--fg-2);
+}
+
+.ds-ai-task__item[data-state='active'] .ds-ai-task__glyph {
+  color: var(--fg);
+}
+
+.ds-ai-task__item[data-state='active'] .ds-ai-task__text {
+  font-weight: var(--fw-medium);
+}
+
+.ds-ai-task__item[data-state='pending'] .ds-ai-task__text {
+  color: var(--fg-2);
+}
+
+.ds-ai-task__item[data-state='error'] .ds-ai-task__glyph,
+.ds-ai-task__item[data-state='error'] .ds-ai-task__text {
+  color: var(--status-danger-fg); /* 7.54:1 */
+}
+
+/* A file the agent touched. A tag, so a pill — and --bg-muted, because a
+   bordered pill in a list of plain rows reads as a control. */
+.ds-ai-task__file {
+  background: var(--bg-muted);
+  border-radius: var(--radius-xs);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  font-variant-ligatures: none;
+  padding: 0.1em 0.3em;
+}
+
+/* ==========================================================================
+   Context — how much of the window is gone
+
+   A meter, and meters lie easily, so: the track is a real proportion, the
+   number is always printed beside it, and the near-full state is signalled
+   with a word as well as an edge. --fg for the fill rather than a chart
+   colour — this is one quantity, not a series.
+   ========================================================================== */
+.ds-ai-context {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-inline-size: 140px;
+}
+
+.ds-ai-context__row {
+  align-items: baseline;
+  color: var(--fg-2);
+  display: flex;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  gap: var(--space-2);
+  justify-content: space-between;
+  letter-spacing: var(--tr-wide);
+}
+
+.ds-ai-context__used {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-ai-context__track {
+  background: var(--bg-muted);
+  block-size: 4px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.ds-ai-context__fill {
+  background: var(--fg-2);
+  block-size: 100%;
+  border-radius: inherit;
+  transition: inline-size var(--dur-normal) var(--ease-out);
+}
+
+/* Nearly full. --status-warning-border, never --status-warning: the fill is
+   1.87:1 on a light page and this is a 4px bar, which is a non-text element
+   under SC 1.4.11 and wants 3:1. The border token is the one that has it
+   (3.76:1 light / 11.22:1 dark). The row also gains the word in source. */
+.ds-ai-context[data-level='high'] .ds-ai-context__fill {
+  background: var(--status-warning-border);
+}
+
+.ds-ai-context[data-level='high'] .ds-ai-context__row {
+  color: var(--status-warning-fg); /* 6.97:1 */
+}
+
+.ds-ai-context[data-level='full'] .ds-ai-context__fill {
+  background: var(--status-danger);
+}
+
+.ds-ai-context[data-level='full'] .ds-ai-context__row {
+  color: var(--status-danger-fg); /* 7.54:1 */
+}
+
+/* ==========================================================================
+   Artifact — the answer as a document beside the chat
+
+   A card, and one of the few things in this system that earns a shadow,
+   because it floats over the conversation rather than sitting in it. Header
+   holds the title, the version, and the actions.
+   ========================================================================== */
+.ds-ai-artifact {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ds-ai-artifact__header {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5);
+}
+
+.ds-ai-artifact__title {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-snug);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-ai-artifact__version {
+  background: var(--bg-muted);
+  border-radius: var(--radius-xs);
+  color: var(--fg-2);
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tr-wide);
+  margin-inline-end: auto;
+  padding: 2px var(--space-2);
+}
+
+.ds-ai-artifact__body {
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+
+/* An artifact that is still being written. A hairline top edge in ink rather
+   than a spinner: the content is visibly growing, so the frame only has to
+   say "not final" — and the label in the header says it in words. */
+.ds-ai-artifact[data-streaming] {
+  border-top: 2px solid var(--fg);
+}
+
+/* ==========================================================================
+   Confirmation — the agent asks before acting
+
+   The highest-stakes surface in the set. Deliberately not a toast and not a
+   modal: it sits in the thread, at the point in the transcript where the
+   agent stopped, so the record of what was asked and what was answered stays
+   in one place.
+
+   Both buttons are 44px. This is the one control where a 24px dense tier
+   would be wrong — SC 2.5.8's floor is a floor, and "delete the branch" is
+   not a dense-tier action.
+   ========================================================================== */
+.ds-ai-confirm {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+}
+
+.ds-ai-confirm__prompt {
+  color: var(--fg);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-relaxed);
+  margin: 0;
+}
+
+.ds-ai-confirm__prompt strong {
+  font-weight: var(--fw-semibold);
+}
+
+.ds-ai-confirm__detail {
+  color: var(--fg-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+.ds-ai-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ds-ai-confirm__btn {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  gap: var(--space-2);
+  justify-content: center;
+  min-block-size: var(--target);
+  padding-inline: var(--space-5);
+  transition: background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-confirm__btn:hover {
+  background: var(--bg-muted);
+  border-color: var(--fg-2);
+  color: var(--fg);
+}
+
+.ds-ai-confirm__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.ds-ai-confirm__btn:active {
+  transform: translateY(1px);
+}
+
+/* Approve. Ink fill, not amber — amber is the send button, and a second
+   amber fill in the same column makes "send" and "let the agent write to
+   the repo" look like the same weight of decision. Restates `color` in
+   every state; a filled surface always does, in this system. */
+.ds-ai-confirm__btn--approve {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--fg-inverse); /* 21:1 */
+}
+
+.ds-ai-confirm__btn--approve:hover,
+.ds-ai-confirm__btn--approve:focus,
+.ds-ai-confirm__btn--approve:active {
+  background: var(--ink-800);
+  border-color: var(--ink-800);
+  color: var(--fg-inverse); /* 15.9:1 light */
+}
+
+/* Destructive. --status-danger with --status-danger-on, the pair that exists
+   for exactly this, and the button text names the action ("Delete branch")
+   rather than saying "Confirm" in red. */
+.ds-ai-confirm__btn--danger {
+  background: var(--status-danger);
+  border-color: var(--status-danger);
+  color: var(--status-danger-on); /* 5.41:1 */
+}
+
+.ds-ai-confirm__btn--danger:hover,
+.ds-ai-confirm__btn--danger:focus,
+.ds-ai-confirm__btn--danger:active {
+  background: var(--status-danger-fg);
+  border-color: var(--status-danger-fg);
+  color: var(--status-danger-on); /* 7.54:1 — hover raises contrast */
+}
+
+/* Answered. The decision stays in the transcript, greyed but readable at
+   --fg-2, and the recorded answer is printed in words. */
+.ds-ai-confirm[data-resolved] {
+  background: none;
+  border-color: var(--border);
+  border-style: dashed;
+}
+
+.ds-ai-confirm[data-resolved] .ds-ai-confirm__prompt {
+  color: var(--fg-2);
+}
+
+.ds-ai-confirm__resolution {
+  color: var(--fg-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tr-wide);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Branch — alternative answers to the same turn
+
+   A pager, sized at 24px because it lives in the message toolbar with the
+   actions and shares their density. The counter is mono and tabular so the
+   arrows do not shift when 9/10 becomes 10/10.
+   ========================================================================== */
+.ds-ai-branch {
+  align-items: center;
+  display: flex;
+  gap: var(--space-1);
+}
+
+.ds-ai-branch__btn {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--fg-3);
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  min-block-size: 32px;
+  min-inline-size: 32px;
+  transition: color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.ds-ai-branch__btn:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--fg);
+}
+
+.ds-ai-branch__btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Disabled at the ends of the range. --fg-disabled (4.85:1), not --fg-4:
+   this is a control's own label, so it stays readable even when it is off. */
+.ds-ai-branch__btn:disabled {
+  color: var(--fg-disabled);
+  cursor: not-allowed;
+}
+
+.ds-ai-branch__count {
+  color: var(--fg-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tr-wide);
+  padding-inline: var(--space-1);
+}
+
+/* ==========================================================================
+   Platform — data-platform="mobile"
+
+   Targets and density only, so every ratio measured above holds unchanged.
+   ========================================================================== */
+[data-platform='mobile'] .ds-ai-branch__btn {
+  min-block-size: var(--target);
+  min-inline-size: var(--target);
+}
+
+[data-platform='mobile'] .ds-ai-reasoning__trigger,
+[data-platform='mobile'] .ds-ai-sources__trigger {
+  min-block-size: var(--target);
+}
+
+[data-platform='mobile'] .ds-ai-tool__header {
+  min-block-size: var(--target);
+}
+
+[data-platform='mobile'] .ds-ai-source {
+  padding-block: var(--space-3);
+}
+
+[data-platform='mobile'] .ds-ai-artifact__body {
+  padding: var(--space-4);
+}
+
+/* A confirmation on a phone stacks, so neither answer is the easy one to
+   hit by accident. */
+[data-platform='mobile'] .ds-ai-confirm__actions {
+  flex-direction: column;
+}
+
+[data-platform='mobile'] .ds-ai-confirm__btn {
+  width: 100%;
+}
+
+/* ==========================================================================
+   Reduced motion. The only authored motion in this layer is the chevron and
+   the meter fill; both are state changes, so they snap rather than stop.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .ds-ai-reasoning__chevron,
+  .ds-ai-context__fill {
+    transition: none;
+  }
+}
