@@ -26,6 +26,7 @@ import {
   componentExports,
   elements,
   elementsByTier,
+  elementsVersion,
 } from './ai-elements';
 import { FAMILIES, familySubpaths } from './ai-element-families';
 import { EXAMPLES, examplePath, readExample } from './examples';
@@ -171,6 +172,22 @@ describe('the manifest the index is generated from', () => {
         0,
       );
     }
+  });
+
+  it('prints the version the package actually ships', () => {
+    /* The index page renders `elementsVersion` beside a rendered pixel count
+       of vendored components, and that pixel is masked out of the visual
+       suite — see the `.ai-elements-version` entry in tests/visual/docs/docs.
+       spec.ts — because it changes on every release of this package and no
+       other page content moves with it. This assertion is what covers the
+       value now that the shot cannot: read the package's own package.json
+       rather than trust the manifest to have been rebuilt after the last
+       version bump, the same failure mode `elements.length` above already
+       guards against for the roster. */
+    const pkg = JSON.parse(
+      readFileSync(join(process.cwd(), '../../packages/ai-elements/package.json'), 'utf8'),
+    ) as { version: string };
+    expect(elementsVersion).toBe(pkg.version);
   });
 });
 
