@@ -56,12 +56,77 @@ Three imports in your app's entry stylesheet, in this order:
   already use compile to `var(--token)`. It is what makes Elements render on-brand with no
   edits, and it is also where `dark:` gets re-pointed at `[data-theme="dark"]`.
 
+The first line is also the one to slow down on if your app is not already built on Tailwind
+— read the next section before you paste it in. If your app is already Tailwind v4
+throughout, the block above is already the right answer, and the simplest one: stop here.
+
 If you are also using `@elirobinson/react` on the same page, its stylesheet goes in as usual
 — the two do not overlap. Elements carries no stylesheet of its own.
 
 ```tsx
 import '@elirobinson/react/styles.css';
 ```
+
+### If your app is not already Tailwind
+
+`@import 'tailwindcss'` is one specifier for three things: Tailwind's theme, its utilities,
+and Preflight — Tailwind's global CSS reset. In a greenfield Tailwind app that reset is
+exactly what you want, and nothing below applies to you. In an app with its own pre-existing
+CSS, the reset lands everywhere the stylesheet reaches, which for a normal entry stylesheet
+is the whole app: headings lose their size and weight
+(`h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit }`), lists lose their
+markers (`ol, ul, menu { list-style: none }`), links lose their color and underline, and
+every `button`, form control, `hr`, and `table` is reset the same way. None of that is a
+Preflight bug — it is the blank slate Tailwind utilities are written to assume — but a site
+that was not expecting it does not announce that this import is why it changed.
+
+We hit this ourselves: this docs site added `@import 'tailwindcss'` for the Elements demo
+surfaces on this site, and 176 of 692 visual baselines changed — most of them on pages the
+change never touched. The build gave no warning; it surfaced only once the visual suite ran
+in CI.
+
+The way out is to import Tailwind's theme and utilities by subpath instead of the umbrella
+specifier, and to import a scoped copy of Preflight — its rules rewritten to reach only a
+wrapper element around your Elements markup — in the umbrella's place:
+
+```css
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import './elements-preflight.css' layer(base);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import '@elirobinson/tokens/tokens.css';
+@import '@elirobinson/tokens/tailwind.css';
+```
+
+- The `@layer` declaration has to come first. `@import 'tailwindcss'` carries its own layer
+  order with it; importing the pieces by subpath does not, so without this line `utilities`
+  sorts by where it first appears in the file and stops outranking `base` — the opposite of
+  what makes Tailwind utilities win.
+- `./elements-preflight.css` is your own copy of `node_modules/tailwindcss/preflight.css`,
+  with every selector rewritten to reach only inside one wrapper element — the element that
+  contains everything `@elirobinson/ai-elements` renders, and nothing else.
+- It has to sit where the umbrella's Preflight would have: after the theme, before
+  `tokens.css`. Within `@layer base`, later wins at equal specificity, and that order is
+  what lets `tokens.css`'s own rules still beat the reset — exactly as they do against
+  `@import 'tailwindcss'` itself.
+
+Write the scope as `:where(.your-wrapper)`, never a bare `.your-wrapper`. A bare class adds
+one class of specificity to every rule it prefixes, and that is enough to change who wins:
+`tokens.css` styles an unstyled anchor with `a { color: var(--link); text-decoration:
+underline }` at specificity (0,0,1), inside `@layer base`. `.your-wrapper a` is (0,1,1) —
+one class higher — so a bare-class scope beats that rule instead of losing to it, silently,
+because both are still valid CSS. That is not a hypothetical: it is exactly how this went
+wrong here once, and every link inside the wrapper rendered with no underline and no error
+until a visual diff caught it. `:where()` contributes zero specificity of its own, so scoping
+with it is what keeps each rule at exactly the specificity Tailwind gave it.
+
+What scoping costs you: the reset only reaches markup inside the wrapper. An
+`@elirobinson/ai-elements` component mounted outside it — a portal, a toast, anywhere not
+physically nested inside that one element — renders unreset: native button chrome, a
+browser-default heading size if the component itself sets none, and so on. Nothing will fail
+to tell you when that happens; it will just look wrong. Keep every mount point for
+`@elirobinson/ai-elements` markup inside the one wrapper, or scope a copy of Preflight for
+each mount point that needs one.
 
 ### Tell Tailwind to scan the package
 
