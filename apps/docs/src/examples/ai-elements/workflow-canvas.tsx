@@ -89,6 +89,13 @@ type StepNode = Node<StepData, 'step'>;
    of their own and so cannot carry `.ds-ai-node__port`. The handles are
    rendered directly instead, as children of the positioned `.ds-ai-node`, so
    xyflow measures their bounds exactly as it would upstream. */
+/* Every text slot below is a `div` or a `span`, never an `h3` or a `p`, and
+   that matches AI Elements' own primitives — `NodeTitle` renders shadcn's
+   `CardTitle`, which is a div. It also matters here specifically: this demo is
+   mounted inside the docs site's `.prose` article, whose `h3` and `p` rules are
+   (0,1,1) and would outrank the theme layer's (0,1,0) class selectors and
+   restyle the node from the page's chrome. Elements `.prose` does not claim
+   cannot lose that fight, so there is nothing to fix. */
 function StepNodeView({ id, data, selected }: NodeProps<StepNode>) {
   const [portFocused, setPortFocused] = useState<'target' | 'source' | null>(null);
   const channel = STATE[data.state];
@@ -123,13 +130,13 @@ function StepNodeView({ id, data, selected }: NodeProps<StepNode>) {
         type="target"
       />
 
-      <p className="ds-ai-node__kind">{data.kind}</p>
-      <h3 className="ds-ai-node__title">{data.title}</h3>
-      <p className="ds-ai-node__meta">{data.meta}</p>
-      <p className="ds-ai-node__state">
+      <div className="ds-ai-node__kind">{data.kind}</div>
+      <div className="ds-ai-node__title">{data.title}</div>
+      <div className="ds-ai-node__meta">{data.meta}</div>
+      <div className="ds-ai-node__state">
         <span aria-hidden="true">{channel.glyph}</span>
         {channel.word}
-      </p>
+      </div>
 
       <Handle
         aria-label={`Output port of ${data.title}. Focus for connection actions.`}
@@ -192,9 +199,9 @@ function Inspector() {
   const selected = nodes.find((node) => node.selected);
 
   return (
-    <Panel className="ds-ai-canvas-panel" position="top-right">
+    <Panel className="ds-ai-canvas-panel" position="bottom-right">
       <header className="ds-ai-canvas-panel__header">
-        <h2 className="ds-ai-canvas-panel__title">Inspector</h2>
+        <div className="ds-ai-canvas-panel__title">Inspector</div>
       </header>
       <div className="ds-ai-canvas-panel__body">
         {selected ? (
@@ -218,9 +225,9 @@ function Inspector() {
             </div>
           </>
         ) : (
-          <p className="ds-ai-canvas-panel__value">
+          <div className="ds-ai-canvas-panel__value">
             Tab to a step and press Enter to select it. Arrow keys move it.
-          </p>
+          </div>
         )}
       </div>
     </Panel>
@@ -242,13 +249,13 @@ const INITIAL_NODES: Node[] = [
   {
     id: 'draft',
     type: 'step',
-    position: { x: 260, y: 0 },
+    position: { x: 270, y: 0 },
     data: { kind: 'generation', title: 'Draft', meta: 'streaming', state: 'running' },
   },
   {
     id: 'review',
     type: 'step',
-    position: { x: 520, y: 0 },
+    position: { x: 0, y: 250 },
     data: { kind: 'evaluation', title: 'Review', meta: 'waiting on Draft', state: 'blocked' },
   },
 ];
@@ -258,6 +265,8 @@ const INITIAL_EDGES: Edge[] = [{ id: 'retrieve-draft', source: 'retrieve', targe
 /* Declared once, at module scope. xyflow warns and re-mounts every node when
    this object's identity changes between renders. */
 const NODE_TYPES = { step: StepNodeView };
+
+const FIT_VIEW = { padding: 0.14 };
 
 export function WorkflowCanvas() {
   const [nodes, , onNodesChange] = useNodesState(INITIAL_NODES);
@@ -299,6 +308,12 @@ export function WorkflowCanvas() {
     <Canvas
       className="ds-ai-canvas"
       edges={edges}
+      /* `Canvas` turns `fitView` on for us, and its default padding lets the
+         graph fill the box edge to edge — which puts the nodes underneath the
+         Controls and the Inspector, both of which float over the same surface.
+         The padding is what keeps the two apart, and it is a proportion of the
+         viewport rather than a pixel inset, so it holds at any stage size. */
+      fitViewOptions={FIT_VIEW}
       /* The two props the stylesheet's header names. `nodesFocusable` puts
          nodes in the tab order; `nodesDraggable` is what keeps xyflow's
          arrow-key handler live for a selected node — it gates the keyboard
