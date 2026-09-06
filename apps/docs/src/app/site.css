@@ -495,14 +495,25 @@
   margin: 0 0 var(--space-6);
 }
 
+/* The stage grid marks "this is a live demo, not prose". It has to stay at the
+   edge of visible in both themes. --ink-100 is a fixed near-white, so it reads
+   as a hairline on a white page and as loud white pinpricks on a dark one. The
+   dot colour is therefore its own custom property, matched per theme to the
+   same weight the landing hero uses over --bg-inverse. */
 .demo-block__stage {
+  --demo-stage-dot: var(--ink-100);
   display: flow-root;
   padding: var(--space-8) var(--space-6);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   background:
-    radial-gradient(circle, var(--ink-100) 1px, transparent 1px) 0 0 / 16px 16px,
+    radial-gradient(circle, var(--demo-stage-dot) 1px, transparent 1px) 0 0 / 16px 16px,
     var(--bg);
+}
+
+[data-theme='dark'] .demo-block__stage,
+.dark .demo-block__stage {
+  --demo-stage-dot: oklch(100% 0 0 / 0.08);
 }
 
 .demo-block__source {
