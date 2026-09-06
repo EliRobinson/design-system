@@ -118,14 +118,29 @@ function isVisualRoute(route) {
     return false;
   }
 
-  /* Route handlers, not pages — llms.txt, a registry's /r/*.json entries, and
-     anything else that serves text and has nothing to render. */
-  if (route.endsWith('.txt') || route.endsWith('.json')) {
+  /* Route handlers, not pages — llms.txt, a registry's /r/*.json entries, an
+     app-directory favicon.ico or icon.png, and anything else that serves bytes
+     and has nothing to render.
+
+     The icon routes are the ones that surprise people: Next mints them from
+     file conventions, so dropping favicon.ico into app/ adds a route without
+     adding a page. Navigating to one gets the browser's standalone-image
+     viewer, and the baseline that captures is of the viewer's own grey chrome.
+     Keying on the extension rather than the filename keeps a real page like
+     /components/icon, whose last segment only reads like a file. */
+  if (ASSET_ROUTE.test(route)) {
     return false;
   }
 
   return true;
 }
+
+/* Extensions a route can end in that mean "this serves a file". Deliberately a
+   list rather than "has any extension": a route with an unrecognised suffix is
+   more likely a page than a handler, and a missing baseline is a louder, more
+   fixable failure than a silently skipped page. */
+const ASSET_ROUTE =
+  /\.(?:txt|json|xml|ico|png|jpe?g|gif|webp|avif|svg|pdf|css|js|map|webmanifest)$/i;
 
 function readManifest(path, { subject, reads, hint }) {
   try {
