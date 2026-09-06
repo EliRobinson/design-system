@@ -207,6 +207,37 @@ describe('nextStaticRoutes', () => {
     expect(nextStaticRoutes({ appDir: dir })).toEqual(['/']);
   });
 
+  /* Next turns favicon.ico, icon.png and apple-icon.png in the app directory
+     into routes. They serve image bytes, so a screenshot of one is the browser's
+     standalone-image viewer — a grey chrome page around the icon, which is a
+     baseline of the viewer rather than of anything the suite is testing. A
+     consumer who adds a favicon should not have to discover `exclude` to keep
+     their suite green. */
+  it('drops the icon routes Next mints from app-directory file conventions', () => {
+    const dir = nextBuild([
+      '/',
+      '/favicon.ico',
+      '/icon.png',
+      '/apple-icon.png',
+      '/opengraph-image.png',
+      '/logo.svg',
+    ]);
+
+    expect(nextStaticRoutes({ appDir: dir })).toEqual(['/']);
+  });
+
+  /* The filter keys on the extension, not on the name, so a page that merely
+     reads like a file keeps its baseline. */
+  it('keeps a page whose last segment only looks like a filename', () => {
+    const dir = nextBuild(['/', '/components/icon', '/foundations/motion']);
+
+    expect(nextStaticRoutes({ appDir: dir })).toEqual([
+      '/',
+      '/components/icon',
+      '/foundations/motion',
+    ]);
+  });
+
   it('drops whatever else the caller cannot hold still', () => {
     const dir = nextBuild(['/', '/brand/ui-kits/one', '/brand/colors']);
 
