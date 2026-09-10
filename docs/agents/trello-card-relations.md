@@ -4,14 +4,14 @@ The board is [Miltinson Design System](https://trello.com/b/ucpG6qr6/miltinson-d
 
 Card dependencies are **structured text in the card description**, not prose and not Power-Up state. One block, one vocabulary, on every card.
 
-## Why not the Power-Up
+## Why not a relations Power-Up
 
-The board has the [Card Relations](https://trello.com/power-ups/6985d2ce23e6a232e1cd1c05) Power-Up (Pitagorinesgroup SL) enabled. Two facts make it unusable as the record:
+The board ran the [Card Relations](https://trello.com/power-ups/6985d2ce23e6a232e1cd1c05) Power-Up (Pitagorinesgroup SL) until 2026-09-10. It is **removed** — the board's only plugins now are Custom Fields and Butler. Two facts killed it, and the first rules out every Power-Up of its kind:
 
-1. **The Trello MCP server has no relations API.** `trelloReadCard` / `trelloWriteCard` expose name, desc, due, labels, list, comments and checklists. Power-Up data is not among them. An agent can never read or write a relation stored in the Power-Up.
-2. **The Power-Up is not loading.** `GET /1/boards/ucpG6qr6/plugins` returns it with `capabilities: [card-buttons, card-badges, card-detail-badges, card-back-section]` but **no `url`**, so Trello has no manifest to fetch. Its card-back button renders as an empty grey box, and `GET /1/cards/<id>/pluginData` is empty.
+1. **The Trello MCP server has no relations API.** `trelloReadCard` / `trelloWriteCard` expose name, desc, due, labels, list, comments and checklists. Power-Up data is not among them, so an agent can never read or write a relation stored in one. This is true of any relations Power-Up, not just that one.
+2. **That Power-Up did not even load.** `GET /1/boards/ucpG6qr6/plugins` returned it with `capabilities: [card-buttons, card-badges, card-detail-badges, card-back-section]` but **no `url`**, so Trello had no manifest to fetch. Its card-back button rendered as an empty grey box, and `GET /1/cards/<id>/pluginData` was empty — it had stored nothing.
 
-So the description block is the record. If the Power-Up is ever fixed, mirror the block into it for the visual board view — the block still wins.
+So the description block is the record. Do not reach for a Power-Up to replace it; reason 1 does not go away. If one is ever installed again for the visual board view, it mirrors the block — the block still wins.
 
 ## The block
 
