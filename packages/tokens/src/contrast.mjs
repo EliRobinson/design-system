@@ -22,7 +22,7 @@
 import { contrastRatio } from './color.mjs';
 
 /** The palettes palettes.css defines. */
-export const PALETTES = ['ember', 'slate', 'miltinson'];
+export const PALETTES = ['ember', 'slate', 'miltinson', 'miltinson-tech'];
 
 /** The themes the system defines. */
 export const THEMES = ['light', 'dark'];

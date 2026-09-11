@@ -32,6 +32,9 @@
      5. `[data-palette='miltinson']`                    miltinson  light  (0,1,0)
      6. `[data-palette='miltinson'][data-theme='dark'],
          [data-palette='miltinson'].dark`               miltinson  dark   (0,2,0)
+     7. `[data-palette='miltinson-tech']`               mil-tech   light  (0,1,0)
+     8. `[data-palette='miltinson-tech'][data-theme='dark'],
+         [data-palette='miltinson-tech'].dark`          mil-tech   dark   (0,2,0)
 
    A palette's dark block is the only one of its pair that carries two compound
    conditions, so it is the only one with (0,2,0), and it outranks every other
@@ -576,6 +579,204 @@
 
   --link: var(--ink-0); /* 21:1 */
   --link-hover: var(--signal-300); /* 14.20:1 */
+  --link-visited: var(--ink-200); /* 16.99:1 */
+  --link-on-fill: currentColor;
+}
+
+/* ==========================================================================
+   BLOCK 7 — miltinson-tech, light
+   --------------------------------------------------------------------------
+   Navy over brick red, on near-achromatic greys. Named `miltinson-tech` and
+   not described by whose it is, for the reason block 5 records: a palette is
+   the system's because it is inert until selected and contrast-gated, and
+   spelling out one consumer's company in a shipped stylesheet is the part
+   that does not need to be here. `brand-boundary.test.mjs` enforces that.
+
+   Black is the third brand colour and it is not declared here, because it is
+   already `--ink-1000`: the page's inverse, `--fg`, `--bg-inverse`, the focus
+   ring. Spending a ramp on it would have produced a second black that
+   components could pick instead of the real one. What the brief actually asks
+   for is that black stay black, and that is a statement about the GREYS: with
+   `--n-mult: 1` the neutrals are near-achromatic, so `--ink-1000` reads as the
+   bottom of the same family the greys belong to rather than as the darkest
+   step of a tinted ramp. Slate's `1.6` would have made them visibly violet
+   and left the brand's black looking foreign on its own page.
+
+   --- Why navy carries the controls and brick does not ---------------------
+   The brand's colour is Brick Red, #CB4154, and it is the `--anchor` ramp
+   rather than the `--signal` one. That is a deliberate demotion and it is the
+   most consequential decision in this palette, so the reasoning is here
+   rather than in a commit message.
+
+   `--status-danger` is palette-independent — `#cc2727`, hue 27 — and it does
+   not move out of the way for a brand. #CB4154 is hue 16.61: 10.4 degrees
+   off it, on the rose side rather than the orange side, at similar chroma and
+   similar lightness. Side by side the two read as two colours. At a glance,
+   in isolation, they do not read as two MEANINGS — and the place that costs
+   something real is the control layer, where a primary CTA and a destructive
+   action sit next to each other and the whole job of the colour is to say
+   which is which. A "Submit" the colour of "Delete" is the ember/amber
+   mistake in a new hue.
+
+   So brick is kept out of `--accent*` and navy takes it. Navy is hue 265,
+   239 degrees from danger, and nothing about a navy fill beside a red one is
+   ambiguous. It is also the better control colour on its own merits: 8.57:1
+   as a fill with white text against brick's 4.75:1, which is AA with 0.25 to
+   spare, and 11.85:1 as readable ink against brick's 6.57:1. The palette gets
+   a primary that cannot be misread and a hover triad with room to move.
+
+   WHAT THIS DOES NOT DO, stated plainly: it does not delete the collision, it
+   moves brick out of the one layer where the collision is expensive. Brick
+   still appears — `--anchor` fills, `--anchor-tint` surfaces, trust marks,
+   editorial and marketing surfaces, key stats — and wherever it appears it is
+   still 10.4 degrees from danger. The rule in accessibility.md therefore
+   still stands: a brick fill and a danger fill are never the only difference
+   between two adjacent controls, and a destructive control keeps its icon and
+   its verb. The swap buys a safe control layer, not an exemption.
+
+   AND THE COLLISION IT TRADES INTO, because pretending otherwise would be
+   worse: navy at hue 265 is 15 degrees from `--status-info` at 250. They are
+   far apart in the two channels that matter — `#364b7b` at L 42 / C 0.085
+   against `#0071c4` at L 54 / C 0.155, a muted navy beside a bright azure —
+   and the stakes are not comparable either. Mistaking the primary action for
+   an informational notice costs a moment; mistaking it for a destructive one
+   costs data. This is the trade the palette makes knowingly.
+
+   --- Structure -----------------------------------------------------------
+   Both brand ramps fill at step 500 with WHITE text and DARKEN on hover, as
+   in slate. Both lift to 300/200/400 with ink text in dark, because navy at
+   42% and brick at 57.7% are 2.45:1 and 4.42:1 on a black page — the deeper
+   steps would be a control you cannot find rather than one you cannot read.
+   So this palette's `--accent-fg` and `--anchor-fg` both differ between its
+   two blocks, which no other palette here does. A component that hardcodes
+   either the direction or the foreground is broken by one of the two themes;
+   read `--accent-fg`, `--accent-hover` and `--accent-press`.
+
+   Status and chart are absent from this block on purpose. That absence is
+   what makes them palette-independent.
+   ========================================================================== */
+[data-palette='miltinson-tech'] {
+  --n-h: 265; /* neutral hue — the brand's own navy hue, so the greys sit under it */
+  --n-mult: 1; /* near-achromatic, so the brand's black reads as black */
+
+  /* Signal — Miltinson Navy. The control colour: every `--accent*` below is
+     drawn from this ramp. Written as hex to match the brick ramp, so a
+     reviewer reads one spelling down the whole palette; the oklch each step
+     was picked in is in the comment beside it. Hue 265 throughout. */
+  --signal-50: #eff4fd; /* oklch(96.5% 0.014 265) */
+  --signal-100: #dfe8fb; /* oklch(93% 0.028 265) */
+  --signal-200: #c1d1f3; /* oklch(86% 0.05 265) */
+  --signal-300: #97aede; /* oklch(75% 0.075 265) */
+  --signal-400: #5c75ab; /* oklch(56.5% 0.09 265) — 4.58 / 4.59, the both-ways step */
+  --signal-500: #364b7b; /* navy proper — 8.57:1, the accent step */
+  --signal-600: #25365f; /* oklch(34% 0.075 265) — 11.85:1, the readable step */
+  --signal-700: #182544; /* oklch(27% 0.06 265) */
+  --signal-800: #0b152c; /* oklch(20% 0.048 265) */
+  --signal-900: #040817; /* oklch(14% 0.035 265) */
+
+  /* Anchor — Miltinson Brick Red. THE brand colour, and the one ramp in this
+     file whose primary step is authored as a literal hex rather than in
+     oklch. Every other ramp here was designed in oklch and the brand colour
+     came second, derived from it. Here the brand colour came FIRST: #CB4154,
+     rgb(203, 65, 84), the Crayola shade, and it is not negotiable to a
+     rounding error. An oklch spelling of it is a round-trip through two
+     matrices and a gamut clamp; the honest version of "the brand colour is
+     #CB4154" is the six characters.
+
+     The other nine steps are hue-locked to it at 16.61 — the hue #CB4154
+     converts to — holding only lightness and chroma, then written out as the
+     hex they resolve to. So the ramp is shades of the brand colour rather
+     than ten colours that happen to be reddish, and any step can be checked
+     against the brand by eye.
+
+     Used sparingly and never as a control that sits beside a destructive one:
+     trust marks, editorial and marketing surfaces, key stats, the tinted
+     brand panel. See the block comment for why it is here and not in
+     --signal-*. */
+  --anchor-50: #fff2f2; /* oklch(97% 0.014 16.61) */
+  --anchor-100: #ffe3e4; /* oklch(94% 0.032 16.61) */
+  --anchor-200: #ffc7c8; /* oklch(88% 0.065 16.61) */
+  --anchor-300: #f39ba0; /* oklch(78% 0.105 16.61) */
+  --anchor-400: #de6771; /* oklch(66% 0.15 16.61) */
+  --anchor-500: #cb4154; /* THE brand colour — rgb(203, 65, 84) — 4.75:1 */
+  --anchor-600: #ad2b41; /* oklch(50% 0.165 16.61) — 6.57:1, the readable step */
+  --anchor-700: #861c2e; /* oklch(41% 0.14 16.61) */
+  --anchor-800: #5b0c1c; /* oklch(31% 0.11 16.61) */
+  --anchor-900: #37040d; /* oklch(22% 0.08 16.61) */
+
+  --accent: var(--signal-500); /* fill — 8.57:1 */
+  --accent-hover: var(--signal-600); /* fill — 11.85:1 — DARKER, as slate */
+  --accent-press: var(--signal-700); /* fill — 15.14:1 */
+  --accent-fg: var(--ink-0); /* on the three fills: 8.57 / 11.85 / 15.14 */
+  --accent-tint: var(--signal-50); /* with --accent-ink: 10.74:1 */
+  --accent-ink: var(--signal-600); /* 11.85:1 */
+  --accent-ink-inverse: var(--signal-300); /* on --bg-inverse — 9.43:1 */
+
+  /* The brand colour as a fill. It clears white label text at 4.75:1 with
+     0.25 to spare, which is why it can be a fill at all — but it is the
+     ANCHOR fill, so it is the trust mark and the editorial surface, not the
+     button beside Delete. */
+  --anchor: var(--anchor-500); /* fill — 4.75:1 */
+  --anchor-hover: var(--anchor-600); /* fill — 6.57:1 */
+  --anchor-press: var(--anchor-700); /* fill — 9.46:1 */
+  --anchor-fg: var(--ink-0); /* on the three fills: 4.75 / 6.57 / 9.46 */
+  --anchor-tint: var(--anchor-50); /* with --anchor-ink: 6.01:1 */
+  --anchor-ink: var(--anchor-600); /* 6.57:1 */
+
+  --focus-ring: var(--ink-1000); /* 21:1 */
+
+  /* The brand's black is the link colour, which is the one place this palette
+     gets something for free: --link was already --ink-1000 in every block
+     here, and here that is a brand decision rather than a neutral default. */
+  --link: var(--ink-1000); /* 21:1 */
+  --link-hover: var(--signal-600); /* 11.85:1 — navy, so a link never hovers into red */
+  --link-visited: var(--ink-700); /* 13.62:1 */
+  --link-on-fill: currentColor;
+}
+
+/* ==========================================================================
+   BLOCK 8 — miltinson-tech, dark
+   --------------------------------------------------------------------------
+   (0,2,0), so it wins over block 7 without an `!important`. It restates the
+   whole semantic set rather than diffing block 2, for the same reason every
+   dark palette block here does: block 7 is later in source order than block 2
+   and would otherwise hand this palette's LIGHT values to a dark page.
+
+   Both brand fills lift, and they lift for the same reason: navy at 42% and
+   brick at 57.7% are 2.45:1 and 4.42:1 on a black page, so the deeper steps
+   of each triad would have been a control you cannot find rather than one you
+   cannot read. Both move to 300/200/400 and both foregrounds flip to ink.
+   This is the palette where `--accent-fg` and `--anchor-fg` are genuinely two
+   different values each — see block 7 for why white text is not available up
+   here.
+
+   `--accent-press` is `--signal-400`, the step parked in the narrow band that
+   clears 4.5:1 against both white and black (4.58 / 4.59). Any single colour
+   can only do that between 4.50:1 and 4.67:1, because the two ratios multiply
+   to 21, and it is what lets one step be the hover fill in light and the
+   press fill in dark.
+   ========================================================================== */
+[data-palette='miltinson-tech'][data-theme='dark'],
+[data-palette='miltinson-tech'].dark {
+  --accent: var(--signal-300); /* fill — 9.43:1 */
+  --accent-hover: var(--signal-200); /* fill — 13.68:1 */
+  --accent-press: var(--signal-400); /* fill — 4.59:1 */
+  --accent-fg: var(--ink-1000); /* on the three fills: 9.43 / 13.68 / 4.59 */
+  --accent-tint: var(--signal-900); /* with --accent-ink: 13.00:1 */
+  --accent-ink: var(--signal-200); /* 13.68:1 */
+  --accent-ink-inverse: var(--signal-600); /* on --bg-inverse — 11.85:1 */
+
+  --anchor: var(--anchor-300); /* fill — 10.01:1 */
+  --anchor-hover: var(--anchor-200); /* fill — 14.26:1 */
+  --anchor-press: var(--anchor-400); /* fill — 6.28:1 */
+  --anchor-fg: var(--ink-1000); /* on the three fills: 10.01 / 14.26 / 6.28 */
+  --anchor-tint: var(--anchor-900); /* with --anchor-ink: 8.44:1 */
+  --anchor-ink: var(--anchor-300); /* 10.01:1 */
+
+  --focus-ring: var(--ink-0); /* 21:1 */
+
+  --link: var(--ink-0); /* 21:1 */
+  --link-hover: var(--signal-300); /* 9.43:1 */
   --link-visited: var(--ink-200); /* 16.99:1 */
   --link-on-fill: currentColor;
 }
