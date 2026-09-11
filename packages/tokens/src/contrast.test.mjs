@@ -15,7 +15,7 @@
  * measures — --accent-tint and --anchor-tint — were near-whites left
  * un-inverted in dark mode, and each one passed its own threshold against
  * --bg the whole time. A sweep is only as wide as the combinations it walks,
- * so it walks all four.
+ * so it walks every one of them — `COMBINATIONS`, never a count typed here.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -60,11 +60,21 @@ function ratio(combination, foreground, background) {
    Rounding to two places is what breaks — `--border-control` on dark
    `--bg-muted` is 4.0033 under one palette and 4.0004 under the other, which
    round to 4.01 and 4.00 and look like a change.
- 
-   0.01 is therefore three times the observed spread and two orders of
+
+   Hue is the other half of the dial and it is the half that costs more. The
+   four palettes sit at `--n-h` 247, 252, 252 and 265, and sRGB's luminance
+   weights are not hue-symmetric, so a blue-leaning grey composites a hair
+   darker than a violet-leaning one at the same lightness. Widening the roster
+   to miltinson-tech at hue 265 took the largest spread from 0.003:1 to
+   0.0149:1, on light `--fg-2` (8.4485 to 8.4633); every other neutral on
+   every neutral surface in both themes stays under 0.01:1.
+
+   0.02 is therefore a little over the observed spread and still two orders of
    magnitude below the gap between any two WCAG thresholds, so a real move —
-   a palette that tinted a grey by touching its lightness — still fails here. */
-const PALETTE_TOLERANCE = 0.01;
+   a palette that tinted a grey by touching its lightness — still fails here.
+   A lightness change moves these ratios by tenths of a point or whole points,
+   not hundredths; this tolerance cannot hide one. */
+const PALETTE_TOLERANCE = 0.02;
 
 function expectPaletteIndependent(label, theme, measure) {
   const ratios = PALETTES.map((palette) => measure(`${palette}/${theme}`));
@@ -87,6 +97,8 @@ describe('the sweep covers the whole vocabulary', () => {
       'slate/dark',
       'miltinson/light',
       'miltinson/dark',
+      'miltinson-tech/light',
+      'miltinson-tech/dark',
     ]);
   });
 

@@ -8,6 +8,7 @@ import {
   checkTouchTargets,
   PRIMARY_CONTROL_SELECTOR,
 } from '@elirobinson/ai-patterns/testing/playwright';
+import { PALETTES as DIAL_PALETTES } from '@elirobinson/tokens/dials';
 import { expect, test } from '@playwright/test';
 
 /* The audit itself: every vendored component, every dial, all four checks.
@@ -39,10 +40,15 @@ const COMPONENTS = manifest.entries
   .map((entry) => entry.name)
   .sort();
 
-/* `ember` is the default palette and sets no attribute — the harness leaves
+/* Read off the dials module for the same reason COMPONENTS is read off the
+ * manifest: a roster kept here falls behind the stylesheet and nothing says so.
+ * It already had — `miltinson-tech` shipped in palettes.css and this sweep went
+ * on measuring three palettes and reporting a clean run.
+ *
+ * `ember` is the default palette and sets no attribute — the harness leaves
  * `data-palette` off for it, which is what a consumer who never touches the
  * dial gets, and therefore the case worth measuring rather than skipping. */
-const PALETTES = ['ember', 'slate', 'miltinson'] as const;
+const PALETTES = DIAL_PALETTES;
 const THEMES = ['light', 'dark'] as const;
 /* `data-platform="mobile"` is the dial, not a viewport. tokens.css floors every
  * non-dense control to var(--target) under it, so this is the run that says
