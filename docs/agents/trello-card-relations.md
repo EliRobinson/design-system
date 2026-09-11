@@ -2,7 +2,7 @@
 
 The board is [Miltinson Design System](https://trello.com/b/ucpG6qr6/miltinson-design-system). Lists: `Backlog`, `Ready`, `In Progress`, `Review`, `Done`.
 
-Card dependencies are **structured text in the card description**, not prose and not Power-Up state. One block, one vocabulary, on every card.
+Card dependencies are **structured text in the card description**, not prose and not Power-Up state. One block, one vocabulary, on every open card. Cards in `Done` are out of scope: they need no block, and one left on a card when it closes is harmless.
 
 ## Why not a relations Power-Up
 
@@ -15,7 +15,7 @@ So the description block is the record. Do not reach for a Power-Up to replace i
 
 ## The block
 
-First thing in every card description, before any other heading:
+First thing in every open card's description, before any other heading:
 
 ```markdown
 ## Relations
@@ -28,7 +28,7 @@ First thing in every card description, before any other heading:
 Rules:
 
 - **Three labels, exactly these.** `Parent`, `Blocked by`, `Relates to`. Do not invent a fourth.
-- **`Parent` and `Blocked by` are written once, on the dependent card.** The blocked card names its blocker; the child names its parent. `Relates to` is the exception and goes on both cards, because neither side depends on the other. There is deliberately no `Blocks` line and no `Children` line — a reciprocal pair is two places to keep in sync and one place to drift, and the epic here fans out far enough that the reciprocal lists alone would push cards past the write limit below.
+- **`Parent` and `Blocked by` are written once, on the dependent card.** The blocked card names its blocker; the child names its parent. `Relates to` is the exception and goes on both cards, because neither side depends on the other — unless the other card is in `Done`, which carries no block, so the link stays one-sided. There is deliberately no `Blocks` line and no `Children` line — a reciprocal pair is two places to keep in sync and one place to drift, and the epic here fans out far enough that the reciprocal lists alone would push cards past the write limit below.
 - **To find what a card unblocks, read the board and invert it.** `trelloReadCard` with `action: "list_by_board"` returns every open card and its description in one call, which is enough to rebuild the whole graph.
 - **Omit lines that do not apply.** A card with nothing writes `## Relations` then `- **None**`.
 - **Every reference is a link** — markdown link to the card's short URL (`https://trello.com/c/<shortLink>`), labelled with the card's code (`F1`, `C4`, `A2`). A card with no code gets a two-or-three-word slug.
@@ -61,5 +61,6 @@ There is no CI gate on this. Before you finish a session that touched relations,
 
 - no link points at an archived or deleted card
 - no closed card is still named under another card's `Blocked by`
-- no card is missing the block
+- no open card is missing the block
+- no `Relates to` between two open cards is one-sided
 - no `Depends on` prose survives outside the block
