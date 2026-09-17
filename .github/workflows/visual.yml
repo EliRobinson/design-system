@@ -151,7 +151,15 @@ jobs:
       # So a new project whose build writes somewhere its `outputs` does not
       # name is now a silently under-selected sweep rather than a slow one.
       # That is the standing cost of this line.
-      - uses: actions/cache@v6
+      #
+      # Restored on every run, SAVED only by the nightly run. The save is a
+      # ~70MB upload in this job's post step, and every sweep job `needs` this
+      # one — measured at 101s on run 35190180037, the single largest wait on
+      # main's critical path. A per-commit key saves a new entry on every push
+      # for the benefit of whichever run comes next; the nightly entry is at
+      # most a day behind, and Nx rebuilds only what changed since.
+      - uses: actions/cache/restore@v6
+        id: nx_cache
         with:
           # BOTH paths, and that is not belt-and-braces. `.nx/cache` holds the
           # task outputs; the metadata that says which task hash produced them
@@ -179,6 +187,15 @@ jobs:
 
       - name: Build Storybook and the docs site
         run: pnpm run pretest:visual
+      - name: Save the Nx cache
+        if: github.event_name == 'schedule'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            .nx/cache
+            .nx/workspace-data
+            !.nx/workspace-data/d
+          key: ${{ steps.nx_cache.outputs.cache-primary-key }}
 
       # After the build, because it enumerates through Playwright, which needs
       # both builds to collect a test. See scripts/visual-matrix.mjs for why
