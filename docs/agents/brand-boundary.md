@@ -10,8 +10,9 @@ naming a brand's character — and then it must be _written_ that way.
 
 | finding                                              | verdict              | why                                                                      |
 | ---------------------------------------------------- | -------------------- | ------------------------------------------------------------------------ |
-| `[data-palette='miltinson']`                         | system               | inert until selected, and contrast-gated. So is `slate`.                 |
+| `[data-palette='miltinson']`                         | system               | inert until selected, and contrast-gated. So are `slate` and `steady`.   |
 | `[data-palette='slate']`                             | system               | same test, same answer — which is the point                              |
+| `[data-palette='steady']`                            | system               | same test, same answer                                                   |
 | Miltinson Amber as default                           | system               | a default is a value in a slot with a documented dial                    |
 | Geist / JetBrains Mono                               | system               | `--ds-font-*-override` is the dial, enforced by `font-override.test.mjs` |
 | 44×44, focus rings, WCAG AA                          | system               | true under every brand                                                   |

@@ -35,6 +35,9 @@
      7. `[data-palette='miltinson-tech']`               mil-tech   light  (0,1,0)
      8. `[data-palette='miltinson-tech'][data-theme='dark'],
          [data-palette='miltinson-tech'].dark`          mil-tech   dark   (0,2,0)
+     9. `[data-palette='steady']`                       steady     light  (0,1,0)
+    10. `[data-palette='steady'][data-theme='dark'],
+         [data-palette='steady'].dark`                  steady     dark   (0,2,0)
 
    A palette's dark block is the only one of its pair that carries two compound
    conditions, so it is the only one with (0,2,0), and it outranks every other
@@ -777,6 +780,123 @@
 
   --link: var(--ink-0); /* 21:1 */
   --link-hover: var(--signal-300); /* 9.43:1 */
+  --link-visited: var(--ink-200); /* 16.99:1 */
+  --link-on-fill: currentColor;
+}
+
+/* ==========================================================================
+   BLOCK 9 — steady, light
+   --------------------------------------------------------------------------
+   Steady Azure over Miltinson Forest, near-achromatic greys. This palette
+   changes one hue from ember and nothing else: the signal ramp. The anchor
+   ramp and the neutral dial are ember's, verbatim.
+
+   Nothing on the page should ask for attention unless it has earned it. So
+   the azure sits at the deep end of the arc, and the structure is slate's,
+   not ember's: `--accent` is the 600 step carrying WHITE text, and hover
+   DARKENS to 700. The resting CTA is a 5.05:1 fill rather than a bright one.
+
+   Why azure, and why this deep. The status set owns green (150), amber (85),
+   red (27) and blue (250). An accent that must never be read as "done",
+   "needs review", "unsafe" or "note" has one usable arc left, roughly
+   190-235. Steady is hue 223-232, inside it. `--status-info` at 250 is the
+   nearest neighbour; the accent is darker (L 52 against 54) and less chromatic
+   (C 0.14 against 0.155), and mistaking a primary action for a notice costs a
+   moment, not data.
+
+   Forest stays the anchor on purpose. It is a deep, muted green (L 42, C 0.08)
+   and `--status-success` is a vivid mid green, so a trust mark does not read
+   as a success badge.
+
+   Status and chart are absent from this block on purpose. That absence is
+   what makes them palette-independent, and it is why `--status-warning` stays
+   Miltinson Amber here.
+   ========================================================================== */
+[data-palette='steady'] {
+  --n-h: 247; /* neutral hue — ember's */
+  --n-mult: 1; /* near-achromatic, as ember */
+
+  /* Signal — Steady Azure. */
+  --signal-50: oklch(97.5% 0.018 232);
+  --signal-100: oklch(94% 0.042 232);
+  --signal-200: oklch(87% 0.075 230);
+  --signal-300: oklch(79% 0.1 229);
+  --signal-400: oklch(71% 0.12 228);
+  --signal-500: oklch(62% 0.135 227); /* peak azure — 3.46:1, a fill and nothing more */
+  --signal-600: oklch(52% 0.14 226); /* the accent step — 5.05:1 */
+  --signal-700: oklch(43% 0.12 225); /* the readable step — 7.47:1 */
+  --signal-800: oklch(33% 0.095 224);
+  --signal-900: oklch(23% 0.065 223);
+
+  /* Anchor — Miltinson Forest, verbatim from ember. */
+  --anchor-50: oklch(96% 0.018 165);
+  --anchor-100: oklch(91% 0.035 165);
+  --anchor-200: oklch(82% 0.055 162);
+  --anchor-300: oklch(70% 0.075 160);
+  --anchor-400: oklch(55% 0.085 158);
+  --anchor-500: oklch(42% 0.08 156); /* primary — 8.13:1 */
+  --anchor-600: oklch(34% 0.065 156);
+  --anchor-700: oklch(26% 0.05 156);
+  --anchor-800: oklch(19% 0.035 156);
+  --anchor-900: oklch(13% 0.025 156);
+
+  --accent: var(--signal-600); /* fill — 5.05:1 */
+  --accent-hover: var(--signal-700); /* fill — 7.47:1 — DARKER, as slate */
+  --accent-press: var(--signal-800); /* fill — 11.49:1 */
+  --accent-fg: var(--ink-0); /* on the three fills: 5.05 / 7.47 / 11.49 */
+  --accent-tint: var(--signal-50); /* with --accent-ink: 6.97:1 */
+  --accent-ink: var(--signal-700); /* 7.47:1 */
+  --accent-ink-inverse: var(--signal-300); /* on --bg-inverse — 11.10:1 */
+
+  --anchor: var(--anchor-500); /* fill — 8.13:1 */
+  --anchor-hover: var(--anchor-400); /* fill — 4.65:1 */
+  --anchor-press: var(--anchor-600); /* fill — 11.41:1 */
+  --anchor-fg: var(--ink-0); /* on the three fills: 8.13 / 4.65 / 11.41 */
+  --anchor-tint: var(--anchor-50); /* with --anchor-ink: 10.23:1 */
+  --anchor-ink: var(--anchor-600); /* 11.41:1 */
+
+  --focus-ring: var(--ink-1000); /* 21:1 */
+
+  --link: var(--ink-1000); /* 21:1 */
+  --link-hover: var(--signal-700); /* 7.47:1 */
+  --link-visited: var(--ink-700); /* 13.62:1 */
+  --link-on-fill: currentColor;
+}
+
+/* ==========================================================================
+   BLOCK 10 — steady, dark
+   --------------------------------------------------------------------------
+   (0,2,0), so it wins over block 9 without an `!important`. It restates the
+   whole semantic set, for the reason every dark palette block here does:
+   block 9 is later in source order than block 2 and would otherwise hand this
+   palette's LIGHT values to a dark page.
+
+   The accent lifts to 300 and its foreground flips to ink, as slate's does:
+   600 is 4.16:1 on a black page, a dim fill beside the 11.10:1 it lifts to.
+   Hover still moves DOWN the ramp, to 400, as in steady light — a darker
+   fill in both themes. The anchor set is ember's dark set, verbatim.
+   ========================================================================== */
+[data-palette='steady'][data-theme='dark'],
+[data-palette='steady'].dark {
+  --accent: var(--signal-300); /* fill — 11.10:1 */
+  --accent-hover: var(--signal-400); /* fill — 8.39:1 — still DARKER, as in steady light */
+  --accent-press: var(--signal-500); /* fill — 6.08:1 */
+  --accent-fg: var(--ink-1000); /* on the three fills: 11.10 / 8.39 / 6.08 */
+  --accent-tint: var(--signal-900); /* with --accent-ink: 11.24:1 */
+  --accent-ink: var(--signal-200); /* 14.39:1 */
+  --accent-ink-inverse: var(--signal-700); /* on --bg-inverse — 7.47:1 */
+
+  --anchor: var(--anchor-300); /* fill — 8.13:1 */
+  --anchor-hover: var(--anchor-200); /* fill — 12.30:1 */
+  --anchor-press: var(--anchor-400); /* fill — 4.51:1 */
+  --anchor-fg: var(--ink-1000); /* on the three fills: 8.13 / 12.30 / 4.51 */
+  --anchor-tint: var(--anchor-800); /* with --anchor-ink: 10.73:1 */
+  --anchor-ink: var(--anchor-200); /* 12.30:1 */
+
+  --focus-ring: var(--ink-0); /* 21:1 */
+
+  --link: var(--ink-0); /* 21:1 */
+  --link-hover: var(--signal-300); /* 11.10:1 */
   --link-visited: var(--ink-200); /* 16.99:1 */
   --link-on-fill: currentColor;
 }
