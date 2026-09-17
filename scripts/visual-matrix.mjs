@@ -49,6 +49,15 @@ export const SHARDS = {
    name at all; everything else it learns from the enumeration. */
 export const GROUPS = [['smoke', 'docs-narrow']];
 
+/* A pull request's scoped run asks the same question of a smaller suite: the
+   shots its change could have altered. Below this many, one job runs them all.
+   Every job pays ~80s of container start, install and build download before it
+   takes a pixel, and a shot costs ~1.3s, so splitting 40 shots across machines
+   buys seconds of screenshots for minutes of prologue. Above it, the scoped run
+   takes the same per-project jobs and shards the full sweep does, which is the
+   case that matters: a token or palette change scopes to every shot. */
+export const SCOPED_SINGLE_JOB_MAX = 40;
+
 /** Every project Playwright collected, with its test count, sorted by name. */
 export function parseProjects(listJson) {
   const counts = new Map();
@@ -87,7 +96,7 @@ function collectSpecs(node, out = []) {
  * would go green having compared nothing, which is the exact silent
  * under-selection the release gate in release.yml exists to refuse.
  */
-export function planMatrix(projects) {
+export function planMatrix(projects, { scoped = false } = {}) {
   if (projects.length === 0) {
     throw new Error(
       'visual-matrix: Playwright collected no projects at all. That is a broken ' +
@@ -97,6 +106,17 @@ export function planMatrix(projects) {
   }
 
   assertGroupsAreDisjoint();
+
+  const total = projects.reduce((sum, project) => sum + project.tests, 0);
+  if (scoped && total <= SCOPED_SINGLE_JOB_MAX) {
+    return [
+      entry(
+        projects.map((project) => project.name),
+        1,
+        1,
+      ),
+    ];
+  }
 
   const byName = new Map(projects.map((project) => [project.name, project]));
   const entries = [];
@@ -196,19 +216,39 @@ export function missingProjects(matrix, reported) {
   return [...expected].filter((name) => !seen.has(name)).sort();
 }
 
-/** Runs Playwright's collection and plans the matrix. Needs both apps built. */
-export function listMatrix({ cwd = process.cwd() } = {}) {
-  const stdout = execFileSync('pnpm', ['exec', 'playwright', 'test', '--list', '--reporter=json'], {
+/** The `playwright test` arguments that enumerate the suite, or its scoped subset. */
+export function listArgs({ grep = null } = {}) {
+  const args = ['exec', 'playwright', 'test', '--list', '--reporter=json'];
+  if (grep) {
+    args.push('--grep', grep);
+  }
+  return args;
+}
+
+/**
+ * Runs Playwright's collection and plans the matrix. Needs both apps built.
+ *
+ * With `grep`, it enumerates only the shots that pattern selects, so the jobs
+ * and shard counts match what each job will actually run: Playwright filters by
+ * --grep before it shards, and a shard planned off the unfiltered count could
+ * come out empty and fail with "no tests found".
+ */
+export function listMatrix({ cwd = process.cwd(), grep = null } = {}) {
+  const stdout = execFileSync('pnpm', listArgs({ grep }), {
     cwd,
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
   });
-  return planMatrix(parseProjects(JSON.parse(stdout)));
+  return planMatrix(parseProjects(JSON.parse(stdout)), { scoped: Boolean(grep) });
 }
 
-/* CLI: two modes.
+/* CLI: three modes.
      node visual-matrix.mjs                              the matrix, as JSON
+     node visual-matrix.mjs --grep-file <path>           the scoped matrix for that pattern
      node visual-matrix.mjs --verify <matrix> <report>    projects that never reported
+
+   --grep-file rather than --grep: the scoped pattern can name every route in
+   the suite, and it holds characters a shell round trip would mangle.
 
    The matrix prints as ONE line of JSON, ready for `fromJSON` in a workflow's
    `strategy.matrix`. One line because it is written to $GITHUB_OUTPUT, where a
@@ -227,8 +267,24 @@ const isEntrypoint = process.argv[1] && realpathSync(process.argv[1]) === import
 if (isEntrypoint) {
   const verify = process.argv.indexOf('--verify');
 
+  const grepFile = process.argv.indexOf('--grep-file');
+
   if (verify === -1) {
-    process.stdout.write(JSON.stringify(listMatrix()));
+    let grep = null;
+    if (grepFile !== -1) {
+      const path = process.argv[grepFile + 1];
+      if (!path) {
+        throw new Error('visual-matrix: --grep-file needs <path>');
+      }
+      grep = readFileSync(path, 'utf8').trim();
+      if (!grep) {
+        throw new Error(
+          'visual-matrix: --grep-file is empty. A scoped matrix with no pattern would ' +
+            'plan the whole suite, which is not what the caller asked for.',
+        );
+      }
+    }
+    process.stdout.write(JSON.stringify(listMatrix({ grep })));
   } else {
     const [matrixPath, reportPath] = process.argv.slice(verify + 1);
     if (!matrixPath || !reportPath) {

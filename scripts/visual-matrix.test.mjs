@@ -5,7 +5,15 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { GROUPS, SHARDS, missingProjects, parseProjects, planMatrix } from './visual-matrix.mjs';
+import {
+  GROUPS,
+  SCOPED_SINGLE_JOB_MAX,
+  SHARDS,
+  listArgs,
+  missingProjects,
+  parseProjects,
+  planMatrix,
+} from './visual-matrix.mjs';
 
 /* Same shape as visual-shots.test.mjs's payload, for the same reason: this is
    what `playwright test --list --reporter=json` emits, nested suites and all. */
@@ -144,6 +152,63 @@ describe('planMatrix', () => {
         seen.add(name);
       }
     }
+  });
+});
+
+describe('planMatrix, scoped', () => {
+  it('runs a small scope in one job that names every project', () => {
+    /* Two projects of a handful of shots each: one job, not two machines each
+       spending most of its time starting up. */
+    const matrix = planMatrix(
+      [
+        { name: 'storybook-narrow', tests: 4 },
+        { name: 'storybook-wide', tests: 4 },
+      ],
+      { scoped: true },
+    );
+
+    expect(matrix).toHaveLength(1);
+    expect(matrix[0]).toMatchObject({
+      projects: 'storybook-narrow storybook-wide',
+      shardIndex: 1,
+      shardTotal: 1,
+    });
+  });
+
+  it('counts the limit inclusively', () => {
+    const matrix = planMatrix([{ name: 'docs-wide', tests: SCOPED_SINGLE_JOB_MAX }], {
+      scoped: true,
+    });
+    expect(matrix).toHaveLength(1);
+  });
+
+  it('plans a large scope exactly like the full sweep', () => {
+    /* A token or palette change scopes to every shot. That is the slow pull
+       request, and it should fan out the same way main's sweep does. */
+    const projects = [
+      { name: 'docs-narrow', tests: 14 },
+      { name: 'docs-wide', tests: 160 },
+      { name: 'smoke', tests: 9 },
+      { name: 'storybook-narrow', tests: 168 },
+      { name: 'storybook-wide', tests: 168 },
+    ];
+
+    expect(planMatrix(projects, { scoped: true })).toEqual(planMatrix(projects));
+  });
+
+  it('still refuses an empty enumeration', () => {
+    expect(() => planMatrix([], { scoped: true })).toThrow(/collected no projects/);
+  });
+});
+
+describe('listArgs', () => {
+  it('enumerates the whole suite without a pattern', () => {
+    expect(listArgs()).toEqual(['exec', 'playwright', 'test', '--list', '--reporter=json']);
+  });
+
+  it('passes the pattern as its own argument, never through a shell', () => {
+    const grep = 'components-button--primary · light|/patterns/forms';
+    expect(listArgs({ grep }).slice(-2)).toEqual(['--grep', grep]);
   });
 });
 
