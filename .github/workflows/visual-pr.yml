@@ -310,12 +310,20 @@ jobs:
       # with the scoped pattern, so the jobs and shard counts match what each
       # leg will run. A small scope comes back as one job; a large one fans
       # out exactly like main's sweep. See scripts/visual-matrix.mjs.
+      #
+      # With nothing to compare, one no-op leg rather than no matrix. A skipped
+      # matrix job is listed on the pull request under its unexpanded name,
+      # `compare (${{ matrix.job.name }})` — a skipped check that says nothing.
+      # The no-op leg starts no container and finishes in seconds.
       - name: Plan the comparison matrix
-        if: steps.scope.outputs.run == 'true'
         id: matrix
         shell: bash
         run: |
           set -euo pipefail
+          if [ "${{ steps.scope.outputs.run }}" != "true" ]; then
+            echo 'include=[{"name":"nothing to compare","slug":"none","noop":true}]' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           INCLUDE=$(node scripts/visual-matrix.mjs --grep-file scope-grep.txt)
           echo "include=$INCLUDE" >> "$GITHUB_OUTPUT"
           {
@@ -352,7 +360,6 @@ jobs:
   # bought across VMs, never inside one.
   compare:
     needs: [image, plan]
-    if: needs.plan.outputs.run == 'true'
     name: compare (${{ matrix.job.name }})
     strategy:
       # Load-bearing: fail-fast would cancel the siblings of the first red leg,
@@ -362,14 +369,22 @@ jobs:
         job: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # An empty image runs the job on the runner itself: the no-op leg pays for
+    # no container pull. `!noop && ref || ''`, in that order — `noop && '' ||
+    # ref` would fall through to the ref, since '' is falsy.
     container:
-      image: ${{ needs.image.outputs.ref }}
-      options: --shm-size=1g
+      image: ${{ !matrix.job.noop && needs.image.outputs.ref || '' }}
+      options: ${{ !matrix.job.noop && '--shm-size=1g' || '' }}
     env:
       HUSKY: 0
       STORYBOOK_DISABLE_TELEMETRY: 1
     steps:
-      - uses: actions/checkout@v7
+      - name: Nothing to compare
+        if: matrix.job.noop
+        run: echo "The scope for this change selects no shot. See the plan job's summary for the reason."
+
+      - if: ${{ !matrix.job.noop }}
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.plan.outputs.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
@@ -377,32 +392,40 @@ jobs:
           # minutes. It keeps no credential in the workspace.
           persist-credentials: false
       - name: Trust the checkout
+        if: ${{ !matrix.job.noop }}
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Set up pnpm via corepack
+        if: ${{ !matrix.job.noop }}
         run: |
           corepack enable
           corepack prepare --activate
           pnpm --version
       - name: Locate the pnpm store
+        if: ${{ !matrix.job.noop }}
         id: pnpm_store
         run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache/restore@v6
+      - if: ${{ !matrix.job.noop }}
+        uses: actions/cache/restore@v6
         with:
           path: ${{ steps.pnpm_store.outputs.path }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: ${{ runner.os }}-pnpm-store-
-      - run: pnpm install --frozen-lockfile
+      - if: ${{ !matrix.job.noop }}
+        run: pnpm install --frozen-lockfile
       - name: Fetch the build outputs
+        if: ${{ !matrix.job.noop }}
         uses: actions/download-artifact@v7
         with:
           name: visual-pr-build
       - name: Unpack the build outputs
+        if: ${{ !matrix.job.noop }}
         run: tar -xzf build-outputs.tar.gz
 
       # A missing served-off-disk asset does not fail a screenshot — it renders
       # as a stable empty box that compares equal to itself forever. So the
       # guard has to be here, before Playwright starts (#149).
       - name: Check the build outputs are complete
+        if: ${{ !matrix.job.noop }}
         shell: bash
         run: |
           set -euo pipefail
@@ -425,6 +448,7 @@ jobs:
       # --reporter=blob: the only format that merges losslessly across jobs,
       # diff images included. `scoped` rebuilds the json and html reports.
       - name: Visual regression, scoped
+        if: ${{ !matrix.job.noop }}
         shell: bash
         env:
           PROJECTS: ${{ matrix.job.projects }}
@@ -448,7 +472,7 @@ jobs:
 
       # !cancelled(), so a red leg's evidence survives its own failure.
       - name: Upload the blob report
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !matrix.job.noop }}
         uses: actions/upload-artifact@v7
         with:
           name: visual-pr-blob-${{ matrix.job.slug }}
