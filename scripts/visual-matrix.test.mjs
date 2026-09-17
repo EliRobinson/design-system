@@ -73,22 +73,34 @@ describe('planMatrix', () => {
     { name: 'storybook-wide', tests: 168 },
   ];
 
-  it('gives every ungrouped project a job of its own', () => {
-    const names = planMatrix(projects).map((job) => job.name);
-    expect(names).toContain('storybook-wide');
-    expect(names).toContain('storybook-narrow');
+  it('gives every ungrouped project jobs of its own', () => {
+    const jobs = planMatrix(projects);
+    expect(jobs.some((job) => job.projects === 'storybook-wide')).toBe(true);
+    expect(jobs.some((job) => job.projects === 'storybook-narrow')).toBe(true);
   });
 
   it('runs the grouped projects in one job', () => {
     const grouped = planMatrix(projects).find((job) => job.projects.includes('smoke'));
     expect(grouped.projects).toBe('smoke docs-narrow');
     expect(grouped.name).toBe('smoke+docs-narrow');
-    expect(planMatrix(projects)).toHaveLength(3);
+    expect(planMatrix(projects)).toHaveLength(
+      1 + SHARDS['storybook-wide'] + SHARDS['storybook-narrow'],
+    );
   });
 
-  it('sweeps every collected project exactly once', () => {
-    const swept = planMatrix(projects).flatMap((job) => job.projects.split(' '));
+  it('sweeps every collected project, each in one job or one set of shards', () => {
+    /* A project appears once per shard, and each of those jobs is a different
+       shard index of the same total — never two unsharded jobs, which would
+       compare the same shots twice. */
+    const jobs = planMatrix(projects);
+    const swept = new Set(jobs.flatMap((job) => job.projects.split(' ')));
     expect([...swept].sort()).toEqual(projects.map((project) => project.name).sort());
+
+    for (const name of swept) {
+      const legs = jobs.filter((job) => job.projects.split(' ').includes(name));
+      expect(legs.map((job) => job.shardIndex)).toEqual(legs.map((_, i) => i + 1));
+      expect(legs.every((job) => job.shardTotal === legs.length)).toBe(true);
+    }
   });
 
   it('leaves an absent project out of the matrix entirely', () => {
@@ -105,13 +117,16 @@ describe('planMatrix', () => {
       job.projects.includes('docs-wide'),
     );
 
-    expect(sharded).toHaveLength(SHARDS['docs-wide']);
-    expect(sharded.map((job) => job.name)).toEqual(['docs-wide 1/2', 'docs-wide 2/2']);
+    const total = SHARDS['docs-wide'];
+    const indexes = Array.from({ length: total }, (_, i) => i + 1);
+
+    expect(sharded).toHaveLength(total);
+    expect(sharded.map((job) => job.name)).toEqual(indexes.map((i) => `docs-wide ${i}/${total}`));
     /* The slug names an artifact and a blob report file, so two shards sharing
        one would have the second overwrite the first at merge time. */
-    expect(new Set(sharded.map((job) => job.slug)).size).toBe(2);
-    expect(sharded.map((job) => job.shardIndex)).toEqual([1, 2]);
-    expect(sharded.every((job) => job.shardTotal === 2)).toBe(true);
+    expect(new Set(sharded.map((job) => job.slug)).size).toBe(total);
+    expect(sharded.map((job) => job.shardIndex)).toEqual(indexes);
+    expect(sharded.every((job) => job.shardTotal === total)).toBe(true);
   });
 
   it('emits one shard per test when a sharded project has fewer tests than shards', () => {
@@ -126,8 +141,8 @@ describe('planMatrix', () => {
   });
 
   it('marks an unsharded job as shard 1 of 1', () => {
-    const wide = planMatrix(projects).find((job) => job.name === 'storybook-wide');
-    expect(wide).toMatchObject({ shardIndex: 1, shardTotal: 1, projects: 'storybook-wide' });
+    const grouped = planMatrix(projects).find((job) => job.name === 'smoke+docs-narrow');
+    expect(grouped).toMatchObject({ shardIndex: 1, shardTotal: 1 });
   });
 
   it('refuses an empty enumeration rather than emitting an empty matrix', () => {

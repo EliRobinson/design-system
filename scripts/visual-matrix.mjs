@@ -18,19 +18,17 @@ import { readFileSync, realpathSync } from 'node:fs';
 
 /* How many machines a project is split across. Absent means one.
  *
- * Only the projects long enough to be the critical path belong here. Measured
- * on run 32287834685: docs-wide was 142 wide captures at 1.37s each (194s),
- * against 107s for the largest storybook project — two shards puts it level
- * with them rather than above them.
+ * Sized so no leg's screenshots take much more than ~90s, because the slowest
+ * leg is the run's wall clock. Measured on run 35190180037 (main, 2026-09-17):
+ * docs-wide 336s over two shards, split unevenly at 213s and 123s since
+ * Playwright balances shards by test count, not duration; storybook-wide 137s;
+ * storybook-narrow 120s. Each leg also pays ~50s of container start, install
+ * and download.
  *
- * Still two after #105, which brought the project back clipped to the content
- * region and added the chrome shots: 160 tests now, not 142, so ~219s serial
- * and ~110s a shard. Clipping does not make a shot cheaper — timed on the same
- * 16 docs shots on one host, clipped 24.0s against full-page 23.0s — because
- * the settle loop still captures the whole page, deliberately, and that is the
- * expensive half. A third shard would take a leg to ~73s and the run's wall
- * clock nowhere, since storybook-wide's 107s is then the critical path: it
- * would buy about three seconds for a machine-minute.
+ * Machine minutes are not the constraint they once were: this repository is
+ * public, so standard runners are not billed. The limit that remains is the
+ * account's 20 concurrent jobs, shared with every other workflow — this plan
+ * is 9 legs.
  *
  * Sharding is not raising the worker count. Every job still runs
  * `--workers=1`: worker contention is the largest single lever on this suite's
@@ -38,7 +36,9 @@ import { readFileSync, realpathSync } from 'node:fs';
  * a separate machine running its own serial browser, never a second browser on
  * the same one. */
 export const SHARDS = {
-  'docs-wide': 2,
+  'docs-wide': 4,
+  'storybook-wide': 2,
+  'storybook-narrow': 2,
 };
 
 /* Projects small enough that a job of their own would be almost entirely

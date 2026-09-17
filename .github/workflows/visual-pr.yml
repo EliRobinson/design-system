@@ -445,12 +445,16 @@ jobs:
 
       # No DS_VISUAL_CONTAINER: the config pins updateSnapshots to 'none'
       # without it, so a baseline still missing here is a hard failure.
-      # --reporter=blob: the only format that merges losslessly across jobs,
-      # diff images included. `scoped` rebuilds the json and html reports.
+      # blob: the only format that merges losslessly across jobs, diff images
+      # included; `scoped` rebuilds the json and html reports from it. json: this
+      # leg's own failing shots, which the regenerate step below reads. Written
+      # outside test-results/, which the next Playwright invocation empties.
       - name: Visual regression, scoped
         if: ${{ !matrix.job.noop }}
+        id: check
         shell: bash
         env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: leg-report.json
           PROJECTS: ${{ matrix.job.projects }}
           SHARD_INDEX: ${{ matrix.job.shardIndex }}
           SHARD_TOTAL: ${{ matrix.job.shardTotal }}
@@ -460,7 +464,7 @@ jobs:
         run: |
           set -euo pipefail
           GREP=$(cat scope-grep.txt)
-          ARGS=(--workers=1 --reporter=blob --grep "$GREP")
+          ARGS=(--workers=1 --reporter=blob,json --grep "$GREP")
           for project in $PROJECTS; do
             ARGS+=("--project=$project")
           done
@@ -469,6 +473,64 @@ jobs:
           fi
           echo "playwright test --project=${PROJECTS// / --project=} --shard=${SHARD_INDEX}/${SHARD_TOTAL} (grep: $(wc -c < scope-grep.txt) bytes)"
           pnpm exec playwright test "${ARGS[@]}"
+
+      # The accept, done where the failures are. Each leg reruns only its own
+      # failing shots, so a palette change that fails every shot regenerates
+      # across the whole matrix at once instead of serially in `scoped`. The leg
+      # still ends red — it failed its comparison — and it pushes nothing: it
+      # uploads the regenerated files, and `scoped` decides whether to commit
+      # them.
+      #
+      # Only on the run where visual-accept was just applied. See `scoped`'s
+      # accept step for why the event, and never the label's presence.
+      #
+      # --update-snapshots=changed, spelled out rather than left to the bare
+      # flag's default — see the mint step in `plan`. It overwrites only a shot
+      # that differs, and the grep holds only this leg's failing titles.
+      #
+      # No change on disk means the failures did not reproduce: #65's flake, not
+      # a baseline. Nothing is uploaded, and `scoped` refuses to accept a run
+      # with a failing shot that no leg regenerated.
+      - name: Regenerate this leg's failing shots
+        if: failure() && steps.check.outcome == 'failure' && github.event.action == 'labeled'
+        id: regen
+        shell: bash
+        env:
+          DS_VISUAL_CONTAINER: '1'
+          PROJECTS: ${{ matrix.job.projects }}
+          SLUG: ${{ matrix.job.slug }}
+        run: |
+          set -euo pipefail
+          if [ ! -f leg-report.json ]; then
+            echo "::error::The comparison wrote no report, so no shot was judged. Nothing here can be accepted."
+            exit 1
+          fi
+          FAILED=$(node scripts/visual-failures.mjs leg-report.json)
+          if [ -z "$FAILED" ]; then
+            echo "::error::The comparison failed but no shot is listed as failing — a crash or a timeout, not a baseline."
+            exit 1
+          fi
+          ARGS=(--workers=1 --reporter=list --update-snapshots=changed --grep "$FAILED")
+          for project in $PROJECTS; do
+            ARGS+=("--project=$project")
+          done
+          pnpm exec playwright test "${ARGS[@]}"
+          git ls-files -m -o --exclude-standard -- tests/visual/__screenshots__ > regenerated.txt
+          if [ ! -s regenerated.txt ]; then
+            echo "::error::Rerunning this leg's failing shots changed no baseline. The failures did not reproduce — see docs/agents/visual-regression.md, step 2."
+            exit 1
+          fi
+          tar -cf "accepted-${SLUG}.tar" -T regenerated.txt
+          echo "Regenerated $(wc -l < regenerated.txt | tr -d ' ') baseline(s)."
+
+      - name: Upload the regenerated baselines
+        if: failure() && steps.regen.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-pr-accepted-${{ matrix.job.slug }}
+          path: accepted-${{ matrix.job.slug }}.tar
+          retention-days: 1
+          if-no-files-found: error
 
       # !cancelled(), so a red leg's evidence survives its own failure.
       - name: Upload the blob report
@@ -485,8 +547,8 @@ jobs:
   # and report steps are written against, then does exactly one of: pass,
   # accept (label just applied), or report (anything else).
   #
-  # Everything that pushes or decides lives here, once. N legs each accepting
-  # baselines and each pushing a commit would race.
+  # Everything that pushes or decides lives here, once. The legs regenerate in
+  # parallel, but N legs each pushing a commit would race.
   scoped:
     needs: [image, plan, compare]
     # !cancelled(): this has to run when `compare` went red — that is when it
@@ -499,9 +561,8 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    # Merging is seconds; the accept path reruns every failing shot serially,
-    # and after a token change that is the whole suite.
-    timeout-minutes: 90
+    # Merging and committing only. No screenshot is taken here any more.
+    timeout-minutes: 20
     container:
       image: ${{ needs.image.outputs.ref }}
       options: --shm-size=1g
@@ -624,27 +685,6 @@ jobs:
           echo "::error::Projects planned but never reported: $(echo "$MISSING" | tr '\n' ' ')"
           exit 1
 
-      # The accept run below re-invokes Playwright, which overwrites
-      # test-results/ and playwright-report/ — destroying the diffs that
-      # explain why a human added the label. Preserve them first.
-      - name: Preserve the failing report before accepting
-        if: steps.merge.outputs.merged == 'true' && needs.compare.result == 'failure' && github.event.action == 'labeled'
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p pre-accept-report
-          cp -r test-results pre-accept-report/test-results 2>/dev/null || true
-          cp -r playwright-report pre-accept-report/playwright-report 2>/dev/null || true
-
-      - name: Fetch the build outputs
-        if: steps.merge.outputs.merged == 'true' && needs.compare.result == 'failure' && github.event.action == 'labeled'
-        uses: actions/download-artifact@v7
-        with:
-          name: visual-pr-build
-      - name: Unpack the build outputs
-        if: steps.merge.outputs.merged == 'true' && needs.compare.result == 'failure' && github.event.action == 'labeled'
-        run: tar -xzf build-outputs.tar.gz
-
       # Overwriting an existing baseline is what the zero-tolerance comparison
       # exists to put a human in front of, so it is opt-in and never automatic.
       #
@@ -656,31 +696,69 @@ jobs:
       # run fired on, so it is one decision, one accept. Accepting again means
       # removing and re-adding the label; that friction is the point.
       #
-      # --update-snapshots=changed, spelled out rather than left to the bare
-      # flag's default — see the mint step in `plan`.
+      # The legs did the regenerating. This commits exactly the baselines of the
+      # shots the merged report says failed, and refuses unless every one of
+      # them came back regenerated: a leg that crashed, timed out or did not
+      # reproduce leaves a failure standing, and committing the rest would turn
+      # the run green over it.
+      #
+      # The required list is computed BEFORE any tarball is unpacked, and only
+      # paths under tests/visual/__screenshots__ are unpacked, so nothing a leg
+      # uploaded can replace the script that decides what to commit.
+      - name: Fetch the regenerated baselines
+        if: steps.merge.outputs.merged == 'true' && needs.compare.result == 'failure' && github.event.action == 'labeled'
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          pattern: visual-pr-accepted-*
+          merge-multiple: true
+          path: accepted
       - name: Accept the changed baselines
         if: steps.merge.outputs.merged == 'true' && needs.compare.result == 'failure' && github.event.action == 'labeled'
         id: accept
         shell: bash
         env:
-          DS_VISUAL_CONTAINER: '1'
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
-          FAILED=$(node scripts/visual-failures.mjs test-results/report.json)
-          if [ -z "$FAILED" ]; then
+          if ! node scripts/visual-failures.mjs --baselines test-results/report.json > /tmp/required.txt; then
+            echo "::error::A failure in this run has no baseline to accept (see above). Nothing was committed."
+            exit 1
+          fi
+          if [ ! -s /tmp/required.txt ]; then
             echo "::error::The comparison failed but no shot is listed as failing — this is not a baseline problem."
             exit 1
           fi
-          pnpm exec playwright test --update-snapshots=changed --workers=1 --grep "$FAILED"
-          COUNT=$(git status --porcelain -- tests/visual/__screenshots__ | wc -l | tr -d ' ')
-          if [ "$COUNT" = "0" ]; then
-            echo "::error::The comparison failed but accepting produced no baseline change — this is not a baseline problem. See the failing legs' output."
+
+          shopt -s nullglob
+          for tarball in accepted/*.tar; do
+            tar -xf "$tarball" --wildcards 'tests/visual/__screenshots__/*'
+          done
+
+          : > /tmp/missing.txt
+          while IFS= read -r path; do
+            if [ -z "$(git status --porcelain -- "$path")" ]; then
+              echo "$path" >> /tmp/missing.txt
+            fi
+          done < /tmp/required.txt
+          if [ -s /tmp/missing.txt ]; then
+            {
+              echo "### Visual accept refused"
+              echo
+              echo "These failing shots were not regenerated, so the run cannot be accepted. Their leg crashed, timed out, or rerendered them identically (#65's flake). Nothing was committed; see the red compare jobs."
+              echo
+              echo '```'
+              cat /tmp/missing.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::$(wc -l < /tmp/missing.txt | tr -d ' ') failing shot(s) were not regenerated. Nothing was committed."
             exit 1
           fi
+
+          COUNT=$(wc -l < /tmp/required.txt | tr -d ' ')
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests/visual/__screenshots__
+          xargs -d '\n' git add -- < /tmp/required.txt
           git commit -m "test(visual): accept ${COUNT} baselines" \
                      -m "Accepted via the visual-accept label on this pull request. Review the images in this diff."
           git push origin "HEAD:$HEAD_REF"
@@ -728,7 +806,6 @@ jobs:
           path: |
             playwright-report/
             test-results/
-            pre-accept-report/
           retention-days: 14
           if-no-files-found: ignore
 

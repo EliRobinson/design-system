@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { failedTitles, failuresByProject, formatPlain } from './visual-failures.mjs';
+import {
+  failedBaselines,
+  failedTitles,
+  failuresByProject,
+  formatPlain,
+} from './visual-failures.mjs';
 
 const report = {
   suites: [
@@ -135,5 +140,71 @@ describe('formatPlain', () => {
         'Input [required] · light',
       ].join('\n'),
     );
+  });
+});
+
+describe('failedBaselines', () => {
+  const mixed = {
+    suites: [
+      {
+        specs: [
+          {
+            title: 'components-button--primary · light',
+            ok: false,
+            tests: [
+              { projectName: 'storybook-wide', status: 'unexpected' },
+              { projectName: 'storybook-narrow', status: 'expected' },
+            ],
+          },
+          {
+            title: '/patterns/forms · dark @responsive',
+            ok: false,
+            tests: [{ projectName: 'docs-narrow', status: 'unexpected' }],
+          },
+          {
+            title: '/ · light',
+            ok: true,
+            tests: [{ projectName: 'docs-wide', status: 'expected' }],
+          },
+        ],
+      },
+    ],
+  };
+
+  it('names the baseline of each failing test, not of each failing title', () => {
+    /* The narrow project passed. Accepting its baseline too would overwrite a
+       shot no comparison judged wrong. */
+    expect(failedBaselines(mixed)).toEqual({
+      paths: [
+        'tests/visual/__screenshots__/docs-narrow/docs/docs.spec.ts/patterns-forms-dark.png',
+        'tests/visual/__screenshots__/storybook-wide/storybook/storybook.spec.ts/components-button--primary-light.png',
+      ],
+      unbaselined: [],
+    });
+  });
+
+  it('reports a failure no baseline can fix', () => {
+    const smoke = {
+      specs: [
+        {
+          title: 'refuses to update outside the container',
+          ok: false,
+          tests: [{ projectName: 'smoke', status: 'unexpected' }],
+        },
+      ],
+    };
+    expect(failedBaselines(smoke)).toEqual({
+      paths: [],
+      unbaselined: ['smoke: refuses to update outside the container'],
+    });
+  });
+
+  it('ignores a flaky test, which passed on its last attempt', () => {
+    const flaky = {
+      specs: [
+        { title: '/ · dark', ok: true, tests: [{ projectName: 'docs-wide', status: 'flaky' }] },
+      ],
+    };
+    expect(failedBaselines(flaky)).toEqual({ paths: [], unbaselined: [] });
   });
 });

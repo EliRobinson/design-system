@@ -8,6 +8,7 @@
 import { readFileSync, realpathSync } from 'node:fs';
 
 import { grepFor } from './visual-missing.mjs';
+import { parseShots } from './visual-shots.mjs';
 
 function collectSpecs(node, out = []) {
   for (const spec of node.specs ?? []) {
@@ -30,6 +31,40 @@ export function failedTitles(report) {
   }
 
   return [...failed];
+}
+
+/**
+ * The baseline file of every failing test, and every failing test that has none.
+ *
+ * Per test, not per spec: a title is shared by its wide and narrow projects, and
+ * one of them can fail while the other passes. Accepting is only honest when it
+ * writes exactly the baselines that failed, so the list is built from each
+ * test's own `status`.
+ *
+ * `unbaselined` is the failures that no baseline can fix — a `smoke` test takes
+ * no screenshot at all. A caller must refuse to accept while it is non-empty:
+ * committing the other baselines would turn a red run green with one of its
+ * failures still standing.
+ */
+export function failedBaselines(report) {
+  const failing = [];
+  const unbaselined = [];
+
+  for (const spec of collectSpecs(report)) {
+    for (const test of spec.tests ?? []) {
+      if (test.status !== 'unexpected') {
+        continue;
+      }
+      if (test.projectName === 'smoke') {
+        unbaselined.push(`${test.projectName}: ${spec.title}`);
+        continue;
+      }
+      failing.push({ title: spec.title, tests: [test] });
+    }
+  }
+
+  const paths = parseShots({ specs: failing }).map((shot) => shot.baselinePath);
+  return { paths: [...new Set(paths)].sort(), unbaselined };
 }
 
 /**
@@ -82,6 +117,8 @@ export function failuresByProject(report) {
      node visual-failures.mjs <report.json>              a --grep pattern
      node visual-failures.mjs --plain <report.json>       plain titles, one per line
      node visual-failures.mjs --by-project <report.json>  "<project>\t<count>" rows
+     node visual-failures.mjs --baselines <report.json>   failing shots' baseline paths, one per line;
+                                                          exits 1 naming any failure no baseline can fix
    Every one of them prints nothing at all when nothing failed, so a workflow
    step can test the output for emptiness rather than parsing it.
 
@@ -96,12 +133,27 @@ if (isEntrypoint) {
   const args = process.argv.slice(2);
   const plain = args.includes('--plain');
   const byProject = args.includes('--by-project');
+  const baselines = args.includes('--baselines');
   const path = args.find((arg) => !arg.startsWith('--'));
   if (!path) {
     throw new Error('visual-failures: a path to report.json is required');
   }
 
   const report = JSON.parse(readFileSync(path, 'utf8'));
+
+  if (baselines) {
+    const { paths, unbaselined } = failedBaselines(report);
+    if (unbaselined.length > 0) {
+      process.stderr.write(
+        `visual-failures: these failures have no baseline to accept:\n${unbaselined.join('\n')}\n`,
+      );
+      process.exit(1);
+    }
+    for (const path of paths) {
+      process.stdout.write(`${path}\n`);
+    }
+    process.exit(0);
+  }
 
   if (byProject) {
     for (const { project, shots } of failuresByProject(report)) {
