@@ -1195,3 +1195,8 @@
   background: none;
   aspect-ratio: 16 / 9;
 }
+
+/* ci probe: a real pixel change to exercise parallel visual-accept; do not merge */
+.prose h2 {
+  letter-spacing: 0.04em;
+}
