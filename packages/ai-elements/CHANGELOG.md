@@ -293,3 +293,5 @@ dark:bg-red-900/30`, `text-white`, `bg-black/50` — literals with a friendlier
   still declares `ai: ^6.0.105` itself. `sync:elements` diffs upstream's dependency ranges
   against the lockfile on every run, so the move to v7 surfaces as a `DEP` line the day
   upstream makes it.
+
+<!-- ci probe: exercise the parallel scoped comparison; do not merge -->
