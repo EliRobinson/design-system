@@ -110,8 +110,8 @@ jobs:
       #
       # A dedicated App narrows it to one named actor. Critically, this is a
       # DIFFERENT App from the baseline bot (DS_BOT_*): that token is minted in
-      # visual.yml's `scoped` job, which persists it into the workspace and
-      # then builds Storybook and the docs site FROM THE PULL REQUEST'S OWN
+      # visual-pr.yml's `plan` and `scoped` jobs, which persist it into the
+      # workspace and then build Storybook and the docs site FROM THE PULL REQUEST'S OWN
       # SOURCE. Pull-request-authored code therefore runs with the baseline
       # bot's credential present. That is acceptable when the worst case is a
       # stray baseline commit; it would be fatal if that same identity could

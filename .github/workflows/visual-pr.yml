@@ -1,0 +1,735 @@
+name: Visual PR
+
+# The pull request half of the visual suite. The push, nightly and dispatch
+# half — the full sweep, its verdict and its recovery — lives in visual.yml.
+#
+# Two files, not one workflow with two paths through it. When both lived in
+# visual.yml, every pull request listed `build`, `sweep`, `full` and `recover`
+# as skipped checks, and every push to main listed `scoped` the same way: jobs
+# that could never run for that event, shown as if something had decided to
+# skip them. A job's `if:` is for a decision made at run time; which event a
+# job belongs to is not one.
+#
+# The name matters to one reader. release.yml triggers on the workflow NAMED
+# `Visual`, so this one must not share it — a pull request run completing would
+# otherwise fire Release, which only its own `event == 'push'` filter would
+# then catch.
+#
+# Job ids matter to another. The `main: required status checks` ruleset names
+# `image` and `scoped` as contexts. Both ids are kept, and `scoped` is still the
+# one job whose conclusion is the pull request's visual verdict: it now needs
+# every `compare` leg rather than taking the screenshots itself.
+
+on:
+  pull_request:
+    # `labeled` matters: pull_request defaults to opened/synchronize/reopened,
+    # and `scoped` tells a human to add the visual-accept label. That only
+    # starts a new run because labeling is itself a trigger here — re-running
+    # the existing run instead would replay the ORIGINAL event payload, whose
+    # `labels` list predates the label being added, so the accept step would
+    # never see it.
+    #
+    # The mint and accept steps push with a GitHub App installation token, and
+    # an App token's pushes DO start workflows — which is the point: a commit
+    # pushed with GITHUB_TOKEN carries no check runs at all, so under required
+    # status checks a minted or accepted commit would sit at the head of the
+    # pull request with nothing able to satisfy the requirement. The recursion
+    # this trades for terminates on the run it creates: that run finds every
+    # baseline present, mints nothing, and pushes nothing. The accept path
+    # terminates for the same reason plus the one-shot label.
+    types: [opened, synchronize, reopened, labeled]
+
+# cancel-in-progress: a pull request wants feedback on the newest push, not a
+# stale one, and the mint commit is atomic, so a cancellation costs compute,
+# never a half-written baseline on the branch.
+#
+# The label name is part of the key, and that is what keeps cancellation from
+# swallowing the check. Concurrency is evaluated at RUN level, before any job
+# `if:` is read — so on a key of `github.ref` alone, adding ANY label (`wip`,
+# `docs`) would cancel the run in flight, and the replacement's jobs would then
+# be skipped by their own `if:`, concluding success having compared nothing.
+# Varying the key gives a labelling run its own group: `github.event.action`
+# is not `labeled` for a push, so the expression falls through to 'run'.
+concurrency:
+  group: visual-pr-${{ github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name || 'run' }}
+  cancel-in-progress: true
+
+# Read-only by default. `plan` and `scoped` elevate to contents: write for
+# themselves only; the `compare` legs, which run the most pull-request-authored
+# code for the longest, never hold a write credential.
+permissions:
+  contents: read
+
+jobs:
+  # A job's `container:` is resolved before any of its steps run, so the image
+  # cannot be computed inside the job that uses it. This one only prints it:
+  # tag@sha256:…, derived from pnpm-lock.yaml and checked against
+  # scripts/visual-image.lock.json. See visual.yml's copy for the long form.
+  image:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.resolve.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+      - id: resolve
+        run: echo "ref=$(node scripts/visual-container.mjs --print-image)" >> "$GITHUB_OUTPUT"
+
+  # Everything that has to happen once, before a screenshot is compared:
+  # build both apps, decide the scope, mint baselines for shots that have none,
+  # and plan the matrix the comparison fans out across.
+  plan:
+    needs: image
+    # `labeled` cannot be filtered in the `on:` trigger — GitHub takes every
+    # label or none — so the filter lives here: a labeling event only runs for
+    # visual-accept. `compare` and `scoped` inherit it through `needs`.
+    if: github.event.action != 'labeled' || github.event.label.name == 'visual-accept'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    # A build plus, worst case, a fan-out mint at --workers=1.
+    timeout-minutes: 60
+    container:
+      image: ${{ needs.image.outputs.ref }}
+      options: --shm-size=1g
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+      sha: ${{ steps.head.outputs.sha }}
+      matrix: ${{ steps.matrix.outputs.include }}
+    env:
+      HUSKY: 0
+      STORYBOOK_DISABLE_TELEMETRY: 1
+    steps:
+      # The baseline bot's installation token is scoped to THIS repository, so
+      # it cannot push to a fork's branch, and fetching the base ref through a
+      # fork's `origin` can silently compute the wrong merge base. Fail fast
+      # with the remedy instead. head.repo.full_name, not head.repo.fork:
+      # `.fork` is true whenever the head repo is a fork of anything at all.
+      - name: Refuse pull requests from forks
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "::error::This pull request comes from a fork. The baseline bot's installation token is scoped to this repository, so it cannot push back to a fork's branch, and this job cannot mint or accept baselines here."
+          echo "A maintainer can regenerate baselines directly instead:"
+          echo "  gh workflow run visual-update.yml --ref <branch> --field grep=<pattern>"
+          exit 1
+
+      # Checked before the token is minted, because the thing guarded against
+      # is SILENCE. If these secrets go missing, the tempting fallback is
+      # GITHUB_TOKEN — which still pushes, still goes green, and produces
+      # exactly the check-less commit that makes a pull request unmergeable.
+      - name: Require the baseline bot's credentials
+        shell: bash
+        env:
+          APP_ID: ${{ secrets.DS_BOT_APP_ID }}
+          PRIVATE_KEY: ${{ secrets.DS_BOT_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          MISSING=""
+          [ -n "${APP_ID:-}" ]      || MISSING="$MISSING DS_BOT_APP_ID"
+          [ -n "${PRIVATE_KEY:-}" ] || MISSING="$MISSING DS_BOT_PRIVATE_KEY"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing repository secret(s):$MISSING — the baseline bot cannot push, and this job must not fall back to GITHUB_TOKEN (its commits carry no check runs, which makes a minted pull request unmergeable under branch protection)."
+            echo "Fix: create/install the GitHub App with contents:write (plus pull-requests:write and issues:write for visual.yml's recover job), then:"
+            echo "  gh secret set DS_BOT_APP_ID --body '<app id>'"
+            echo "  gh secret set DS_BOT_PRIVATE_KEY < <app>.private-key.pem"
+            exit 1
+          fi
+
+      - name: Mint a token for the baseline bot
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DS_BOT_APP_ID }}
+          private-key: ${{ secrets.DS_BOT_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v7
+        with:
+          # head.sha, not head.ref and not the merge commit: the scoper diffs
+          # against the merge base and the mint step pushes back to the branch,
+          # and a concurrent push cannot move what this job operates on. The
+          # push still targets the branch by name, so git's fast-forward check
+          # rejects it if the branch moved.
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0
+          persist-credentials: true
+          # The App token, so the mint push starts the workflows that give its
+          # commit check runs. Without it the push is silently check-less.
+          token: ${{ steps.app_token.outputs.token }}
+      # Before anything else can shell out to git: the working copy is made by
+      # the runner user while steps run as root, git's "dubious ownership" case.
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Set up pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+      - name: Locate the pnpm store
+        id: pnpm_store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # Restore only. A cache entry is write-once and keyed per commit, so a
+      # pull request saving one was a ~70s upload on every push that only that
+      # same pull request's later pushes could ever prefer over main's. visual.yml's
+      # `build` job saves on every push to main and nightly, and that is what
+      # the `restore-keys` prefixes find. See its copy for why both Nx paths
+      # are required and why `cache: true` in nx.json is what makes it work.
+      - uses: actions/cache/restore@v6
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache/restore@v6
+        with:
+          path: |
+            .nx/cache
+            .nx/workspace-data
+            !.nx/workspace-data/d
+          key: ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-nx-${{ hashFiles('pnpm-lock.yaml') }}-
+            ${{ runner.os }}-nx-
+
+      # Before the scope step, and don't reorder it: visual-scope.mjs
+      # enumerates through Playwright's --list, which needs both builds, and its
+      # per-side guard throws if a changed component maps to no shot — which
+      # happens whenever a new component's stories aren't built yet.
+      - name: Build Storybook and the docs site
+        run: pnpm run pretest:visual
+
+      - name: Identify the merge base
+        id: base
+        shell: bash
+        env:
+          # Through the environment, not interpolated: a branch name is
+          # attacker-controlled text on a job holding contents: write, and git
+          # allows `$()`, backticks and `;` in branch names.
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE_REF"
+          if ! MERGE_BASE=$(git merge-base HEAD FETCH_HEAD); then
+            echo "::error::git merge-base produced no result against origin/$BASE_REF."
+            exit 1
+          fi
+          echo "sha=$MERGE_BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Decide what to run
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/visual-scope.mjs --base "${{ steps.base.outputs.sha }}" > /tmp/plan.json
+          cat /tmp/plan.json
+
+          # A file rather than a step output: the pattern can name every route,
+          # and holds characters a $GITHUB_OUTPUT round trip would mangle. It
+          # travels to the `compare` legs inside the build artifact.
+          node -pe 'JSON.parse(require("fs").readFileSync("/tmp/plan.json","utf8")).grep ?? ""' > scope-grep.txt
+
+          RUN=$(node -pe 'JSON.parse(require("fs").readFileSync("/tmp/plan.json","utf8")).run')
+          REASON=$(node -pe 'JSON.parse(require("fs").readFileSync("/tmp/plan.json","utf8")).reason')
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+
+          printf '### Visual scope\n\n%s\n' "$REASON" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$RUN" = "true" ] && [ ! -s scope-grep.txt ]; then
+            echo "::error::scope said run=true but produced no grep pattern — refusing to fall back to an unscoped run of every shot."
+            exit 1
+          fi
+
+      # Missing baselines are new work, not regressions. This can only CREATE a
+      # baseline, never overwrite one, which is what keeps it from laundering a
+      # regression.
+      #
+      # --update-snapshots=missing, NOT a bare --update-snapshots: the bare
+      # flag means "changed", which overwrites any baseline that differs — and
+      # grepFor matches by title, which wide and narrow projects share. With
+      # =missing Playwright refuses to overwrite anything, so the broad pattern
+      # is harmless by construction.
+      #
+      # `missing` mode writes the baseline and then fails the test on purpose,
+      # so the command exits non-zero exactly when it minted something; `|| true`
+      # tolerates that. Nothing is laundered: `compare` runs WITHOUT
+      # DS_VISUAL_CONTAINER, which pins updateSnapshots to 'none', so any
+      # baseline this failed to write still hard-fails there.
+      #
+      # Serial, and still in this job rather than fanned out: minting is the
+      # rare path (a component-adding pull request), it has to finish before
+      # any leg checks out the commit it produces, and it pushes.
+      - name: Mint baselines for new shots
+        if: steps.scope.outputs.run == 'true'
+        id: mint
+        shell: bash
+        env:
+          DS_VISUAL_CONTAINER: '1'
+        run: |
+          set -euo pipefail
+          if MISSING=$(node scripts/visual-missing.mjs); then
+            :
+          else
+            echo "::error::visual-missing.mjs exited non-zero — treating that as a hard failure, not as 'nothing is missing'."
+            exit 1
+          fi
+          if [ -z "$MISSING" ]; then
+            echo "Every shot already has a baseline."
+            echo "minted=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pnpm exec playwright test --update-snapshots=missing --workers=1 --grep "$MISSING" || true
+          COUNT=$(git status --porcelain -- tests/visual/__screenshots__ | wc -l | tr -d ' ')
+          echo "minted=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Commit the new baselines
+        if: steps.mint.outputs.minted != '0' && steps.mint.outputs.minted != ''
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/visual/__screenshots__
+          git commit -m "test(visual): ${{ steps.mint.outputs.minted }} new baselines" \
+                     -m "Generated on the runner for shots that had none. Review the images in this diff."
+          git push origin "HEAD:$HEAD_REF"
+
+      # The commit every later job checks out: the pull request head, or the
+      # mint commit on top of it. A leg that checked out head.sha after a mint
+      # would compare against a tree with no baseline for the new shots and
+      # fail them — the mint's own push usually cancels this run first, but
+      # nothing downstream should depend on that race.
+      - name: Record the commit to compare
+        id: head
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # After the build and the mint, because it enumerates through Playwright
+      # with the scoped pattern, so the jobs and shard counts match what each
+      # leg will run. A small scope comes back as one job; a large one fans
+      # out exactly like main's sweep. See scripts/visual-matrix.mjs.
+      - name: Plan the comparison matrix
+        if: steps.scope.outputs.run == 'true'
+        id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          INCLUDE=$(node scripts/visual-matrix.mjs --grep-file scope-grep.txt)
+          echo "include=$INCLUDE" >> "$GITHUB_OUTPUT"
+          {
+            echo
+            echo "### Comparison matrix"
+            echo
+            echo '```json'
+            echo "$INCLUDE"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # See visual.yml's "Pack the build outputs" for each path: `.next/cache`
+      # is Next's incremental build cache and not served; public/brand is
+      # written by the build, gitignored, and served off disk, so no checkout
+      # supplies it. scope-grep.txt rides along so every leg reads the same
+      # pattern this job decided.
+      - name: Pack the build outputs
+        if: steps.scope.outputs.run == 'true'
+        run: tar -czf build-outputs.tar.gz --exclude='.next/cache' apps/storybook/storybook-static apps/docs/.next apps/docs/public/brand scope-grep.txt
+      - if: steps.scope.outputs.run == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-pr-build
+          path: build-outputs.tar.gz
+          retention-days: 1
+
+  # The scoped comparison, fanned out. Same shape as visual.yml's `sweep`: one
+  # job per project, sharded where a project is long, each writing a blob
+  # report and deciding nothing.
+  #
+  # Every invocation is still --workers=1. Worker contention is the largest
+  # single lever on this suite's flake rate (18 failures to 1, issue #65), so a
+  # leg is a separate machine running its own serial browser. Parallelism is
+  # bought across VMs, never inside one.
+  compare:
+    needs: [image, plan]
+    if: needs.plan.outputs.run == 'true'
+    name: compare (${{ matrix.job.name }})
+    strategy:
+      # Load-bearing: fail-fast would cancel the siblings of the first red leg,
+      # and `scoped` would then accept or report against shots never judged.
+      fail-fast: false
+      matrix:
+        job: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      image: ${{ needs.image.outputs.ref }}
+      options: --shm-size=1g
+    env:
+      HUSKY: 0
+      STORYBOOK_DISABLE_TELEMETRY: 1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          # Nothing here pushes, and pull-request-authored code runs here for
+          # minutes. It keeps no credential in the workspace.
+          persist-credentials: false
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Set up pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+      - name: Locate the pnpm store
+        id: pnpm_store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v6
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+      - run: pnpm install --frozen-lockfile
+      - name: Fetch the build outputs
+        uses: actions/download-artifact@v7
+        with:
+          name: visual-pr-build
+      - name: Unpack the build outputs
+        run: tar -xzf build-outputs.tar.gz
+
+      # A missing served-off-disk asset does not fail a screenshot — it renders
+      # as a stable empty box that compares equal to itself forever. So the
+      # guard has to be here, before Playwright starts (#149).
+      - name: Check the build outputs are complete
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for path in \
+            apps/storybook/storybook-static/index.json \
+            apps/docs/.next/prerender-manifest.json \
+            apps/docs/public/brand \
+            scope-grep.txt
+          do
+            if [ ! -e "$path" ]; then
+              echo "::error::$path is missing from the build tarball."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      # No DS_VISUAL_CONTAINER: the config pins updateSnapshots to 'none'
+      # without it, so a baseline still missing here is a hard failure.
+      # --reporter=blob: the only format that merges losslessly across jobs,
+      # diff images included. `scoped` rebuilds the json and html reports.
+      - name: Visual regression, scoped
+        shell: bash
+        env:
+          PROJECTS: ${{ matrix.job.projects }}
+          SHARD_INDEX: ${{ matrix.job.shardIndex }}
+          SHARD_TOTAL: ${{ matrix.job.shardTotal }}
+          # Named after the leg, so two legs can never write the same file into
+          # the merge directory, where the second would replace the first.
+          PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.job.slug }}.zip
+        run: |
+          set -euo pipefail
+          GREP=$(cat scope-grep.txt)
+          ARGS=(--workers=1 --reporter=blob --grep "$GREP")
+          for project in $PROJECTS; do
+            ARGS+=("--project=$project")
+          done
+          if [ "$SHARD_TOTAL" != "1" ]; then
+            ARGS+=("--shard=${SHARD_INDEX}/${SHARD_TOTAL}")
+          fi
+          echo "playwright test --project=${PROJECTS// / --project=} --shard=${SHARD_INDEX}/${SHARD_TOTAL} (grep: $(wc -c < scope-grep.txt) bytes)"
+          pnpm exec playwright test "${ARGS[@]}"
+
+      # !cancelled(), so a red leg's evidence survives its own failure.
+      - name: Upload the blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-pr-blob-${{ matrix.job.slug }}
+          path: blob-report/
+          retention-days: 14
+          if-no-files-found: error
+
+  # The pull request's visual verdict, and the job the ruleset requires. It
+  # merges the legs' reports into the one test-results/report.json the accept
+  # and report steps are written against, then does exactly one of: pass,
+  # accept (label just applied), or report (anything else).
+  #
+  # Everything that pushes or decides lives here, once. N legs each accepting
+  # baselines and each pushing a commit would race.
+  scoped:
+    needs: [image, plan, compare]
+    # !cancelled(): this has to run when `compare` went red — that is when it
+    # accepts or reports — and when `plan` failed, so the required check is red
+    # rather than skipped. The label filter is repeated from `plan`, because a
+    # skipped `plan` would otherwise leave this to run and fail on it.
+    if: >-
+      !cancelled() &&
+      (github.event.action != 'labeled' || github.event.label.name == 'visual-accept')
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    # Merging is seconds; the accept path reruns every failing shot serially,
+    # and after a token change that is the whole suite.
+    timeout-minutes: 90
+    container:
+      image: ${{ needs.image.outputs.ref }}
+      options: --shm-size=1g
+    env:
+      HUSKY: 0
+      STORYBOOK_DISABLE_TELEMETRY: 1
+      PLAN_RESULT: ${{ needs.plan.result }}
+      COMPARE_RESULT: ${{ needs.compare.result }}
+      RUN: ${{ needs.plan.outputs.run }}
+    steps:
+      - name: The plan has to have succeeded
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$PLAN_RESULT" != "success" ]; then
+            echo "::error::The plan job concluded '${PLAN_RESULT}' — a fork, missing credentials, a build break or a scope error. Nothing was compared. See that job's log."
+            exit 1
+          fi
+          if [ "$RUN" != "true" ]; then
+            echo "Nothing in this change can alter a shot. See the plan job's summary for the reason."
+          fi
+
+      # Only on the run where the label was just applied, and only when
+      # something failed: that is the one path in this job that pushes.
+      - name: Mint a token for the baseline bot
+        if: env.RUN == 'true' && needs.compare.result == 'failure' && github.event.action == 'labeled'
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DS_BOT_APP_ID }}
+          private-key: ${{ secrets.DS_BOT_PRIVATE_KEY }}
+
+      - if: env.RUN == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          persist-credentials: ${{ steps.app_token.outputs.token != '' }}
+          token: ${{ steps.app_token.outputs.token || github.token }}
+      - if: env.RUN == 'true'
+        name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - if: env.RUN == 'true'
+        name: Set up pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+      - if: env.RUN == 'true'
+        name: Locate the pnpm store
+        id: pnpm_store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - if: env.RUN == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+      - if: env.RUN == 'true'
+        run: pnpm install --frozen-lockfile
+
+      # continue-on-error: a leg that never started leaves nothing to fetch,
+      # and the merge step below turns that into a named failure instead.
+      - name: Fetch every leg's blob report
+        if: env.RUN == 'true'
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          pattern: visual-pr-blob-*
+          merge-multiple: true
+          path: all-blob-reports
+
+      # PLAYWRIGHT_JSON_OUTPUT_FILE rather than a redirect: the html reporter
+      # prints to stdout too, and would interleave into the JSON. `|| true`:
+      # merge-reports exits 1 when the merged result failed, which is expected
+      # here; the verdict comes from `needs.compare.result`, never this exit.
+      #
+      # `rm -rf` first: the accept step picks which baselines to overwrite out
+      # of test-results/report.json, and that file must be the one THIS merge
+      # wrote — never a leftover that no comparison in this run judged.
+      - name: Merge the legs into one report
+        if: env.RUN == 'true'
+        id: merge
+        shell: bash
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: test-results/report.json
+          PLAYWRIGHT_HTML_OPEN: never
+        run: |
+          set -euo pipefail
+          rm -rf test-results playwright-report
+          mkdir -p test-results
+          if [ -z "$(ls -A all-blob-reports 2>/dev/null)" ]; then
+            echo "::error::No comparison leg produced a blob report (compare: ${COMPARE_RESULT}). Nothing was judged."
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          pnpm exec playwright merge-reports --reporter=json,html all-blob-reports || true
+          if [ ! -f test-results/report.json ]; then
+            echo "::error::merge-reports produced no report.json from $(ls all-blob-reports | wc -l) blob report(s)."
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "merged=true" >> "$GITHUB_OUTPUT"
+
+      # "Every leg succeeded" is not "every leg ran". A leg whose blob failed
+      # to upload leaves the rest green and the merged report short — a clean-
+      # looking run where a whole project was never compared.
+      - name: Every project in the matrix reported
+        if: steps.merge.outputs.merged == 'true'
+        shell: bash
+        env:
+          MATRIX: ${{ needs.plan.outputs.matrix }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$MATRIX" > /tmp/matrix.json
+          if MISSING=$(node scripts/visual-matrix.mjs --verify /tmp/matrix.json test-results/report.json); then
+            echo "Every project the matrix planned is present in the merged report."
+            exit 0
+          fi
+          echo "::error::Projects planned but never reported: $(echo "$MISSING" | tr '\n' ' ')"
+          exit 1
+
+      # The accept run below re-invokes Playwright, which overwrites
+      # test-results/ and playwright-report/ — destroying the diffs that
+      # explain why a human added the label. Preserve them first.
+      - name: Preserve the failing report before accepting
+        if: steps.merge.outputs.merged == 'true' && needs.compare.result == 'failure' && github.event.action == 'labeled'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pre-accept-report
+          cp -r test-results pre-accept-report/test-results 2>/dev/null || true
+          cp -r playwright-report pre-accept-report/playwright-report 2>/dev/null || true
+
+      - name: Fetch the build outputs
+        if: steps.merge.outputs.merged == 'true' && needs.compare.result == 'failure' && github.event.action == 'labeled'
+        uses: actions/download-artifact@v7
+        with:
+          name: visual-pr-build
+      - name: Unpack the build outputs
+        if: steps.merge.outputs.merged == 'true' && needs.compare.result == 'failure' && github.event.action == 'labeled'
+        run: tar -xzf build-outputs.tar.gz
+
+      # Overwriting an existing baseline is what the zero-tolerance comparison
+      # exists to put a human in front of, so it is opt-in and never automatic.
+      #
+      # github.event.action == 'labeled', NOT the label's presence on the pull
+      # request: the label stays after this run, and testing for it would turn
+      # every later push into a silent accept — label once for an intended
+      # change, push a regression the next day, and it is committed as a
+      # baseline with no second look. `github.event.action` is the event THIS
+      # run fired on, so it is one decision, one accept. Accepting again means
+      # removing and re-adding the label; that friction is the point.
+      #
+      # --update-snapshots=changed, spelled out rather than left to the bare
+      # flag's default — see the mint step in `plan`.
+      - name: Accept the changed baselines
+        if: steps.merge.outputs.merged == 'true' && needs.compare.result == 'failure' && github.event.action == 'labeled'
+        id: accept
+        shell: bash
+        env:
+          DS_VISUAL_CONTAINER: '1'
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          FAILED=$(node scripts/visual-failures.mjs test-results/report.json)
+          if [ -z "$FAILED" ]; then
+            echo "::error::The comparison failed but no shot is listed as failing — this is not a baseline problem."
+            exit 1
+          fi
+          pnpm exec playwright test --update-snapshots=changed --workers=1 --grep "$FAILED"
+          COUNT=$(git status --porcelain -- tests/visual/__screenshots__ | wc -l | tr -d ' ')
+          if [ "$COUNT" = "0" ]; then
+            echo "::error::The comparison failed but accepting produced no baseline change — this is not a baseline problem. See the failing legs' output."
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/visual/__screenshots__
+          git commit -m "test(visual): accept ${COUNT} baselines" \
+                     -m "Accepted via the visual-accept label on this pull request. Review the images in this diff."
+          git push origin "HEAD:$HEAD_REF"
+          echo "Accepted ${COUNT} baselines." >> "$GITHUB_STEP_SUMMARY"
+
+      # The mirror of Accept's condition: exactly one of the two runs on any
+      # red comparison. A push that fails while visual-accept is already on the
+      # pull request lands here — the label only accepts on the run that
+      # applied it.
+      - name: Report the failing shots
+        if: steps.merge.outputs.merged == 'true' && needs.compare.result == 'failure' && github.event.action != 'labeled'
+        shell: bash
+        env:
+          LABEL_ALREADY_PRESENT: ${{ contains(github.event.pull_request.labels.*.name, 'visual-accept') }}
+        run: |
+          set -euo pipefail
+          if [ "$LABEL_ALREADY_PRESENT" = "true" ]; then
+            ACCEPT_INSTRUCTION="These changes were not auto-accepted, even though \`visual-accept\` is already on this pull request — the label accepts once, on the run where it is applied, not on every later push. If they are intended, remove and re-add the \`visual-accept\` label to accept this run's failures; that re-add starts a new run on its own."
+          else
+            ACCEPT_INSTRUCTION="If these changes are intended, add the \`visual-accept\` label — that starts a new run on its own; there is no need to re-run this one."
+          fi
+          {
+            echo "### Visual regression"
+            echo
+            echo "$ACCEPT_INSTRUCTION"
+            echo
+            echo "| project | failing shots |"
+            echo "| ------- | ------------- |"
+            node scripts/visual-failures.mjs --by-project test-results/report.json | while IFS=$'\t' read -r project shots; do
+              echo "| \`${project}\` | ${shots} |"
+            done
+            echo
+            echo '```'
+            node scripts/visual-failures.mjs --plain test-results/report.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::Visual comparison failed. See the job summary for the shots and how to accept them."
+          exit 1
+
+      - name: Upload report and diffs
+        if: ${{ !cancelled() && env.RUN == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-report-scoped
+          path: |
+            playwright-report/
+            test-results/
+            pre-accept-report/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      # The verdict. Green when nothing needed comparing, when every leg
+      # passed, or when this run accepted the failures. Anything else is red —
+      # including a `compare` that was cancelled or skipped while `plan` said
+      # there was work, which a required check must never read as a pass.
+      - name: Decide the verdict
+        if: ${{ !cancelled() }}
+        shell: bash
+        env:
+          ACCEPTED: ${{ steps.accept.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          if [ "$RUN" != "true" ]; then
+            echo "Nothing to compare."
+            exit 0
+          fi
+          if [ "$COMPARE_RESULT" = "success" ]; then
+            echo "Every comparison leg passed."
+            exit 0
+          fi
+          if [ "$ACCEPTED" = "true" ]; then
+            echo "The comparison failed and its shots were accepted."
+            exit 0
+          fi
+          echo "::error::The comparison concluded '${COMPARE_RESULT}'. See the individual compare jobs for which project failed."
+          exit 1
