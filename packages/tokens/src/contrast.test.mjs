@@ -62,7 +62,7 @@ function ratio(combination, foreground, background) {
    round to 4.01 and 4.00 and look like a change.
 
    Hue is the other half of the dial and it is the half that costs more. The
-   four palettes sit at `--n-h` 247, 252, 252 and 265, and sRGB's luminance
+   five palettes sit at `--n-h` 247, 252, 252, 265 and 247, and sRGB's luminance
    weights are not hue-symmetric, so a blue-leaning grey composites a hair
    darker than a violet-leaning one at the same lightness. Widening the roster
    to miltinson-tech at hue 265 took the largest spread from 0.003:1 to
@@ -99,6 +99,8 @@ describe('the sweep covers the whole vocabulary', () => {
       'miltinson/dark',
       'miltinson-tech/light',
       'miltinson-tech/dark',
+      'steady/light',
+      'steady/dark',
     ]);
   });
 
