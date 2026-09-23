@@ -6,6 +6,21 @@
   "targets": {
     "test": {
       "command": "pnpm run test",
+      /* The review-gate tests in agent-hooks/ read the gate's config files at
+         the repo root. They belong to no project, so name them here or an edit
+         to one replays a cached pass. */
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/.agents/skills/review-gate/**",
+        "{workspaceRoot}/.claude/agents/review-*.md",
+        "{workspaceRoot}/.claude/settings.json",
+        "{workspaceRoot}/.codex/hooks.json",
+        "{workspaceRoot}/.cursor/hooks.json",
+        "{workspaceRoot}/.gemini/settings.json",
+        "{workspaceRoot}/.github/hooks/review-gate.json",
+        "{workspaceRoot}/.github/pull_request_template.md"
+      ],
       "options": {
         "cwd": "scripts"
       }
