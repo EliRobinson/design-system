@@ -16,6 +16,10 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 
 **Components:** Components live under `packages/react/src/components/<tier>/` (atoms/molecules/organisms/ai). Every interactive component uses `forwardRef`. Touch targets are scoped, not blanket: >=44x44 for primary controls (buttons, pagination, segmented-control, nav items), shadcn/MUI-scale sizing for dense inline affordances (chip remove, search clear, rating stars, calendar days) — either way, an expanded hit area must never overlap sibling content. See [Components](docs/agents/components.md) for the tier boundary rule and full constraints.
 
+## Do not
+
+- Do not open a PR before the review gate runs. Use the `review-gate` skill (`.agents/skills/review-gate/SKILL.md`). A hook enforces it.
+
 ## Topic guides
 
 - [Tokens](docs/agents/tokens.md)
@@ -31,6 +35,7 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 - [Publishing](docs/agents/publishing.md)
 - [Trello card relations](docs/agents/trello-card-relations.md) — the `## Relations` block every card carries, and why the Card Relations Power-Up is not the record
 - [Git workflow](docs/agents/git-workflow.md) — commit style, the Nx cache worktrees share, before/after screenshots for front-end PRs
+- [Git, hooks, and pull requests](docs/agents/git-and-prs.md) — the pre-PR review gate
 - [Visual regression](docs/agents/visual-regression.md) — what to do when a baseline passes locally and fails in CI
 
 Brand source of truth: `design-system-docs/` (preview swatches, UI kits, agent skill).
