@@ -333,21 +333,20 @@ describe('hook configs stay in step with the tool table', () => {
         bash?: string;
         hooks?: Array<{ command: string }>;
       }> = JSON.parse(readFileSync(atRoot(file), 'utf8')).hooks[event];
-      const commands = entries
-        // Filter to review-gate entries only, so other hooks a repo adds to
-        // the same file cannot break this test.
-        .filter((entry) =>
-          [entry.command, entry.bash, ...(entry.hooks?.map((hook) => hook.command) ?? [])]
-            .filter(Boolean)
-            .some((command) => command?.includes('review-gate')),
-        )
-        .flatMap(
-          (entry) =>
-            entry.hooks?.map((hook) => hook.command) ?? [entry.command ?? entry.bash ?? ''],
-        );
+      // Filter to review-gate entries only, so other hooks a repo adds to
+      // the same file cannot break this test.
+      const gateEntries = entries.filter((entry) =>
+        [entry.command, entry.bash, ...(entry.hooks?.map((hook) => hook.command) ?? [])]
+          .filter(Boolean)
+          .some((command) => command?.includes('review-gate')),
+      );
+      expect(gateEntries.length).toBeGreaterThan(0);
+      const commands = gateEntries.flatMap(
+        (entry) => entry.hooks?.map((hook) => hook.command) ?? [entry.command ?? entry.bash ?? ''],
+      );
       for (const command of commands) expect(command).toContain(`--agent=${tool}`);
       for (const name of [...TOOLS[tool].shellTools, ...(mcp ? [mcp] : [])]) {
-        expect(entries.some((entry) => matches(entry.matcher, name))).toBe(true);
+        expect(gateEntries.some((entry) => matches(entry.matcher, name))).toBe(true);
       }
     },
   );
