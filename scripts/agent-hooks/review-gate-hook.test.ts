@@ -16,10 +16,19 @@ const HOOK = fileURLToPath(new URL('./review-gate.mjs', import.meta.url));
 
 let repo: string;
 
+// Git sets GIT_DIR and friends when it runs a hook such as pre-push. If the
+// child git and node calls inherit them, they act on this repo's real .git
+// instead of the throwaway repo.
+const GIT_ENV_LEAKS = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX'];
+const childEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([key]) => !GIT_ENV_LEAKS.includes(key)),
+);
+
 const git = (...args: string[]) =>
   execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {
     cwd: repo,
     stdio: 'ignore',
+    env: childEnv,
   });
 
 function run(agent: string, event: unknown) {
@@ -27,6 +36,7 @@ function run(agent: string, event: unknown) {
     input: typeof event === 'string' ? event : JSON.stringify(event),
     cwd: repo,
     encoding: 'utf8',
+    env: childEnv,
   });
   let json = null;
   try {
@@ -83,7 +93,7 @@ describe('Claude Code', () => {
       REVIEWERS.map(
         ({ agent }) =>
           new Promise((resolve) => {
-            const child = spawn('node', [HOOK, '--agent=claude'], { cwd: repo });
+            const child = spawn('node', [HOOK, '--agent=claude'], { cwd: repo, env: childEnv });
             child.on('close', resolve);
             child.stdin.end(JSON.stringify(stop(agent)));
           }),
