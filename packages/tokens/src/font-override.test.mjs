@@ -114,6 +114,24 @@ describe('the font family override hook', () => {
   });
 });
 
+/* The type classes whose colour sits in `@layer base` (#251). Every `.t-*` but
+   `.t-code`, which has never set a colour. */
+const TYPE_CLASSES_THAT_PAINT = [
+  '.t-display-1',
+  '.t-display-2',
+  '.t-h1',
+  '.t-h2',
+  '.t-h3',
+  '.t-h4',
+  '.t-h5',
+  '.t-lead',
+  '.t-body',
+  '.t-body-sm',
+  '.t-caption',
+  '.t-eyebrow',
+  '.t-mono',
+];
+
 describe('the cascade rule the hook relies on', () => {
   it.each(IMPORTED_STYLESHEETS)(
     'leaves every token declaration in %s unlayered, which is why a consumer @layer base override of a token loses',
@@ -139,7 +157,7 @@ describe('the cascade rule the hook relies on', () => {
     },
   );
 
-  it('keeps tokens.css’s layer blocks down to the two rules they were opened for', () => {
+  it('keeps tokens.css’s layer blocks down to the rules they were opened for', () => {
     // A guard on scope rather than on tokens: `@layer base { … }` is an easy
     // thing to keep adding rules to, and every rule moved into it silently
     // becomes overridable by any unlayered consumer CSS. Widening it should be
@@ -153,8 +171,13 @@ describe('the cascade rule the hook relies on', () => {
     // in a new spelling. Being overridable by unlayered consumer CSS is the
     // POINT of both, not a cost.
     //
-    // Neither block declares a custom property, so the guarantee the test above
-    // protects — no `--token: …` inside a layer — is untouched by either.
+    // It has been widened a second time, deliberately. The third block is the
+    // `.t-*` type classes' `color` (#251), and only their colour: unlayered, it
+    // beat `text-destructive-ink` on a `t-caption`, which is #112 again. The
+    // rest of each type class stays unlayered.
+    //
+    // No block declares a custom property, so the guarantee the test above
+    // protects — no `--token: …` inside a layer — is untouched by any of them.
     // Compared as a set: which rules are layered is the invariant, where the
     // blocks sit in the file is not, and asserting the order would make this go
     // red on a move that changes no cascade.
@@ -163,9 +186,10 @@ describe('the cascade rule the hook relies on', () => {
       [...block.matchAll(/([^{}]+)\{/g)].map((match) => match[1].replace(/\s+/g, ' ').trim()),
     );
 
-    expect(blocks).toHaveLength(2);
+    expect(blocks).toHaveLength(3);
     expect([...selectors].sort()).toEqual(
       [
+        ...TYPE_CLASSES_THAT_PAINT,
         'a',
         'a:hover',
         'button, input, optgroup, select, textarea',

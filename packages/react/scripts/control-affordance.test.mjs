@@ -152,11 +152,25 @@ describe('a filled control never renders its own label underlined', () => {
     /* The other half: the layer has not quietly become the place to put
        anything that paints a control. It has been widened once — #167 put the
        form-control `font: inherit` reset there, for the same #112 reason the
-       link rule is there — and that rule declares no text-decoration, so the
-       underline story is unchanged by it. Compared as a set; source order is
-       not the invariant. */
+       link rule is there — and #251 widened it again with the `.t-*` type
+       classes' colour. Neither declares a text-decoration, so the underline
+       story is unchanged by them. Compared as a set; source order is not the
+       invariant. */
     expect([...layered].sort()).toEqual(
       [
+        '.t-display-1',
+        '.t-display-2',
+        '.t-h1',
+        '.t-h2',
+        '.t-h3',
+        '.t-h4',
+        '.t-h5',
+        '.t-lead',
+        '.t-body',
+        '.t-body-sm',
+        '.t-caption',
+        '.t-eyebrow',
+        '.t-mono',
         'a',
         'a:hover',
         'button, input, optgroup, select, textarea',
