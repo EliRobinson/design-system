@@ -244,15 +244,24 @@
      A legend still needs a label or a shape. Colour is never the only channel
      that carries meaning (SC 1.4.1), and eight categories is exactly where
      that rule starts to matter.
+
+     Both themes are held to the dataviz palette validator
+     (`validate_palette.js`): OKLCH L inside the theme's band (0.43–0.77
+     light, 0.48–0.67 dark), and every adjacent pair plus every pair among the
+     first three slots at least ΔE 8 apart under simulated protanopia and
+     deuteranopia. Slot 1 sits at hue 10, not 25, for that reason: at 25 it
+     read as slot 3's olive to a deuteranope (ΔE 5.0 light, 4.6 dark), and a
+     three-line chart puts those two side by side. Slot 8 moved 340 → 335 to
+     clear slot 7 by the same margin.
      ====================================================================== */
-  --chart-1: oklch(62% 0.13 25); /* 3.87:1 */
+  --chart-1: oklch(62% 0.13 10); /* 3.89:1 */
   --chart-2: oklch(62% 0.13 205); /* 3.34:1 */
   --chart-3: oklch(62% 0.13 115); /* 3.55:1 */
   --chart-4: oklch(62% 0.13 295); /* 3.81:1 */
   --chart-5: oklch(62% 0.13 70); /* 3.74:1 */
   --chart-6: oklch(62% 0.13 250); /* 3.63:1 */
   --chart-7: oklch(62% 0.13 160); /* 3.42:1 */
-  --chart-8: oklch(62% 0.13 340); /* 3.90:1 */
+  --chart-8: oklch(62% 0.13 335); /* 3.89:1 */
   /* The plot furniture is neutral, so it moves with the palette's grey dial
      and never competes with a series for attention. */
   --chart-grid: var(--border-strong); /* decorative — 1.53:1 */
@@ -335,17 +344,19 @@
   --status-info-tint-edge: oklch(32% 0.07 250); /* decorative hairline on the tint */
 
   /* --- Data, dark --------------------------------------------------------
-     Same eight hues, lifted and slightly desaturated for an ink page. At
-     8.61–9.59:1 these also clear 4.5:1, so a dark chart may label a series in
-     its own colour where a light one may not. ------------------------- */
-  --chart-1: oklch(74% 0.12 25); /* 8.66:1 */
-  --chart-2: oklch(74% 0.12 205); /* 9.52:1 */
-  --chart-3: oklch(74% 0.12 115); /* 9.31:1 */
-  --chart-4: oklch(74% 0.12 295); /* 8.78:1 */
-  --chart-5: oklch(74% 0.12 70); /* 8.92:1 */
-  --chart-6: oklch(74% 0.12 250); /* 9.16:1 */
-  --chart-7: oklch(74% 0.12 160); /* 9.59:1 */
-  --chart-8: oklch(74% 0.12 340); /* 8.61:1 */
+     Same eight hues and the same chroma, lifted to 66% for an ink page. That
+     is inside the validator's 0.48–0.67 dark band — the old 74% was above it,
+     where the series wash toward pastel. At 6.33–7.28:1 these still clear
+     4.5:1, so a dark chart may label a series in its own colour where a light
+     one may not. ------------------------------------------------------ */
+  --chart-1: oklch(66% 0.13 10); /* 6.33:1 */
+  --chart-2: oklch(66% 0.13 205); /* 7.28:1 */
+  --chart-3: oklch(66% 0.13 115); /* 6.92:1 */
+  --chart-4: oklch(66% 0.13 295); /* 6.46:1 */
+  --chart-5: oklch(66% 0.13 70); /* 6.58:1 */
+  --chart-6: oklch(66% 0.13 250); /* 6.78:1 */
+  --chart-7: oklch(66% 0.13 160); /* 7.17:1 */
+  --chart-8: oklch(66% 0.13 335); /* 6.33:1 */
   --chart-grid: var(--border-strong); /* decorative — 1.54:1 */
   --chart-axis: var(--border-control); /* 3.95:1 */
 }

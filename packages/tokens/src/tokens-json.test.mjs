@@ -147,7 +147,7 @@ describe('shape', () => {
       'grid',
       'axis',
     ]);
-    expect(json.color.chart['1']).toBe('oklch(62% 0.13 25)');
+    expect(json.color.chart['1']).toBe('oklch(62% 0.13 10)');
     expect(json.color.chart.grid).toBe('var(--border-strong)');
   });
 
