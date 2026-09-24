@@ -171,7 +171,7 @@ does it:
 
 ```css
 @import 'tailwindcss';
-@import '@elirobinson/tokens/tokens.css';
+@import '@elirobinson/react/styles.css'; /* or tokens/tokens.css, without React */
 @import '@elirobinson/tokens/tailwind.css';
 ```
 
@@ -214,5 +214,9 @@ was an unlayered `:root { --font-sans: … }` after the import.
 
 ### Stylesheet order
 
-`@elirobinson/tokens/tokens.css` first, then `@elirobinson/react/styles.css`,
-imported once in the app shell. Never per component.
+`@elirobinson/react/styles.css`, imported once in the app shell. Never per
+component. It opens with `@import '@elirobinson/tokens/tokens.css'`, so do not
+import `tokens.css` as well: bundlers keep both copies, and the later one wins
+every equal-specificity tie against your own CSS between them. An app without
+`@elirobinson/react` imports `@elirobinson/tokens/tokens.css` instead.
+`@elirobinson/eslint-config` flags the pair in one file.

@@ -59,9 +59,14 @@
   },
   "componentConstraints": {
     "no-barrel-imports": {
-      "summary": "Import via package subpaths only — @elirobinson/react/components/<tier>/<Name>, @elirobinson/react/hooks/<name>, @elirobinson/tokens/tokens.css. There are no barrel files; a bare @elirobinson/react import does not resolve.",
+      "summary": "Import via package subpaths only — @elirobinson/react/components/<tier>/<Name>, @elirobinson/react/hooks/<name>, @elirobinson/react/styles.css (or @elirobinson/tokens/tokens.css without React). There are no barrel files; a bare @elirobinson/react import does not resolve.",
       "check": "Every import from an @elirobinson package names a subpath (components/*, hooks/*, styles/*.css, styles.css, tokens.css, tailwind.css, tokens.json, tokens-data, manifest, patterns, contracts, agents/*, testing/*).",
       "verifiedBy": "@elirobinson/eslint-config → no-restricted-imports. Run `ds props <Name>` for the exact specifier."
+    },
+    "token-stylesheet-once": {
+      "summary": "tokens.css is in the bundle once. An app that uses @elirobinson/react imports @elirobinson/react/styles.css and not tokens.css: styles.css opens with @import '@elirobinson/tokens/tokens.css', so importing tokens.css as well bundles it twice, and the later copy wins every equal-specificity tie against the app's own CSS in between. An app without @elirobinson/react imports @elirobinson/tokens/tokens.css on its own. A Tailwind v4 app also imports @elirobinson/tokens/tailwind.css, which is a separate file and not a second copy.",
+      "check": "No module or stylesheet imports @elirobinson/tokens/tokens.css alongside @elirobinson/react/styles.css.",
+      "verifiedBy": "@elirobinson/eslint-config → @elirobinson/no-duplicate-token-stylesheet for JS and TS modules, and @elirobinson/eslint-config/css → @elirobinson-css/no-duplicate-token-stylesheet for stylesheets. Both read one file at a time; an app that splits the two imports across files is not caught."
     },
     "no-foreign-component-libraries": {
       "summary": "@elirobinson/react is the component vocabulary. A second library (MUI, Chakra, Ant Design, Mantine, HeroUI, Headless UI, DaisyUI) forks the system's behaviour and accessibility guarantees. Radix is already wrapped by the system, so importing it directly does the same.",

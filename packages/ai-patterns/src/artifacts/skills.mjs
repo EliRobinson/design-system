@@ -68,8 +68,10 @@ ${RESYNC_COMMAND}
 
 - Imports name a subpath — \`@elirobinson/react/components/<tier>/<Name>\`. A bare
   \`@elirobinson/react\` import does not resolve.
-- \`@elirobinson/tokens/tokens.css\` then \`@elirobinson/react/styles.css\`, once, in the
-  app shell. On Tailwind v4 add \`@elirobinson/tokens/tailwind.css\` after them.
+- \`@elirobinson/react/styles.css\`, once, in the app shell. It already imports
+  \`@elirobinson/tokens/tokens.css\`; importing \`tokens.css\` as well bundles it twice.
+  Without \`@elirobinson/react\`, import \`@elirobinson/tokens/tokens.css\` instead. On
+  Tailwind v4 add \`@elirobinson/tokens/tailwind.css\` after it.
 - Reference semantic tokens (\`--fg\`, \`--surface\`, \`--accent\`), never raw scale values
   (\`--ink-500\`) in app code.
 - Never restyle a system component with overrides that fight the tokens. Report the gap.

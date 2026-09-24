@@ -28,8 +28,7 @@ npx nx run storybook:storybook
 Import components and styles in your app shell:
 
 ```tsx
-import '@elirobinson/tokens/tokens.css';
-import '@elirobinson/react/styles.css';
+import '@elirobinson/react/styles.css'; // already imports tokens.css; do not import both
 import { Button } from '@elirobinson/react/components/atoms/Button';
 import { Card, CardHeader, CardTitle } from '@elirobinson/react/components/molecules/Card';
 ```
@@ -99,12 +98,13 @@ All three describe the _project you run them in_ — even the `dlx` form, which 
 ### 3. Import the stylesheets once, in the app shell
 
 ```tsx
-// app/layout.tsx — order matters
-import '@elirobinson/tokens/tokens.css';
+// app/layout.tsx
 import '@elirobinson/react/styles.css';
 ```
 
-Never re-import per component.
+Never re-import per component. `styles.css` opens with `@import '@elirobinson/tokens/tokens.css'`,
+so do not import `tokens.css` as well: that bundles it twice. An app without
+`@elirobinson/react` imports `@elirobinson/tokens/tokens.css` instead.
 
 ### 4. Wire up Tailwind (v4 only)
 

@@ -88,6 +88,7 @@ export function designSystem(options = {}) {
       plugins: { '@elirobinson': plugin },
       rules: {
         'no-restricted-imports': restrictedImports([FOREIGN_UI_LIBRARIES, DIRECT_PRIMITIVES]),
+        '@elirobinson/no-duplicate-token-stylesheet': severity,
         '@elirobinson/no-hardcoded-design-values': [severity, hardcodedValues],
         '@elirobinson/no-padded-ui-copy': [copySeverity, copyOptions],
       },

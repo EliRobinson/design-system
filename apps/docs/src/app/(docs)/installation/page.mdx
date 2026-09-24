@@ -59,17 +59,20 @@ do not — see [AI Elements](/components/ai-elements/overview).
 
 ## Wire up the styles
 
-Import both stylesheets once, in your app shell, in this order — tokens first, then
-component styles:
+Import the component stylesheet once, in your app shell:
 
 ```tsx
-import '@elirobinson/tokens/tokens.css';
 import '@elirobinson/react/styles.css';
 ```
 
-`tokens.css` defines every custom property on `:root` plus sensible base styles (focus
-rings, selection color, reduced-motion handling). `styles.css` is the aggregate component
-stylesheet. If you'd rather ship only what you use, each component's sheet is importable on
+`styles.css` is the aggregate component stylesheet, and its first line imports
+`@elirobinson/tokens/tokens.css`: every custom property on `:root` plus sensible base styles
+(focus rings, selection color, reduced-motion handling). Do not import `tokens.css` as well.
+Bundlers keep both copies, and the later one wins every tie against your own CSS between
+them. `@elirobinson/eslint-config` flags the two imports in one file.
+
+Using the tokens without `@elirobinson/react`? Import `@elirobinson/tokens/tokens.css` on its
+own instead. If you'd rather ship only what you use, each component's sheet is importable on
 its own:
 
 ```tsx
