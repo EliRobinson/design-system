@@ -24,8 +24,13 @@ to the handoff, not here. `ai-theme-bundler-fixups.css` is ours and is formatted
 ## Import order
 
 `apps/docs/src/app/elements.css` is the Tailwind entry and carries the whole chain:
-Miltinson tokens → `@elirobinson/tokens/tailwind.css` → `ai-bridge.css` → the class layers
-→ the fixups. That file's own comments carry the reasoning; the two rules that matter:
+Tailwind's theme, the scoped preflight and the utilities → `@elirobinson/react/styles.css`
+(which opens with the one copy of `tokens.css`) → `@elirobinson/tokens/tailwind.css` →
+`ai-bridge.css` → the class layers → the fixups. `layout.tsx` imports `elements.css` and then
+`site.css`, and nothing else: another import of `tokens.css` or `react/styles.css` is a full
+second copy whose later position wins every equal-specificity tie.
+`stylesheet-graph.test.ts` fails if either is reached twice. That file's own comments carry
+the reasoning; the two rules that matter:
 
 - **The bridge is app-level and must not be folded into `@elirobinson/tokens`.** It
   declares shadcn's names, and shadcn's `--accent` means "hover surface" while ours means
