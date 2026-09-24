@@ -21,49 +21,11 @@
  * bare CI image has no Chromium and this must not block an unrelated change.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, extname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { expect, it } from 'vitest';
 
-import { afterAll, describe, expect, it } from 'vitest';
+import { bootBrowser, openTokensPage } from './browser.test-helper.mjs';
 
-const srcDir = dirname(fileURLToPath(import.meta.url));
-
-/* Same 60s budget, and the same reason, as link-cascade.test.mjs. */
-const BROWSER_BUDGET = 60_000;
-
-let chromium;
-try {
-  ({ chromium } = await import('playwright'));
-} catch {
-  chromium = null;
-}
-
-let browser;
-let launchError;
-if (chromium) {
-  try {
-    browser = await chromium.launch();
-  } catch (error) {
-    launchError = error;
-  }
-}
-
-afterAll(async () => {
-  await browser?.close();
-}, BROWSER_BUDGET);
-
-const describeBrowser = browser ? describe : describe.skip;
-if (!browser) {
-  console.warn(
-    `Skipping mobile floor tests: ${chromium ? launchError?.message : 'playwright is not installed'}`,
-  );
-}
-
-/* tokens.css @imports its siblings relatively, so it has to be fetched from a
-   URL that has a directory. `setContent` runs on about:blank, where
-   `./palettes.css` resolves to nothing. */
-const ORIGIN = 'https://tokens.test';
+const { browser, describeBrowser } = await bootBrowser('mobile floor');
 
 /* The two dense controls the two halves used to disagree about, written the way
    a consumer writes them: a chip that is itself a control, and a small button.
@@ -90,30 +52,15 @@ async function open({ platform, viewport }) {
   const page = await browser.newPage();
   if (viewport) await page.setViewportSize(viewport);
 
-  await page.route(`${ORIGIN}/**`, async (route) => {
-    const name = new URL(route.request().url()).pathname.slice(1);
-
-    if (name === 'index.html') {
-      return route.fulfill({
-        contentType: 'text/html',
-        body: `<!doctype html><html${platform ? ` data-platform="${platform}"` : ''}>
+  await openTokensPage(
+    page,
+    `<!doctype html><html${platform ? ` data-platform="${platform}"` : ''}>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <link rel="stylesheet" href="/tokens.css">
           <style>${COMPONENT_CSS}</style>
           ${BODY}`,
-      });
-    }
-
-    const file = join(srcDir, name);
-    if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
-    return route.fulfill({
-      contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
-      body: readFileSync(file),
-    });
-  });
-
-  await page.goto(`${ORIGIN}/index.html`);
+  );
   return page;
 }
 
@@ -138,26 +85,14 @@ async function coarsePage() {
     isMobile: true,
   });
   const page = await context.newPage();
-  await page.route(`${ORIGIN}/**`, async (route) => {
-    const name = new URL(route.request().url()).pathname.slice(1);
-    if (name === 'index.html') {
-      return route.fulfill({
-        contentType: 'text/html',
-        body: `<!doctype html><html><meta charset="utf-8">
+  await openTokensPage(
+    page,
+    `<!doctype html><html><meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <link rel="stylesheet" href="/tokens.css">
           <style>${COMPONENT_CSS}</style>
           ${BODY}`,
-      });
-    }
-    const file = join(srcDir, name);
-    if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
-    return route.fulfill({
-      contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
-      body: readFileSync(file),
-    });
-  });
-  await page.goto(`${ORIGIN}/index.html`);
+  );
   return { page, context };
 }
 
@@ -260,25 +195,13 @@ describeBrowser('the floor resolves at the specificity its comment claims', () =
   async function winnerAgainst(n) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const page = await context.newPage();
-    await page.route(`${ORIGIN}/**`, async (route) => {
-      const name = new URL(route.request().url()).pathname.slice(1);
-      if (name === 'index.html') {
-        return route.fulfill({
-          contentType: 'text/html',
-          body: `<!doctype html><html data-platform="mobile"><meta charset="utf-8">
+    await openTokensPage(
+      page,
+      `<!doctype html><html data-platform="mobile"><meta charset="utf-8">
             <link rel="stylesheet" href="/tokens.css">
             <style>${competitor(n)}</style>
             <button id="probe" class="w" type="button">probe</button>`,
-        });
-      }
-      const file = join(srcDir, name);
-      if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
-      return route.fulfill({
-        contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
-        body: readFileSync(file),
-      });
-    });
-    await page.goto(`${ORIGIN}/index.html`);
+    );
     const value = await page.evaluate(
       () => getComputedStyle(document.getElementById('probe')).minHeight,
     );

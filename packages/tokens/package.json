@@ -15,7 +15,8 @@
     "dist",
     "src",
     "CHANGELOG.md",
-    "!src/**/*.test.mjs"
+    "!src/**/*.test.mjs",
+    "!src/**/*.test-helper.mjs"
   ],
   "exports": {
     "./tokens.css": "./src/tokens.css",

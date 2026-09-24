@@ -30,49 +30,11 @@
  * what blocks an unrelated change.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, extname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { expect, it } from 'vitest';
 
-import { afterAll, describe, expect, it } from 'vitest';
+import { bootBrowser, openTokensPage } from './browser.test-helper.mjs';
 
-const srcDir = dirname(fileURLToPath(import.meta.url));
-
-/* Same 60s budget, and the same reason, as link-cascade.test.mjs. */
-const BROWSER_BUDGET = 60_000;
-
-let chromium;
-try {
-  ({ chromium } = await import('playwright'));
-} catch {
-  chromium = null;
-}
-
-let browser;
-let launchError;
-if (chromium) {
-  try {
-    browser = await chromium.launch();
-  } catch (error) {
-    launchError = error;
-  }
-}
-
-afterAll(async () => {
-  await browser?.close();
-}, BROWSER_BUDGET);
-
-const describeBrowser = browser ? describe : describe.skip;
-if (!browser) {
-  console.warn(
-    `Skipping form font cascade tests: ${chromium ? launchError?.message : 'playwright is not installed'}`,
-  );
-}
-
-/* A synthetic origin, served from src/ by a route handler — tokens.css @imports
-   its siblings relatively, so it has to be fetched from a URL that has a
-   directory. Verbatim from link-cascade.test.mjs. */
-const ORIGIN = 'https://tokens.test';
+const { browser, describeBrowser } = await bootBrowser('form font cascade');
 
 /* What `@import 'tailwindcss'` puts in front of tokens.css: the layer order
    statement, plus the two utilities that measure this rule. `font-mono` is the
@@ -185,29 +147,14 @@ const IDS = [...AUDITED, 'textarea', 'select', 'utility-font', 'utility-size'];
 async function consumer(...before) {
   const page = await browser.newPage();
 
-  await page.route(`${ORIGIN}/**`, async (route) => {
-    const name = new URL(route.request().url()).pathname.slice(1);
-
-    if (name === 'index.html') {
-      return route.fulfill({
-        contentType: 'text/html',
-        body: `<!doctype html><html><meta charset="utf-8">
+  await openTokensPage(
+    page,
+    `<!doctype html><html><meta charset="utf-8">
           ${before.map((css) => `<style>${css}</style>`).join('\n')}
           <link rel="stylesheet" href="/tokens.css">
           <style>${COMPONENT}</style>
           ${BODY}`,
-      });
-    }
-
-    const file = join(srcDir, name);
-    if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
-    return route.fulfill({
-      contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
-      body: readFileSync(file),
-    });
-  });
-
-  await page.goto(`${ORIGIN}/index.html`);
+  );
   /* The faces are self-hosted and fetched over the same route handler. Reading
      a font-derived box before they land measures the fallback. */
   await page.evaluate(() => document.fonts.ready);
