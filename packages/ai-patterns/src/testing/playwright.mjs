@@ -264,12 +264,12 @@ export async function checkTouchTargets(page, options = {}) {
       // One placement is not enough there. `center` moves every control to the
       // middle of its container, and in a narrow table with a frozen first
       // column the middle can be under that column: a 44x44 button that was
-      // fully visible walked into the sticky cell and reported ~28x44, and a
+      // fully visible walked into the sticky cell and reported ~32x44, and a
       // 30x30 one landed with its centre covered and was skipped unchecked.
       // So a surface that misses its floor at `center` is put back and measured
       // again at `nearest`, which moves it only as far as its container's near
       // edge, and the better of the two is kept. Both are places a user can
-      // scroll the control to, so the larger hit area is the honest one.
+      // scroll the control to, so a hit area that passes at either is real.
       // `center` stays first because it keeps a control clear of a sticky page
       // header, which `nearest` does not. Both honour `scroll-padding`, so a
       // table that pads its scroll box past its frozen column is measured clear
@@ -383,34 +383,6 @@ export async function checkTouchTargets(page, options = {}) {
 
       const meets = (area, floor) => area.measured && area.width >= floor && area.height >= floor;
 
-      // `center` first, `nearest` only if that missed the floor, from the
-      // scroll positions the check started with. A `nearest` result replaces
-      // the centred one only when it measured something and measured more, so
-      // the second placement can rescue a control but never hide one.
-      const measure = (surface, floor) => {
-        const centred = measureAt(surface, floor, 'center');
-        if (meets(centred, floor)) return centred;
-
-        restoreScroll();
-        const nearest = measureAt(surface, floor, 'nearest');
-        if (!nearest.measured) return centred;
-        if (!centred.measured) return nearest;
-        return nearest.width * nearest.height > centred.width * centred.height ? nearest : centred;
-      };
-
-      // The dense floor relaxes the primary one, so it can never be the
-      // stricter of the two. A caller who passes `minimum: 20` is loosening the
-      // whole contract for a reason of their own; leaving `denseMinimum` at 24
-      // there would hold a chip's remove glyph to a higher bar than the page's
-      // primary CTA, which is not a floor anyone asked for.
-      const denseFloor = Math.min(minimum, denseMinimum);
-
-      // `.labels` covers both `<label for>` and a wrapping `<label>`, and is
-      // only defined on the elements that can actually be labelled — an <a> or
-      // a [role="button"] div gets nothing, which is correct: no label
-      // forwards a click to them.
-      const labelsOf = (element) => (element.labels ? Array.from(element.labels) : []);
-
       // Measuring now means scrolling, and a check must not leave the page
       // somewhere else: a screenshot or an assertion later in the same test
       // would see the scroll position this function happened to stop at.
@@ -430,6 +402,38 @@ export async function checkTouchTargets(page, options = {}) {
         }
         window.scrollTo(pageScrollX, pageScrollY);
       };
+
+      // `center` first, and `nearest` only if that missed the floor, starting
+      // again from the snapshot above. A `nearest` result that meets the floor
+      // wins outright. If both miss, the one closer to the floor on its
+      // shorter side is reported, and an unmeasured result never replaces a
+      // measured one. So the second placement can rescue a control but never
+      // hide one.
+      const measure = (surface, floor) => {
+        const centred = measureAt(surface, floor, 'center');
+        if (meets(centred, floor)) return centred;
+
+        restoreScroll();
+        const nearest = measureAt(surface, floor, 'nearest');
+        if (meets(nearest, floor)) return nearest;
+        if (!nearest.measured) return centred;
+        if (!centred.measured) return nearest;
+        const shorter = (area) => Math.min(area.width, area.height);
+        return shorter(nearest) > shorter(centred) ? nearest : centred;
+      };
+
+      // The dense floor relaxes the primary one, so it can never be the
+      // stricter of the two. A caller who passes `minimum: 20` is loosening the
+      // whole contract for a reason of their own; leaving `denseMinimum` at 24
+      // there would hold a chip's remove glyph to a higher bar than the page's
+      // primary CTA, which is not a floor anyone asked for.
+      const denseFloor = Math.min(minimum, denseMinimum);
+
+      // `.labels` covers both `<label for>` and a wrapping `<label>`, and is
+      // only defined on the elements that can actually be labelled — an <a> or
+      // a [role="button"] div gets nothing, which is correct: no label
+      // forwards a click to them.
+      const labelsOf = (element) => (element.labels ? Array.from(element.labels) : []);
 
       const violations = [];
 
