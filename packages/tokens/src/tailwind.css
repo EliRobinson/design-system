@@ -243,8 +243,8 @@
   /* Eight hues at one lightness and one chroma, so no series shouts louder
      than another. They are palette-independent — a chart does not restyle
      itself when the brand does — and they are fills and strokes: at 3.34:1 at
-     the low end they are non-text graphics, and only the dark values (8.61+)
-     clear 4.5:1 for an in-chart label. A legend still needs a label or a
+     the low end they are non-text graphics, and only the dark values clear
+     4.5:1 for an in-chart label (palettes.css carries each ratio). A legend still needs a label or a
      shape; colour is never the only channel (SC 1.4.1). */
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
