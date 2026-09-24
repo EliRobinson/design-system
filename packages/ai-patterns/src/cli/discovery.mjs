@@ -183,19 +183,28 @@ export function loadInventory(packageDir) {
    vocabulary is spread across more than one file — see TOKEN_STYLESHEETS. */
 const sources = (css) => (css === null || css === undefined ? [] : [css].flat());
 
-/* A class that opens a rule, at any indent: @elirobinson/tokens ships its `.t-*`
-   type classes inside `@layer base { … }` since #251, so a column-0 match
-   would list none of them. Comments are blanked first, because tokens.css's
-   prose names classes at the start of a line too. */
+/* Comments replaced by spaces, newlines kept, so a regex anchored to a line
+   start still sees the lines it would have seen. tokens.css's prose names
+   classes and tokens at the start of a line; prose is neither. */
+const maskComments = (css) =>
+  css.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' '));
+
+/* A class name at the start of a line, at any indent: @elirobinson/tokens
+   ships its `.t-*` type classes inside `@layer base { … }` since #251, so a
+   column-0 match would list none of them. The name has to start the way a
+   class name does, so a wrapped value such as `.5em` is not read as one. */
 export function cssClasses(css) {
   return [
     ...new Set(
       sources(css).flatMap((one) =>
-        [...one.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/^\s*\.([\w-]+)/gm)].map((m) => m[1]),
+        [...maskComments(one).matchAll(/^\s*\.(-?[_a-zA-Z][\w-]*)/gm)].map((m) => m[1]),
       ),
     ),
   ].sort();
 }
+
+/** The `.t-*` type classes among `cssClasses`: what `ds list` calls typography. */
+export const typeClasses = (css) => cssClasses(css).filter((name) => name.startsWith('t-'));
 
 /**
  * The token-declaring stylesheets of an installed @elirobinson/tokens, in
@@ -259,9 +268,7 @@ export function cssVariables(css) {
        token. Values are then put back on one line, since Prettier wraps the
        font stacks across several. Both match parseTokensCss, which this must
        agree with. */
-    const declarations = root.replace(/\/\*[\s\S]*?\*\//g, (comment) =>
-      comment.replace(/[^\n]/g, ' '),
-    );
+    const declarations = maskComments(root);
     for (const [, name, value] of declarations.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)) {
       seen.set(name, value.trim().replace(/\s+/g, ' ').replace(/\(\s/g, '(').replace(/\s\)/g, ')'));
     }

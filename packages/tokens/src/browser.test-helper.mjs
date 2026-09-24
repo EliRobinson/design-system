@@ -11,12 +11,11 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, extname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { extname, join } from 'node:path';
 
 import { afterAll, describe } from 'vitest';
 
-const srcDir = dirname(fileURLToPath(import.meta.url));
+import { TOKENS_SRC_DIR } from './token-stylesheets.mjs';
 
 /* Launching, opening and closing Chromium share the machine with whatever else
    the monorepo is running, and Vitest's 10s hook default is sized for a unit
@@ -29,6 +28,11 @@ export const BROWSER_BUDGET = 60_000;
    directory — `setContent` runs on about:blank, where `./palettes.css` resolves
    to nothing and the whole palette would silently be missing. */
 export const ORIGIN = 'https://tokens.test';
+
+/* The layer order `@import 'tailwindcss'` declares ahead of tokens.css. It is
+   what makes tokens.css's `base` sort below `utilities`, so every suite that
+   stands in for a Tailwind consumer starts with it. */
+export const TAILWIND_LAYER_ORDER = '@layer theme, base, components, utilities;';
 
 /**
  * Bring up a browser for the calling suite, register its teardown, and hand
@@ -86,7 +90,7 @@ export async function openTokensPage(page, html) {
       return route.fulfill({ contentType: 'text/html', body: html });
     }
 
-    const file = join(srcDir, name);
+    const file = join(TOKENS_SRC_DIR, name);
     if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
     return route.fulfill({
       contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
@@ -96,4 +100,27 @@ export async function openTokensPage(page, html) {
 
   await page.goto(`${ORIGIN}/index.html`);
   return page;
+}
+
+/**
+ * A consumer page: `before` stylesheets, then the real tokens.css, then
+ * `after` (raw markup, such as a component `<style>`), then `body`. Opens a new
+ * page on `browser` and returns it loaded.
+ *
+ * @param {import('playwright').Browser} browser
+ * @param {{ htmlAttributes?: string, before?: string[], after?: string, body: string }} options
+ */
+export async function consumerPage(
+  browser,
+  { htmlAttributes = '', before = [], after = '', body },
+) {
+  const page = await browser.newPage();
+  return openTokensPage(
+    page,
+    `<!doctype html><html ${htmlAttributes}><meta charset="utf-8">
+      ${before.map((css) => `<style>${css}</style>`).join('\n')}
+      <link rel="stylesheet" href="/tokens.css">
+      ${after}
+      ${body}`,
+  );
 }

@@ -25,7 +25,7 @@
 
 import { expect, it } from 'vitest';
 
-import { bootBrowser, openTokensPage } from './browser.test-helper.mjs';
+import { bootBrowser, consumerPage, TAILWIND_LAYER_ORDER } from './browser.test-helper.mjs';
 
 const { browser, describeBrowser } = await bootBrowser('link cascade');
 
@@ -35,7 +35,7 @@ const { browser, describeBrowser } = await bootBrowser('link cascade');
    bare var() of the token — which is what tailwind.css's aliases guarantee, so
    this is the utility Tailwind really emits, not a stand-in. */
 const TAILWIND = `
-  @layer theme, base, components, utilities;
+  ${TAILWIND_LAYER_ORDER}
   @layer utilities {
     .text-accent-foreground { color: var(--accent-fg); }
     .no-underline { text-decoration-line: none; }
@@ -76,22 +76,12 @@ const BODY = `
  *
  * @param {string[]} before stylesheet sources emitted ahead of tokens.css
  */
-async function consumer(...before) {
-  const page = await browser.newPage();
-
+const consumer = (...before) =>
   /* data-palette="slate" is issue #112's own reproduction — the teal
      brand, whose --accent-fg is white while --link stays ink. Under the
      default ember palette both resolve to --ink-1000 and every assertion
      below would pass on black === black without measuring anything. */
-  await openTokensPage(
-    page,
-    `<!doctype html><html data-palette="slate"><meta charset="utf-8">
-          ${before.map((css) => `<style>${css}</style>`).join('\n')}
-          <link rel="stylesheet" href="/tokens.css">
-          ${BODY}`,
-  );
-  return page;
-}
+  consumerPage(browser, { htmlAttributes: 'data-palette="slate"', before, body: BODY });
 
 /**
  * Computed colours, plus the same page's own resolution of the tokens they are
@@ -210,7 +200,7 @@ describeBrowser('why the layer is named `base`', () => {
      Tailwind has already ordered below `components` and `utilities` — is the
      only spelling that puts the rule where it belongs. */
   const stack = (layerName) => `
-    @layer theme, base, components, utilities;
+    ${TAILWIND_LAYER_ORDER}
     @layer utilities { .u { color: rgb(0, 0, 255); } }
     @layer ${layerName} { a { color: rgb(255, 0, 0); } }
   `;

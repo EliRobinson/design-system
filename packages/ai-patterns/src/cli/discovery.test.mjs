@@ -23,7 +23,13 @@ import {
 } from '@elirobinson/tokens/token-stylesheets';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { cssClasses, cssVariables, loadDials, TOKEN_STYLESHEETS } from './discovery.mjs';
+import {
+  cssClasses,
+  cssVariables,
+  loadDials,
+  TOKEN_STYLESHEETS,
+  typeClasses,
+} from './discovery.mjs';
 
 /* Through the exports map, so this reads the same files `ds` reads out of a
    consumer's node_modules rather than paths relative to the monorepo layout. */
@@ -187,14 +193,15 @@ describe('loadDials', () => {
   });
 });
 
-describe('cssClasses', () => {
-  it('lists every type class the installed tokens.css ships, layered or not (#251)', () => {
-    const listed = cssClasses(readTokenStylesheets()).filter((name) => name.startsWith('t-'));
+describe('cssClasses and typeClasses', () => {
+  it('lists every type class the installed tokens.css ships, and only those, as typography (#251)', () => {
+    const listed = typeClasses(readTokenStylesheets());
     expect(listed).toEqual(expect.arrayContaining(['t-h1', 't-body', 't-caption', 't-code']));
+    expect(listed.every((name) => name.startsWith('t-'))).toBe(true);
   });
 
-  it('finds a class opening a rule at any indent, and none named only in a comment', () => {
-    const css = `/* .t-ghost is prose */\n@layer base {\n  .t-h1 { font-size: 30px; }\n}\n.ds-x a { color: red; }`;
+  it('finds a class at the start of a line at any indent, and none in a comment or a value', () => {
+    const css = `/* .t-ghost is prose */\n@layer base {\n  .t-h1 {\n    margin:\n      .5em 0;\n  }\n}\n.ds-x a { color: red; }`;
     expect(cssClasses(css)).toEqual(['ds-x', 't-h1']);
   });
 });

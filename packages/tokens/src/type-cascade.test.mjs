@@ -5,10 +5,12 @@
  * tokens.css's comment above them says what that does and does not change, and
  * this file measures each claim.
  *
- * "Renders as before" is measured, not remembered: each type-class element is
- * compared with a twin carrying the same declarations as an inline style. An
- * inline style beats every layer, exactly as the unlayered rule did, so the
- * twin IS the old rendering, computed in the same page.
+ * "Renders as before" is measured against a twin: each type-class element is
+ * compared with one carrying the class's declarations as an inline style. An
+ * inline style beats every layer, as the unlayered rule did, so the twin is how
+ * these declarations rendered unlayered, in the same page. That the move kept
+ * the declarations themselves unchanged is a property of the diff, not of this
+ * test.
  *
  * The browser-free half (no `.t-*` rule outside a layer) is in
  * font-override.test.mjs, which runs where this skips.
@@ -16,18 +18,29 @@
 
 import { beforeAll, expect, it } from 'vitest';
 
-import { BROWSER_BUDGET, bootBrowser, openTokensPage } from './browser.test-helper.mjs';
+import {
+  BROWSER_BUDGET,
+  bootBrowser,
+  consumerPage,
+  TAILWIND_LAYER_ORDER,
+} from './browser.test-helper.mjs';
 import { TYPE_RULES } from './tokens-css.test-helper.mjs';
 
 const { browser, describeBrowser } = await bootBrowser('type cascade');
 
 const TYPE_CLASSES = Object.keys(TYPE_RULES);
 
-/* The element each class is measured on. Headings and <code> matter: they are
-   what preflight resets with (0,0,1) rules in the same layer. */
+/* The element each class is measured on. Headings, <code> and <button> matter:
+   they are what preflight and tokens.css's own form-control reset target with
+   (0,0,1) rules in the same layer. */
 const TAG = (name) =>
-  ({ 't-display-1': 'h1', 't-display-2': 'h1', 't-code': 'code', 't-mono': 'span' })[name] ??
-  (/^t-h[1-6]$/.test(name) ? `h${name.slice(3)}` : 'p');
+  ({
+    't-display-1': 'h1',
+    't-display-2': 'h1',
+    't-code': 'code',
+    't-mono': 'span',
+    't-body-sm': 'button',
+  })[name] ?? (/^t-h[1-6]$/.test(name) ? `h${name.slice(3)}` : 'p');
 
 /* The computed longhands compared between a type-class element and its twin. */
 const LONGHANDS = [
@@ -70,14 +83,19 @@ const UTILITIES = {
 const utilityClass = (property) => `u-${property}`;
 
 /* What `@import 'tailwindcss'` puts in front of tokens.css: the layer order,
-   preflight's resets of the same elements (as Tailwind v4 ships them, in
-   `base`), and the utilities. */
+   preflight's resets of the elements measured here (as Tailwind v4 ships them,
+   in `base`), and the utilities. */
 const TAILWIND = `
-  @layer theme, base, components, utilities;
+  ${TAILWIND_LAYER_ORDER}
   @layer base {
+    *, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; border: 0 solid; }
     h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit; }
-    code, kbd, samp, pre { font-family: ui-monospace, monospace; font-size: 1em; }
     a { color: inherit; }
+    code, kbd, samp, pre { font-family: ui-monospace, monospace; font-size: 1em; }
+    button, input, select, optgroup, textarea {
+      font: inherit; letter-spacing: inherit; color: inherit;
+      border-radius: 0; background-color: transparent;
+    }
   }
   @layer utilities {
     ${Object.entries(UTILITIES)
@@ -119,14 +137,11 @@ const BODY = `
  * resolution of the tokens the colour assertions compare against.
  */
 async function measure({ theme = 'light', before = [] } = {}) {
-  const page = await browser.newPage();
-  await openTokensPage(
-    page,
-    `<!doctype html><html data-theme="${theme}"><meta charset="utf-8">
-      ${before.map((css) => `<style>${css}</style>`).join('\n')}
-      <link rel="stylesheet" href="/tokens.css">
-      ${BODY}`,
-  );
+  const page = await consumerPage(browser, {
+    htmlAttributes: `data-theme="${theme}"`,
+    before,
+    body: BODY,
+  });
 
   const read = () =>
     page.evaluate(
@@ -151,10 +166,19 @@ async function measure({ theme = 'light', before = [] } = {}) {
 
   const computed = await read();
   await page.hover('#anchor');
-  computed.anchorHover = (await read()).styles.anchor.color;
+  computed.anchorHover = await page.$eval('#anchor', (anchor) => getComputedStyle(anchor).color);
   await page.close();
   return computed;
 }
+
+const RENDERS_AS_UNLAYERED =
+  'renders a plain type-class element exactly as its declarations did unlayered';
+const rendersAsUnlayered = (measured) => () => {
+  const { styles } = measured();
+  for (const name of TYPE_CLASSES) {
+    expect(styles[`plain-${name}`], name).toEqual(styles[`twin-${name}`]);
+  }
+};
 
 it('has a utility for every property a type class declares', () => {
   expect(TYPE_CLASSES.length).toBeGreaterThan(0);
@@ -188,11 +212,10 @@ for (const theme of ['light', 'dark']) {
       }
     });
 
-    it('renders a plain type-class element exactly as the unlayered rule did', () => {
-      for (const name of TYPE_CLASSES) {
-        expect(computed.styles[`plain-${name}`], name).toEqual(computed.styles[`twin-${name}`]);
-      }
-    });
+    it(
+      RENDERS_AS_UNLAYERED,
+      rendersAsUnlayered(() => computed),
+    );
 
     it('does not let a parent colour or font reach a type class', () => {
       /* A declared value beats an inherited one in any layer, so the utility
@@ -220,9 +243,8 @@ describeBrowser('a consumer with no cascade layers at all', () => {
     computed = await measure();
   }, BROWSER_BUDGET);
 
-  it('renders a plain type-class element exactly as the unlayered rule did', () => {
-    for (const name of TYPE_CLASSES) {
-      expect(computed.styles[`plain-${name}`], name).toEqual(computed.styles[`twin-${name}`]);
-    }
-  });
+  it(
+    RENDERS_AS_UNLAYERED,
+    rendersAsUnlayered(() => computed),
+  );
 });

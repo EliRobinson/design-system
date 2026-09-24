@@ -8,16 +8,16 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
-const srcDir = dirname(fileURLToPath(import.meta.url));
+import { TOKENS_SRC_DIR } from './token-stylesheets.mjs';
 
 /* The stylesheet's own comments talk about `@layer`, which is not the same as
    being in one. */
 export const withoutComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
 
-export const tokensCss = withoutComments(readFileSync(join(srcDir, 'tokens.css'), 'utf8'));
+/** tokens.css with its comments removed. */
+export const tokensCss = withoutComments(readFileSync(join(TOKENS_SRC_DIR, 'tokens.css'), 'utf8'));
 
 /**
  * The body of every `@layer <name> { … }` block, brace-matched.
@@ -66,18 +66,20 @@ export const rules = (css) =>
 
 /* The type class a selector is about, or undefined. Loose on purpose, so a
    selector that wraps the class (`:where(.t-h2)`, `h2.t-h2`) is still found
-   and measured rather than silently dropped. */
-const typeClassOf = (selector) => selector.match(/\.(t-[\w-]+)/)?.[1];
+   and measured rather than silently dropped. Every suite that asks "is this a
+   type-class rule" asks it here. */
+export const typeClassOf = (selector) => selector.match(/\.(t-[\w-]+)/)?.[1];
 
 /**
  * Each type class tokens.css declares inside a layer, with its declarations:
  * `{ 't-caption': { 'font-size': 'var(--fs-xs)', color: 'var(--fg-3)', … } }`.
- * Keyed without the dot, the way the class is written in markup.
+ * Keyed without the dot, the way the class is written in markup. A class that
+ * two layered rules declare throws, rather than letting the later rule (a
+ * `:hover`, a descendant) silently stand in for the class's own declarations.
  */
 export const TYPE_RULES = Object.fromEntries(
   layerBlocks(tokensCss)
     .flatMap(rules)
-    .filter(([selectors]) => selectors.some(typeClassOf))
     .flatMap(([selectors, body]) => {
       const declarations = Object.fromEntries(
         body
@@ -89,6 +91,12 @@ export const TYPE_RULES = Object.fromEntries(
             return [declaration.slice(0, colon).trim(), declaration.slice(colon + 1).trim()];
           }),
       );
-      return selectors.map((selector) => [typeClassOf(selector), declarations]);
+      return selectors.filter(typeClassOf).map((selector) => [typeClassOf(selector), declarations]);
+    })
+    .map((entry, index, all) => {
+      if (all.findIndex(([name]) => name === entry[0]) !== index) {
+        throw new Error(`tokens.css declares .${entry[0]} in more than one layered rule`);
+      }
+      return entry;
     }),
 );

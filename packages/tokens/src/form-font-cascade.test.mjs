@@ -32,7 +32,7 @@
 
 import { expect, it } from 'vitest';
 
-import { bootBrowser, openTokensPage } from './browser.test-helper.mjs';
+import { bootBrowser, consumerPage, TAILWIND_LAYER_ORDER } from './browser.test-helper.mjs';
 
 const { browser, describeBrowser } = await bootBrowser('form font cascade');
 
@@ -41,7 +41,7 @@ const { browser, describeBrowser } = await bootBrowser('form font cascade');
    one `font-family: inherit` would have eaten; `text-2xl` is the one the
    shorthand would additionally have eaten had it been unlayered. */
 const TAILWIND = `
-  @layer theme, base, components, utilities;
+  ${TAILWIND_LAYER_ORDER}
   @layer utilities {
     .font-mono { font-family: ui-monospace, monospace; }
     .text-2xl { font-size: 1.5rem; }
@@ -145,16 +145,11 @@ const IDS = [...AUDITED, 'textarea', 'select', 'utility-font', 'utility-size'];
  * @param {string[]} before stylesheet sources emitted ahead of tokens.css
  */
 async function consumer(...before) {
-  const page = await browser.newPage();
-
-  await openTokensPage(
-    page,
-    `<!doctype html><html><meta charset="utf-8">
-          ${before.map((css) => `<style>${css}</style>`).join('\n')}
-          <link rel="stylesheet" href="/tokens.css">
-          <style>${COMPONENT}</style>
-          ${BODY}`,
-  );
+  const page = await consumerPage(browser, {
+    before,
+    after: `<style>${COMPONENT}</style>`,
+    body: BODY,
+  });
   /* The faces are self-hosted and fetched over the same route handler. Reading
      a font-derived box before they land measures the fallback. */
   await page.evaluate(() => document.fonts.ready);
