@@ -2,10 +2,11 @@
 '@elirobinson/ai-patterns': patch
 ---
 
-`checkTouchTargets` no longer fails a compliant control in a scrolling table with a frozen first
-column, and no longer skips an undersized one there (#248).
+`checkTouchTargets` measures a control in a scrolling table with a frozen first column at a second
+scroll position before failing it, so a compliant control is no longer failed, and an undersized
+one no longer skipped, when that position brings it clear of the column (#248).
 
-**The false positive.** The check measures a control's hit area by walking out from its centre
+**What went wrong.** The check measures a control's hit area by walking out from its centre
 with `document.elementFromPoint`, and the walk stops at the first point that does not route to the
 control. Two versions of that went wrong inside a sideways-scrolling container, such as a wide
 table's wrapper:
@@ -23,14 +24,14 @@ table's wrapper:
 
 **The fix.** A control that misses its floor at the centre is put back and measured again with
 `scrollIntoView({ block: 'nearest', inline: 'nearest' })`, which moves it only as far as its
-container's near edge. The larger of the two measured hit areas is kept. The second placement can
-only rescue a control, never hide one: its result is used only when it measured something and
-measured more. Every scroll position the check changes is still put back afterwards. Both
-placements honour `scroll-padding`, so a table that pads its scroll box past its frozen column is
+container's near edge. If the control meets its floor there, it passes. If it misses at both, the
+result closer to the floor is reported. The second placement can only rescue a control, never hide
+one: an unmeasured result never replaces a measured one. Every scroll position the check changes
+is still put back afterwards. Both placements honour `scroll-padding`, so a table that pads its scroll box past its frozen column is
 measured clear of it. A control that is covered at both placements is still skipped without being
 measured or reported, as before.
 
 `checkHitAreaOverlap` keeps its single centred probe. There, a sibling moved under a frozen column
 can only hide an overlap, never report a false one.
 
-If you are on 0.20.x, run `pnpm exec ds-resync` to move to this version.
+If you are on 0.28.2 or earlier, run `pnpm exec ds-resync` to move to this version.

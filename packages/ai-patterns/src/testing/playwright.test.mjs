@@ -748,6 +748,24 @@ describeBrowser('browser contract checks', () => {
           expect(violations).toHaveLength(1);
           expect(violations[0].effectiveWidth).toBe(30);
         });
+
+        /* A grid with a sticky header row too. Centred, a wide button loses
+           height to the header (~89x40); at `nearest` it loses width to the
+           column but still clears 44 on both sides (~75x44). The larger area
+           is the failing one, so the placement that meets the floor has to
+           win, not the bigger box. */
+        it('passes a button that meets the floor at nearest but not when centred', async () => {
+          await render(`<div id="grid" style="width:300px;height:200px;overflow:auto">
+              <div style="position:relative;width:1000px;height:1000px">
+                <div style="position:sticky;top:0;width:1000px;height:82px;background:#ddd;z-index:2"></div>
+                <div style="position:sticky;left:0;width:70px;height:918px;background:#eee;z-index:1"></div>
+                <button style="position:absolute;left:95px;top:180px;width:200px;height:44px">wide</button>
+              </div>
+            </div>
+            <script>document.getElementById('grid').scrollLeft = 100;</script>`);
+
+          expect(await checkTouchTargets(page)).toEqual([]);
+        });
       });
 
       /* The shape the issue was reported on: a frozen column, and a strip that
