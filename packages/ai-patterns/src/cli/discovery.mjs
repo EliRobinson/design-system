@@ -183,9 +183,17 @@ export function loadInventory(packageDir) {
    vocabulary is spread across more than one file — see TOKEN_STYLESHEETS. */
 const sources = (css) => (css === null || css === undefined ? [] : [css].flat());
 
+/* A class that opens a rule, at any indent: @elirobinson/tokens ships its `.t-*`
+   type classes inside `@layer base { … }` since #251, so a column-0 match
+   would list none of them. Comments are blanked first, because tokens.css's
+   prose names classes at the start of a line too. */
 export function cssClasses(css) {
   return [
-    ...new Set(sources(css).flatMap((one) => [...one.matchAll(/^\.([\w-]+)/gm)].map((m) => m[1]))),
+    ...new Set(
+      sources(css).flatMap((one) =>
+        [...one.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/^\s*\.([\w-]+)/gm)].map((m) => m[1]),
+      ),
+    ),
   ].sort();
 }
 

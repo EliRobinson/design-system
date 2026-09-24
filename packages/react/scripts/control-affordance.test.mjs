@@ -153,8 +153,8 @@ describe('a filled control never renders its own label underlined', () => {
        anything that paints a control. It has been widened once — #167 put the
        form-control `font: inherit` reset there, for the same #112 reason the
        link rule is there — and #251 widened it again with the `.t-*` type
-       classes' colour, which tokens' font-override.test.mjs pins as colour
-       only and this roster leaves out. Neither declares a text-decoration, so
+       classes, which tokens' font-override.test.mjs pins and this roster
+       leaves out. Neither declares a text-decoration, so
        the underline story is unchanged by them. Compared as a set; source order
        is not the invariant. */
     expect([...layered].filter((selector) => !selector.startsWith('.t-')).sort()).toEqual(

@@ -4,9 +4,7 @@
  *
  * The `.t-*` type classes are read from the file rather than typed out, so a
  * class added to tokens.css is measured by every suite that imports this
- * without an edit here. Two readings of the same file, kept apart on purpose:
- * the unlayered rules (the type ramp) and the `@layer base` rules (the colour,
- * #251). The suites assert that the two agree.
+ * without an edit here.
  */
 
 import { readFileSync } from 'node:fs';
@@ -66,23 +64,31 @@ export const rules = (css) =>
     match[2],
   ]);
 
-const isTypeClass = (selector) => /^\.t-[\w-]+$/.test(selector);
-
-/** Every type class the unlayered ramp declares, `.t-code` included. */
-export const TYPE_CLASSES = rules(unlayered(tokensCss))
-  .flatMap(([selectors]) => selectors)
-  .filter(isTypeClass);
+/* The type class a selector is about, or undefined. Loose on purpose, so a
+   selector that wraps the class (`:where(.t-h2)`, `h2.t-h2`) is still found
+   and measured rather than silently dropped. */
+const typeClassOf = (selector) => selector.match(/\.(t-[\w-]+)/)?.[1];
 
 /**
- * Each layered type class and the token its colour resolves to, e.g.
- * `{ '.t-caption': '--fg-3' }`.
+ * Each type class tokens.css declares inside a layer, with its declarations:
+ * `{ 't-caption': { 'font-size': 'var(--fs-xs)', color: 'var(--fg-3)', … } }`.
+ * Keyed without the dot, the way the class is written in markup.
  */
-export const LAYERED_TYPE_COLOURS = Object.fromEntries(
+export const TYPE_RULES = Object.fromEntries(
   layerBlocks(tokensCss)
     .flatMap(rules)
-    .filter(([selectors]) => selectors.every(isTypeClass))
+    .filter(([selectors]) => selectors.some(typeClassOf))
     .flatMap(([selectors, body]) => {
-      const token = body.match(/color:\s*var\((--[\w-]+)\)/)?.[1];
-      return selectors.map((selector) => [selector, token]);
+      const declarations = Object.fromEntries(
+        body
+          .split(';')
+          .map((declaration) => declaration.trim())
+          .filter(Boolean)
+          .map((declaration) => {
+            const colon = declaration.indexOf(':');
+            return [declaration.slice(0, colon).trim(), declaration.slice(colon + 1).trim()];
+          }),
+      );
+      return selectors.map((selector) => [typeClassOf(selector), declarations]);
     }),
 );
