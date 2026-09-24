@@ -1231,6 +1231,17 @@ describe('no-duplicate-token-stylesheet', () => {
     expect(messagesOf(results)[0]).toContain('already imported in this file');
   });
 
+  it('ships at warn, whatever the top-level severity says', () => {
+    const [js] = lint(`${TOKENS}\n${REACT}`, { options: { severity: 'error' } });
+    const [css] = lintCss(
+      "@import '@elirobinson/tokens/tokens.css';\n@import '@elirobinson/react/styles.css';",
+      { options: { severity: 'error' } },
+    );
+
+    expect(js.severity).toBe(1);
+    expect(css.severity).toBe(1);
+  });
+
   it('allows either one on its own', () => {
     expect(lint(TOKENS)).toHaveLength(0);
     expect(lint(REACT)).toHaveLength(0);

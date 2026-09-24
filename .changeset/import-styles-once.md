@@ -1,5 +1,5 @@
 ---
-'@elirobinson/ai-patterns': patch
+'@elirobinson/ai-patterns': minor
 '@elirobinson/eslint-config': minor
 ---
 
@@ -20,12 +20,12 @@ the generated skills and `llms.txt`, `ds patterns`, the `adopt-system` prompt an
 `ds contracts` gains `token-stylesheet-once`. Run `pnpm ds init --agents` to refresh the
 managed block and the skill.
 
-**`@elirobinson/eslint-config`.** New rule, on by default in both configs at the configured
-`severity` (`'error'` unless you set it):
-`@elirobinson/no-duplicate-token-stylesheet` for JS and TS modules, and
-`@elirobinson-css/no-duplicate-token-stylesheet` for stylesheets. It flags an import of
+**`@elirobinson/eslint-config`.** New rule, on by default in both configs at **`warn`**,
+whatever `severity` says, like `no-padded-ui-copy`: an app that followed the old
+instructions imports both files, and a rule that red-builds it on upgrade gets switched off.
+`@elirobinson/no-duplicate-token-stylesheet` covers JS and TS modules, and
+`@elirobinson-css/no-duplicate-token-stylesheet` covers stylesheets. It flags an import of
 `@elirobinson/tokens/tokens.css` in a file that also imports `@elirobinson/react/styles.css`,
-and a second import of either one in the same file. **An app that followed the old
-instructions fails lint after upgrading** until it deletes the `tokens.css` import, which is
-the whole fix. It reads one file at a time and static imports only, so an app that splits
-the imports across files is not caught.
+and a second import of either one in the same file. The fix is to delete the `tokens.css`
+import; then raise the rule to `'error'` in your own config. It reads one file at a time and
+static imports only, so an app that splits the imports across files is not caught.

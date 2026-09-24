@@ -88,7 +88,11 @@ export function designSystem(options = {}) {
       plugins: { '@elirobinson': plugin },
       rules: {
         'no-restricted-imports': restrictedImports([FOREIGN_UI_LIBRARIES, DIRECT_PRIMITIVES]),
-        '@elirobinson/no-duplicate-token-stylesheet': severity,
+        // Always `warn`, like the copy rule and for the same reason: every app
+        // that followed the old install instructions imports both files, and a
+        // rule that red-builds a consumer on upgrade gets deleted. Raise it in
+        // your own config once the repo is clean.
+        '@elirobinson/no-duplicate-token-stylesheet': 'warn',
         '@elirobinson/no-hardcoded-design-values': [severity, hardcodedValues],
         '@elirobinson/no-padded-ui-copy': [copySeverity, copyOptions],
       },
