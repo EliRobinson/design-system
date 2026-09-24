@@ -36,7 +36,7 @@
 /* --- Cascade layer -------------------------------------------------------
    One layer, declared before anything else so its position in the layer order
    is fixed by this statement rather than by wherever its first rule lands.
-   Three things live in it: the `.t-*` type classes' colour, the form-control
+   Three things live in it: the `.t-*` type classes, the form-control
    `font-family` reset and the bare-element link rule. Everything else here,
    every `:root` block included, stays unlayered and therefore still outranks
    anything a consumer writes inside a layer.
@@ -467,136 +467,132 @@
 /* ==========================================================================
    SEMANTIC TYPE — class-based shortcuts. Use these in components.
    ========================================================================== */
-.t-display-1 {
-  font-family: var(--font-display);
-  font-weight: var(--fw-semibold);
-  font-size: clamp(48px, 7vw, var(--fs-8xl));
-  line-height: var(--lh-tight);
-  letter-spacing: var(--tr-tight);
-}
-.t-display-2 {
-  font-family: var(--font-display);
-  font-weight: var(--fw-semibold);
-  font-size: clamp(38px, 5.5vw, var(--fs-7xl));
-  line-height: var(--lh-tight);
-  letter-spacing: var(--tr-tight);
-}
-.t-h1 {
-  font-family: var(--font-sans);
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-5xl);
-  line-height: var(--lh-tight);
-  letter-spacing: var(--tr-tight);
-}
-.t-h2 {
-  font-family: var(--font-sans);
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-4xl);
-  line-height: var(--lh-snug);
-  letter-spacing: var(--tr-snug);
-}
-.t-h3 {
-  font-family: var(--font-sans);
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-3xl);
-  line-height: var(--lh-snug);
-  letter-spacing: var(--tr-snug);
-}
-.t-h4 {
-  font-family: var(--font-sans);
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-2xl);
-  line-height: var(--lh-snug);
-  letter-spacing: var(--tr-snug);
-}
-.t-h5 {
-  font-family: var(--font-sans);
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-xl);
-  line-height: var(--lh-snug);
-}
-.t-lead {
-  font-family: var(--font-sans);
-  font-weight: var(--fw-regular);
-  font-size: var(--fs-xl);
-  line-height: var(--lh-relaxed);
-}
-.t-body {
-  font-family: var(--font-sans);
-  font-weight: var(--fw-regular);
-  font-size: var(--fs-md);
-  line-height: var(--lh-relaxed);
-}
-.t-body-sm {
-  font-family: var(--font-sans);
-  font-weight: var(--fw-regular);
-  font-size: var(--fs-sm);
-  line-height: var(--lh-relaxed);
-}
-.t-caption {
-  font-family: var(--font-sans);
-  font-weight: var(--fw-regular);
-  font-size: var(--fs-xs);
-  line-height: var(--lh-normal);
-}
-.t-eyebrow {
-  font-family: var(--font-mono);
-  font-weight: var(--fw-medium);
-  font-size: var(--fs-xs);
-  line-height: 1;
-  letter-spacing: var(--tr-caps);
-  text-transform: uppercase;
-}
-.t-mono {
-  font-family: var(--font-mono);
-  font-weight: var(--fw-regular);
-  font-size: var(--fs-sm);
-  line-height: var(--lh-normal);
-  font-variant-ligatures: none;
-}
-.t-code {
-  font-family: var(--font-mono);
-  font-weight: var(--fw-regular);
-  font-size: 0.92em;
-  background: var(--bg-muted);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  padding: 0.1em 0.35em;
-}
+/* In `@layer base`, for the reason the `a` rule is (#112; see the `@layer base;`
+   statement at the top for why the layer is named `base`). Unlayered, every
+   declaration here beat every Tailwind utility, so `text-destructive-ink`,
+   `font-mono`, `text-sm` or `tracking-wide` on a type-class element did
+   nothing unless it carried `!`. #251.
 
-/* The type classes' colour, in `@layer base` for the reason the `a` rule is
-   (#112, and see the `@layer base;` statement at the top). Unlayered, it beat
-   every Tailwind utility, so `<p class="t-caption text-destructive-ink">`
-   rendered --fg-3 grey unless the utility carried `!`. #251.
+   In the layer a type class still sets its whole style when nobody asked for
+   anything else, and loses to anything that states an intent. `.t-*` is
+   (0,1,0), so it still beats the (0,0,1) bare-element rules that share the
+   layer: preflight's `h1 { font-size: inherit }` and `code { font-size: 1em }`,
+   the form-control `font-family` reset, and the `a` rule. `a:hover` is
+   (0,1,1), so a hovered type-class anchor takes --link-hover. A PARENT's
+   colour or font still does not reach a `.t-*` child: a declared value beats
+   an inherited one in any layer.
 
-   In the layer it still paints a type class nobody asked anything else of, and
-   loses to anything that states an intent. `.t-*` is (0,1,0), so it still
-   beats the (0,0,1) bare-element rules sharing the layer (the `a` rule,
-   preflight's resets); `a:hover` is (0,1,1), so a hovered type-class anchor
-   takes --link-hover. A colour on a PARENT still does not reach a `.t-*`
-   child: a declared value beats an inherited one in any layer.
-
-   Only `color` moved; the rest of each class stays unlayered.
-   type-cascade.test.mjs measures all of this in a browser. */
+   `.t-code` is layered with the rest, so a `bg-*` or `p-*` utility on it wins
+   too. type-cascade.test.mjs measures all of this in a browser. */
 @layer base {
-  .t-display-1,
-  .t-display-2,
-  .t-h1,
-  .t-h2,
-  .t-h3,
-  .t-h4,
-  .t-h5,
-  .t-body,
-  .t-mono {
+  .t-display-1 {
+    font-family: var(--font-display);
+    font-weight: var(--fw-semibold);
+    font-size: clamp(48px, 7vw, var(--fs-8xl));
+    line-height: var(--lh-tight);
+    letter-spacing: var(--tr-tight);
     color: var(--fg);
   }
-  .t-lead,
-  .t-body-sm,
-  .t-eyebrow {
+  .t-display-2 {
+    font-family: var(--font-display);
+    font-weight: var(--fw-semibold);
+    font-size: clamp(38px, 5.5vw, var(--fs-7xl));
+    line-height: var(--lh-tight);
+    letter-spacing: var(--tr-tight);
+    color: var(--fg);
+  }
+  .t-h1 {
+    font-family: var(--font-sans);
+    font-weight: var(--fw-semibold);
+    font-size: var(--fs-5xl);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--tr-tight);
+    color: var(--fg);
+  }
+  .t-h2 {
+    font-family: var(--font-sans);
+    font-weight: var(--fw-semibold);
+    font-size: var(--fs-4xl);
+    line-height: var(--lh-snug);
+    letter-spacing: var(--tr-snug);
+    color: var(--fg);
+  }
+  .t-h3 {
+    font-family: var(--font-sans);
+    font-weight: var(--fw-semibold);
+    font-size: var(--fs-3xl);
+    line-height: var(--lh-snug);
+    letter-spacing: var(--tr-snug);
+    color: var(--fg);
+  }
+  .t-h4 {
+    font-family: var(--font-sans);
+    font-weight: var(--fw-semibold);
+    font-size: var(--fs-2xl);
+    line-height: var(--lh-snug);
+    letter-spacing: var(--tr-snug);
+    color: var(--fg);
+  }
+  .t-h5 {
+    font-family: var(--font-sans);
+    font-weight: var(--fw-semibold);
+    font-size: var(--fs-xl);
+    line-height: var(--lh-snug);
+    color: var(--fg);
+  }
+  .t-lead {
+    font-family: var(--font-sans);
+    font-weight: var(--fw-regular);
+    font-size: var(--fs-xl);
+    line-height: var(--lh-relaxed);
+    color: var(--fg-2);
+  }
+  .t-body {
+    font-family: var(--font-sans);
+    font-weight: var(--fw-regular);
+    font-size: var(--fs-md);
+    line-height: var(--lh-relaxed);
+    color: var(--fg);
+  }
+  .t-body-sm {
+    font-family: var(--font-sans);
+    font-weight: var(--fw-regular);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-relaxed);
     color: var(--fg-2);
   }
   .t-caption {
+    font-family: var(--font-sans);
+    font-weight: var(--fw-regular);
+    font-size: var(--fs-xs);
+    line-height: var(--lh-normal);
     color: var(--fg-3);
+  }
+  .t-eyebrow {
+    font-family: var(--font-mono);
+    font-weight: var(--fw-medium);
+    font-size: var(--fs-xs);
+    line-height: 1;
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+    color: var(--fg-2);
+  }
+  .t-mono {
+    font-family: var(--font-mono);
+    font-weight: var(--fw-regular);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-normal);
+    color: var(--fg);
+    font-variant-ligatures: none;
+  }
+  .t-code {
+    font-family: var(--font-mono);
+    font-weight: var(--fw-regular);
+    font-size: 0.92em;
+    background: var(--bg-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    padding: 0.1em 0.35em;
   }
 }
 

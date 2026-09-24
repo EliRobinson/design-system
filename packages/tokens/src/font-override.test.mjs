@@ -34,10 +34,9 @@ import { describe, expect, it } from 'vitest';
 import { effectiveTokens, parseTokensCss } from './parse-tokens-css.mjs';
 import { readTokenStylesheets, TOKEN_STYLESHEETS, TOKENS_SRC_DIR } from './token-stylesheets.mjs';
 import {
-  LAYERED_TYPE_COLOURS,
   layerBlocks,
   rules,
-  TYPE_CLASSES,
+  TYPE_RULES,
   unlayered,
   withoutComments,
 } from './tokens-css.test-helper.mjs';
@@ -134,10 +133,10 @@ describe('the cascade rule the hook relies on', () => {
     // POINT of both, not a cost.
     //
     // It has been widened a second time, deliberately. The third block is the
-    // `.t-*` type classes' `color` (#251), and only their colour: unlayered, it
-    // beat `text-destructive-ink` on a `t-caption`, which is #112 again. Those
-    // rules are pinned on their own in "the type classes' colour" below, so
-    // this roster leaves them out.
+    // `.t-*` type classes (#251): unlayered, they beat `text-destructive-ink`,
+    // `font-mono` and `text-sm` on a type-class element, which is #112 again.
+    // Those rules are pinned on their own in "the type classes" below, so this
+    // roster leaves them out.
     //
     // No block declares a custom property, so the guarantee the test above
     // protects — no `--token: …` inside a layer — is untouched by any of them.
@@ -195,31 +194,29 @@ describe('the cascade rule the hook relies on', () => {
   });
 });
 
-describe('the type classes’ colour (#251)', () => {
+describe('the type classes (#251)', () => {
   /* The browser half is type-cascade.test.mjs, which skips on an image with no
      Chromium. These read the file, so they run everywhere. */
-  const paints = TYPE_CLASSES.filter((name) => name !== '.t-code');
 
-  it('layers the colour of every type class but .t-code, which sets none', () => {
-    expect(paints.length).toBeGreaterThan(0);
-    expect(Object.keys(LAYERED_TYPE_COLOURS).sort()).toEqual([...paints].sort());
-    for (const [name, token] of Object.entries(LAYERED_TYPE_COLOURS)) {
-      expect(token, name).toMatch(/^--fg(-[23])?$/);
+  it('declares the whole type ramp inside a layer, .t-code included', () => {
+    const names = Object.keys(TYPE_RULES);
+    expect(names).toEqual(expect.arrayContaining(['t-h1', 't-body', 't-caption', 't-code']));
+    for (const [name, declarations] of Object.entries(TYPE_RULES)) {
+      expect(declarations['font-family'], name).toMatch(/^var\(--font-/);
+      /* Every class but .t-code paints a neutral foreground; .t-code inherits. */
+      if (name !== 't-code') expect(declarations.color, name).toMatch(/^var\(--fg(-[23])?\)$/);
     }
   });
 
-  it('leaves no colour on an unlayered type class, where it would beat every utility', () => {
-    for (const [selectors, body] of rules(unlayered(withoutComments(tokensCss)))) {
-      if (!selectors.some((selector) => selector.startsWith('.t-'))) continue;
-      expect(body, selectors.join(', ')).not.toMatch(/(^|[;\s])color\s*:/);
-    }
-  });
-
-  it('layers the colour and nothing else of the type ramp', () => {
-    for (const [selectors, body] of layerBlocks(withoutComments(tokensCss)).flatMap(rules)) {
-      if (!selectors.some((selector) => selector.startsWith('.t-'))) continue;
-      const properties = [...body.matchAll(/([\w-]+)\s*:/g)].map((match) => match[1]);
-      expect(properties, selectors.join(', ')).toEqual(['color']);
-    }
-  });
+  it.each(IMPORTED_STYLESHEETS)(
+    'leaves no .t-* rule unlayered in %s, where it would beat every utility',
+    (name) => {
+      for (const [selectors] of rules(unlayered(withoutComments(allCss[name])))) {
+        expect(
+          selectors.filter((selector) => selector.includes('.t-')),
+          selectors.join(', '),
+        ).toEqual([]);
+      }
+    },
+  );
 });

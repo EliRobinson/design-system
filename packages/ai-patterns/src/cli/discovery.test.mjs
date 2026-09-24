@@ -23,7 +23,7 @@ import {
 } from '@elirobinson/tokens/token-stylesheets';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { cssVariables, loadDials, TOKEN_STYLESHEETS } from './discovery.mjs';
+import { cssClasses, cssVariables, loadDials, TOKEN_STYLESHEETS } from './discovery.mjs';
 
 /* Through the exports map, so this reads the same files `ds` reads out of a
    consumer's node_modules rather than paths relative to the monorepo layout. */
@@ -184,5 +184,17 @@ describe('loadDials', () => {
     });
 
     await expect(loadDials({ tokens })).resolves.toBeNull();
+  });
+});
+
+describe('cssClasses', () => {
+  it('lists every type class the installed tokens.css ships, layered or not (#251)', () => {
+    const listed = cssClasses(readTokenStylesheets()).filter((name) => name.startsWith('t-'));
+    expect(listed).toEqual(expect.arrayContaining(['t-h1', 't-body', 't-caption', 't-code']));
+  });
+
+  it('finds a class opening a rule at any indent, and none named only in a comment', () => {
+    const css = `/* .t-ghost is prose */\n@layer base {\n  .t-h1 { font-size: 30px; }\n}\n.ds-x a { color: red; }`;
+    expect(cssClasses(css)).toEqual(['ds-x', 't-h1']);
   });
 });
