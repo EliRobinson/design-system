@@ -657,6 +657,121 @@ describeBrowser('browser contract checks', () => {
       });
     });
 
+    /* Issue #248. A wide table in a sideways-scrolling wrapper puts some of its
+       controls across the wrapper's visible edge, and which ones depends on the
+       viewport width. The walk out from the centre stops where the wrapper
+       clips, so a 44x44 button half-hidden by its container reported ~39x44 and
+       failed touch-target-primary — though the user can scroll it fully into
+       view, and that is the hit area a finger actually gets.
+
+       Reported against 0.20.0. The fix is #79's: `measure` scrolls every
+       surface to the centre of each scrolling ancestor before probing, which
+       brings a straddling control fully inside its container. These cases pin
+       that for a scroll container, not only for the window; against 0.20.0 the
+       two straddling cases and the frozen-column pair go red. */
+    describe('controls across the edge of a scrolling container', () => {
+      /* 300px of visible wrapper over 900px of row. `left` puts a button's box
+         anywhere along the row; the wrapper starts scrolled to 0. */
+      const strip = (buttons, { wrapper = '', scrollLeft = 0 } = {}) =>
+        render(`<div id="strip" style="width:300px;overflow-x:auto;${wrapper}">
+            <div style="position:relative;width:900px;height:60px">${buttons}</div>
+          </div>
+          <script>document.getElementById('strip').scrollLeft = ${scrollLeft};</script>`);
+
+      const clippedWidth = (selector) =>
+        page.evaluate((target) => {
+          const box = document.querySelector(target).getBoundingClientRect();
+          const port = document.getElementById('strip').getBoundingClientRect();
+          return Math.min(box.right, port.right) - Math.max(box.left, port.left);
+        }, selector);
+
+      it('passes a 44x44 button straddling the right edge', async () => {
+        await strip(
+          '<button id="t" style="position:absolute;left:261px;top:8px;width:44px;height:44px">+</button>',
+        );
+
+        /* The reported shape: 5px hidden, so the walk used to stop at ~39.
+           Hide half and the old centre probe lands on the edge itself and is
+           skipped as occluded, which passes for the wrong reason. */
+        expect(await clippedWidth('#t')).toBe(39);
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      it('passes a 44x44 button straddling the left edge once the strip has scrolled', async () => {
+        await strip(
+          '<button id="t" style="position:absolute;left:395px;top:8px;width:44px;height:44px">+</button>',
+          { scrollLeft: 400 },
+        );
+
+        expect(await clippedWidth('#t')).toBe(39);
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      /* The shape the issue was reported on: a frozen first column. Scrolled
+         into view, a control can land under the sticky cell; a page that pads
+         its scroll box past that column is measured in the clear, because
+         `scrollIntoView` honours `scroll-padding`.
+
+         A pass alone cannot show that: a control left under the frozen cell is
+         unmeasurable and skipped, which is also a pass. So the undersized twin
+         carries the proof — it is only reported if it was actually measured. */
+      describe('under a frozen first column the page pads past', () => {
+        const frozen = (size) =>
+          strip(
+            `<div style="position:sticky;left:0;width:120px;height:60px;background:#eee;z-index:1">Baker</div>
+             <button id="t" style="position:absolute;left:380px;top:8px;width:${size}px;height:${size}px">+</button>`,
+            { wrapper: 'scroll-padding-left:120px', scrollLeft: 400 },
+          );
+
+        it('passes a 44x44 button', async () => {
+          await frozen(44);
+
+          expect(await checkTouchTargets(page)).toEqual([]);
+        });
+
+        it('measures, and so flags, a 30x30 button', async () => {
+          await frozen(30);
+
+          const violations = await checkTouchTargets(page);
+
+          expect(violations).toHaveLength(1);
+          expect(violations[0].effectiveWidth).toBe(30);
+        });
+      });
+
+      /* Scrolling into view must not become a blanket pass. */
+      it('still flags a genuinely 30x30 button inside the strip', async () => {
+        await strip(
+          '<button id="t" style="position:absolute;left:275px;top:8px;width:30px;height:30px">+</button>',
+        );
+
+        const violations = await checkTouchTargets(page);
+
+        expect(violations).toHaveLength(1);
+        expect(violations[0].contract).toBe('touch-target-primary');
+        expect(violations[0].effectiveWidth).toBe(30);
+        expect(violations[0].effectiveHeight).toBe(30);
+      });
+
+      it('puts the strip and the page back where it found them', async () => {
+        await render(`${FILLER}<div id="strip" style="width:300px;overflow-x:auto">
+            <div style="position:relative;width:900px;height:60px">
+              <button style="position:absolute;left:261px;top:8px;width:44px;height:44px">+</button>
+              <button style="position:absolute;left:700px;top:8px;width:44px;height:44px">+</button>
+            </div>
+          </div>${FILLER}`);
+        await page.evaluate(() => {
+          document.getElementById('strip').scrollLeft = 30;
+          window.scrollTo(0, 90);
+        });
+
+        await checkTouchTargets(page);
+
+        expect(await page.evaluate(() => document.getElementById('strip').scrollLeft)).toBe(30);
+        expect(await page.evaluate(() => window.scrollY)).toBe(90);
+      });
+    });
+
     /* Belt and braces. A `null` from `elementFromPoint` means "the browser
        routed nothing here", which is not a size — turning it into one is the
        whole of #79. Out-of-viewport coordinates are now refused before the

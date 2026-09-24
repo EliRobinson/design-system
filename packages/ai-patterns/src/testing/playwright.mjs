@@ -256,6 +256,13 @@ export async function checkTouchTargets(page, options = {}) {
       // undersized one was indistinguishable from a compliant one. Either way
       // the check only ever saw the first screenful of a page.
       //
+      // The same scroll covers a control across the edge of a sideways-scrolling
+      // container, like a wide table's wrapper (#248). `scrollIntoView` scrolls
+      // every scrolling ancestor, so the control is centred in its container as
+      // well as in the window, and the walk no longer stops at the container's
+      // clipped edge. It honours `scroll-padding`, so a table that pads its
+      // scroll box past a frozen first column is measured clear of that column.
+      //
       // `floor` is the minimum this particular surface is being held to — 44
       // for a primary control, 24 for a dense one. It is a parameter rather
       // than a closure over one number because the walk below stops after
