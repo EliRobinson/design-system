@@ -23,53 +23,11 @@
  * Chromium and this must not be what blocks an unrelated change.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, extname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { expect, it } from 'vitest';
 
-import { afterAll, describe, expect, it } from 'vitest';
+import { bootBrowser, openTokensPage } from './browser.test-helper.mjs';
 
-const srcDir = dirname(fileURLToPath(import.meta.url));
-
-/* Launching, opening and closing Chromium share the machine with whatever else
-   the monorepo is running; the 60s budget and the reason for it are the same as
-   in @elirobinson/ai-patterns' src/testing/browser.test-helper.mjs, which is
-   not reachable from here — this package does not depend on that one. */
-const BROWSER_BUDGET = 60_000;
-
-let chromium;
-try {
-  ({ chromium } = await import('playwright'));
-} catch {
-  chromium = null;
-}
-
-let browser;
-let launchError;
-if (chromium) {
-  try {
-    browser = await chromium.launch();
-  } catch (error) {
-    launchError = error;
-  }
-}
-
-afterAll(async () => {
-  await browser?.close();
-}, BROWSER_BUDGET);
-
-const describeBrowser = browser ? describe : describe.skip;
-if (!browser) {
-  console.warn(
-    `Skipping link cascade tests: ${chromium ? launchError?.message : 'playwright is not installed'}`,
-  );
-}
-
-/* A synthetic origin, served from src/ by a route handler. tokens.css @imports
-   its siblings relatively, so it has to be fetched from a URL that has a
-   directory — `setContent` runs on about:blank, where `./palettes.css` resolves
-   to nothing and the whole palette would silently be missing. */
-const ORIGIN = 'https://tokens.test';
+const { browser, describeBrowser } = await bootBrowser('link cascade');
 
 /* What `@import 'tailwindcss'` puts in front of tokens.css: the layer order
    statement, plus one utility in @layer utilities. `text-accent-foreground` is
@@ -121,32 +79,17 @@ const BODY = `
 async function consumer(...before) {
   const page = await browser.newPage();
 
-  await page.route(`${ORIGIN}/**`, async (route) => {
-    const name = new URL(route.request().url()).pathname.slice(1);
-
-    if (name === 'index.html') {
-      return route.fulfill({
-        contentType: 'text/html',
-        /* data-palette="slate" is issue #112's own reproduction — the teal
-           brand, whose --accent-fg is white while --link stays ink. Under the
-           default ember palette both resolve to --ink-1000 and every assertion
-           below would pass on black === black without measuring anything. */
-        body: `<!doctype html><html data-palette="slate"><meta charset="utf-8">
+  /* data-palette="slate" is issue #112's own reproduction — the teal
+     brand, whose --accent-fg is white while --link stays ink. Under the
+     default ember palette both resolve to --ink-1000 and every assertion
+     below would pass on black === black without measuring anything. */
+  await openTokensPage(
+    page,
+    `<!doctype html><html data-palette="slate"><meta charset="utf-8">
           ${before.map((css) => `<style>${css}</style>`).join('\n')}
           <link rel="stylesheet" href="/tokens.css">
           ${BODY}`,
-      });
-    }
-
-    const file = join(srcDir, name);
-    if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
-    return route.fulfill({
-      contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
-      body: readFileSync(file),
-    });
-  });
-
-  await page.goto(`${ORIGIN}/index.html`);
+  );
   return page;
 }
 

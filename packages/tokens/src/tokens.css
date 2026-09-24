@@ -37,9 +37,9 @@
    One layer, declared before anything else so its position in the layer order
    is fixed by this statement rather than by wherever its first rule lands.
    Three things live in it: the `.t-*` type classes' colour, the form-control
-   `font-family` reset and the bare-element link rule. Everything else here —
-   every `:root` block included — stays unlayered and
-   therefore still outranks anything a consumer writes inside a layer.
+   `font-family` reset and the bare-element link rule. Everything else here,
+   every `:root` block included, stays unlayered and therefore still outranks
+   anything a consumer writes inside a layer.
 
    The name is `base`, not a `ds-`prefixed one, and that is the whole design.
    Layer order is fixed by FIRST declaration, and the documented Tailwind v4
@@ -564,71 +564,39 @@
   padding: 0.1em 0.35em;
 }
 
-/* The type classes' colour, layered for the reason the `a` rule is (#112). See
-   the `@layer base;` statement at the top of this file for why the layer is
-   named `base`.
+/* The type classes' colour, in `@layer base` for the reason the `a` rule is
+   (#112, and see the `@layer base;` statement at the top). Unlayered, it beat
+   every Tailwind utility, so `<p class="t-caption text-destructive-ink">`
+   rendered --fg-3 grey unless the utility carried `!`. #251.
 
-   Unlayered, `color` here beat every Tailwind utility: unlayered wins over
-   every layer whatever the specificity, and Tailwind puts all of its utilities
-   in `@layer utilities`. So `<p class="t-caption text-destructive-ink">`
-   rendered --fg-3 grey, and a consumer could only get its colour back with `!`
-   on each utility. #251.
+   In the layer it still paints a type class nobody asked anything else of, and
+   loses to anything that states an intent. `.t-*` is (0,1,0), so it still
+   beats the (0,0,1) bare-element rules sharing the layer (the `a` rule,
+   preflight's resets); `a:hover` is (0,1,1), so a hovered type-class anchor
+   takes --link-hover. A colour on a PARENT still does not reach a `.t-*`
+   child: a declared value beats an inherited one in any layer.
 
-   In `base` the colour still paints a type class nobody asked anything else of,
-   and loses to anything that states an intent. Where nothing else sets a
-   colour, rendering does not move: `.t-*` is (0,1,0), which still outranks the
-   (0,0,1) bare-element rules sharing the layer (the `a` rule, preflight's
-   resets), so `<a class="t-caption">` stays --fg-3 at rest. `a:hover` is
-   (0,1,1), though, so a hovered type-class anchor now takes --link-hover where
-   it used to keep its grey.
-
-   What the layer does not change: a declared value beats an inherited one at
-   any layer, so a colour on a PARENT still does not reach a `.t-*` child. The
-   utility goes on the type-class element itself.
-
-   Only `color` moved. The rest of each rule (family, size, weight, leading,
-   tracking) is still unlayered and still beats a utility such as `font-mono`
-   or `text-sm` on the same element. `type-cascade.test.mjs` measures all of
-   this in a browser. */
+   Only `color` moved; the rest of each class stays unlayered.
+   type-cascade.test.mjs measures all of this in a browser. */
 @layer base {
-  .t-display-1 {
+  .t-display-1,
+  .t-display-2,
+  .t-h1,
+  .t-h2,
+  .t-h3,
+  .t-h4,
+  .t-h5,
+  .t-body,
+  .t-mono {
     color: var(--fg);
   }
-  .t-display-2 {
-    color: var(--fg);
-  }
-  .t-h1 {
-    color: var(--fg);
-  }
-  .t-h2 {
-    color: var(--fg);
-  }
-  .t-h3 {
-    color: var(--fg);
-  }
-  .t-h4 {
-    color: var(--fg);
-  }
-  .t-h5 {
-    color: var(--fg);
-  }
-  .t-lead {
-    color: var(--fg-2);
-  }
-  .t-body {
-    color: var(--fg);
-  }
-  .t-body-sm {
+  .t-lead,
+  .t-body-sm,
+  .t-eyebrow {
     color: var(--fg-2);
   }
   .t-caption {
     color: var(--fg-3);
-  }
-  .t-eyebrow {
-    color: var(--fg-2);
-  }
-  .t-mono {
-    color: var(--fg);
   }
 }
 

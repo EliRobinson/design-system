@@ -33,6 +33,14 @@ import { describe, expect, it } from 'vitest';
 
 import { effectiveTokens, parseTokensCss } from './parse-tokens-css.mjs';
 import { readTokenStylesheets, TOKEN_STYLESHEETS, TOKENS_SRC_DIR } from './token-stylesheets.mjs';
+import {
+  LAYERED_TYPE_COLOURS,
+  layerBlocks,
+  rules,
+  TYPE_CLASSES,
+  unlayered,
+  withoutComments,
+} from './tokens-css.test-helper.mjs';
 
 const tokensCss = readFileSync(join(TOKENS_SRC_DIR, 'tokens.css'), 'utf8');
 const tokens = effectiveTokens(parseTokensCss(readTokenStylesheets()));
@@ -57,34 +65,6 @@ const STACKS = {
   '--font-display': `'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif`,
   '--font-mono': `'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace`,
 };
-
-/* The stylesheet's own comments talk about `@layer`, which is not the same as
-   being in one. */
-const withoutComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
-
-/**
- * The body of every `@layer <name> { … }` block, brace-matched.
- *
- * Regex cannot do this: a layer block contains nested rules, so `\{[^}]*\}`
- * stops at the first inner `}` and would report a block as empty — which would
- * pass every assertion below while saying nothing. A bare `@layer name;`
- * statement declares an order and holds no declarations, so it is skipped.
- */
-function layerBlocks(css) {
-  const blocks = [];
-  for (const match of css.matchAll(/@layer\b[^;{]*\{/g)) {
-    let depth = 1;
-    let index = match.index + match[0].length;
-    const start = index;
-    while (depth > 0 && index < css.length) {
-      if (css[index] === '{') depth += 1;
-      if (css[index] === '}') depth -= 1;
-      index += 1;
-    }
-    blocks.push(css.slice(start, index - 1));
-  }
-  return blocks;
-}
 
 const HOOKS = {
   '--font-sans': '--ds-font-sans-override',
@@ -113,24 +93,6 @@ describe('the font family override hook', () => {
     ]);
   });
 });
-
-/* The type classes whose colour sits in `@layer base` (#251). Every `.t-*` but
-   `.t-code`, which has never set a colour. */
-const TYPE_CLASSES_THAT_PAINT = [
-  '.t-display-1',
-  '.t-display-2',
-  '.t-h1',
-  '.t-h2',
-  '.t-h3',
-  '.t-h4',
-  '.t-h5',
-  '.t-lead',
-  '.t-body',
-  '.t-body-sm',
-  '.t-caption',
-  '.t-eyebrow',
-  '.t-mono',
-];
 
 describe('the cascade rule the hook relies on', () => {
   it.each(IMPORTED_STYLESHEETS)(
@@ -173,8 +135,9 @@ describe('the cascade rule the hook relies on', () => {
     //
     // It has been widened a second time, deliberately. The third block is the
     // `.t-*` type classes' `color` (#251), and only their colour: unlayered, it
-    // beat `text-destructive-ink` on a `t-caption`, which is #112 again. The
-    // rest of each type class stays unlayered.
+    // beat `text-destructive-ink` on a `t-caption`, which is #112 again. Those
+    // rules are pinned on their own in "the type classes' colour" below, so
+    // this roster leaves them out.
     //
     // No block declares a custom property, so the guarantee the test above
     // protects — no `--token: …` inside a layer — is untouched by any of them.
@@ -182,14 +145,15 @@ describe('the cascade rule the hook relies on', () => {
     // blocks sit in the file is not, and asserting the order would make this go
     // red on a move that changes no cascade.
     const blocks = layerBlocks(withoutComments(tokensCss));
-    const selectors = blocks.flatMap((block) =>
-      [...block.matchAll(/([^{}]+)\{/g)].map((match) => match[1].replace(/\s+/g, ' ').trim()),
-    );
+    const selectors = blocks
+      .flatMap((block) =>
+        [...block.matchAll(/([^{}]+)\{/g)].map((match) => match[1].replace(/\s+/g, ' ').trim()),
+      )
+      .filter((selector) => !selector.startsWith('.t-'));
 
     expect(blocks).toHaveLength(3);
     expect([...selectors].sort()).toEqual(
       [
-        ...TYPE_CLASSES_THAT_PAINT,
         'a',
         'a:hover',
         'button, input, optgroup, select, textarea',
@@ -228,5 +192,34 @@ describe('the cascade rule the hook relies on', () => {
     // It lives in a comment, so it must not be parsed as a declaration either.
     expect(tokensCss).toContain('--ds-font-sans-override: var(--font-geist-sans);');
     expect(tokens.has('--ds-font-sans-override')).toBe(false);
+  });
+});
+
+describe('the type classes’ colour (#251)', () => {
+  /* The browser half is type-cascade.test.mjs, which skips on an image with no
+     Chromium. These read the file, so they run everywhere. */
+  const paints = TYPE_CLASSES.filter((name) => name !== '.t-code');
+
+  it('layers the colour of every type class but .t-code, which sets none', () => {
+    expect(paints.length).toBeGreaterThan(0);
+    expect(Object.keys(LAYERED_TYPE_COLOURS).sort()).toEqual([...paints].sort());
+    for (const [name, token] of Object.entries(LAYERED_TYPE_COLOURS)) {
+      expect(token, name).toMatch(/^--fg(-[23])?$/);
+    }
+  });
+
+  it('leaves no colour on an unlayered type class, where it would beat every utility', () => {
+    for (const [selectors, body] of rules(unlayered(withoutComments(tokensCss)))) {
+      if (!selectors.some((selector) => selector.startsWith('.t-'))) continue;
+      expect(body, selectors.join(', ')).not.toMatch(/(^|[;\s])color\s*:/);
+    }
+  });
+
+  it('layers the colour and nothing else of the type ramp', () => {
+    for (const [selectors, body] of layerBlocks(withoutComments(tokensCss)).flatMap(rules)) {
+      if (!selectors.some((selector) => selector.startsWith('.t-'))) continue;
+      const properties = [...body.matchAll(/([\w-]+)\s*:/g)].map((match) => match[1]);
+      expect(properties, selectors.join(', ')).toEqual(['color']);
+    }
   });
 });
