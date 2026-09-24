@@ -51,7 +51,9 @@ then the artifacts command again.
   `@elirobinson/react` import does not resolve.
 - `@elirobinson/react/styles.css`, once, in the app shell (`app/globals.css`). It already
   imports `@elirobinson/tokens/tokens.css`; importing `tokens.css` as well bundles it twice.
-  On Tailwind v4, `@elirobinson/tokens/tailwind.css` after it.
+  An app that does not import `styles.css` (per-component sheets only) imports
+  `@elirobinson/tokens/tokens.css` itself. On Tailwind v4, keep both in the CSS entry after
+  `@import 'tailwindcss'`, followed by `@elirobinson/tokens/tailwind.css`.
 - Colours, spacing, radii, shadows, and durations come from tokens. Semantic tokens
   (`--fg`, `--surface`, `--accent`) in app code, never raw scale values (`--ink-500`).
 - Three dials — palette, theme, platform — are root-element attributes, and an absent

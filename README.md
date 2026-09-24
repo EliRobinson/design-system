@@ -111,6 +111,7 @@ so do not import `tokens.css` as well: that bundles it twice. An app without
 ```css
 /* app/globals.css */
 @import 'tailwindcss';
+@import '@elirobinson/react/styles.css'; /* moved here from app/layout.tsx, not added */
 @import '@elirobinson/tokens/tailwind.css';
 ```
 

@@ -73,7 +73,8 @@ Before migrating any screen, install the things that keep this from drifting bac
   bare `@elirobinson/react` import does not resolve.
 - `@elirobinson/react/styles.css` is imported once, in the app shell. It already imports
   `@elirobinson/tokens/tokens.css`; importing `tokens.css` as well bundles it twice. An app
-  without `@elirobinson/react` imports `@elirobinson/tokens/tokens.css` instead.
+  that does not import `styles.css` (no React, or per-component sheets only) imports
+  `@elirobinson/tokens/tokens.css` itself.
 - `Input`/`Textarea`/`Select` require a `label` prop; do not wrap them in `FormField`
   (double labels). `FormField` is for controls without their own wiring.
 - Reference semantic tokens (`--fg`, `--surface`, `--accent`) — never raw scale values

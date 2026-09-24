@@ -1,20 +1,15 @@
-// tokens.css is imported once, and an app that uses @elirobinson/react imports
-// it through react/styles.css, which opens with it.
+// Enforces @elirobinson/ai-patterns contracts.json → token-stylesheet-once;
+// that entry says why a second copy of tokens.css matters.
 //
-// Importing both puts two full copies of tokens.css in the bundle. Bundlers do
-// not drop a stylesheet they have already inlined elsewhere, and the later copy
-// wins every equal-specificity tie against whatever CSS sits between the two:
-// the design-system docs app painted a hero eyebrow the wrong colour for exactly
-// this reason (#251). An app that does not use @elirobinson/react still imports
-// tokens.css on its own, and this rule leaves that alone.
-//
-// One module at a time: an app shell that imports react/styles.css in its
-// layout and tokens.css in globals.css escapes this, because seeing that needs
-// the whole import graph. The two imports almost always sit side by side, in
-// the one file the installation docs used to tell people to write.
+// What this rule sees: one file at a time, and static imports only
+// (`import '…'` in a module, `@import` in a stylesheet). An app shell that
+// imports react/styles.css in its layout and tokens.css in globals.css escapes
+// it, and so does a `require()` or a dynamic `import()`. The two imports almost
+// always sit side by side, in the one file the installation docs used to tell
+// people to write.
 
-export const TOKENS_CSS = '@elirobinson/tokens/tokens.css';
-export const REACT_STYLES = '@elirobinson/react/styles.css';
+const TOKENS_CSS = '@elirobinson/tokens/tokens.css';
+const REACT_STYLES = '@elirobinson/react/styles.css';
 
 const meta = {
   type: 'problem',
@@ -25,20 +20,29 @@ const meta = {
   schema: [],
   messages: {
     twice: `${REACT_STYLES} already imports ${TOKENS_CSS}. Importing both bundles tokens.css twice. Remove this import.`,
+    repeated:
+      '{{specifier}} is already imported in this file. A second import bundles it twice. Remove this one.',
   },
 };
 
 /**
- * Report the tokens.css import when the same module also imports
- * react/styles.css.
+ * Report the tokens.css import when the same file also imports
+ * react/styles.css, and any second import of either one.
  *
  * @param {import('eslint').Rule.RuleContext} context
  * @param {Array<{ node: unknown, specifier: string }>} imports
  */
 function reportTwice(context, imports) {
-  if (!imports.some(({ specifier }) => specifier === REACT_STYLES)) return;
+  const withReact = imports.some(({ specifier }) => specifier === REACT_STYLES);
+  const seen = new Set();
   for (const { node, specifier } of imports) {
-    if (specifier === TOKENS_CSS) context.report({ node, messageId: 'twice' });
+    if (specifier !== TOKENS_CSS && specifier !== REACT_STYLES) continue;
+    if (seen.has(specifier)) {
+      context.report({ node, messageId: 'repeated', data: { specifier } });
+    } else if (specifier === TOKENS_CSS && withReact) {
+      context.report({ node, messageId: 'twice' });
+    }
+    seen.add(specifier);
   }
 }
 
@@ -67,7 +71,11 @@ export const cssRule = {
     return {
       Atrule(node) {
         if (String(node.name).toLowerCase() !== 'import' || !node.prelude) return;
-        const specifier = sourceCode.getText(node.prelude).match(/['"]([^'"]+)['"]/)?.[1];
+        /* `'x'`, `"x"`, `url('x')` or an unquoted `url(x)`, then any
+           layer(), supports() or media query. */
+        const specifier = sourceCode
+          .getText(node.prelude)
+          .match(/^\s*(?:url\(\s*)?['"]?([^'")\s]+)/i)?.[1];
         if (specifier) imports.push({ node, specifier });
       },
       'StyleSheet:exit'() {
