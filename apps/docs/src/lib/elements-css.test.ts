@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { stripComments } from './css-source';
+
 /* app/elements.css is loaded from the ROOT layout, so everything it pulls in
    applies to all 95 routes — including /patterns/*, the chrome shots, and
    every page written long before Tailwind arrived here.
@@ -24,8 +26,6 @@ const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
 const ELEMENTS_CSS = read('src/app/elements.css');
 const SCOPED_PREFLIGHT = read('src/app/preflight-scoped.css');
 const UPSTREAM_PREFLIGHT = read('node_modules/tailwindcss/preflight.css');
-
-const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '');
 
 /* Both files quote the very selectors and imports being asserted on, so every
    assertion reads them with comments removed. Matching against the raw text
@@ -100,10 +100,9 @@ describe('app/elements.css', () => {
     };
     expect(at('@layer theme, base, components, utilities;')).toBeLessThan(at('@import'));
     expect(at("@import 'tailwindcss/theme.css'")).toBeLessThan(at("@import './preflight-scoped"));
-    /* tokens.css arrives through react/styles.css, which opens with it. */
-    expect(at("@import './preflight-scoped")).toBeLessThan(
-      at("@import '@elirobinson/react/styles.css'"),
-    );
+    /* That the reset also lands before tokens.css, which arrives through
+       react/styles.css, is checked on the resolved graph in
+       stylesheet-graph.test.ts. */
   });
 
   it('reaches nothing outside a demo stage, and adds no specificity', () => {
