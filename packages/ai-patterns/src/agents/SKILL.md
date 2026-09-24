@@ -40,7 +40,7 @@ import { Button } from '@elirobinson/react/components/atoms/Button';
 - Per-component imports naming the full subpath. There is no barrel export; a bare `@elirobinson/react` import does not resolve.
 - Drive appearance with the component's own `variant` / `size` props, not by overriding with utilities.
 - Use utility classes for **layout** (grid, flex, spacing), the design system for **look**.
-- `@elirobinson/tokens/tokens.css` and `@elirobinson/react/styles.css` are imported once, in the app shell, in that order — never per component.
+- Import `@elirobinson/react/styles.css` once, in the app shell — never per component. It already imports `@elirobinson/tokens/tokens.css`, so do not import `tokens.css` as well: that bundles it twice. An app without `@elirobinson/react` imports `@elirobinson/tokens/tokens.css` instead. On Tailwind v4, `@import '@elirobinson/tokens/tailwind.css'` after it.
 - Token overrides go in an **unlayered** `:root` block — `tokens.css` is unlayered, so an override inside `@layer base` silently loses to it. With `next/font`, re-point the families through `--ds-font-sans-override` / `--ds-font-mono-override` instead, with the font class on `<html>`.
 - Patterns like heroes, page headers, empty states, and sidebars are **compositions** of primitives, not missing components.
 

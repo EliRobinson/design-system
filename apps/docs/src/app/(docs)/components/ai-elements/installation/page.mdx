@@ -47,10 +47,14 @@ Three imports in your app's entry stylesheet, in this order:
 @import '@elirobinson/tokens/tailwind.css';
 ```
 
+Using `@elirobinson/react` too? Put `@import '@elirobinson/react/styles.css';` on the second
+line instead of `tokens.css`. It opens with `tokens.css`, so importing both bundles the
+tokens twice.
+
 - `tailwindcss` is the framework itself. Elements needs v4; the `@import` form above is the
   v4 spelling, and a v3 `@tailwind` triple will not work.
 - `tokens.css` declares the custom properties. It has to be loaded — the next file aliases
-  its variables, it does not define them.
+  its variables, it does not define them. With `@elirobinson/react`, `styles.css` loads it.
 - `tailwind.css` is the bridge. It maps Tailwind's colour, radius, shadow and font
   namespaces onto the tokens with `@theme inline`, so the utilities the vendored components
   already use compile to `var(--token)`. It is what makes Elements render on-brand with no
@@ -60,12 +64,10 @@ The first line is also the one to slow down on if your app is not already built 
 — read the next section before you paste it in. If your app is already Tailwind v4
 throughout, the block above is already the right answer, and the simplest one: stop here.
 
-If you are also using `@elirobinson/react` on the same page, its stylesheet goes in as usual
-— the two do not overlap. Elements carries no stylesheet of its own.
-
-```tsx
-import '@elirobinson/react/styles.css';
-```
+Elements carries no stylesheet of its own. If you also use `@elirobinson/react`, its
+stylesheet takes the place of the `tokens.css` line above rather than going in beside it:
+`styles.css` opens with `@import '@elirobinson/tokens/tokens.css'`, and a second import is a
+second copy of the tokens.
 
 ### If your app is not already Tailwind
 
@@ -94,7 +96,7 @@ wrapper element around your Elements markup — in the umbrella's place:
 @import 'tailwindcss/theme.css' layer(theme);
 @import './elements-preflight.css' layer(base);
 @import 'tailwindcss/utilities.css' layer(utilities);
-@import '@elirobinson/tokens/tokens.css';
+@import '@elirobinson/tokens/tokens.css'; /* or @elirobinson/react/styles.css */
 @import '@elirobinson/tokens/tailwind.css';
 ```
 

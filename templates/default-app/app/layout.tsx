@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import '@elirobinson/react/styles.css';
 import './globals.css';
 
 import { DIAL_BOOTSTRAP } from '../lib/dials';

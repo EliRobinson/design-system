@@ -71,8 +71,9 @@ Before migrating any screen, install the things that keep this from drifting bac
   components, (2) move style values onto `--*` tokens, (3) keyboard and focus pass.
 - Imports use package subpaths only — `@elirobinson/react/components/<tier>/<Name>` — a
   bare `@elirobinson/react` import does not resolve.
-- `@elirobinson/tokens/tokens.css` and `@elirobinson/react/styles.css` are imported once,
-  in the app shell, in that order.
+- `@elirobinson/react/styles.css` is imported once, in the app shell. It already imports
+  `@elirobinson/tokens/tokens.css`; importing `tokens.css` as well bundles it twice. An app
+  without `@elirobinson/react` imports `@elirobinson/tokens/tokens.css` instead.
 - `Input`/`Textarea`/`Select` require a `label` prop; do not wrap them in `FormField`
   (double labels). `FormField` is for controls without their own wiring.
 - Reference semantic tokens (`--fg`, `--surface`, `--accent`) — never raw scale values

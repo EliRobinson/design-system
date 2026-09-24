@@ -1,4 +1,5 @@
-@import '@elirobinson/tokens/tokens.css';
+/* react/styles.css opens with tokens.css. Importing tokens.css here as well
+   would put it in the bundle twice. */
 @import '@elirobinson/react/styles.css';
 
 * {

@@ -25,7 +25,7 @@ export default [...designSystem()];
 ```css
 /* app entry stylesheet, Tailwind v4 */
 @import 'tailwindcss';
-@import '@elirobinson/tokens/tokens.css';
+@import '@elirobinson/react/styles.css'; /* opens with tokens.css; never import both */
 @import '@elirobinson/tokens/tailwind.css';
 ```
 

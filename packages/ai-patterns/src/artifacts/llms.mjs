@@ -35,8 +35,7 @@ const INTRO =
 
 const IMPORT_RULES = [
   'There are no barrel files. Every import names a subpath:',
-  "  import '@elirobinson/tokens/tokens.css';",
-  "  import '@elirobinson/react/styles.css';",
+  "  import '@elirobinson/react/styles.css'; // already imports tokens.css; do not import both",
   "  import { Button } from '@elirobinson/react/components/atoms/Button';",
   "  import { useRovingFocus } from '@elirobinson/react/hooks/useRovingFocus';",
   "A bare import from '@elirobinson/react' does not resolve.",

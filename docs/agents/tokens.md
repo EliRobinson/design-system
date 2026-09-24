@@ -2,7 +2,7 @@
 
 ## Token-first rule
 
-- Import `@elirobinson/tokens/tokens.css` in every app shell.
+- Load `@elirobinson/tokens/tokens.css` once in every app shell: through `@elirobinson/react/styles.css`, which opens with it, when the app uses the components, and directly when it does not. Never both — that bundles it twice.
 - Import JSON token data from `@elirobinson/tokens/tokens-data` or `@elirobinson/tokens/tokens.json` — not a package root barrel.
 - Never hardcode spacing, radii, colors, or durations — use CSS custom properties from tokens.
 - Reference semantic tokens (`--fg`, `--surface`, `--accent`, etc.) in components, not raw scale values (`--ink-500`).

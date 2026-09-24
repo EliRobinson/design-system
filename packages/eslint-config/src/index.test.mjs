@@ -1202,3 +1202,42 @@ describe('isExempt', () => {
     expect(isExempt('0 1px 2px #e2e8f0')).toBe(false);
   });
 });
+
+describe('no-duplicate-token-stylesheet', () => {
+  const TOKENS = "import '@elirobinson/tokens/tokens.css';";
+  const REACT = "import '@elirobinson/react/styles.css';";
+
+  it('flags tokens.css imported next to react/styles.css, which already imports it', () => {
+    const results = lint(`${TOKENS}\n${REACT}`);
+
+    expect(rulesOf(results)).toEqual(['@elirobinson/no-duplicate-token-stylesheet']);
+    expect(results[0].line).toBe(1);
+    expect(messagesOf(results)[0]).toContain('bundles tokens.css twice');
+  });
+
+  it('allows either one on its own', () => {
+    expect(lint(TOKENS)).toHaveLength(0);
+    expect(lint(REACT)).toHaveLength(0);
+  });
+
+  it('allows tokens.css next to the Tailwind bridge', () => {
+    expect(lint(`${TOKENS}\nimport '@elirobinson/tokens/tailwind.css';`)).toHaveLength(0);
+  });
+
+  it('flags the same pair in a stylesheet, in any spelling', () => {
+    const results = lintCss(
+      "@import 'tailwindcss';\n@import url('@elirobinson/tokens/tokens.css') layer(base);\n@import \"@elirobinson/react/styles.css\";",
+    );
+
+    expect(rulesOf(results)).toEqual(['@elirobinson-css/no-duplicate-token-stylesheet']);
+    expect(results[0].line).toBe(2);
+  });
+
+  it('allows a stylesheet that imports react/styles.css and the Tailwind bridge', () => {
+    expect(
+      lintCss(
+        "@import 'tailwindcss';\n@import '@elirobinson/react/styles.css';\n@import '@elirobinson/tokens/tailwind.css';",
+      ),
+    ).toHaveLength(0);
+  });
+});
