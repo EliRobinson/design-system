@@ -16,6 +16,9 @@ and deutan readers in both themes. Slot order and the one-lightness,
 one-chroma rule are unchanged. `chart-palette.test.mjs` runs the same checks on
 every build.
 
+`@elirobinson/tokens/color` also exports `srgbToLinear` and `linearSrgbToOklab`,
+the two conversions that check is built on.
+
 SegmentedControl's selected option had the same fill as the track in dark mode
 (`--surface` and `--bg-subtle` are both ink-950), and its shadow was black on
 black. It now carries an inset `--border-control` ring, 3:1 or more against the

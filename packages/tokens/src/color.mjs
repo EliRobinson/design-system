@@ -108,9 +108,36 @@ function composite(fg, bg) {
   };
 }
 
+/**
+ * One gamma-encoded sRGB channel (0–1) to linear light.
+ *
+ * @param {number} channel
+ * @returns {number}
+ */
+export function srgbToLinear(channel) {
+  return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+/**
+ * Linear sRGB to OKLab, the forward half of the reference math whose inverse
+ * `oklchToLinearSrgb` uses. Returned as `[L, a, b]`, L in 0–1.
+ *
+ * @param {[number, number, number]} rgb
+ * @returns {[number, number, number]}
+ */
+export function linearSrgbToOklab([r, g, b]) {
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ];
+}
+
 function relativeLuminance({ r, g, b }) {
-  const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
 }
 
 /**

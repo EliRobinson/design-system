@@ -16,3 +16,7 @@ export declare function toHex(value: string): string | null;
 export declare function contrastRatio(foreground: string, background: string): number | null;
 
 export declare function aaVerdict(ratio: number): AaVerdict;
+
+export declare function srgbToLinear(channel: number): number;
+
+export declare function linearSrgbToOklab(rgb: [number, number, number]): [number, number, number];
