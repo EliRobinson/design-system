@@ -1215,6 +1215,22 @@ describe('no-duplicate-token-stylesheet', () => {
     expect(messagesOf(results)[0]).toContain('bundles tokens.css twice');
   });
 
+  it('flags the pair in a layout module', () => {
+    const results = lint(`${TOKENS}\n${REACT}\nexport default function Layout() { return null; }`, {
+      filename: 'src/app/layout.jsx',
+    });
+
+    expect(rulesOf(results)).toEqual(['@elirobinson/no-duplicate-token-stylesheet']);
+  });
+
+  it('flags a second import of the same stylesheet', () => {
+    const results = lint(`${REACT}\n${REACT}`);
+
+    expect(rulesOf(results)).toEqual(['@elirobinson/no-duplicate-token-stylesheet']);
+    expect(results[0].line).toBe(2);
+    expect(messagesOf(results)[0]).toContain('already imported in this file');
+  });
+
   it('allows either one on its own', () => {
     expect(lint(TOKENS)).toHaveLength(0);
     expect(lint(REACT)).toHaveLength(0);
@@ -1231,6 +1247,14 @@ describe('no-duplicate-token-stylesheet', () => {
 
     expect(rulesOf(results)).toEqual(['@elirobinson-css/no-duplicate-token-stylesheet']);
     expect(results[0].line).toBe(2);
+  });
+
+  it('reads an unquoted url() import', () => {
+    const results = lintCss(
+      '@import url(@elirobinson/tokens/tokens.css);\n@import url(@elirobinson/react/styles.css);',
+    );
+
+    expect(rulesOf(results)).toEqual(['@elirobinson-css/no-duplicate-token-stylesheet']);
   });
 
   it('allows a stylesheet that imports react/styles.css and the Tailwind bridge', () => {

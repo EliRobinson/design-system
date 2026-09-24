@@ -38,8 +38,7 @@ const TOKENS_SRC = join(
    either something the tool must fix, something it must refuse to fix, or
    something it must leave completely alone — and the third group is the one
    that decides whether anybody keeps the tool switched on. */
-const GLOBALS_CSS = `@import '@elirobinson/tokens/tokens.css';
-@import '@elirobinson/react/styles.css';
+const GLOBALS_CSS = `@import '@elirobinson/react/styles.css';
 
 /* 1. WRONG: the 1.87:1 fill asked to carry a 3:1 line. */
 .pricing-callout {

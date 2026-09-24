@@ -40,7 +40,7 @@ import { Button } from '@elirobinson/react/components/atoms/Button';
 - Per-component imports naming the full subpath. There is no barrel export; a bare `@elirobinson/react` import does not resolve.
 - Drive appearance with the component's own `variant` / `size` props, not by overriding with utilities.
 - Use utility classes for **layout** (grid, flex, spacing), the design system for **look**.
-- Import `@elirobinson/react/styles.css` once, in the app shell — never per component. It already imports `@elirobinson/tokens/tokens.css`, so do not import `tokens.css` as well: that bundles it twice. An app without `@elirobinson/react` imports `@elirobinson/tokens/tokens.css` instead. On Tailwind v4, `@import '@elirobinson/tokens/tailwind.css'` after it.
+- Import `@elirobinson/react/styles.css` once, in the app shell — never per component. It already imports `@elirobinson/tokens/tokens.css`; importing `tokens.css` as well bundles it twice. An app that does not import `styles.css` (no React, or per-component sheets only) imports `@elirobinson/tokens/tokens.css` itself. On Tailwind v4, that import goes in the CSS entry after `@import 'tailwindcss'`, followed by `@import '@elirobinson/tokens/tailwind.css'`.
 - Token overrides go in an **unlayered** `:root` block — `tokens.css` is unlayered, so an override inside `@layer base` silently loses to it. With `next/font`, re-point the families through `--ds-font-sans-override` / `--ds-font-mono-override` instead, with the font class on `<html>`.
 - Patterns like heroes, page headers, empty states, and sidebars are **compositions** of primitives, not missing components.
 

@@ -1,9 +1,7 @@
-// The contracts that can only be settled by reading a stylesheet, plus the
-// stylesheet half of no-duplicate-token-stylesheet:
-// no-hardcoded-design-values, the CSS half of the rule of the same name, and
-// three that are a shape rather than a value and have no JS counterpart —
-// no-underlined-control-label, no-decorative-control-edge and
-// no-mismatched-status-foreground.
+// The stylesheet halves of no-hardcoded-design-values and
+// no-duplicate-token-stylesheet, and three contracts that are a shape rather
+// than a value and have no JS counterpart — no-underlined-control-label,
+// no-decorative-control-edge and no-mismatched-status-foreground.
 //
 // Kept in its own entry point because it needs @eslint/css, which registers a
 // second ESLint language. Importing '@elirobinson/eslint-config' never loads

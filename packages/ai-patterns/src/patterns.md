@@ -215,8 +215,9 @@ was an unlayered `:root { --font-sans: … }` after the import.
 ### Stylesheet order
 
 `@elirobinson/react/styles.css`, imported once in the app shell. Never per
-component. It opens with `@import '@elirobinson/tokens/tokens.css'`, so do not
-import `tokens.css` as well: bundlers keep both copies, and the later one wins
-every equal-specificity tie against your own CSS between them. An app without
-`@elirobinson/react` imports `@elirobinson/tokens/tokens.css` instead.
+component, and never next to `@elirobinson/tokens/tokens.css`, which it already
+imports. An app that does not import `styles.css` (no React, or per-component
+sheets only) imports `tokens.css` itself. On Tailwind v4 the import goes in the
+CSS entry, between `@import 'tailwindcss'` and the bridge above, not in a
+layout module as well. `ds contracts` → `token-stylesheet-once` says why, and
 `@elirobinson/eslint-config` flags the pair in one file.

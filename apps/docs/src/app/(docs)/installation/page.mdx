@@ -5,7 +5,7 @@ export const metadata = { title: 'Installation' };
 # Installation
 
 The packages are published to the GitHub Packages npm registry under the `@elirobinson` scope.
-Authenticate once, install two packages, import two stylesheets — that's the whole setup.
+Authenticate once, install two packages, import one stylesheet — that's the whole setup.
 
 ## Requirements
 
@@ -71,8 +71,11 @@ import '@elirobinson/react/styles.css';
 Bundlers keep both copies, and the later one wins every tie against your own CSS between
 them. `@elirobinson/eslint-config` flags the two imports in one file.
 
-Using the tokens without `@elirobinson/react`? Import `@elirobinson/tokens/tokens.css` on its
-own instead. If you'd rather ship only what you use, each component's sheet is importable on
+Not importing `styles.css` (the tokens without React, or only per-component sheets)? Import
+`@elirobinson/tokens/tokens.css` once yourself: the per-component sheets do not bring it.
+
+On Tailwind v4, put the import in your CSS entry instead of a layout module, between
+`@import 'tailwindcss'` and `@import '@elirobinson/tokens/tailwind.css'`. If you'd rather ship only what you use, each component's sheet is importable on
 its own:
 
 ```tsx

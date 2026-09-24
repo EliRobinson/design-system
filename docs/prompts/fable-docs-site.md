@@ -67,8 +67,7 @@ orientation, not a substitute for reading the code.
 via package subpaths and nothing else:
 
 ```tsx
-import '@elirobinson/tokens/tokens.css';
-import '@elirobinson/react/styles.css';
+import '@elirobinson/react/styles.css'; // already imports tokens.css; never import both
 import { Button } from '@elirobinson/react/components/atoms/Button';
 import { useRovingFocus } from '@elirobinson/react/hooks/useRovingFocus';
 ```

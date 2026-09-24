@@ -70,8 +70,9 @@ ${RESYNC_COMMAND}
   \`@elirobinson/react\` import does not resolve.
 - \`@elirobinson/react/styles.css\`, once, in the app shell. It already imports
   \`@elirobinson/tokens/tokens.css\`; importing \`tokens.css\` as well bundles it twice.
-  Without \`@elirobinson/react\`, import \`@elirobinson/tokens/tokens.css\` instead. On
-  Tailwind v4 add \`@elirobinson/tokens/tailwind.css\` after it.
+  An app that does not import \`styles.css\` (no React, or per-component sheets only)
+  imports \`@elirobinson/tokens/tokens.css\` itself. On Tailwind v4 that import goes in the
+  CSS entry after \`@import 'tailwindcss'\`, then \`@elirobinson/tokens/tailwind.css\`.
 - Reference semantic tokens (\`--fg\`, \`--surface\`, \`--accent\`), never raw scale values
   (\`--ink-500\`) in app code.
 - Never restyle a system component with overrides that fight the tokens. Report the gap.
