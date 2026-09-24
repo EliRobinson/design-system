@@ -36,12 +36,12 @@ import { readTokenStylesheets, TOKEN_STYLESHEETS, TOKENS_SRC_DIR } from './token
 import {
   layerBlocks,
   rules,
+  typeClassOf,
   TYPE_RULES,
   unlayered,
   withoutComments,
 } from './tokens-css.test-helper.mjs';
 
-const tokensCss = readFileSync(join(TOKENS_SRC_DIR, 'tokens.css'), 'utf8');
 const tokens = effectiveTokens(parseTokensCss(readTokenStylesheets()));
 
 /* Every stylesheet the system @imports, not just the token roster.
@@ -57,6 +57,8 @@ const IMPORTED_STYLESHEETS = [...TOKEN_STYLESHEETS, 'mobile.css'];
 const allCss = Object.fromEntries(
   IMPORTED_STYLESHEETS.map((name) => [name, readFileSync(join(TOKENS_SRC_DIR, name), 'utf8')]),
 );
+/* Raw, comments included: the override hook's documented snippet lives in one. */
+const tokensCss = allCss['tokens.css'];
 
 /** The stacks as they shipped before the hook existed, character for character. */
 const STACKS = {
@@ -148,7 +150,7 @@ describe('the cascade rule the hook relies on', () => {
       .flatMap((block) =>
         [...block.matchAll(/([^{}]+)\{/g)].map((match) => match[1].replace(/\s+/g, ' ').trim()),
       )
-      .filter((selector) => !selector.startsWith('.t-'));
+      .filter((selector) => !typeClassOf(selector));
 
     expect(blocks).toHaveLength(3);
     expect([...selectors].sort()).toEqual(
@@ -212,10 +214,7 @@ describe('the type classes (#251)', () => {
     'leaves no .t-* rule unlayered in %s, where it would beat every utility',
     (name) => {
       for (const [selectors] of rules(unlayered(withoutComments(allCss[name])))) {
-        expect(
-          selectors.filter((selector) => selector.includes('.t-')),
-          selectors.join(', '),
-        ).toEqual([]);
+        expect(selectors.filter(typeClassOf), selectors.join(', ')).toEqual([]);
       }
     },
   );

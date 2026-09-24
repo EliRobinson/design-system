@@ -15,6 +15,7 @@ import {
   REACT_PKG,
   readFile,
   TOKENS_PKG,
+  typeClasses,
   walk,
 } from './discovery.mjs';
 
@@ -121,7 +122,7 @@ export function list(env) {
     lines.push(`  ${inventory.hooks.map((hook) => hook.name).join('  ')}`);
   }
 
-  const typography = cssClasses(env.tokenStylesheets);
+  const typography = typeClasses(env.tokenStylesheets);
   if (typography.length) {
     lines.push('', 'TYPOGRAPHY CLASSES  use these instead of ad-hoc font-size utilities');
     lines.push(`  ${typography.join('  ')}`);

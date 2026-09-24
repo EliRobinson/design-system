@@ -27,6 +27,9 @@ import { fileURLToPath } from 'node:url';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
+/* A path, like TOKENS_CSS below: the helper is test-only and not exported. */
+import { typeClassOf } from '../../tokens/src/tokens-css.test-helper.mjs';
+
 import { compareCascade as compare, specificity, styleRules } from './specificity.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -157,7 +160,7 @@ describe('a filled control never renders its own label underlined', () => {
        leaves out. Neither declares a text-decoration, so
        the underline story is unchanged by them. Compared as a set; source order
        is not the invariant. */
-    expect([...layered].filter((selector) => !selector.startsWith('.t-')).sort()).toEqual(
+    expect([...layered].filter((selector) => !typeClassOf(selector)).sort()).toEqual(
       [
         'a',
         'a:hover',
