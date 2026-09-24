@@ -38,7 +38,8 @@ itself.
 `!text-destructive-ink` on a `t-caption` or `!font-mono` on a `t-body`, you can remove the `!`.
 Then check the three cases above in your visual diffs.
 
-**`ds classes` and `ds list`** in `@elirobinson/ai-patterns` now find a class that opens a rule
-at any indent. Without this they listed no `.t-*` classes from this `tokens.css`, because the
-classes are now indented inside `@layer base`. An older `ai-patterns` paired with this `tokens`
-leaves them out of its typography list; update both.
+**`ds classes` and `ds list`** in `@elirobinson/ai-patterns` now find a class at the start of a
+line at any indent. Without this they listed no `.t-*` classes from this `tokens.css`, because
+the classes are now indented inside `@layer base`. `ds list` also shows only the `.t-*` classes
+under TYPOGRAPHY CLASSES; it used to mix in `dark` and some `ds-*` component classes. An older
+`ai-patterns` paired with this `tokens` leaves the type classes out; update both.
