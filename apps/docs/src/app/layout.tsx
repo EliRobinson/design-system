@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
-import '@elirobinson/tokens/tokens.css';
-import '@elirobinson/react/styles.css';
-import './site.css';
+/* One stylesheet chain, loaded once. elements.css carries tokens.css (through
+   @elirobinson/react/styles.css, which opens with it) and the component styles
+   in the order the cascade needs; site.css, the docs chrome, comes last. Do not
+   import tokens.css or react/styles.css here as well: every import is a full
+   second copy in the bundle, and the later copy silently wins every
+   equal-specificity tie against site.css. stylesheet-graph.test.ts fails if
+   tokens.css is reached more than once. */
 import './elements.css';
+import './site.css';
 
 import { SiteFooter } from '../components/SiteFooter';
 import { SiteHeader } from '../components/SiteHeader';
