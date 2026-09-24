@@ -258,10 +258,22 @@ export async function checkTouchTargets(page, options = {}) {
       //
       // The same scroll covers a control across the edge of a sideways-scrolling
       // container, like a wide table's wrapper (#248). `scrollIntoView` scrolls
-      // every scrolling ancestor, so the control is centred in its container as
-      // well as in the window, and the walk no longer stops at the container's
-      // clipped edge. It honours `scroll-padding`, so a table that pads its
-      // scroll box past a frozen first column is measured clear of that column.
+      // every scrolling ancestor, so the walk no longer stops at the
+      // container's clipped edge.
+      //
+      // One placement is not enough there. `center` moves every control to the
+      // middle of its container, and in a narrow table with a frozen first
+      // column the middle can be under that column: a 44x44 button that was
+      // fully visible walked into the sticky cell and reported ~28x44, and a
+      // 30x30 one landed with its centre covered and was skipped unchecked.
+      // So a surface that misses its floor at `center` is put back and measured
+      // again at `nearest`, which moves it only as far as its container's near
+      // edge, and the better of the two is kept. Both are places a user can
+      // scroll the control to, so the larger hit area is the honest one.
+      // `center` stays first because it keeps a control clear of a sticky page
+      // header, which `nearest` does not. Both honour `scroll-padding`, so a
+      // table that pads its scroll box past its frozen column is measured clear
+      // of it at either placement.
       //
       // `floor` is the minimum this particular surface is being held to — 44
       // for a primary control, 24 for a dense one. It is a parameter rather
@@ -278,13 +290,15 @@ export async function checkTouchTargets(page, options = {}) {
       // `page.evaluate` closure and cannot close over module scope, so sharing
       // would mean eval-ing a source string — ruled out by the strict-CSP
       // promise in this file's header. The two are meant to agree; a silent
-      // divergence between them is its own bug.
-      const measure = (surface, floor) => {
+      // divergence between them is its own bug. The one known divergence is
+      // the second, `nearest` placement, which only `measure` makes — see
+      // `routesTo()` for why.
+      const measureAt = (surface, floor, placement) => {
         // Scrolling is synchronous with respect to layout, so the box read back
         // immediately afterwards is already in the coordinate space the probes
         // below will use. `instant` because a page with `scroll-behavior:
         // smooth` would otherwise still be animating when the rect is read.
-        surface.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+        surface.scrollIntoView({ block: placement, inline: placement, behavior: 'instant' });
 
         const rect = surface.getBoundingClientRect();
         const viewWidth = document.documentElement.clientWidth;
@@ -369,6 +383,21 @@ export async function checkTouchTargets(page, options = {}) {
 
       const meets = (area, floor) => area.measured && area.width >= floor && area.height >= floor;
 
+      // `center` first, `nearest` only if that missed the floor, from the
+      // scroll positions the check started with. A `nearest` result replaces
+      // the centred one only when it measured something and measured more, so
+      // the second placement can rescue a control but never hide one.
+      const measure = (surface, floor) => {
+        const centred = measureAt(surface, floor, 'center');
+        if (meets(centred, floor)) return centred;
+
+        restoreScroll();
+        const nearest = measureAt(surface, floor, 'nearest');
+        if (!nearest.measured) return centred;
+        if (!centred.measured) return nearest;
+        return nearest.width * nearest.height > centred.width * centred.height ? nearest : centred;
+      };
+
       // The dense floor relaxes the primary one, so it can never be the
       // stricter of the two. A caller who passes `minimum: 20` is loosening the
       // whole contract for a reason of their own; leaving `denseMinimum` at 24
@@ -394,6 +423,13 @@ export async function checkTouchTargets(page, options = {}) {
         .map((node) => [node, node.scrollLeft, node.scrollTop]);
       const pageScrollX = window.scrollX;
       const pageScrollY = window.scrollY;
+      const restoreScroll = () => {
+        for (const [node, scrollLeft, scrollTop] of scrollState) {
+          node.scrollLeft = scrollLeft;
+          node.scrollTop = scrollTop;
+        }
+        window.scrollTo(pageScrollX, pageScrollY);
+      };
 
       const violations = [];
 
@@ -498,11 +534,7 @@ export async function checkTouchTargets(page, options = {}) {
           });
         }
       } finally {
-        for (const [node, scrollLeft, scrollTop] of scrollState) {
-          node.scrollLeft = scrollLeft;
-          node.scrollTop = scrollTop;
-        }
-        window.scrollTo(pageScrollX, pageScrollY);
+        restoreScroll();
       }
 
       return violations;
@@ -612,6 +644,14 @@ export async function checkHitAreaOverlap(page, options = {}) {
       // duplicated for the same reason. Both copies carry this note: the two
       // scroll blocks are meant to agree, and a silent divergence between them
       // is its own bug.
+      //
+      // One divergence is deliberate. `measure()` retries a surface at
+      // `nearest` when `center` put it under a frozen table column (#248),
+      // because there that cut a real hit area short and failed a compliant
+      // control. Here a sibling centred under a frozen column answers MISS,
+      // which can only hide an overlap, never invent one. Retrying would
+      // double the scrolls for every sibling on the page, and a MISS is the
+      // common answer.
       const routesTo = (sibling, control) => {
         // Scrolling is synchronous with respect to layout, so the box read back
         // immediately afterwards is already in the coordinate space the probe

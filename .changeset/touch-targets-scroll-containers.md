@@ -2,27 +2,35 @@
 '@elirobinson/ai-patterns': patch
 ---
 
-`checkTouchTargets` no longer reports a false positive on a control that straddles the edge of
-a sideways-scrolling container, and this release pins that with tests.
+`checkTouchTargets` no longer fails a compliant control in a scrolling table with a frozen first
+column, and no longer skips an undersized one there (#248).
 
 **The false positive.** The check measures a control's hit area by walking out from its centre
-with `document.elementFromPoint`. In 0.20.0 and earlier, a control inside a wide table's
-scrolling wrapper that sat across the wrapper's visible edge was measured where it was: the walk
-stopped at the clipped edge, so a 44x44 button with 5px hidden reported `~39x44` and failed
-`touch-target-primary`. The user can scroll that button fully into view, so the report was
-wrong. Whether it fired depended on the viewport width, so a table could pass at 1280px and fail
-on a phone.
+with `document.elementFromPoint`, and the walk stops at the first point that does not route to the
+control. Two versions of that went wrong inside a sideways-scrolling container, such as a wide
+table's wrapper:
 
-**The fix.** Since 0.21.0 (#79) the check scrolls each control into view before it probes, and
-`scrollIntoView` scrolls every scrolling ancestor, not only the window. A straddling control is
-brought fully inside its container and measured at its real size. Every scroll position the check
-changes is put back afterwards. `scroll-padding` is honoured, so a table that pads its scroll box
-past a frozen first column is measured clear of that column. A control still covered by something
-else is skipped as unmeasurable, as before.
+- **0.20.0 and earlier** did not scroll. A control across the wrapper's visible edge was walked
+  where it stood, so a 44x44 button with 5px hidden reported `~39x44` and failed
+  `touch-target-primary`. Whether it fired depended on the viewport width, so a table could pass at
+  1280px and fail on a phone. 0.21.0 (#79) fixed this by scrolling each control to the centre
+  of the window and of every scrolling ancestor before probing.
+- **0.21.0 to 0.28.2** centred every control in its container, even one already in full view. In
+  a narrow table with a frozen (sticky) first column and no `scroll-padding`, the centre can be
+  under that column. A fully visible 44x44 button was moved partly under it and reported
+  `~32x44`. A 30x30 button whose centre was moved under it was skipped as covered, and passed
+  without being measured.
 
-**New tests** (#248): a 44x44 button across the right edge, and across the left edge of a
-scrolled strip, both pass; a 30x30 button in the strip still fails; a control under a frozen
-column the page pads past is measured; the strip's and the window's scroll positions are
-restored. Against 0.20.0 the straddling and frozen-column cases fail.
+**The fix.** A control that misses its floor at the centre is put back and measured again with
+`scrollIntoView({ block: 'nearest', inline: 'nearest' })`, which moves it only as far as its
+container's near edge. The larger of the two measured hit areas is kept. The second placement can
+only rescue a control, never hide one: its result is used only when it measured something and
+measured more. Every scroll position the check changes is still put back afterwards. Both
+placements honour `scroll-padding`, so a table that pads its scroll box past its frozen column is
+measured clear of it. A control that is covered at both placements is still skipped without being
+measured or reported, as before.
+
+`checkHitAreaOverlap` keeps its single centred probe. There, a sibling moved under a frozen column
+can only hide an overlap, never report a false one.
 
 If you are on 0.20.x, run `pnpm exec ds-resync` to move to this version.
