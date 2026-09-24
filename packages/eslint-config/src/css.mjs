@@ -54,7 +54,8 @@ export function designSystemCss(options = {}) {
       plugins: { css, '@elirobinson-css': plugin },
       rules: {
         '@elirobinson-css/no-decorative-control-edge': severity,
-        '@elirobinson-css/no-duplicate-token-stylesheet': severity,
+        // Always `warn` — see the same rule in index.mjs.
+        '@elirobinson-css/no-duplicate-token-stylesheet': 'warn',
         '@elirobinson-css/no-hardcoded-design-values': severity,
         '@elirobinson-css/no-mismatched-status-foreground': severity,
         '@elirobinson-css/no-underlined-control-label': severity,

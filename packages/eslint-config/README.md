@@ -28,13 +28,13 @@ export default [
 Returns flat config objects: one carrying the rules, plus a second that relaxes the direct
 primitive ban inside the gap-filler globs.
 
-| Option            | Default                     | What it does                                                      |
-| ----------------- | --------------------------- | ----------------------------------------------------------------- |
-| `gapFiller`       | `['**/components/ui/**']`   | Globs where a sanctioned gap-filler lives — see below             |
-| `files`           | all JS/TS source extensions | Which files the config applies to                                 |
-| `severity`        | `'error'`                   | Severity for every rule **except** the copy rule — see below      |
-| `hardcodedValues` | `{}`                        | Options forwarded to `no-hardcoded-design-values`                 |
-| `copy`            | `{}`                        | Options forwarded to `no-padded-ui-copy`, plus its own `severity` |
+| Option            | Default                     | What it does                                                                                     |
+| ----------------- | --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `gapFiller`       | `['**/components/ui/**']`   | Globs where a sanctioned gap-filler lives — see below                                            |
+| `files`           | all JS/TS source extensions | Which files the config applies to                                                                |
+| `severity`        | `'error'`                   | Severity for every rule **except** the copy rule and `no-duplicate-token-stylesheet` — see below |
+| `hardcodedValues` | `{}`                        | Options forwarded to `no-hardcoded-design-values`                                                |
+| `copy`            | `{}`                        | Options forwarded to `no-padded-ui-copy`, plus its own `severity`                                |
 
 `gapFiller` names where shadcn/ui output (or its equivalent) lives. Direct primitive
 imports are allowed there and every other ban still applies; pass `[]` to drop the second
@@ -63,6 +63,21 @@ the repo lints clean under it** — at `warn` the rule observes that the copy is
 `error` it keeps it that way. It is a line in the **Definition of Done for UI work** that
 `pnpm ds patterns` prints. `'off'` also works, if a repo has decided against the rule.
 
+### `no-duplicate-token-stylesheet` always ships at `warn`
+
+The rule flags `@elirobinson/tokens/tokens.css` imported next to
+`@elirobinson/react/styles.css`, which already imports it. Until this rule existed the
+install instructions told every app to import both, so at `'error'` it would red-build every
+consumer on upgrade. It ships at `warn` in both `designSystem()` and `designSystemCss()`,
+whatever `severity` says. The fix is to delete the `tokens.css` import; once the repo is
+clean, raise it in your own config:
+
+```js
+{ rules: { '@elirobinson/no-duplicate-token-stylesheet': 'error' } }
+```
+
+The CSS config's rule is `@elirobinson-css/no-duplicate-token-stylesheet`.
+
 ## `designSystem` is also the default export
 
 `import designSystem from '@elirobinson/eslint-config'` and
@@ -84,7 +99,7 @@ export default [...designSystem(), ...designSystemCss()];
 | ---------- | -------------- | ----------------------------------------------------------------------------------------------------------- |
 | `files`    | `['**/*.css']` | Which stylesheets to lint.                                                                                  |
 | `ignores`  | `[]`           | Stylesheets that _define_ values rather than consume them — your own token layer, vendored third-party CSS. |
-| `severity` | `'error'`      | Severity for every rule in this config.                                                                     |
+| `severity` | `'error'`      | Severity for every rule in this config except `no-duplicate-token-stylesheet`, which is always `warn`.      |
 
 Point `ignores` at any sheet that legitimately declares literals. A token file that is
 linted as if it were a consumer of tokens fails on every line it exists to write.
