@@ -100,7 +100,10 @@ describe('app/elements.css', () => {
     };
     expect(at('@layer theme, base, components, utilities;')).toBeLessThan(at('@import'));
     expect(at("@import 'tailwindcss/theme.css'")).toBeLessThan(at("@import './preflight-scoped"));
-    expect(at("@import './preflight-scoped")).toBeLessThan(at("@import '@elirobinson/tokens"));
+    /* tokens.css arrives through react/styles.css, which opens with it. */
+    expect(at("@import './preflight-scoped")).toBeLessThan(
+      at("@import '@elirobinson/react/styles.css'"),
+    );
   });
 
   it('reaches nothing outside a demo stage, and adds no specificity', () => {
