@@ -22,10 +22,17 @@
   cursor: pointer;
 }
 
+/* The fill alone cannot mark the selection: in dark, --surface and the
+   track's --bg-subtle are both ink-950, and --shadow-sm is black on black.
+   The inset ring carries the state (SC 1.4.11); it is measured against the
+   fill and the track in scripts/segmented-control-contrast.test.mjs. Inset,
+   so the selected segment is the same size as the others. */
 .ds-segmented-control__item--active {
   background: var(--surface);
   color: var(--fg);
-  box-shadow: var(--shadow-sm);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 0 0 1px var(--border-control);
 }
 
 .ds-segmented-control__item:focus-visible {
