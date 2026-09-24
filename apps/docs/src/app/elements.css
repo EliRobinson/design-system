@@ -1,8 +1,11 @@
-/* The stylesheet a consumer of @elirobinson/ai-elements is told to write —
-   with one deliberate difference, which is what the second half of this
-   comment is about.
+/* The docs app's one stylesheet chain: layout.tsx imports this file and then
+   site.css, and nothing else. It is the stylesheet a consumer of
+   @elirobinson/ai-elements is told to write, with two deliberate differences:
+   Tailwind comes in without Preflight (the second half of this comment), and
+   @elirobinson/react/styles.css stands where tokens.css would, because the
+   docs render the components too and that file opens with tokens.css.
 
-   The three imports are the order @elirobinson/tokens/tailwind.css documents,
+   The imports follow the order @elirobinson/tokens/tailwind.css documents,
    which is what makes a vendored component render in Miltinson colours with no
    edit to its source: `@theme inline` maps Tailwind's colour, radius, shadow
    and font namespaces onto the tokens, so `bg-background` and `rounded-md`
@@ -45,15 +48,9 @@
      Moved to the end of this file it would win instead, and the demos would
      quietly stop matching what a consumer sees.
 
-   - The Miltinson styles come in through @elirobinson/react/styles.css, which
-     opens with `@import '@elirobinson/tokens/tokens.css'`. That is the one
-     copy of tokens.css in the docs bundle: layout.tsx imports this file and
-     site.css and nothing else, because each extra import of either package is
-     a full second copy, and the later copy wins every equal-specificity tie.
-     Before this, the bundle held three, and the copy in this file outranked
-     site.css on source order — it is why the home hero eyebrow painted --fg-2
-     over the --accent-ink-inverse site.css asked for. stylesheet-graph.test.ts
-     guards the count.
+   - tokens.css arrives through @elirobinson/react/styles.css, which opens
+     with it, so this is the one copy in the bundle and it still lands after
+     the scoped reset. stylesheet-graph.test.ts says why one copy matters.
 
    Note this is the docs site's problem and not a consumer's. An app whose UI
    is Tailwind throughout wants Preflight and should keep writing `@import
