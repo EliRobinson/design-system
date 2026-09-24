@@ -1,5 +1,5 @@
 ---
-'@elirobinson/tokens': patch
+'@elirobinson/tokens': minor
 '@elirobinson/react': patch
 ---
 
