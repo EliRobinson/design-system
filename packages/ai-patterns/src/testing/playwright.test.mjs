@@ -664,19 +664,25 @@ describeBrowser('browser contract checks', () => {
        failed touch-target-primary — though the user can scroll it fully into
        view, and that is the hit area a finger actually gets.
 
-       Reported against 0.20.0. The fix is #79's: `measure` scrolls every
-       surface to the centre of each scrolling ancestor before probing, which
-       brings a straddling control fully inside its container. These cases pin
-       that for a scroll container, not only for the window; against 0.20.0 the
-       two straddling cases and the frozen-column pair go red. */
+       Reported against 0.20.0, which did not scroll at all; #79's centre
+       scroll (0.21.0) fixed the plain straddle. A frozen first column was
+       still wrong: centring moved a control under the sticky cell. `measure`
+       now retries at `nearest` — see the note there. */
     describe('controls across the edge of a scrolling container', () => {
-      /* 300px of visible wrapper over 900px of row. `left` puts a button's box
-         anywhere along the row; the wrapper starts scrolled to 0. */
-      const strip = (buttons, { wrapper = '', scrollLeft = 0 } = {}) =>
-        render(`<div id="strip" style="width:300px;overflow-x:auto;${wrapper}">
-            <div style="position:relative;width:900px;height:60px">${buttons}</div>
+      /* 300px of visible strip over 900px of row, scrolled to `scrollLeft`. */
+      const STRIP = 300;
+      const strip = (content, { wrapper = '', scrollLeft = 0 } = {}) =>
+        render(`<div id="strip" style="width:${STRIP}px;overflow-x:auto;${wrapper}">
+            <div style="position:relative;width:900px;height:60px">${content}</div>
           </div>
           <script>document.getElementById('strip').scrollLeft = ${scrollLeft};</script>`);
+
+      const button = (left, size = 44, id = 't') =>
+        `<button id="${id}" style="position:absolute;left:${left}px;top:8px;` +
+        `width:${size}px;height:${size}px">+</button>`;
+
+      const frozenColumn = (width) =>
+        `<div style="position:sticky;left:0;width:${width}px;height:60px;background:#eee;z-index:1">Baker</div>`;
 
       const clippedWidth = (selector) =>
         page.evaluate((target) => {
@@ -685,65 +691,26 @@ describeBrowser('browser contract checks', () => {
           return Math.min(box.right, port.right) - Math.max(box.left, port.left);
         }, selector);
 
+      /* The reported shape: 5px hidden, so the walk stopped at ~39. Hide half
+         and a probe from the visible centre lands on the edge itself and is
+         skipped as covered, which passes for the wrong reason. */
       it('passes a 44x44 button straddling the right edge', async () => {
-        await strip(
-          '<button id="t" style="position:absolute;left:261px;top:8px;width:44px;height:44px">+</button>',
-        );
+        await strip(button(STRIP - 39));
 
-        /* The reported shape: 5px hidden, so the walk used to stop at ~39.
-           Hide half and the old centre probe lands on the edge itself and is
-           skipped as occluded, which passes for the wrong reason. */
         expect(await clippedWidth('#t')).toBe(39);
         expect(await checkTouchTargets(page)).toEqual([]);
       });
 
       it('passes a 44x44 button straddling the left edge once the strip has scrolled', async () => {
-        await strip(
-          '<button id="t" style="position:absolute;left:395px;top:8px;width:44px;height:44px">+</button>',
-          { scrollLeft: 400 },
-        );
+        await strip(button(395), { scrollLeft: 400 });
 
         expect(await clippedWidth('#t')).toBe(39);
         expect(await checkTouchTargets(page)).toEqual([]);
       });
 
-      /* The shape the issue was reported on: a frozen first column. Scrolled
-         into view, a control can land under the sticky cell; a page that pads
-         its scroll box past that column is measured in the clear, because
-         `scrollIntoView` honours `scroll-padding`.
-
-         A pass alone cannot show that: a control left under the frozen cell is
-         unmeasurable and skipped, which is also a pass. So the undersized twin
-         carries the proof — it is only reported if it was actually measured. */
-      describe('under a frozen first column the page pads past', () => {
-        const frozen = (size) =>
-          strip(
-            `<div style="position:sticky;left:0;width:120px;height:60px;background:#eee;z-index:1">Baker</div>
-             <button id="t" style="position:absolute;left:380px;top:8px;width:${size}px;height:${size}px">+</button>`,
-            { wrapper: 'scroll-padding-left:120px', scrollLeft: 400 },
-          );
-
-        it('passes a 44x44 button', async () => {
-          await frozen(44);
-
-          expect(await checkTouchTargets(page)).toEqual([]);
-        });
-
-        it('measures, and so flags, a 30x30 button', async () => {
-          await frozen(30);
-
-          const violations = await checkTouchTargets(page);
-
-          expect(violations).toHaveLength(1);
-          expect(violations[0].effectiveWidth).toBe(30);
-        });
-      });
-
       /* Scrolling into view must not become a blanket pass. */
       it('still flags a genuinely 30x30 button inside the strip', async () => {
-        await strip(
-          '<button id="t" style="position:absolute;left:275px;top:8px;width:30px;height:30px">+</button>',
-        );
+        await strip(button(275, 30));
 
         const violations = await checkTouchTargets(page);
 
@@ -753,22 +720,61 @@ describeBrowser('browser contract checks', () => {
         expect(violations[0].effectiveHeight).toBe(30);
       });
 
-      it('puts the strip and the page back where it found them', async () => {
-        await render(`${FILLER}<div id="strip" style="width:300px;overflow-x:auto">
-            <div style="position:relative;width:900px;height:60px">
-              <button style="position:absolute;left:261px;top:8px;width:44px;height:44px">+</button>
-              <button style="position:absolute;left:700px;top:8px;width:44px;height:44px">+</button>
-            </div>
-          </div>${FILLER}`);
-        await page.evaluate(() => {
-          document.getElementById('strip').scrollLeft = 30;
-          window.scrollTo(0, 90);
+      /* The frozen first column, with no `scroll-padding`. Centred in the
+         300px strip, a control spans 128-172, so a 140px column cuts its left
+         side off and a 200px one covers its centre. */
+      describe('beside a frozen first column the page does not pad past', () => {
+        it('passes a 44x44 button that centring would push under the column', async () => {
+          await strip(`${frozenColumn(140)}${button(240)}`);
+
+          /* Fully visible where it stands. Centring alone reported ~32x44. */
+          expect(await clippedWidth('#t')).toBe(44);
+          expect(await checkTouchTargets(page)).toEqual([]);
         });
 
-        await checkTouchTargets(page);
+        it('passes a 44x44 button straddling the right edge', async () => {
+          await strip(`${frozenColumn(140)}${button(STRIP - 39)}`);
 
+          expect(await checkTouchTargets(page)).toEqual([]);
+        });
+
+        /* The other half: centring covered this one's centre entirely, so it
+           was skipped as occluded and a real 30x30 passed unchecked. */
+        it('flags a 30x30 button that centring would hide under the column', async () => {
+          await strip(`${frozenColumn(200)}${button(250, 30)}`);
+
+          const violations = await checkTouchTargets(page);
+
+          expect(violations).toHaveLength(1);
+          expect(violations[0].effectiveWidth).toBe(30);
+        });
+      });
+
+      /* The shape the issue was reported on: a frozen column, and a strip that
+         pads its scroll box past it. `scrollIntoView` honours
+         `scroll-padding`, so a control scrolled out from under the column is
+         measured in the clear. */
+      it('passes a 44x44 button scrolled out from under a column the page pads past', async () => {
+        await strip(`${frozenColumn(140)}${button(395)}`, {
+          wrapper: 'scroll-padding-left:140px',
+          scrollLeft: 400,
+        });
+
+        expect(await checkTouchTargets(page)).toEqual([]);
+      });
+
+      /* The window's restore is pinned under "controls below the fold"; this
+         is the sideways one. The 30x30 far along the row is reported, which
+         proves the strip really moved during the check. */
+      it('puts the strip back where it found it', async () => {
+        await strip(`${button(STRIP - 39, 44, 'edge')}${button(700, 30, 'far')}`, {
+          scrollLeft: 30,
+        });
+
+        const violations = await checkTouchTargets(page);
+
+        expect(violations.map((violation) => violation.element)).toEqual(['button#far "+"']);
         expect(await page.evaluate(() => document.getElementById('strip').scrollLeft)).toBe(30);
-        expect(await page.evaluate(() => window.scrollY)).toBe(90);
       });
     });
 
