@@ -76,5 +76,9 @@ jobs:
         run: pnpm dlx vercel@latest pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
       - name: Build
         run: pnpm dlx vercel@latest build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      # `--archive=tgz` uploads the prebuilt output as one tarball. Without it
+      # the CLI sends every file as its own request, and the free plan caps
+      # those at 5000 a day (`api-upload-free`), which a busy day of merges
+      # to main exhausts.
       - name: Deploy to production
-        run: pnpm dlx vercel@latest deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: pnpm dlx vercel@latest deploy --prebuilt --prod --archive=tgz --token=${{ secrets.VERCEL_TOKEN }}
