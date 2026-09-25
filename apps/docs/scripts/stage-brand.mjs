@@ -25,11 +25,13 @@
 
 import {
   copyFileSync,
-  cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -43,6 +45,32 @@ const STAGED_DIRS = ['assets', 'guidelines', 'patterns', 'slides', 'ui_kits'];
 
 /** `@import './x.css';` and `@import url('./x.css');` alike, target captured. */
 const IMPORT_STATEMENT = /@import\s+(?:url\(\s*)?['"]([^'"]+)['"]\s*\)?\s*;/g;
+
+/** Copies a directory tree with every symlink replaced by the file it points
+    to. `cpSync`'s `dereference` only follows a link at the top-level source,
+    not the links inside it, and design-system-docs/fonts/ is a folder of
+    per-file links into packages/tokens. Copied as links, they point at a path
+    that does not exist under public/, and `vercel deploy --archive=tgz`
+    rejects the whole deploy for it. */
+function copyTree(from, to) {
+  mkdirSync(to, { recursive: true });
+  for (const name of readdirSync(from)) {
+    const src = join(from, name);
+    const dest = join(to, name);
+    if (statSync(src).isDirectory()) {
+      copyTree(src, dest);
+    } else {
+      copyFileSync(src, dest);
+    }
+  }
+}
+
+/** Every symlink under `dir`. The staged tree must have none: see copyTree. */
+function symlinksUnder(dir) {
+  return readdirSync(dir, { recursive: true })
+    .map((name) => join(dir, name))
+    .filter((path) => lstatSync(path).isSymbolicLink());
+}
 
 /** One stylesheet with every relative @import inlined; external @imports
     (Google Fonts) are hoisted to the top, where CSS requires them. */
@@ -110,7 +138,7 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
 for (const dir of STAGED_DIRS) {
-  cpSync(join(source, dir), join(out, dir), { recursive: true, dereference: true });
+  copyTree(join(source, dir), join(out, dir));
 }
 /* copyFileSync follows the symlink, so the copy is the dereferenced file. */
 copyFileSync(join(source, 'colors_and_type.css'), join(out, 'colors_and_type.css'));
@@ -127,7 +155,12 @@ copyFileSync(join(source, 'colors_and_type.css'), join(out, 'colors_and_type.css
 for (const sibling of importedSiblings('colors_and_type.css')) {
   copyFileSync(join(source, sibling), join(out, sibling));
 }
-cpSync(join(source, 'fonts'), join(out, 'fonts'), { recursive: true, dereference: true });
+copyTree(join(source, 'fonts'), join(out, 'fonts'));
 writeFileSync(join(out, 'styles.css'), flattenCss(join(source, 'styles.css')));
+
+const links = symlinksUnder(out);
+if (links.length > 0) {
+  throw new Error(`stage-brand: staged symlinks instead of files: ${links.join(', ')}`);
+}
 
 process.stdout.write(`Brand artifacts staged in public/brand from ${source}\n`);
