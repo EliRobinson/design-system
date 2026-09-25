@@ -72,6 +72,7 @@ export type DecisionCardProps = HTMLAttributes<HTMLDivElement> & {
    * a billing code, a SKU, a plan name. It renders inside the heading, so the heading's
    * accessible name stays one phrase: "99417 Prolonged office E/M". When it is present
    * `headline` drops to the body size, so the code leads and the headline describes it.
+   * An empty string counts as no code.
    */
   code?: string;
   /**
