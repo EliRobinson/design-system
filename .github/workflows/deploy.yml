@@ -1,7 +1,8 @@
 # Production deploys are gated on Quality the same way publishing is: the
 # Vercel Git integration deploys nothing (`git.deploymentEnabled` in vercel.json
 # turns off `main` and every other branch; the Hobby plan allows 100
-# deployments a day, so previews are manual: `vercel deploy` from the branch),
+# deployments a day, so previews are manual: `vercel deploy --archive=tgz`
+# from the branch, for the upload cap noted on the deploy step below),
 # and this workflow promotes a build only after Quality has passed —
 # mirroring the `workflow_run` pattern release.yml uses. Without this gate,
 # any push where `next build` succeeded would ship, including one where lint,
@@ -77,8 +78,9 @@ jobs:
       - name: Build
         run: pnpm dlx vercel@latest build --prod --token=${{ secrets.VERCEL_TOKEN }}
       # `--archive=tgz` uploads the prebuilt output as one tarball. Without it
-      # the CLI sends every file as its own request, and the free plan caps
-      # those at 5000 a day (`api-upload-free`), which a busy day of merges
-      # to main exhausts.
+      # the CLI uploads each file Vercel doesn't already have as its own
+      # request. Every build makes new hashed chunks, and the free plan caps
+      # those uploads at 5000 a day (`api-upload-free`), which a busy day of
+      # merges to main exhausts.
       - name: Deploy to production
         run: pnpm dlx vercel@latest deploy --prebuilt --prod --archive=tgz --token=${{ secrets.VERCEL_TOKEN }}
