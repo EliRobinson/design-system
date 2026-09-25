@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { createRef } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DecisionCard } from './DecisionCard.js';
 
@@ -268,12 +268,18 @@ describe('DecisionCard figureLayout', () => {
 });
 
 describe('DecisionCard figure keys', () => {
+  let consoleError: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  function keyWarnings(spy: ReturnType<typeof vi.spyOn>) {
-    return spy.mock.calls.filter((call) => String(call[0]).includes('same key'));
+  function keyWarnings() {
+    return consoleError.mock.calls.filter((call) => String(call[0]).includes('same key'));
   }
 
   /* The consumer case #258 was filed for: derivation rows repeat their label
@@ -281,7 +287,6 @@ describe('DecisionCard figure keys', () => {
      collided unless the row's identity was smuggled into `kind` — which then
      reached the DOM as `data-kind`. */
   it('keys by id, so repeated labels need no kind and put nothing in the DOM', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { container } = render(
       <DecisionCard
         {...base}
@@ -292,7 +297,7 @@ describe('DecisionCard figure keys', () => {
       />,
     );
 
-    expect(keyWarnings(spy)).toEqual([]);
+    expect(keyWarnings()).toEqual([]);
     const figures = container.querySelectorAll('.ds-decision__figure');
     expect(figures).toHaveLength(2);
     for (const figure of figures) {
@@ -302,7 +307,6 @@ describe('DecisionCard figure keys', () => {
   });
 
   it('falls back to the position when a figure has no id', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     render(
       <DecisionCard
         {...base}
@@ -313,13 +317,25 @@ describe('DecisionCard figure keys', () => {
       />,
     );
 
-    expect(keyWarnings(spy)).toEqual([]);
+    expect(keyWarnings()).toEqual([]);
   });
 
-  /* React stringifies keys, so an unnamespaced `id ?? index` would read an id
-     of "1" and the second unkeyed figure as the same row. */
+  it('treats an empty id as no id, so two of them do not share a key', () => {
+    render(
+      <DecisionCard
+        {...base}
+        figures={[
+          { id: '', label: 'from', value: 'One' },
+          { id: '', label: 'from', value: 'Two' },
+        ]}
+      />,
+    );
+
+    expect(keyWarnings()).toEqual([]);
+  });
+
+  /* The namespacing in `figureKey`. */
   it('never lets an id collide with a position', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     render(
       <DecisionCard
         {...base}
@@ -330,6 +346,6 @@ describe('DecisionCard figure keys', () => {
       />,
     );
 
-    expect(keyWarnings(spy)).toEqual([]);
+    expect(keyWarnings()).toEqual([]);
   });
 });

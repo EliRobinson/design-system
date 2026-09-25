@@ -48,9 +48,9 @@
 /* `code` beside `headline`, on one baseline. The code leads in mono at the
    display step below the plain headline's, and the headline drops to the body
    size beside it, so the pair reads as an identifier and what it means rather
-   than as two headlines. Both children restate family, size, weight and
-   tracking because the heading's own ramp is the display face at --fs-2xl, and
-   neither child is that.
+   than as two headlines. The heading's own ramp is the display face at
+   --fs-2xl with tight tracking, and neither child is that: tracking is reset
+   once here, and each child restates its family, size and weight.
 
    It does not wrap. A headline too long for the line wraps inside its own
    column beside the code, so the two keep one baseline; with `flex-wrap` the
@@ -60,6 +60,7 @@
   align-items: baseline;
   display: flex;
   gap: var(--space-3);
+  letter-spacing: var(--tr-normal);
 }
 
 .ds-decision__code {
@@ -67,17 +68,13 @@
   font-family: var(--font-mono);
   font-size: var(--fs-xl);
   font-weight: var(--fw-semibold);
-  letter-spacing: var(--tr-normal);
-  line-height: var(--lh-snug);
 }
 
 .ds-decision__headline-text {
   font-family: var(--font-sans);
-  min-width: 0;
   font-size: var(--fs-md);
   font-weight: var(--fw-regular);
-  letter-spacing: var(--tr-normal);
-  line-height: var(--lh-snug);
+  min-width: 0;
 }
 
 .ds-decision__figures {
@@ -120,14 +117,20 @@
    the sentences wrap. `display: contents` would do the same and throw the
    row's box away with it. */
 .ds-decision__figures--prose {
-  align-items: baseline;
+  column-gap: var(--space-3);
   grid-template-columns: auto 1fr;
 }
 
+/* The row still carries the metric rule's flex declarations. Its own `gap`
+   would override the list's column gap inside the subgrid, and
+   `space-between` means nothing here, so both are reset: the row takes the
+   list's gap (`normal` on a subgrid) and no content distribution. */
 .ds-decision__figures--prose .ds-decision__figure {
+  column-gap: normal;
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
+  justify-content: normal;
 }
 
 .ds-decision__figures--prose .ds-decision__figure-label {

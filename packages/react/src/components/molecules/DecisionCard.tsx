@@ -7,7 +7,8 @@ import { VerdictBadge } from './VerdictBadge.js';
 
 export type DecisionFigure = {
   /**
-   * The figure's identity, used as its React key and never rendered. Pass one whenever
+   * The figure's identity, unique within `figures`, used as its React key and never
+   * rendered. An empty string counts as no id. Pass one whenever
    * two figures can share a label — a derivation that reads `from`, `from`, `rule` — so
    * `kind` is left to mean a kind. Without it the figure is keyed by its position, which
    * is safe because a figure holds no state of its own.
@@ -56,9 +57,10 @@ function resolveHeadingLevel(level: DecisionCardHeadingLevel): DecisionCardHeadi
 
 // The two namespaces keep a caller's id from colliding with a position: React
 // stringifies keys, so a bare `figure.id ?? index` would treat an id of "1" and
-// the second unkeyed figure as the same row.
+// the second unkeyed figure as the same row. An empty id is no identity at all
+// — two of them would share the key `id:` — so it falls back like a missing one.
 function figureKey(figure: DecisionFigure, index: number): string {
-  return figure.id === undefined ? `index:${index}` : `id:${figure.id}`;
+  return figure.id ? `id:${figure.id}` : `index:${index}`;
 }
 
 export type DecisionCardProps = HTMLAttributes<HTMLDivElement> & {
@@ -135,14 +137,16 @@ export const DecisionCard = forwardRef<HTMLDivElement, DecisionCardProps>(functi
             The space between the two spans is what keeps them two words in that
             name; the gap on screen is the flex gap. Without a code the heading
             is exactly what it always was: one class, one text node. */}
-        {code ? (
-          <HeadingTag className="ds-decision__headline ds-decision__headline--coded">
-            <span className="ds-decision__code">{code}</span>{' '}
-            <span className="ds-decision__headline-text">{headline}</span>
-          </HeadingTag>
-        ) : (
-          <HeadingTag className="ds-decision__headline">{headline}</HeadingTag>
-        )}
+        <HeadingTag className={cn('ds-decision__headline', code && 'ds-decision__headline--coded')}>
+          {code ? (
+            <>
+              <span className="ds-decision__code">{code}</span>{' '}
+              <span className="ds-decision__headline-text">{headline}</span>
+            </>
+          ) : (
+            headline
+          )}
+        </HeadingTag>
 
         {figures && figures.length > 0 ? (
           <dl
