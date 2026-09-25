@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { createRef } from 'react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DecisionCard } from './DecisionCard.js';
 
@@ -133,5 +133,203 @@ describe('DecisionCard', () => {
 
     expect(ref.current).toBeInstanceOf(HTMLDivElement);
     expect(ref.current).toHaveClass('ds-decision');
+  });
+});
+
+/* #258 added three opt-ins — `code`, `figureLayout` and a figure `id` — and
+   promised that a card using none of them renders exactly what it did before.
+   The markup below is what DecisionCard 3.3.2 rendered for these props,
+   captured from that release rather than written by hand, so any drift in the
+   default path fails here instead of in a consumer's baseline. */
+describe('DecisionCard without the #258 opt-ins', () => {
+  it('renders the markup 3.3.2 rendered, byte for byte', () => {
+    const { container } = render(
+      <DecisionCard
+        verdict="go"
+        verdictLabel="Worth it"
+        subject="Team plan renewal"
+        headline="Renewing now costs less than waiting."
+        headingLevel={3}
+        figures={[
+          { label: 'Current rate', value: '$240 / yr' },
+          { label: 'Renewal rate', value: '$216 / yr', kind: 'cash' },
+        ]}
+        total={{ label: 'You pay today', value: '$216' }}
+        contrast={{ label: 'If you wait', value: '$264' }}
+        caveat="Holds for 14 days."
+        closing="Renew this week."
+        action={<button type="button">Renew now</button>}
+      />,
+    );
+
+    expect(container.innerHTML).toBe(
+      '<div class="ds-decision">' +
+        '<div class="ds-decision__head">' +
+        '<span class="ds-verdict ds-verdict--go">' +
+        '<span class="ds-verdict__glyph" aria-hidden="true">✓</span>' +
+        '<span class="ds-verdict__word">Worth it</span>' +
+        '</span>' +
+        '<p class="ds-decision__subject">Team plan renewal</p>' +
+        '</div>' +
+        '<div class="ds-decision__body">' +
+        '<h3 class="ds-decision__headline">Renewing now costs less than waiting.</h3>' +
+        '<dl class="ds-decision__figures">' +
+        '<div class="ds-decision__figure">' +
+        '<dt class="ds-decision__figure-label">Current rate</dt>' +
+        '<dd class="ds-decision__figure-value">$240 / yr</dd>' +
+        '</div>' +
+        '<div class="ds-decision__figure" data-kind="cash">' +
+        '<dt class="ds-decision__figure-label">Renewal rate</dt>' +
+        '<dd class="ds-decision__figure-value">$216 / yr</dd>' +
+        '</div>' +
+        '</dl>' +
+        '<p class="ds-decision__total">' +
+        '<span class="ds-decision__figure-label">You pay today</span>' +
+        '<span class="ds-decision__figure-value">$216</span>' +
+        '</p>' +
+        '<p class="ds-decision__contrast">' +
+        '<span class="ds-decision__figure-label">If you wait</span>' +
+        '<span class="ds-decision__figure-value">$264</span>' +
+        '</p>' +
+        '<p class="ds-decision__caveat">Holds for 14 days.</p>' +
+        '<p class="ds-decision__closing">Renew this week.</p>' +
+        '</div>' +
+        '<div class="ds-decision__foot">' +
+        '<button type="button">Renew now</button>' +
+        '</div>' +
+        '</div>',
+    );
+  });
+
+  it('renders the same markup when figureLayout is metric explicitly', () => {
+    const figures = [{ label: 'Base', value: '120' }];
+    const implicit = render(<DecisionCard {...base} figures={figures} />).container.innerHTML;
+    const explicit = render(<DecisionCard {...base} figures={figures} figureLayout="metric" />)
+      .container.innerHTML;
+
+    expect(explicit).toBe(implicit);
+  });
+});
+
+describe('DecisionCard code', () => {
+  it('sets the code apart inside the heading, so the accessible name is one phrase', () => {
+    const { container } = render(
+      <DecisionCard {...base} code="99417" headline="Prolonged office E/M" headingLevel={3} />,
+    );
+
+    const heading = screen.getByRole('heading', { level: 3, name: '99417 Prolonged office E/M' });
+    expect(heading).toHaveClass('ds-decision__headline', 'ds-decision__headline--coded');
+    expect(heading).not.toHaveAttribute('aria-label');
+    expect(heading.querySelector('.ds-decision__code')).toHaveTextContent(/^99417$/);
+    expect(heading.querySelector('.ds-decision__headline-text')).toHaveTextContent(
+      /^Prolonged office E\/M$/,
+    );
+    expect(container.querySelectorAll('h1, h2, h3, h4, h5, h6')).toHaveLength(1);
+  });
+
+  it('renders a plain heading with no code span when code is absent or empty', () => {
+    for (const code of [undefined, '']) {
+      const { container, unmount } = render(<DecisionCard {...base} code={code} />);
+
+      const heading = screen.getByRole('heading', { level: 2 });
+      expect(heading.className).toBe('ds-decision__headline');
+      expect(heading.childNodes).toHaveLength(1);
+      expect(container.querySelector('.ds-decision__code')).toBeNull();
+      unmount();
+    }
+  });
+});
+
+describe('DecisionCard figureLayout', () => {
+  const rows = [
+    { id: 'criterion-0', label: 'from', value: '2 chronic problems addressed, both with a plan' },
+    { id: 'criterion-1', label: 'from', value: 'Prescription drug management' },
+    { id: 'rule', label: 'rule', value: 'Moderate MDM, established patient, home' },
+  ];
+
+  it('marks the list for the prose grid and keeps the dl/dt/dd pairing', () => {
+    const { container } = render(<DecisionCard {...base} figures={rows} figureLayout="prose" />);
+
+    const list = container.querySelector('dl');
+    expect(list).toHaveClass('ds-decision__figures', 'ds-decision__figures--prose');
+    const figures = container.querySelectorAll('.ds-decision__figure');
+    expect(figures).toHaveLength(3);
+    for (const [index, figure] of [...figures].entries()) {
+      expect(figure.querySelector('dt')).toHaveTextContent(rows[index]!.label);
+      expect(figure.querySelector('dd')).toHaveTextContent(rows[index]!.value);
+    }
+  });
+
+  it('leaves the list unmarked in the default metric layout', () => {
+    const { container } = render(<DecisionCard {...base} figures={rows} />);
+
+    expect(container.querySelector('dl')?.className).toBe('ds-decision__figures');
+  });
+});
+
+describe('DecisionCard figure keys', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function keyWarnings(spy: ReturnType<typeof vi.spyOn>) {
+    return spy.mock.calls.filter((call) => String(call[0]).includes('same key'));
+  }
+
+  /* The consumer case #258 was filed for: derivation rows repeat their label
+     by design. Before, the key was `${kind}:${label}`, so repeated labels
+     collided unless the row's identity was smuggled into `kind` — which then
+     reached the DOM as `data-kind`. */
+  it('keys by id, so repeated labels need no kind and put nothing in the DOM', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { container } = render(
+      <DecisionCard
+        {...base}
+        figures={[
+          { id: 'a', label: 'from', value: 'One' },
+          { id: 'b', label: 'from', value: 'Two' },
+        ]}
+      />,
+    );
+
+    expect(keyWarnings(spy)).toEqual([]);
+    const figures = container.querySelectorAll('.ds-decision__figure');
+    expect(figures).toHaveLength(2);
+    for (const figure of figures) {
+      expect(figure).not.toHaveAttribute('data-kind');
+      expect(figure).not.toHaveAttribute('id');
+    }
+  });
+
+  it('falls back to the position when a figure has no id', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    render(
+      <DecisionCard
+        {...base}
+        figures={[
+          { label: 'from', value: 'One' },
+          { label: 'from', value: 'Two' },
+        ]}
+      />,
+    );
+
+    expect(keyWarnings(spy)).toEqual([]);
+  });
+
+  /* React stringifies keys, so an unnamespaced `id ?? index` would read an id
+     of "1" and the second unkeyed figure as the same row. */
+  it('never lets an id collide with a position', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    render(
+      <DecisionCard
+        {...base}
+        figures={[
+          { id: '1', label: 'A', value: 'One' },
+          { label: 'B', value: 'Two' },
+        ]}
+      />,
+    );
+
+    expect(keyWarnings(spy)).toEqual([]);
   });
 });

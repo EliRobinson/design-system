@@ -244,7 +244,7 @@ because the library had no equivalent. Import them via the tiered subpath
 | ai        | `StreamingCaret`                                                                                           | Returns `null` when `active` is false, so it cannot be left mounted on a finished message. `label` promotes it to `role="status"`; without one it is `aria-hidden`. Honours `prefers-reduced-motion`.                                                                                                                                                                                              |
 | molecules | `VerdictBadge`                                                                                             | A decision marker that survives both themes. Carries a glyph **and** a word — `Badge` has no state that does either. The glyph is `aria-hidden`; the word is the accessible text.                                                                                                                                                                                                                  |
 | molecules | `StubCard`                                                                                                 | A summary that reads as a ticket stub: a body column plus a perforated stub column. The perforation is structure, so it is a dashed `--border-control`.                                                                                                                                                                                                                                            |
-| molecules | `DecisionCard`                                                                                             | A headline verdict, figures broken out by `kind`, a contrast figure, a caveat, and a **conditional** action. Composes `VerdictBadge`. `headline` is a real heading element — `headingLevel` is 2–6, default 2. See the footer guarantee below.                                                                                                                                                     |
+| molecules | `DecisionCard`                                                                                             | A headline verdict, figures broken out by `kind`, a contrast figure, a caveat, and a **conditional** action. Composes `VerdictBadge`. `headline` is a real heading element — `headingLevel` is 2–6, default 2; an optional `code` renders inside it. `figureLayout="prose"` draws sentence values. See the footer guarantee below.                                                                 |
 
 ### `DecisionCard` renders no footer when there is no action
 
@@ -266,7 +266,8 @@ verdict, figures broken out by kind, a contrast figure, a caveat, a conditional 
 That shape is a quote, an eligibility result, or a risk assessment just as readily as it is
 a recommendation. `kind` on a figure renders as `data-kind` rather than a class from a
 fixed enum, so a product can group its figures without the system having to learn the
-product's vocabulary.
+product's vocabulary. A figure's identity is `id`, its React key, which never renders —
+so `kind` is never pressed into service to keep repeated labels unique.
 
 ### `ChatMessage` has no `role`, and the absence is the decision
 

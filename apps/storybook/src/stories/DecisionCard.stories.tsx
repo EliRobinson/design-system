@@ -83,3 +83,44 @@ export const WithoutAction: Story = {
     />
   ),
 };
+
+/* `code` beside the headline and `figureLayout="prose"` together, because
+   that is how they are used: a derivation shows an identifier, then the
+   sentences it was derived from. The rows repeat their label by design, so
+   each carries an `id` for its key rather than smuggling identity into
+   `kind`. The 360px width is the narrow column the prose grid exists for —
+   the metric layout wraps these same sentences into a right-ragged mono
+   block there. */
+export const Derivation: Story = {
+  args: {
+    verdict: 'go',
+    verdictLabel: 'Matches',
+    code: '8471.30',
+    headline: 'Portable computer, under 10 kg',
+    figureLayout: 'prose',
+    figures: [
+      { id: 'weight', label: 'from', value: 'Declared weight is 1.4 kg, under the 10 kg line' },
+      { id: 'unit', label: 'from', value: 'Display, keyboard and processor are in one unit' },
+      { id: 'rule', label: 'rule', value: 'Heading 8471, subheading .30: portable machines' },
+    ],
+    caveat: 'A docking station shipped in the same box is classified on its own.',
+  },
+  render: () => (
+    <DecisionCard
+      verdict="go"
+      verdictLabel="Matches"
+      code="8471.30"
+      headline="Portable computer, under 10 kg"
+      headingLevel={3}
+      figureLayout="prose"
+      figures={[
+        { id: 'weight', label: 'from', value: 'Declared weight is 1.4 kg, under the 10 kg line' },
+        { id: 'unit', label: 'from', value: 'Display, keyboard and processor are in one unit' },
+        { id: 'rule', label: 'rule', value: 'Heading 8471, subheading .30: portable machines' },
+      ]}
+      caveat="A docking station shipped in the same box is classified on its own."
+      action={<Button variant="accent">Use this code</Button>}
+      style={{ maxWidth: 360 }}
+    />
+  ),
+};
