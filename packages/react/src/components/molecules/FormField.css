@@ -12,6 +12,22 @@
   margin-bottom: 2px;
 }
 
+/* `labelAside`: the label and whatever sits beside it, on one row. The row takes the
+   label's 2px so a field with an aside keeps the rhythm of one without. It wraps rather
+   than squeezing a long label, and the label stays first in reading order. */
+.ds-form-field__label-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.ds-form-field__label-row > .ds-form-field__label {
+  margin-bottom: 0;
+}
+
 .ds-form-field__required {
   color: var(--status-danger-fg); /* 7.55:1 — the fill token is 4.79:1 */
 }

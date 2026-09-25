@@ -6,6 +6,7 @@ import { RelatedComponents } from '@/components/docs/RelatedComponents';
 import Basic from '@/components/demos/form-field/Basic';
 import WithError from '@/components/demos/form-field/WithError';
 import CustomControl from '@/components/demos/form-field/CustomControl';
+import LabelAside from '@/components/demos/form-field/LabelAside';
 
 export const metadata = { title: 'FormField' };
 
@@ -36,6 +37,22 @@ the error wins and the hint is hidden. `required` adds a visible `*` next to the
   <WithError />
 </DemoBlock>
 
+The error renders with `role="alert"`, the same as `Input`'s, so a message that appears
+after the user has left the field — a validate-on-blur form — is announced rather than
+waiting to be discovered. It is only in the page while there is an error, so it is
+announced when it appears or changes, not repeated on every render.
+
+## Something beside the label
+
+`labelAside` renders after the label on the same row — a status badge, a small action
+such as a dictation button. It sits beside the `<label>`, not inside it, so the control's
+accessible name is still exactly `label`, and clicking the aside does not focus the
+control. The row wraps when there is not room for both.
+
+<DemoBlock file="form-field/LabelAside.tsx">
+  <LabelAside />
+</DemoBlock>
+
 ## Wrapping an arbitrary control
 
 `FormField`'s render prop works with anything that accepts `aria-describedby`,
@@ -60,6 +77,12 @@ the error wins and the hint is hidden. `required` adds a visible `*` next to the
   label focus the field.
 - `aria-describedby` is only set when `hint` or `error` is present; both share one
   generated id, since only one message renders at a time.
+- The error message has `role="alert"`; the hint does not. When a hint turns into an
+  error, the error is a new element rather than the hint's element with a role added, so
+  screen readers announce it.
+- `labelAside` is outside the `<label>`: it adds nothing to the control's accessible
+  name. A button placed there needs its own accessible name and, as a primary control,
+  its own 44x44 target.
 - The `*` appended to a `required` label is `aria-hidden="true"` — the accessible
   requirement signal is `aria-required="true"` on the control itself, not the asterisk.
 - **Keyboard:** no custom behavior of its own — once the `id`/`htmlFor` pair is wired
@@ -78,6 +101,7 @@ the error wins and the hint is hidden. `required` adds a visible `*` next to the
     'Set both hint and error and expect to see both — only error renders.',
     'Skip the id on the child control; without it the label has nothing to point to.',
     'Use required without also making the control itself enforce it — the asterisk is a visual cue, not validation.',
+    'Put a badge or button inside label to sit it beside the label text — use labelAside, which keeps it out of the accessible name.',
   ]}
 />
 
