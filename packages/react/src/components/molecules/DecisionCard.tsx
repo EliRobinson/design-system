@@ -5,7 +5,27 @@ import { cn } from '../../lib/cn.js';
 import type { Verdict } from './VerdictBadge.js';
 import { VerdictBadge } from './VerdictBadge.js';
 
-export type DecisionFigure = { label: string; value: string; kind?: string };
+export type DecisionFigure = {
+  /**
+   * The figure's identity, used as its React key and never rendered. Pass one whenever
+   * two figures can share a label — a derivation that reads `from`, `from`, `rule` — so
+   * `kind` is left to mean a kind. Without it the figure is keyed by its position, which
+   * is safe because a figure holds no state of its own.
+   */
+  id?: string;
+  label: string;
+  value: string;
+  /** A product's own grouping for the figure, rendered as `data-kind`. */
+  kind?: string;
+};
+
+/**
+ * How the figures are drawn. `metric` (the default) is a label beside a right-aligned
+ * mono value — right for "$1,240". `prose` is a two-column grid, a small mono label
+ * beside a left-aligned sans sentence — right for a value that is a sentence, which
+ * `metric` wraps into a right-ragged mono block.
+ */
+export type DecisionFigureLayout = 'metric' | 'prose';
 
 export type DecisionCardHeadingLevel = 2 | 3 | 4 | 5 | 6;
 
@@ -34,10 +54,24 @@ function resolveHeadingLevel(level: DecisionCardHeadingLevel): DecisionCardHeadi
   return level in HEADING_TAGS ? level : DEFAULT_HEADING_LEVEL;
 }
 
+// The two namespaces keep a caller's id from colliding with a position: React
+// stringifies keys, so a bare `figure.id ?? index` would treat an id of "1" and
+// the second unkeyed figure as the same row.
+function figureKey(figure: DecisionFigure, index: number): string {
+  return figure.id === undefined ? `index:${index}` : `id:${figure.id}`;
+}
+
 export type DecisionCardProps = HTMLAttributes<HTMLDivElement> & {
   verdict: Verdict;
   verdictLabel: string;
   headline: string;
+  /**
+   * A short identifier set apart before `headline`, in mono, on the headline's baseline —
+   * a billing code, a SKU, a plan name. It renders inside the heading, so the heading's
+   * accessible name stays one phrase: "99417 Prolonged office E/M". When it is present
+   * `headline` drops to the body size, so the code leads and the headline describes it.
+   */
+  code?: string;
   /**
    * Heading level (2-6) for `headline`, which renders as the real heading
    * element rather than a styled paragraph. There is no single correct level
@@ -49,6 +83,8 @@ export type DecisionCardProps = HTMLAttributes<HTMLDivElement> & {
   headingLevel?: DecisionCardHeadingLevel;
   subject?: string;
   figures?: DecisionFigure[];
+  /** How `figures` is drawn — see `DecisionFigureLayout`. Defaults to `metric`. */
+  figureLayout?: DecisionFigureLayout;
   total?: { label: string; value: string };
   contrast?: { label: string; value: string };
   caveat?: string;
@@ -63,9 +99,11 @@ export const DecisionCard = forwardRef<HTMLDivElement, DecisionCardProps>(functi
     verdict,
     verdictLabel,
     headline,
+    code,
     headingLevel = DEFAULT_HEADING_LEVEL,
     subject,
     figures,
+    figureLayout = 'metric',
     total,
     contrast,
     caveat,
@@ -90,16 +128,34 @@ export const DecisionCard = forwardRef<HTMLDivElement, DecisionCardProps>(functi
             outline, so it has to be reachable by a screen reader's heading
             navigation — which is the whole reason `headingLevel` exists. The
             type ramp is carried by the class, so every level looks identical
-            and only the outline changes. */}
-        <HeadingTag className="ds-decision__headline">{headline}</HeadingTag>
+            and only the outline changes.
+
+            `code` renders inside the heading rather than beside it, so the
+            heading's accessible name is the code and the headline as one phrase.
+            The space between the two spans is what keeps them two words in that
+            name; the gap on screen is the flex gap. Without a code the heading
+            is exactly what it always was: one class, one text node. */}
+        {code ? (
+          <HeadingTag className="ds-decision__headline ds-decision__headline--coded">
+            <span className="ds-decision__code">{code}</span>{' '}
+            <span className="ds-decision__headline-text">{headline}</span>
+          </HeadingTag>
+        ) : (
+          <HeadingTag className="ds-decision__headline">{headline}</HeadingTag>
+        )}
 
         {figures && figures.length > 0 ? (
-          <dl className="ds-decision__figures">
-            {figures.map((figure) => (
+          <dl
+            className={cn(
+              'ds-decision__figures',
+              figureLayout === 'prose' && 'ds-decision__figures--prose',
+            )}
+          >
+            {figures.map((figure, index) => (
               <div
                 className="ds-decision__figure"
                 data-kind={figure.kind}
-                key={`${figure.kind ?? ''}:${figure.label}`}
+                key={figureKey(figure, index)}
               >
                 <dt className="ds-decision__figure-label">{figure.label}</dt>
                 <dd className="ds-decision__figure-value">{figure.value}</dd>

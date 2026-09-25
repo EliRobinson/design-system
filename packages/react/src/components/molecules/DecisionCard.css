@@ -45,6 +45,41 @@
   margin: 0;
 }
 
+/* `code` beside `headline`, on one baseline. The code leads in mono at the
+   display step below the plain headline's, and the headline drops to the body
+   size beside it, so the pair reads as an identifier and what it means rather
+   than as two headlines. Both children restate family, size, weight and
+   tracking because the heading's own ramp is the display face at --fs-2xl, and
+   neither child is that.
+
+   It does not wrap. A headline too long for the line wraps inside its own
+   column beside the code, so the two keep one baseline; with `flex-wrap` the
+   whole headline dropped under the code as soon as it outgrew the line, which
+   is two headings' worth of layout for one heading. */
+.ds-decision__headline--coded {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-3);
+}
+
+.ds-decision__code {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tr-normal);
+  line-height: var(--lh-snug);
+}
+
+.ds-decision__headline-text {
+  font-family: var(--font-sans);
+  min-width: 0;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-regular);
+  letter-spacing: var(--tr-normal);
+  line-height: var(--lh-snug);
+}
+
 .ds-decision__figures {
   display: grid;
   gap: var(--space-2);
@@ -72,6 +107,38 @@
   line-height: var(--lh-normal);
   margin: 0;
   text-align: right;
+}
+
+/* `figureLayout="prose"`: a figure whose value is a sentence. The metric row
+   above right-aligns a mono value, which in a narrow column wraps every
+   sentence into a right-ragged mono block. Here the list is an `auto 1fr`
+   grid — a small mono label column, then a left-aligned sans sentence that
+   wraps inside its own column.
+
+   Each row keeps its wrapper (it carries `data-kind`) and joins the list's
+   columns through `subgrid`, so every label shares one column width however
+   the sentences wrap. `display: contents` would do the same and throw the
+   row's box away with it. */
+.ds-decision__figures--prose {
+  align-items: baseline;
+  grid-template-columns: auto 1fr;
+}
+
+.ds-decision__figures--prose .ds-decision__figure {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+
+.ds-decision__figures--prose .ds-decision__figure-label {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+}
+
+.ds-decision__figures--prose .ds-decision__figure-value {
+  font-family: var(--font-sans);
+  text-align: left;
 }
 
 .ds-decision__total {

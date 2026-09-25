@@ -4,6 +4,7 @@ import { DoDont } from '@/components/docs/DoDont';
 import { PropsTables } from '@/components/docs/PropsTables';
 import { RelatedComponents } from '@/components/docs/RelatedComponents';
 import Basic from '@/components/demos/decision-card/Basic';
+import Derivation from '@/components/demos/decision-card/Derivation';
 import NoAction from '@/components/demos/decision-card/NoAction';
 
 export const metadata = { title: 'DecisionCard' };
@@ -36,6 +37,33 @@ resolving to a class from a fixed enum, so a product can group its figures — c
 coverage, timing, whatever it actually tracks — and style those groups from its own
 stylesheet, without the system having to learn the product's vocabulary or grow a union
 type every time a product invents a category.
+
+## Showing a derivation
+
+<DemoBlock file="decision-card/Derivation.tsx">
+  <Derivation />
+</DemoBlock>
+
+Some verdicts are an identifier reached by rules — a tariff code, a plan, a rate class —
+and the reader checks the rules, not a number. Two props draw that shape.
+
+`code` sets a short identifier apart before `headline`: in mono, on the headline's
+baseline, with the headline dropped to the body size beside it so the code leads. It renders
+**inside** the heading element, so the heading's accessible name is still one phrase — "8471.30
+Portable computer, under 10 kg" — and heading navigation lands on both at once. Don't fold the
+code into `headline` as one string to get it on screen; it then takes the display face and
+reads as part of the sentence.
+
+`figureLayout="prose"` draws `figures` for values that are sentences. The default,
+`metric`, sets each value right-aligned in mono, which is right for "$1,240" and wrong for
+"Declared weight is 1.4 kg, under the 10 kg line": in a narrow column every sentence wraps
+into a right-ragged mono block. `prose` is a two-column grid instead — a small mono label, then
+a left-aligned sans sentence that wraps inside its own column — and every label shares one
+column width however the sentences wrap. It is one layout for the whole list: a card mixing
+metrics and sentences is two cards' worth of figures.
+
+Rows like these repeat their label by design, so give each figure an `id`. It is the
+figure's React key and is never rendered, which leaves `kind` free to mean a kind.
 
 ## The footer guarantee
 
@@ -87,8 +115,12 @@ outline changes.
   the document outline and heading navigation lands on it.
 - The figures render as a real `<dl>`: each figure's `label` is a `<dt>` and its `value` a
   `<dd>`, so the pairing holds without the grid.
-- Figures are keyed by `kind` and `label` together, so the same label can appear under two
-  different kinds without a key collision.
+- A figure is keyed by its `id` when it has one and by its position otherwise, so labels may
+  repeat freely. `id` never reaches the DOM; `kind` is the only figure field that does, as
+  `data-kind`.
+- With `code`, the heading holds the code and the headline as two spans with a space between
+  them, so its accessible name is one phrase and there is no `aria-label` to fall out of step
+  with the text.
 - `total` and `contrast` render as paragraphs rather than more `<dl>` entries — they're a
   summation and a comparison, not further items of the same list.
 - The verdict marker comes from `VerdictBadge`: its glyph is `aria-hidden` and
@@ -105,12 +137,14 @@ outline changes.
     'Give the reader the contrast figure; a number with nothing to measure against persuades nobody.',
     'State the caveat that would change the verdict, in the caveat slot.',
     'Use kind to group figures your product already groups, and style them from your own stylesheet.',
+    'Give figures an id whenever two of them can share a label.',
   ]}
   dont={[
     'Pass a disabled button as action to "grey out" an offer — omit action instead.',
     'Reintroduce a footer with a wrapper element that renders whether or not there is an action.',
     'Put a payment control outside the card and style it to look like it belongs to a "no" verdict.',
     'Use it for a plain summary with no judgement in it; that is Card or StubCard.',
+    'Put row identity into kind to keep keys unique — that is what id is for.',
   ]}
 />
 
