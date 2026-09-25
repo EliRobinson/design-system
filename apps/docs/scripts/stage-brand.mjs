@@ -6,6 +6,11 @@
  * `../styles.css`, `_card.css`, and `../../colors_and_type.css` must all
  * still resolve exactly as written.
  *
+ * Every copy materialises symlinks as real files. design-system-docs mirrors
+ * packages/tokens by symlink (the root stylesheets and every file in fonts/),
+ * and a link has nothing to point at once deployed. Directories go through
+ * ai-patterns' copyTree, which explains why `cpSync` cannot do this.
+ *
  * Two transforms, both forced by paths that escape the folder:
  * - `colors_and_type.css` is a symlink into packages/tokens — copied
  *   dereferenced, as build-artifacts.mjs already does for the tarball. Its own
@@ -31,11 +36,14 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
+
+/* Relative, not a package subpath: this is a build helper, not something
+   @elirobinson/ai-patterns should publish. */
+import { copyTree } from '../../../packages/ai-patterns/src/artifacts/copy-tree.mjs';
 
 const appDir = process.cwd();
 const source = join(appDir, '../../design-system-docs');
@@ -46,26 +54,10 @@ const STAGED_DIRS = ['assets', 'guidelines', 'patterns', 'slides', 'ui_kits'];
 /** `@import './x.css';` and `@import url('./x.css');` alike, target captured. */
 const IMPORT_STATEMENT = /@import\s+(?:url\(\s*)?['"]([^'"]+)['"]\s*\)?\s*;/g;
 
-/** Copies a directory tree with every symlink replaced by the file it points
-    to. `cpSync`'s `dereference` only follows a link at the top-level source,
-    not the links inside it, and design-system-docs/fonts/ is a folder of
-    per-file links into packages/tokens. Copied as links, they point at a path
-    that does not exist under public/, and `vercel deploy --archive=tgz`
-    rejects the whole deploy for it. */
-function copyTree(from, to) {
-  mkdirSync(to, { recursive: true });
-  for (const name of readdirSync(from)) {
-    const src = join(from, name);
-    const dest = join(to, name);
-    if (statSync(src).isDirectory()) {
-      copyTree(src, dest);
-    } else {
-      copyFileSync(src, dest);
-    }
-  }
-}
-
-/** Every symlink under `dir`. The staged tree must have none: see copyTree. */
+/** Every symlink under `dir`. copyTree never writes one, so this only trips
+    if a later edit copies with `cpSync` again, which keeps nested links. A
+    staged link breaks the deploy: `vercel deploy --archive=tgz` rejects the
+    whole upload with "is not a valid symlink". */
 function symlinksUnder(dir) {
   return readdirSync(dir, { recursive: true })
     .map((name) => join(dir, name))
