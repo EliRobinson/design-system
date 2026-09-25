@@ -101,11 +101,7 @@ describe('FormField error announcement', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  /*
-   * The validate-on-blur case the role exists for. A live region that is inserted with its
-   * text is announced; one whose role is added to an element already in the tree, in the same
-   * commit as its text, is not reliably announced. So the hint's `<p>` must not be reused.
-   */
+  // The validate-on-blur case the role exists for; FormField.tsx says why the node must be new.
   it('mounts a fresh alert element when a hint turns into an error', () => {
     const field = (error?: string) => (
       <FormField label="Email" htmlFor="email" hint="We'll never share this" error={error}>
@@ -164,6 +160,7 @@ describe('FormField labelAside', () => {
     expect(container.querySelector('label')).not.toHaveTextContent('Pre-populated');
     // The aria-hidden asterisk is not part of the name, with or without an aside.
     const textarea = screen.getByRole('textbox', { name: 'History' });
+    expect(textarea).toHaveAccessibleName('History');
     expect(textarea).toHaveAttribute('id', 'history');
     expect(textarea).toHaveAccessibleDescription('From the last visit');
   });
@@ -188,7 +185,7 @@ describe('FormField labelAside', () => {
     expect(screen.getByRole('button').closest('label')).toBeNull();
   });
 
-  it.each([undefined, null, false])('renders no label row for labelAside=%s', (labelAside) => {
+  it.each([undefined, null, false, ''])('renders no label row for labelAside=%s', (labelAside) => {
     const { container } = render(
       <FormField label="Email" htmlFor="email" labelAside={labelAside}>
         {(fieldProps) => <input id="email" {...fieldProps} />}

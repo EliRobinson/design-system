@@ -47,13 +47,13 @@ export const FormField = forwardRef<HTMLDivElement, FormFieldProps>(function For
 
   return (
     <div ref={ref} className={cn('ds-form-field', className)} {...props}>
-      {labelAside == null || typeof labelAside === 'boolean' ? (
-        labelElement
-      ) : (
+      {labelAside ? (
         <div className="ds-form-field__label-row">
           {labelElement}
           {labelAside}
         </div>
+      ) : (
+        labelElement
       )}
       {children({
         'aria-describedby': messageId,
@@ -63,7 +63,7 @@ export const FormField = forwardRef<HTMLDivElement, FormFieldProps>(function For
       {/* Two slots, not one ternary: a hint turning into an error must mount a fresh
           `role="alert"` element. Reusing the hint's `<p>` would add the role and the text
           in one commit, and a live region that did not exist before the change is not
-          reliably announced. `Input` keeps its two messages apart the same way. */}
+          reliably announced. `Input`, `Textarea` and `Select` keep theirs apart the same way. */}
       {hint && !error ? (
         <p id={messageId} className="ds-form-field__message ds-form-field__message--hint">
           {hint}

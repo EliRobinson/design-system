@@ -3,17 +3,19 @@
    ========================================================================== */
 
 .ds-form-field {
+  --form-field-label-gap: 2px;
+
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
 
 .ds-form-field__label {
-  margin-bottom: 2px;
+  margin-bottom: var(--form-field-label-gap);
 }
 
 /* `labelAside`: the label and whatever sits beside it, on one row. The row takes the
-   label's 2px so a field with an aside keeps the rhythm of one without. It wraps rather
+   label's gap so a field with an aside keeps the rhythm of one without. It wraps rather
    than squeezing a long label, and the label stays first in reading order. */
 .ds-form-field__label-row {
   align-items: center;
@@ -21,7 +23,7 @@
   flex-wrap: wrap;
   gap: var(--space-2);
   justify-content: space-between;
-  margin-bottom: 2px;
+  margin-bottom: var(--form-field-label-gap);
 }
 
 .ds-form-field__label-row > .ds-form-field__label {

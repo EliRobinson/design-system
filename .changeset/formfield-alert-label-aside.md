@@ -10,4 +10,4 @@ lost.
 
 New `labelAside?: ReactNode` prop renders after the label on the same row (a badge, a
 small action button). It sits outside the `<label>`, so the control's accessible name and
-`htmlFor` association are unchanged. Without it, the markup is unchanged.
+`htmlFor` association are unchanged. Without it (or with `null`, `false` or `''`), the markup is unchanged.

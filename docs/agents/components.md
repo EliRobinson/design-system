@@ -195,9 +195,10 @@ That last sentence is a check, not advice. `component-css.test.mjs` sweeps every
   `aria-required`) to spread onto that control. Do not nest `Input` inside `FormField` —
   `Input` already renders its own label and message region, so wrapping it produces
   duplicate labels.
-- Both render their error with `role="alert"`, in a slot of its own so a hint turning
-  into an error mounts a fresh live region. Keep them agreeing: a consumer should never
-  have to re-render `FormField`'s error to get it announced.
+- `Input`, `Textarea`, `Select` and `FormField` all render their error with
+  `role="alert"`, in a slot of its own so a hint turning into an error mounts a fresh
+  live region. Keep the four agreeing: a consumer should never have to render the
+  error themselves to get it announced.
 - `FormField`'s `labelAside` is the label row's slot. It is a sibling of the `<label>`,
   so `label` stays a `string` and stays the accessible name — the same `label: string`
   every labelled control in this library takes.
