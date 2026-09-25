@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { Badge } from '@design-system/react/components/atoms/Badge';
 import { FormField } from '@design-system/react/components/molecules/FormField';
 
 const meta = {
@@ -34,6 +35,30 @@ export const WithError: Story = {
   render: () => (
     <FormField label="Email" htmlFor="email-error" error="Enter a valid email" required>
       {(fieldProps) => <input id="email-error" className="ds-input" {...fieldProps} />}
+    </FormField>
+  ),
+};
+
+export const WithLabelAside: Story = {
+  args: {
+    label: 'Medical history',
+    htmlFor: 'history-aside',
+    hint: 'Carried over from the last visit. Edit anything that changed.',
+    labelAside: <Badge variant="signal">Pre-populated</Badge>,
+    children: (fieldProps) => (
+      <textarea id="history-aside" className="ds-input ds-textarea" {...fieldProps} />
+    ),
+  },
+  render: () => (
+    <FormField
+      label="Medical history"
+      htmlFor="history-aside"
+      hint="Carried over from the last visit. Edit anything that changed."
+      labelAside={<Badge variant="signal">Pre-populated</Badge>}
+    >
+      {(fieldProps) => (
+        <textarea id="history-aside" className="ds-input ds-textarea" {...fieldProps} />
+      )}
     </FormField>
   ),
 };
