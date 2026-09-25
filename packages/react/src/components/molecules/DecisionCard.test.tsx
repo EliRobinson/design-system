@@ -138,11 +138,12 @@ describe('DecisionCard', () => {
 
 /* #258 added three opt-ins — `code`, `figureLayout` and a figure `id` — and
    promised that a card using none of them renders exactly what it did before.
-   The markup below is what DecisionCard 3.3.2 rendered for these props,
+   The markup below is what DecisionCard rendered for these props on main
+   before #258 (3.3.4, and unchanged since 3.3.2),
    captured from that release rather than written by hand, so any drift in the
    default path fails here instead of in a consumer's baseline. */
 describe('DecisionCard without the #258 opt-ins', () => {
-  it('renders the markup 3.3.2 rendered, byte for byte', () => {
+  it('renders the markup it rendered before #258, byte for byte', () => {
     const { container } = render(
       <DecisionCard
         verdict="go"
@@ -279,8 +280,28 @@ describe('DecisionCard figure keys', () => {
   });
 
   function keyWarnings() {
-    return consoleError.mock.calls.filter((call) => String(call[0]).includes('same key'));
+    // Any React key warning. React logs its missing-key warning once per
+    // component per run, so an earlier render can use it up; what catches a
+    // dropped `key` reliably is the control below, whose collision then vanishes.
+    return consoleError.mock.calls.filter((call) => /\bkey\b/.test(String(call[0])));
   }
+
+  /* The control: without it every test below would stay green if the filter
+     stopped matching React's wording, or if `key` were dropped altogether. It
+     also pins "unique within figures". */
+  it('reports a real collision when two figures share an id', () => {
+    render(
+      <DecisionCard
+        {...base}
+        figures={[
+          { id: 'same', label: 'from', value: 'One' },
+          { id: 'same', label: 'from', value: 'Two' },
+        ]}
+      />,
+    );
+
+    expect(keyWarnings()).not.toEqual([]);
+  });
 
   /* The consumer case #258 was filed for: derivation rows repeat their label
      by design. Before, the key was `${kind}:${label}`, so repeated labels
