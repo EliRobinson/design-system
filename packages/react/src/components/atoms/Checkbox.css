@@ -23,10 +23,8 @@
   width: 18px;
 }
 
-/* The invalid edge, in the token Input's error border uses. An outline rather
-   than a border because the native box takes no border; it sits before the
-   focus rule so a focused control shows the focus ring, and the error text
-   below the row still marks it as invalid. */
+/* The invalid edge, in Input's error border token. The focus rule below wins
+   while focused; the error text still marks the control. */
 .ds-checkbox--error .ds-checkbox__input {
   outline: 2px solid var(--status-danger);
   outline-offset: 2px;

@@ -7,8 +7,9 @@ import { useControlError } from '../../lib/useControlError.js';
 export type SwitchProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'role'> & {
   label: string;
   /**
-   * Marks the control invalid and renders the message under the row with
-   * `role="alert"`, the way `Input`'s `error` does.
+   * Marks the control invalid and renders the message with `role="alert"`, the
+   * way `Input`'s `error` does. The message is a sibling after the row, so in a
+   * flex or grid parent it is laid out as its own item.
    */
   error?: string;
 };
@@ -38,8 +39,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(function Switch(
         />
         <span className="ds-switch__label">{label}</span>
       </label>
-      {/* A sibling, not a wrapper: wrapping only when there is an error would
-          remount the input when one appears and drop an uncontrolled check. */}
+      {/* A sibling, not a wrapper: see useControlError. */}
       {message}
     </>
   );
