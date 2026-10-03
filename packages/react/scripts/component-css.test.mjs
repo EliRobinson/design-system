@@ -445,3 +445,20 @@ describe('the form-control font reset in tokens.css', () => {
     }
   });
 });
+
+describe("the row controls' error outline", () => {
+  /* Same specificity as the :focus-visible rule, so only source order lets
+     the focus ring win on a focused invalid control. */
+  for (const block of ['ds-checkbox', 'ds-switch']) {
+    it(`${block}: paints --status-danger and sits before the focus rule`, () => {
+      const sheet = SHEETS.find(({ css }) => css.includes(`.${block}--error`));
+      const list = rules(sheet.css);
+      const error = list.findIndex((r) => r.selector === `.${block}--error .${block}__input`);
+      const focus = list.findIndex((r) => r.selector === `.${block}__input:focus-visible`);
+
+      expect(error).toBeGreaterThanOrEqual(0);
+      expect(list[error].body).toContain('var(--status-danger)');
+      expect(error).toBeLessThan(focus);
+    });
+  }
+});

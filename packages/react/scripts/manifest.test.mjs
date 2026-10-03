@@ -96,6 +96,15 @@ describe('buildManifest against this package', () => {
     });
   });
 
+  it('lists field.css for the row controls whose error message it styles', () => {
+    for (const name of ['Checkbox', 'Switch']) {
+      expect(byName(name).stylesheetPaths).toEqual([
+        `@elirobinson/react/styles/atoms/${name}.css`,
+        '@elirobinson/react/styles/atoms/field.css',
+      ]);
+    }
+  });
+
   it('resolves the prop table, defaults and all, through the type checker', () => {
     const variant = byName('Button').props.find((prop) => prop.name === 'variant');
 

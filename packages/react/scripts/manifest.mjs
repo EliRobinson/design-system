@@ -40,6 +40,9 @@ const SHARED_STYLESHEETS = {
   Textarea: { path: 'atoms/field.css' },
   Select: { path: 'atoms/field.css' },
   Label: { path: 'atoms/field.css' },
+  /* Their sibling sheet draws the row; the error message is .ds-hint--error. */
+  Checkbox: { path: 'atoms/field.css' },
+  Switch: { path: 'atoms/field.css' },
   RadioGroup: {
     path: 'molecules/RuleLink.css',
     gap: 'ds-radio-group styles are defined in molecules/RuleLink.css, not a RadioGroup sheet',

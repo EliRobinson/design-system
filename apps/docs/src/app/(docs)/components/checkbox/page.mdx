@@ -42,7 +42,8 @@ like a plain `<input type="checkbox">`.
 ## With an error
 
 `error` works as it does on `Input`: the message renders under the row with
-`role="alert"`, and the control is outlined in the danger colour.
+`role="alert"`, and the control is outlined in the danger colour. The message is a sibling
+after the row, not inside a wrapper, so in a flex or grid parent it is its own item.
 
 <DemoBlock file="checkbox/WithError.tsx">
   <WithError />
