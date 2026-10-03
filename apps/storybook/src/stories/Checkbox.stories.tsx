@@ -22,3 +22,7 @@ export const Checked: Story = {
 export const Disabled: Story = {
   args: { disabled: true },
 };
+
+export const WithError: Story = {
+  args: { label: 'I accept the terms', error: 'Accept the terms to continue.' },
+};

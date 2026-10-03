@@ -6,6 +6,7 @@ import { RelatedComponents } from '@/components/docs/RelatedComponents';
 import Basic from '@/components/demos/switch/Basic';
 import States from '@/components/demos/switch/States';
 import Controlled from '@/components/demos/switch/Controlled';
+import WithError from '@/components/demos/switch/WithError';
 
 export const metadata = { title: 'Switch' };
 
@@ -36,6 +37,15 @@ would on a plain `<input type="checkbox">`.
   <Controlled />
 </DemoBlock>
 
+## With an error
+
+`error` works as it does on `Input`: the message renders under the row with
+`role="alert"`, and the control is outlined in the danger colour.
+
+<DemoBlock file="switch/WithError.tsx">
+  <WithError />
+</DemoBlock>
+
 ## Props
 
 <PropsTables slug="switch" />
@@ -50,6 +60,9 @@ would on a plain `<input type="checkbox">`.
 - **Keyboard:** `Tab` focuses, `Space` toggles — native `input` behavior.
 - `role` is fixed: the type omits it from the props you can pass, so `switch` can't be
   overridden.
+- Setting `error` sets `aria-invalid="true"` on the input and adds the error's id to
+  `aria-describedby`, after any id you pass yourself. The message sits outside the
+  `<label>`, so it never becomes part of the accessible name.
 - The ref forwards to the underlying `<input>`.
 
 <DoDont

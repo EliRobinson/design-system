@@ -48,6 +48,15 @@
   transform: translateX(20px);
 }
 
+/* The invalid edge, in the token Input's error border uses. An outline rather
+   than a border so it does not change the track's 44x24 box; it sits before the
+   focus rule so a focused control shows the focus ring, and the error text
+   below the row still marks it as invalid. */
+.ds-switch--error .ds-switch__input {
+  outline: 2px solid var(--status-danger);
+  outline-offset: 2px;
+}
+
 .ds-switch__input:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;

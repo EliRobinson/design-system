@@ -6,6 +6,7 @@ import { RelatedComponents } from '@/components/docs/RelatedComponents';
 import Basic from '@/components/demos/checkbox/Basic';
 import States from '@/components/demos/checkbox/States';
 import Controlled from '@/components/demos/checkbox/Controlled';
+import WithError from '@/components/demos/checkbox/WithError';
 
 export const metadata = { title: 'Checkbox' };
 
@@ -38,6 +39,15 @@ like a plain `<input type="checkbox">`.
   <Controlled />
 </DemoBlock>
 
+## With an error
+
+`error` works as it does on `Input`: the message renders under the row with
+`role="alert"`, and the control is outlined in the danger colour.
+
+<DemoBlock file="checkbox/WithError.tsx">
+  <WithError />
+</DemoBlock>
+
 ## Props
 
 <PropsTables slug="checkbox" />
@@ -53,6 +63,9 @@ like a plain `<input type="checkbox">`.
 - The row reserves a 44px minimum height for rhythm alongside other controls, but the
   actual hit target is the 18×18 box and the label text — clicking the empty vertical
   space around them doesn't toggle it.
+- Setting `error` sets `aria-invalid="true"` on the input and adds the error's id to
+  `aria-describedby`, after any id you pass yourself. The message sits outside the
+  `<label>`, so it never becomes part of the accessible name.
 - The ref forwards to the underlying `<input>`.
 
 <DoDont

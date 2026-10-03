@@ -22,3 +22,7 @@ export const Checked: Story = {
 export const Disabled: Story = {
   args: { disabled: true },
 };
+
+export const WithError: Story = {
+  args: { error: 'Not saved. Try again.' },
+};
