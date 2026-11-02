@@ -1,5 +1,7 @@
 # AI Elements demo surface — implementation plan
 
+> Historical plan, finished. The C1–C7 cards it names lived on a board this repo no longer uses. GitHub Issues is the backlog now (ADR 0001).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give every vendored AI Elements component a rendered, deterministic demo on the docs site, and settle C1 by adopting Elements' `Conversation` and `Message` over our own.
@@ -1006,14 +1008,12 @@ Card #122 is a dark-theme `ChatThread` visual flake. It retires with the compone
 `apps/docs/src/lib/ai-element-families.ts`:
 
 ```ts
-/* The vendored components that are worth documenting together, and the card
- * each grouping comes from.
+/* The vendored components that are worth documenting together.
  *
  * A written-down list of component names, which the root rule normally forbids
  * — so it takes the same shape as the `NAMEABLE` table in ai-elements.test.ts,
- * for the same reason. Each entry carries the card that decided it, the test
- * beside it fails when a name stops existing, and a demo page may name only the
- * subpaths of its own family. What the rule actually forbids is a roster typed
+ * for the same reason. The test beside it fails when a name stops existing,
+ * and a demo page may name only the subpaths of its own family. What the rule actually forbids is a roster typed
  * into prose that quietly goes wrong on the next re-sync; this is neither prose
  * nor a roster.
  *
