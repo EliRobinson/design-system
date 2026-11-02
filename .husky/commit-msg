@@ -1,0 +1,1 @@
+node scripts/git-hooks/commit-policy.mjs commit-msg "$1"
