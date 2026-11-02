@@ -999,7 +999,7 @@ Card #122 is a dark-theme `ChatThread` visual flake. It retires with the compone
 **Interfaces:**
 
 - Consumes: `elements` from `apps/docs/src/lib/ai-elements.ts`.
-- Produces: `FAMILIES: readonly Family[]` where `Family = { slug: string; title: string; card: string; components: readonly string[] }`. Task 8's pages are one per entry.
+- Produces: `FAMILIES: readonly Family[]` where `Family = { slug: string; title: string; components: readonly string[] }`. Task 8's pages are one per entry.
 
 - [ ] **Step 1: Write the family map**
 
@@ -1028,8 +1028,6 @@ export type Family = {
   slug: string;
   /** The page title, and the sidebar entry. */
   title: string;
-  /** The Trello card this grouping is from, so the reasoning is findable. */
-  card: string;
   /** Manifest names, not subpaths. Asserted against the manifest. */
   components: readonly string[];
 };
@@ -1038,43 +1036,36 @@ export const FAMILIES: readonly Family[] = [
   {
     slug: 'conversation',
     title: 'Conversation and messages',
-    card: 'C1',
     components: ['conversation', 'message'],
   },
   {
     slug: 'prompt-input',
     title: 'Prompt input',
-    card: 'C2',
     components: ['prompt-input', 'attachments', 'model-selector'],
   },
   {
     slug: 'reasoning',
     title: 'Reasoning',
-    card: 'C3',
     components: ['reasoning', 'chain-of-thought', 'shimmer'],
   },
   {
     slug: 'tools',
     title: 'Tools and tasks',
-    card: 'C4',
     components: ['tool', 'confirmation', 'task'],
   },
   {
     slug: 'sources',
     title: 'Sources and context',
-    card: 'C5',
     components: ['sources', 'inline-citation', 'context'],
   },
   {
     slug: 'planning',
     title: 'Suggestions and plans',
-    card: 'C6',
     components: ['suggestion', 'plan', 'queue', 'checkpoint'],
   },
   {
     slug: 'artifacts',
     title: 'Code and artifacts',
-    card: 'C7',
     components: ['code-block', 'artifact', 'image', 'snippet'],
   },
 ] as const;
@@ -1439,12 +1430,12 @@ Expected: the build passes and the family test now fails only on the six pages t
 
 One per family, same structure: title and its `order` from the table in Step 3b, a one-paragraph "what this is for", an `<ElementsDemo>` per component, the import block, the accessibility contract, and `<ElementsPatchTable>`. Read each card before writing its page — each carries traps a generic demo page misses:
 
-- C2 `prompt-input` — https://trello.com/c/YLJfEbDc
-- C3 `reasoning` — https://trello.com/c/4GZu234U
-- C4 `tools` — https://trello.com/c/nMc8bYG0
-- C5 `sources` — https://trello.com/c/gLQBQpnO
-- C6 `planning` — https://trello.com/c/AuFpczEd
-- C7 `artifacts` — https://trello.com/c/o0hZTgff
+- C2 `prompt-input`
+- C3 `reasoning`
+- C4 `tools`
+- C5 `sources`
+- C6 `planning`
+- C7 `artifacts`
 
 Two page-level notes to carry:
 
