@@ -1,6 +1,16 @@
 # Git workflow
 
-Always use conventional commit messages.
+## Commits
+
+- Conventional Commits, one line only: `<type>(<scope>): <subject>`.
+- No body. No trailers.
+- The scope is the package or app folder name, for example `fix(react): ...` or `docs(agents): ...`.
+
+## Hooks
+
+- Never bypass a hook. No `--no-verify`. Fix the cause.
+- Skip a hook only when Eli says so.
+- `.husky/pre-commit` runs `sync-workspace-deps`, `lint-staged` and `pnpm lint` on the whole repo. So it can fail on a file you do not own. If it does, stop. Tell the owner and the coordinator.
 
 ## This repo rebase-merges
 
