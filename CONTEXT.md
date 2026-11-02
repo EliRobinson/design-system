@@ -31,7 +31,7 @@ _Avoid_: client, user
 ## The vendored tier
 
 **AI Elements**:
-The components vendored from `vercel/ai-elements` at a pinned release. Our source never edits them by hand.
+The components vendored from `vercel/ai-elements` at a pinned release. We never edit them by hand.
 _Avoid_: AI components
 
 **Family**:
@@ -49,7 +49,7 @@ One agent's issue, worktree, branch and owned files.
 _Avoid_: track, stream
 
 **Review gate**:
-The four read-only reviewers that must run before a PR opens.
+The read-only reviewers that must run before a PR opens.
 _Avoid_: PR review, checks
 
 **Ask**:

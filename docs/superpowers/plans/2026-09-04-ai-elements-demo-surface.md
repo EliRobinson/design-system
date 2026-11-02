@@ -1428,14 +1428,7 @@ Expected: the build passes and the family test now fails only on the six pages t
 
 - [ ] **Step 6: Write the remaining six pages**
 
-One per family, same structure: title and its `order` from the table in Step 3b, a one-paragraph "what this is for", an `<ElementsDemo>` per component, the import block, the accessibility contract, and `<ElementsPatchTable>`. Read each card before writing its page — each carries traps a generic demo page misses:
-
-- C2 `prompt-input`
-- C3 `reasoning`
-- C4 `tools`
-- C5 `sources`
-- C6 `planning`
-- C7 `artifacts`
+One per family, same structure: title and its `order` from the table in Step 3b, a one-paragraph "what this is for", an `<ElementsDemo>` per component, the import block, the accessibility contract, and `<ElementsPatchTable>`.
 
 Two page-level notes to carry:
 

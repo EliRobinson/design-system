@@ -2,11 +2,10 @@
  *
  * A written-down list of component names, which the root rule normally forbids
  * — so it takes the same shape as the `NAMEABLE` table in ai-elements.test.ts,
- * for the same reason. The test
- * beside it fails when a name stops existing, and a demo page may name only the
- * subpaths of its own family. What the rule actually forbids is a roster typed
- * into prose that quietly goes wrong on the next re-sync; this is neither prose
- * nor a roster.
+ * for the same reason. The test beside it fails when a name stops existing,
+ * and a demo page may name only the subpaths of its own family. What the rule
+ * actually forbids is a roster typed into prose that quietly goes wrong on the
+ * next re-sync; this is neither prose nor a roster.
  *
  * It is explicitly a subset. Seven pages cover 22 of the 48 vendored
  * components, and /components/ai-elements — generated from the manifest — stays
