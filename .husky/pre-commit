@@ -1,3 +1,4 @@
+node scripts/git-hooks/commit-policy.mjs branch
 node scripts/sync-workspace-deps.mjs --stage
 pnpm lint-staged
 pnpm lint
