@@ -1,9 +1,8 @@
-/* The vendored components that are worth documenting together, and the card
- * each grouping comes from.
+/* The vendored components that are worth documenting together.
  *
  * A written-down list of component names, which the root rule normally forbids
  * — so it takes the same shape as the `NAMEABLE` table in ai-elements.test.ts,
- * for the same reason. Each entry carries the card that decided it, the test
+ * for the same reason. The test
  * beside it fails when a name stops existing, and a demo page may name only the
  * subpaths of its own family. What the rule actually forbids is a roster typed
  * into prose that quietly goes wrong on the next re-sync; this is neither prose
@@ -20,8 +19,6 @@ export type Family = {
   slug: string;
   /** The page title, and the sidebar entry. */
   title: string;
-  /** The Trello card this grouping is from, so the reasoning is findable. */
-  card: string;
   /** Manifest names, not subpaths. Asserted against the manifest. */
   components: readonly string[];
 };
@@ -30,43 +27,36 @@ export const FAMILIES: readonly Family[] = [
   {
     slug: 'conversation',
     title: 'Conversation and messages',
-    card: 'C1',
     components: ['conversation', 'message'],
   },
   {
     slug: 'prompt-input',
     title: 'Prompt input',
-    card: 'C2',
     components: ['prompt-input', 'attachments', 'model-selector'],
   },
   {
     slug: 'reasoning',
     title: 'Reasoning',
-    card: 'C3',
     components: ['reasoning', 'chain-of-thought', 'shimmer'],
   },
   {
     slug: 'tools',
     title: 'Tools and tasks',
-    card: 'C4',
     components: ['tool', 'confirmation', 'task'],
   },
   {
     slug: 'sources',
     title: 'Sources and context',
-    card: 'C5',
     components: ['sources', 'inline-citation', 'context'],
   },
   {
     slug: 'planning',
     title: 'Suggestions and plans',
-    card: 'C6',
     components: ['suggestion', 'plan', 'queue', 'checkpoint'],
   },
   {
     slug: 'artifacts',
     title: 'Code and artifacts',
-    card: 'C7',
     components: ['code-block', 'artifact', 'image', 'snippet'],
   },
 ] as const;
