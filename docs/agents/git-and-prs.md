@@ -6,6 +6,36 @@ Before a PR is opened, read-only reviewers run on the branch diff. The `review-g
 
 The author checks each finding against the code and fixes the valid ones. Findings the author disagrees with are answered with evidence in the PR body, never dropped silently. The PR body gets a **Review** section, one line per reviewer, that marks each finding as fixed, declined (and why), or filed (with an issue link).
 
+Anything that needs Eli's decision gets the `needs-eli` label. The coordinator adds the ask to his board.
+
+## Right before the PR
+
+Read what landed on `main` since you branched:
+
+```bash
+git fetch origin && git log --oneline HEAD..origin/main
+```
+
+- If it touches your work, rebase and run the gates again.
+- If it already solves your problem, stop and say so.
+
+## Merge
+
+- Merge only after a clean run on the PR's head commit. `quality` is the required check. Read [Visual regression](visual-regression.md) before you treat a red `Visual` run as a flake.
+- This repo rebase-merges: `gh pr merge <N> --rebase`. See [Git workflow](git-workflow.md).
+
+## After merge
+
+1. Comment a short summary on the issue.
+2. Repoint any screenshot links to the landed commit. See [Git workflow](git-workflow.md).
+3. Clean up:
+
+```bash
+git worktree remove .claude/worktrees/<branch>
+git branch -D <branch>
+git push origin --delete <branch>
+```
+
 ### Where the gate lives
 
 - **Reviewer instructions:** `.agents/skills/review-gate/`. `SKILL.md` says how to run the gate. `reviewers/*.md` holds one prompt per reviewer, and `reviewers/_protocol.md` the steps they share. Cursor, Codex, Gemini CLI, and Copilot read `.agents/skills/`. Claude Code reads it through the symlink `.claude/skills/review-gate`.

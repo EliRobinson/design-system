@@ -16,9 +16,23 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 
 **Components:** Components live under `packages/react/src/components/<tier>/` (atoms/molecules/organisms/ai). Every interactive component uses `forwardRef`. Touch targets are scoped, not blanket: >=44x44 for primary controls (buttons, pagination, segmented-control, nav items), shadcn/MUI-scale sizing for dense inline affordances (chip remove, search clear, rating stars, calendar days) — either way, an expanded hit area must never overlap sibling content. See [Components](docs/agents/components.md) for the tier boundary rule and full constraints.
 
+**Work:** Every piece of work is a GitHub issue. One agent, one issue, one worktree, one branch from fresh `origin/main`. Commits are one-line Conventional Commits. "Done" means you ran it and show the real output. The coordinator chat runs the agents: [Coordinator prompt](docs/agents/coordinator.md).
+
 ## Do not
 
 - Do not open a PR before the review gate runs. Use the `review-gate` skill (`.agents/skills/review-gate/SKILL.md`). A hook enforces it.
+- Do not commit on `main`.
+- Do not bypass hooks (`--no-verify`).
+- Do not use Fable for any agent. Use Opus, Sonnet or Haiku, and always pass `model`.
+- Do not edit files another agent owns.
+
+## How we work
+
+- [Backlog](docs/agents/backlog.md) — GitHub Issues, labels, triage, blocked-by and sub-issue links
+- [Parallel agents](docs/agents/parallel-agents.md) — worktrees, file ownership, messages, models, subagent briefs
+- [Quality bar](docs/agents/quality-bar.md) — proof, how we build, the definition of done
+- [Coordinator prompt](docs/agents/coordinator.md) — the standing prompt for the chat that runs every agent
+- [CONTEXT.md](CONTEXT.md) — the glossary. [docs/adr/](docs/adr/) — the decisions and why
 
 ## Topic guides
 
@@ -33,9 +47,8 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 - [AI patterns](docs/agents/ai-patterns.md) — the `ds` discovery CLI, contracts, agent templates
 - [Consumer tooling](docs/agents/consumer-tooling.md) — what a consuming app installs, and why each piece lives here
 - [Publishing](docs/agents/publishing.md)
-- [Trello card relations](docs/agents/trello-card-relations.md) — the `## Relations` block every card carries, and why the Card Relations Power-Up is not the record
-- [Git workflow](docs/agents/git-workflow.md) — commit style, the Nx cache worktrees share, before/after screenshots for front-end PRs
-- [Git, hooks, and pull requests](docs/agents/git-and-prs.md) — the pre-PR review gate
+- [Git workflow](docs/agents/git-workflow.md) — commit style, hooks, the Nx cache worktrees share, before/after screenshots for front-end PRs
+- [Git, hooks, and pull requests](docs/agents/git-and-prs.md) — the pre-PR review gate, the pre-PR fetch, merge and cleanup
 - [Visual regression](docs/agents/visual-regression.md) — what to do when a baseline passes locally and fails in CI
 
 Brand source of truth: `design-system-docs/` (preview swatches, UI kits, agent skill).
