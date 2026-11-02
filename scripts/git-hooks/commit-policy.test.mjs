@@ -38,6 +38,7 @@ describe('checkCommitMessage', () => {
     'chore(release): version packages',
     'fixup! fix(react): keep focus on the trigger',
     "Merge branch 'main' into docs/coordinator-prompt",
+    "Merge remote-tracking branch 'origin/main' into fix/x",
   ])('accepts %s', (message) => {
     expect(checkCommitMessage(`${message}\n`)).toBeNull();
   });
@@ -67,6 +68,8 @@ describe('checkCommitMessage', () => {
     'fix:no space',
     'feature: not a type',
     'fix(React): capital scope',
+    'Merge whatever I want',
+    'amend! fix: one line',
     '',
   ])('rejects %j', (message) => {
     expect(checkCommitMessage(message)).not.toBeNull();
@@ -77,22 +80,37 @@ describe('checkCommitMessage', () => {
   });
 });
 
+/* Release commits on main inside CI, and the hooks run there (no HUSKY: 0).
+   If its message or the CI exemption ever stops passing, Release breaks. */
+describe('the Release workflow commit', () => {
+  const workflow = readFileSync(join(root, '.github/workflows/release.yml'), 'utf8');
+  const [, message] = workflow.match(/git commit -m "([^"]+)"/) ?? [];
+
+  it('passes the message check', () => {
+    expect(message).toBeDefined();
+    expect(checkCommitMessage(`${message}\n`)).toBeNull();
+  });
+
+  it('passes the branch check with the CI value GitHub Actions sets', () => {
+    expect(checkBranch('main', { CI: 'true' })).toBeNull();
+  });
+});
+
+function runMsg(text) {
+  const file = join(mkdtempSync(join(tmpdir(), 'commit-policy-')), 'COMMIT_EDITMSG');
+  writeFileSync(file, text);
+  return spawnSync('node', [cli, 'commit-msg', file], { encoding: 'utf8' });
+}
+
 describe('the CLI', () => {
   it('exits 1 with a reason for a bad message file', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'commit-policy-'));
-    const file = join(dir, 'COMMIT_EDITMSG');
-    writeFileSync(file, 'Fix the thing\n');
-    const run = spawnSync('node', [cli, 'commit-msg', file], { encoding: 'utf8' });
+    const run = runMsg('Fix the thing\n');
     expect(run.status).toBe(1);
     expect(run.stderr).toMatch(/Conventional/);
   });
 
   it('exits 0 for a good message file', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'commit-policy-'));
-    const file = join(dir, 'COMMIT_EDITMSG');
-    writeFileSync(file, 'fix: one line\n');
-    const run = spawnSync('node', [cli, 'commit-msg', file], { encoding: 'utf8' });
-    expect(run.status).toBe(0);
+    expect(runMsg('fix: one line\n').status).toBe(0);
   });
 
   it('blocks a commit on main in a real repo', () => {
