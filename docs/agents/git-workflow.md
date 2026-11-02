@@ -4,7 +4,9 @@
 
 - Conventional Commits, one line only: `<type>(<scope>): <subject>`.
 - No body. No trailers.
-- The scope is the package or app folder name, for example `fix(react): ...` or `docs(agents): ...`.
+- The scope is the package, app or top-level folder the change lives in, for example `fix(react): ...` or `docs(agents): ...`. It is optional.
+- The allowed types and the length limit are in `scripts/git-hooks/commit-policy.mjs`. The `commit-msg` hook enforces them.
+- Git's sequencer (`git revert`, `git cherry-pick`, `rebase -i` squash) skips the hooks. Write those messages as one line yourself. #278 adds a CI check.
 
 ## Hooks
 
