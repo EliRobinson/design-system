@@ -7,5 +7,5 @@ The `commit-msg` hook (`scripts/git-hooks/commit-policy.mjs`) enforces the rule.
 ## Consequences
 
 - Git writes merge and `fixup!` subjects itself, so they pass.
-- Git's sequencer (`git revert`, `git cherry-pick`, `rebase -i` squash) skips the hooks. Those commits are not checked yet. #278 adds a CI check.
+- Git's sequencer (`git revert`, `rebase -i` squash, and `git cherry-pick` without an editor) skips the hooks. Those commits are not checked yet. #278 adds a CI check.
 - CI bot commits that set `HUSKY: 0` are not checked yet either. #278 covers them too.

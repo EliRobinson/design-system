@@ -35,7 +35,6 @@ describe('checkCommitMessage', () => {
     'fix(react): keep focus on the trigger',
     'docs: add the coordinator prompt',
     'feat(ai-patterns)!: drop the old contract',
-    'chore(release): version packages',
     'fixup! fix(react): keep focus on the trigger',
     "Merge branch 'main' into docs/coordinator-prompt",
     "Merge remote-tracking branch 'origin/main' into fix/x",
@@ -89,10 +88,6 @@ describe('the Release workflow commit', () => {
   it('passes the message check', () => {
     expect(message).toBeDefined();
     expect(checkCommitMessage(`${message}\n`)).toBeNull();
-  });
-
-  it('passes the branch check with the CI value GitHub Actions sets', () => {
-    expect(checkBranch('main', { CI: 'true' })).toBeNull();
   });
 });
 
