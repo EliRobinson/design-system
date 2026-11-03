@@ -9,3 +9,13 @@ export const CREATE = `${GH} pr create`;
 export function filledReview(value = 'no findings') {
   return ['## Review', '', ...REVIEWERS.map(({ label }) => `- **${label}:** ${value}`)].join('\n');
 }
+
+/** One transcript line: a background subagent handing back `report`. */
+export function handbackLine(report: string) {
+  return JSON.stringify({
+    type: 'assistant',
+    message: {
+      content: [{ type: 'tool_use', name: 'SubagentHandback', input: { message: report } }],
+    },
+  });
+}

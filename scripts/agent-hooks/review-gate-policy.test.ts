@@ -8,6 +8,7 @@ import {
   TOOLS,
   branchRefsOf,
   countsAsRun,
+  handbackReport,
   decidePr,
   decideReviewerStart,
   findPrCommands,
@@ -16,7 +17,7 @@ import {
   reviewersWithoutRun,
   unfilledReviewLabels,
 } from './review-gate-policy.mjs';
-import { CREATE, GH, filledReview } from './review-gate-fixtures';
+import { CREATE, GH, filledReview, handbackLine } from './review-gate-fixtures';
 
 // This file lives at scripts/agent-hooks/, two levels below the repo root.
 // Reads below are repo-root-relative, not cwd-relative: nx runs this
@@ -372,6 +373,18 @@ describe('countsAsRun', () => {
     expect(countsAsRun(firstAgent, '  ')).toBe(false);
     expect(countsAsRun(firstAgent, undefined)).toBe(false);
     expect(countsAsRun('Explore', 'report')).toBe(false);
+  });
+});
+
+describe('handbackReport', () => {
+  it('reads the report from the last SubagentHandback call', () => {
+    const transcript = [handbackLine('first'), '{"type":"user"}', 'not json', handbackLine('last')];
+    expect(handbackReport(transcript.join('\n'))).toBe('last');
+  });
+
+  it('returns undefined when the subagent never handed back', () => {
+    expect(handbackReport('{"type":"user"}\n')).toBeUndefined();
+    expect(handbackReport('')).toBeUndefined();
   });
 });
 

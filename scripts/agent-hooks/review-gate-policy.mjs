@@ -292,6 +292,36 @@ export function branchRefsOf(pr) {
 }
 
 /**
+ * The report a background subagent handed back: the `message` of the last
+ * `SubagentHandback` call in its transcript (JSON lines). A background
+ * subagent ends with that call instead of a text message, so its
+ * `last_assistant_message` is empty.
+ * @param {string} transcript
+ * @returns {string | undefined}
+ */
+export function handbackReport(transcript) {
+  /** @type {string | undefined} */
+  let report;
+  for (const line of transcript.split('\n')) {
+    let entry;
+    try {
+      entry = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const content = entry?.type === 'assistant' ? entry.message?.content : undefined;
+    if (!Array.isArray(content)) continue;
+    for (const block of content) {
+      if (block?.type === 'tool_use' && block.name === 'SubagentHandback') {
+        const message = block.input?.message;
+        report = typeof message === 'string' ? message : undefined;
+      }
+    }
+  }
+  return report;
+}
+
+/**
  * Whether a finished subagent counts as a reviewer run: it is a reviewer,
  * and it returned a report.
  * @param {unknown} agent

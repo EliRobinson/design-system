@@ -18,6 +18,7 @@ import {
   branchRefsOf,
   countsAsRun,
   decidePr,
+  handbackReport,
   decideReviewerStart,
   isMcpCreatePr,
   prCommandsOf,
@@ -32,7 +33,7 @@ import { quoteArgv, shellScriptOf } from './shell-parse.mjs';
 /**
  * @typedef {PrCall
  *   | { kind: 'agent-start', input: Record<string, unknown> }
- *   | { kind: 'agent-stop', agent: unknown, output: unknown }
+ *   | { kind: 'agent-stop', agent: unknown, output: unknown, transcript: unknown }
  *   | { kind: 'other' }} Call
  * @typedef {{ toCall: (event: any) => Call, deny: (message: string) => never }} Adapter
  */
@@ -93,6 +94,7 @@ const ADAPTERS = {
           kind: 'agent-stop',
           agent: event.agent_type,
           output: event.last_assistant_message,
+          transcript: event.agent_transcript_path,
         };
       }
       if (event.tool_name === 'Agent' || event.tool_name === 'Task') {
@@ -184,6 +186,22 @@ function readRuns(cwd, branch) {
   return runs;
 }
 
+/**
+ * What a finished subagent returned. A background subagent's report is in
+ * its transcript, not in `last_assistant_message`.
+ * @param {unknown} output
+ * @param {unknown} transcript
+ */
+function reportOf(output, transcript) {
+  if (typeof output === 'string' && output.trim() !== '') return output;
+  if (typeof transcript !== 'string') return output;
+  try {
+    return handbackReport(readFileSync(transcript, 'utf8'));
+  } catch {
+    return output;
+  }
+}
+
 /** @param {string} cwd @param {unknown} agent @param {unknown} output */
 function recordRun(cwd, agent, output) {
   if (!countsAsRun(agent, output)) return;
@@ -272,7 +290,7 @@ function main() {
     const decision = decideReviewerStart(call.input);
     if (decision) block(adapter, decision.deny);
   } else if (call.kind === 'agent-stop') {
-    recordRun(cwd, call.agent, call.output);
+    recordRun(cwd, call.agent, reportOf(call.output, call.transcript));
   } else if (call.kind === 'shell' || call.kind === 'mcp') {
     for (const pr of prCommandsOf(call)) checkPr(pr, cwd, tool);
   }
