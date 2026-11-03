@@ -1,8 +1,8 @@
-/* The Design System artifact build: the token count per theme, the bundle
- * header, and the round trip of the artifact-owned parts.
+/* The Design System artifact build: the token count and values per theme, the
+ * bundle header, the types, and the round trip of the artifact-owned parts.
  *
- * The bundle test reads @elirobinson/react's dist, which this package's
- * devDependency on it builds first. */
+ * The bundle and types tests read @elirobinson/react's dist, which this
+ * package's devDependency on it builds first. */
 
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -10,13 +10,16 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { COMBINATIONS, combinationValues } from '@elirobinson/tokens/contrast';
+import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { describe, expect, it } from 'vitest';
 
+import { ARTIFACT_ONLY } from './artifact-only.mjs';
 import { NAMESPACE, buildBundleJs, readBundleHeader } from './bundle.mjs';
-import { checkLimits } from './limits.mjs';
-import { buildBundleCss, previousSection } from './stylesheet.mjs';
-import { THEMES, buildTokens, resolveThemes } from './tokens.mjs';
-import { previousTypesSection } from './types.mjs';
+import { LIMITS, checkLimits } from './limits.mjs';
+import { aiLayers, buildBundleCss, previousSection } from './stylesheet.mjs';
+import { ARTIFACT_THEMES, PALETTES_LEFT_OUT, buildTokens } from './tokens.mjs';
+import { buildTypes, previousTypesSection } from './types.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '../../../..');
@@ -33,48 +36,64 @@ function declaredFor(css, theme) {
     const body = css.slice(start, css.indexOf('}', start));
     for (const match of body.matchAll(/--([\w.-]+): ([^;]+);/g)) declared.set(match[1], match[2]);
   };
-  block(`:root, [data-theme="${THEMES[0]}"]`);
-  if (theme !== THEMES[0]) block(`[data-theme="${theme}"]`);
+  block(`:root, [data-theme="${ARTIFACT_THEMES[0]}"]`);
+  if (theme !== ARTIFACT_THEMES[0]) block(`[data-theme="${theme}"]`);
   return declared;
 }
 
-describe('tokens', () => {
-  const { json, css, report } = buildTokens({ srcDir: tokensSrc, meta });
-  const colours = json.color.tokens;
+const tidy = (value) =>
+  value
+    .replace(/\(\s+/g, '(')
+    .replace(/\s+\)/g, ')')
+    .replace(/#[0-9a-f]+/gi, (hex) => hex.toLowerCase());
 
-  it('has the 8 themes, in order, with slate left out', () => {
-    expect(json.color.themes.map((theme) => theme.id)).toEqual(THEMES);
-    expect(THEMES).toHaveLength(8);
+describe('tokens', () => {
+  const { json, css, report } = buildTokens({ srcDir: tokensSrc, previous: {}, meta });
+  const colours = json.color.tokens;
+  const kept = COMBINATIONS.filter(({ palette }) => !PALETTES_LEFT_OUT.includes(palette));
+
+  it('has one theme per kept palette × theme, at most 8, with slate left out', () => {
+    expect(json.color.themes.map((theme) => theme.id)).toEqual(ARTIFACT_THEMES);
+    expect(ARTIFACT_THEMES).toHaveLength(kept.length);
+    expect(ARTIFACT_THEMES.length).toBeLessThanOrEqual(LIMITS.themes);
+    expect(ARTIFACT_THEMES.slice(0, 2)).toEqual(['light', 'dark']);
     expect(json.meta.themesLeftOut).toEqual(['palette-slate', 'palette-slate-dark']);
   });
 
-  it('places every colour the repo declares, so no theme silently loses one', () => {
+  it('places every colour the repo declares', () => {
     expect(report.notPlaced).toEqual([]);
-    const { resolved } = resolveThemes(tokensSrc);
-    const colourNames = colours.map((token) => token.name);
-    /* Every colour token in tokens.json is declared in every theme of the repo. */
-    for (const theme of THEMES) {
-      for (const name of colourNames)
-        expect(resolved[theme].has(`--${name}`), `${theme} --${name}`).toBe(true);
-    }
-  });
-
-  it.each(THEMES)('gives every colour token a value in %s', (theme) => {
-    const valued = colours.filter((token) =>
-      typeof token.value === 'string' ? token.value : token.value[theme],
-    );
-    expect(valued).toHaveLength(colours.length);
     expect(colours.length).toBeGreaterThan(100);
   });
 
-  it.each(THEMES)('compiles tokens.css so %s declares every colour and shadow', (theme) => {
-    const declared = declaredFor(css, theme);
-    const shadows = json.shadow.tokens.map((token) => token.name);
-    for (const name of [...colours.map((token) => token.name), ...shadows]) {
-      expect(declared.has(name), `--${name} in ${theme}`).toBe(true);
-    }
-    expect(declared.size).toBe(colours.length + shadows.length);
-  });
+  /* The value check: follow tokens.json's aliases to a literal, and compare it
+     with what the tokens package's own cascade resolves for that combination. */
+  it.each(kept.map((combination, index) => [ARTIFACT_THEMES[index], combination]))(
+    'gives every colour token in %s the value the tokens package resolves',
+    (theme, combination) => {
+      const expected = combinationValues(readTokenStylesheets(tokensSrc), combination);
+      const byName = new Map(colours.map((token) => [token.name, token]));
+      const literal = (name) => {
+        const token = byName.get(name);
+        const value = typeof token.value === 'string' ? token.value : token.value[theme];
+        return value.startsWith('{') ? literal(value.slice(1, -1)) : value;
+      };
+      for (const token of colours) {
+        expect(literal(token.name), `--${token.name}`).toBe(tidy(expected.get(`--${token.name}`)));
+      }
+    },
+  );
+
+  it.each(ARTIFACT_THEMES)(
+    'compiles tokens.css so %s declares every colour and shadow',
+    (theme) => {
+      const declared = declaredFor(css, theme);
+      const shadows = json.shadow.tokens.map((token) => token.name);
+      for (const name of [...colours.map((token) => token.name), ...shadows]) {
+        expect(declared.has(name), `--${name} in ${theme}`).toBe(true);
+      }
+      expect(declared.size).toBe(colours.length + shadows.length);
+    },
+  );
 
   it('keeps the usage notes and the family order of the previous tokens.json', () => {
     const previous = {
@@ -92,7 +111,7 @@ describe('tokens', () => {
     );
   });
 
-  it('fits the artifact caps', () => {
+  it('fits the artifact caps, and the cap check fails on a ninth theme', () => {
     expect(() => checkLimits({ tokensJson: json, sizes: { 'tokens.json': 1 } })).not.toThrow();
     expect(() =>
       checkLimits({ tokensJson: { color: { themes: Array(9), tokens: [] } }, sizes: {} }),
@@ -100,29 +119,31 @@ describe('tokens', () => {
   });
 });
 
-/* Two stand-ins for the artifact-only components, so the test does not read the artifact. */
+/* Stand-ins for the artifact-only components, so the test does not read the artifact. */
 function previousDir() {
   const dir = mkdtempSync(join(tmpdir(), 'ds-artifact-'));
-  const ai = join(dir, 'components/src/components/ai');
-  mkdirSync(ai, { recursive: true });
-  for (const name of ['ChatComposer', 'PromptSuggestions']) {
-    writeFileSync(
-      join(ai, `${name}.jsx`),
-      `export function ${name}() { return <div className="x" />; }\n`,
-    );
+  for (const name of ARTIFACT_ONLY.names) {
+    const file = join(dir, ARTIFACT_ONLY.source(name));
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, `export function ${name}() { return <div className="x" />; }\n`);
   }
   return dir;
 }
 
+const require = createRequire(import.meta.url);
+const manifestPath = require.resolve('@elirobinson/react/manifest');
+const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+const reactDist = dirname(manifestPath);
+const published = manifest.components.map((component) => component.name);
+const caret = published.indexOf(ARTIFACT_ONLY.after);
+const artifactOrder = [
+  ...published.slice(0, caret + 1),
+  ...ARTIFACT_ONLY.names,
+  ...published.slice(caret + 1),
+];
+
 describe('bundle.js', async () => {
-  const require = createRequire(import.meta.url);
-  const manifestPath = require.resolve('@elirobinson/react/manifest');
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  const { js } = await buildBundleJs({
-    manifest,
-    reactDist: dirname(manifestPath),
-    previousDir: previousDir(),
-  });
+  const { js } = await buildBundleJs({ manifest, reactDist, previousDir: previousDir() });
   const header = readBundleHeader(js);
 
   it('opens with the header the artifact reads', () => {
@@ -130,16 +151,8 @@ describe('bundle.js', async () => {
     expect(NAMESPACE).toBe('MiltinsonDesignSystem_e160cb');
   });
 
-  it('lists every published component, with the two artifact-only ones after StreamingCaret', () => {
-    const names = header.components.map((component) => component.name);
-    const published = manifest.components.map((component) => component.name);
-    const caret = published.indexOf('StreamingCaret');
-    expect(names).toEqual([
-      ...published.slice(0, caret + 1),
-      'ChatComposer',
-      'PromptSuggestions',
-      ...published.slice(caret + 1),
-    ]);
+  it('lists every published component, with the artifact-only ones after StreamingCaret', () => {
+    expect(header.components.map((component) => component.name)).toEqual(artifactOrder);
   });
 
   it('is one classic script that assigns the namespace and reads React from window', () => {
@@ -149,16 +162,44 @@ describe('bundle.js', async () => {
     expect(body).not.toMatch(/<\/script|<!--/i);
     expect(body).not.toMatch(/\brequire\(["']react/);
     expect(body).not.toMatch(/^import |\bimport\(/m);
+    expect(Buffer.byteLength(js)).toBeLessThan(LIMITS.bytes['components/bundle.js']);
+  });
+});
+
+describe('types', () => {
+  const previousIndexDts = ARTIFACT_ONLY.names
+    .map((name) => `// ── ${name}\nexport interface ${name}Props {}\n`)
+    .join('\n');
+  const { index, perComponent } = buildTypes({ manifest, reactDist, previousIndexDts });
+
+  it('writes one section per component, in bundle order', () => {
+    const sections = [...index.matchAll(/^\/\/ ── (\w+)$/gm)].map((match) => match[1]);
+    expect(sections).toEqual(artifactOrder);
+    expect([...perComponent.keys()]).toEqual(artifactOrder);
+  });
+
+  it('turns props into interfaces the api cards read, with no relative imports left', () => {
+    expect(index).toMatch(/export interface ButtonProps extends /);
+    expect(index).not.toMatch(/from '\.|import\("/);
+    expect((index.match(/export type Verdict =/g) ?? []).length).toBe(1);
+    expect(perComponent.get('ChatComposer')).toContain('export interface ChatComposerProps {}');
+  });
+
+  it('reads an artifact-only section back by name', () => {
+    expect(previousTypesSection(previousIndexDts, 'ChatComposer')).toBe(
+      'export interface ChatComposerProps {}',
+    );
+    expect(() => previousTypesSection(previousIndexDts, 'Missing')).toThrow(/Missing/);
   });
 });
 
 describe('bundle.css', () => {
   const carried = (path, rule) => `/* ── ${path} (previous artifact bundle) ── */\n${rule}\n`;
+  const rules = ARTIFACT_ONLY.names.map((name) => `.${name} { color: red; }`);
   const previous =
-    carried('components/ai/ChatComposer.css', '.ds-chat-composer { color: red; }') +
-    '\n' +
-    carried('components/ai/PromptSuggestions.css', '.ds-chat-suggestions { color: blue; }') +
-    '\n/* Scoped palettes, from palettes.css */\n[data-palette="x"] {}\n';
+    ARTIFACT_ONLY.names
+      .map((name, index) => carried(ARTIFACT_ONLY.stylesheet(name), rules[index]))
+      .join('\n') + '\n/* Scoped palettes, from palettes.css */\n[data-palette="x"] {}\n';
   const out = buildBundleCss({
     repoRoot,
     extrasCss: ':root { --gutter: 1px; }\n',
@@ -168,39 +209,28 @@ describe('bundle.css', () => {
   });
 
   it('carries the artifact-only stylesheets so the next build finds them again', () => {
-    expect(previousSection(out, 'components/ai/ChatComposer.css')).toBe(
-      '.ds-chat-composer { color: red; }',
-    );
-    expect(previousSection(out, 'components/ai/PromptSuggestions.css')).toBe(
-      '.ds-chat-suggestions { color: blue; }',
-    );
+    ARTIFACT_ONLY.names.forEach((name, index) => {
+      expect(previousSection(out, ARTIFACT_ONLY.stylesheet(name))).toBe(rules[index]);
+    });
   });
 
-  it('ends with the scoped palette blocks 3-10 and none of the :root blocks', () => {
+  it('ends with every scoped palette block and none of the :root blocks', () => {
     const palettes = out.slice(out.indexOf('/* Scoped palettes'));
-    for (const name of ['slate', 'miltinson', 'miltinson-tech', 'steady']) {
-      expect(palettes).toContain(`[data-palette='${name}'] {`);
-      expect(palettes).toContain(`[data-palette='${name}'][data-theme='dark'],`);
+    for (const { palette } of COMBINATIONS.filter((combination) => combination.theme === 'dark')) {
+      if (palette === 'ember') continue;
+      expect(palettes).toContain(`[data-palette='${palette}'] {`);
+      expect(palettes).toContain(`[data-palette='${palette}'][data-theme='dark'],`);
     }
     expect(palettes).not.toMatch(/^:root\b/m);
     expect(palettes).not.toMatch(/^\[data-theme='dark'\],\s*\n?\.dark/m);
   });
 
-  it('includes the AI Elements layers and the component stylesheets', () => {
-    for (const layer of ['ai-core', 'ai-agent', 'ai-media', 'ai-canvas', 'ai-shell']) {
+  it('includes the AI Elements layers the docs app imports, and the component stylesheets', () => {
+    const layers = aiLayers(readFileSync(join(repoRoot, 'apps/docs/src/app/elements.css'), 'utf8'));
+    expect(layers).not.toContain('ai-bridge');
+    for (const layer of layers) {
       expect(out).toContain(`/* ── components/ai/${layer}.css (apps/docs/src/app/ai-theme) ── */`);
     }
     expect(out).toContain('/* ── components/atoms/Button.css ── */');
-  });
-});
-
-describe('index.d.ts round trip', () => {
-  it('reads an artifact-only section back by name', () => {
-    const index =
-      '// ── A\nexport type A = 1;\n\n// ── ChatComposer\nexport interface ChatComposerProps {}\n\n// ── B\n';
-    expect(previousTypesSection(index, 'ChatComposer')).toBe(
-      'export interface ChatComposerProps {}',
-    );
-    expect(() => previousTypesSection(index, 'Missing')).toThrow(/Missing/);
   });
 });

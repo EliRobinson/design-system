@@ -16,14 +16,23 @@ import { join } from 'node:path';
 
 import ts from 'typescript';
 
-import { ARTIFACT_ONLY_COMPONENTS } from './bundle.mjs';
+import { inArtifactOrder } from './artifact-only.mjs';
 
-const ARTIFACT_ONLY_AFTER = 'StreamingCaret';
-
+/* Types a component imports from a sibling module. `from` names the source in
+   the inlined comment. `owner` is a section whose own text already declares
+   them, so index.d.ts never declares them twice. `names` is what a later
+   section's pointer comment lists. */
 const HELPERS = {
-  Verdict: { from: 'VerdictBadge', text: "export type Verdict = 'go' | 'no' | 'hold';" },
+  Verdict: {
+    from: 'VerdictBadge',
+    owner: 'VerdictBadge',
+    names: 'Verdict',
+    text: "export type Verdict = 'go' | 'no' | 'hold';",
+  },
   TableHelpers: {
     from: 'table/core',
+    names: 'ColumnDef, TableBaseProps and TableElementProps',
+    tanstack: ['RowData', 'CellData', 'ColumnDef as TanStackColumnDef', 'TableFeature'],
     text: [
       '/** The feature set both table components register (short form of `tableFeatureSet` in table/core: the row-model factories and sort functions are left out). */',
       'export type TableFeatureSet = {',
@@ -53,7 +62,7 @@ const HELPERS = {
 
 /* The inlined table helpers restate parts of table/core.d.ts. If these
    strings leave it, the restatement is stale. */
-const TABLE_CORE_FACTS = [
+export const TABLE_CORE_FACTS = [
   'emptyMessage?: string;',
   'filterable?: boolean;',
   'filterPlaceholder?: string;',
@@ -69,6 +78,21 @@ const ANCHORED_PICK = [
   "    align?: 'start' | 'center' | 'end';",
   '}',
 ].join('\n');
+
+/* What to do with each `import type { … } from '<specifier>'` in a dist .d.ts.
+   A specifier not listed here fails the build: a new relative import needs a
+   decision, not a silent drop. */
+const IMPORT_RULES = {
+  react: { collect: 'react' },
+  '@tanstack/react-table': { collect: 'tanstack' },
+  /* Virtualizer is the one name used, and the preamble adds it by name. */
+  '@tanstack/react-virtual': {},
+  './VerdictBadge.js': { helper: 'Verdict' },
+  './table/core.js': { helper: 'TableHelpers' },
+  './overlay/anchoredOverlay.js': {
+    rewrite: ["Pick<AnchoredOverlayContentProps, 'side' | 'align'>", ANCHORED_PICK],
+  },
+};
 
 function toInterfaces(text) {
   const source = ts.createSourceFile('x.d.ts', text, ts.ScriptTarget.Latest, true);
@@ -122,6 +146,45 @@ export function previousTypesSection(indexDts, name) {
 }
 
 /**
+ * One dist .d.ts made self-contained.
+ *
+ * @returns {{ text: string, helpers: string[], react: string[], tanstack: string[] }}
+ */
+export function selfContainedDts(source, name) {
+  let text = source.replace(/^\/\/# sourceMappingURL=.*$/m, '');
+  const out = { helpers: [], react: [], tanstack: [] };
+  for (const match of text.matchAll(/^import type \{([^}]+)\} from '([^']+)';$/gm)) {
+    const rule = IMPORT_RULES[match[2]];
+    if (!rule) throw new Error(`${name}.d.ts: no rule for the import from ${match[2]}`);
+    const names = match[1]
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (rule.collect) out[rule.collect].push(...names);
+    if (rule.helper) out.helpers.push(rule.helper);
+    if (rule.rewrite) text = text.replace(...rule.rewrite);
+  }
+  text = text
+    .replace(/^import type .*$\n/gm, '')
+    .replace(/^export type \{[^}]*\} from .*$\n/gm, '');
+  if (/AnchoredOverlay/.test(text)) throw new Error(`${name}.d.ts still names AnchoredOverlay`);
+  text = text.replace(
+    /export declare const (\w+): import\("react"\)\.ForwardRefExoticComponent<([\s\S]*?)>;\n/g,
+    (all, component, inner) => {
+      const ref = / & import\("react"\)\.RefAttributes<(\w+)>$/.exec(inner);
+      return ref && new RegExp(`export type ${component}Props\\b`).test(text)
+        ? `export declare const ${component}: React.ForwardRefExoticComponent<${component}Props & React.RefAttributes<${ref[1]}>>;\n`
+        : all;
+    },
+  );
+  text = text
+    .replace(/import\("react"\)\./g, 'React.')
+    .replace(/import\("react\/jsx-runtime"\)\.JSX\./g, 'React.JSX.');
+  if (/import\(|from '\./.test(text)) throw new Error(`${name}.d.ts: an import is left`);
+  return { ...out, text: toInterfaces(text).trim() };
+}
+
+/**
  * @param {object} options
  * @param {object} options.manifest      @elirobinson/react's dist/manifest.json
  * @param {string} options.reactDist     packages/react/dist
@@ -132,72 +195,33 @@ export function buildTypes({ manifest, reactDist, previousIndexDts }) {
   const read = (path) => readFileSync(join(reactDist, path), 'utf8');
   const core = read('components/organisms/table/core.d.ts');
   for (const fact of TABLE_CORE_FACTS) {
-    if (!core.includes(fact))
+    if (!core.includes(fact)) {
       throw new Error(`table/core.d.ts changed; update HELPERS.TableHelpers (${fact})`);
-  }
-
-  const sections = [];
-  const reactNames = new Set();
-  const tanstackNames = new Set();
-  for (const component of manifest.components) {
-    let text = read(`components/${component.subpath}.d.ts`).replace(
-      /^\/\/# sourceMappingURL=.*$/m,
-      '',
-    );
-    const helpers = [];
-    for (const match of text.matchAll(/^import type \{([^}]+)\} from '([^']+)';$/gm)) {
-      const names = match[1]
-        .split(',')
-        .map((name) => name.trim())
-        .filter(Boolean);
-      const from = match[2];
-      if (from === 'react') names.forEach((name) => reactNames.add(name));
-      else if (from === '@tanstack/react-table') names.forEach((name) => tanstackNames.add(name));
-      else if (from === '@tanstack/react-virtual') continue;
-      else if (from === './VerdictBadge.js') helpers.push('Verdict');
-      else if (from === './table/core.js') helpers.push('TableHelpers');
-      else if (from === './overlay/anchoredOverlay.js') {
-        text = text.replace("Pick<AnchoredOverlayContentProps, 'side' | 'align'>", ANCHORED_PICK);
-      } else throw new Error(`${component.name}.d.ts: no rule for the import from ${from}`);
-    }
-    text = text
-      .replace(/^import type .*$\n/gm, '')
-      .replace(/^export type \{[^}]*\} from .*$\n/gm, '');
-    if (/AnchoredOverlay/.test(text))
-      throw new Error(`${component.name}.d.ts still names AnchoredOverlay`);
-    text = text.replace(
-      /export declare const (\w+): import\("react"\)\.ForwardRefExoticComponent<([\s\S]*?)>;\n/g,
-      (all, name, inner) => {
-        const ref = / & import\("react"\)\.RefAttributes<(\w+)>$/.exec(inner);
-        return ref && new RegExp(`export type ${name}Props\\b`).test(text)
-          ? `export declare const ${name}: React.ForwardRefExoticComponent<${name}Props & React.RefAttributes<${ref[1]}>>;\n`
-          : all;
-      },
-    );
-    text = text
-      .replace(/import\("react"\)\./g, 'React.')
-      .replace(/import\("react\/jsx-runtime"\)\.JSX\./g, 'React.JSX.');
-    if (/import\(|from '\./.test(text))
-      throw new Error(`${component.name}.d.ts: an import is left`);
-    sections.push({ name: component.name, text: toInterfaces(text).trim(), helpers });
-    if (component.name === ARTIFACT_ONLY_AFTER) {
-      for (const name of ARTIFACT_ONLY_COMPONENTS) {
-        sections.push({ name, text: previousTypesSection(previousIndexDts, name), helpers: [] });
-      }
     }
   }
 
-  const tanstackFor = (section) => {
-    const names = new Set(
-      [...tanstackNames].filter((name) => new RegExp(`\\b${name}\\b`).test(section.text)),
-    );
-    if (section.helpers.includes('TableHelpers')) {
-      ['RowData', 'CellData', 'ColumnDef as TanStackColumnDef', 'TableFeature'].forEach((name) =>
-        names.add(name),
-      );
-    }
-    return names;
-  };
+  const sections = inArtifactOrder(
+    manifest.components,
+    (component) => ({
+      name: component.name,
+      ...selfContainedDts(read(`components/${component.subpath}.d.ts`), component.name),
+    }),
+    (name) => ({
+      name,
+      text: previousTypesSection(previousIndexDts, name),
+      helpers: [],
+      react: [],
+      tanstack: [],
+    }),
+  );
+  const reactNames = new Set(sections.flatMap((section) => section.react));
+  const tanstackNames = new Set(sections.flatMap((section) => section.tanstack));
+
+  const tanstackFor = (section) =>
+    new Set([
+      ...[...tanstackNames].filter((name) => new RegExp(`\\b${name}\\b`).test(section.text)),
+      ...section.helpers.flatMap((helper) => HELPERS[helper].tanstack ?? []),
+    ]);
   const preamble = (text, tanstack, virtualizer) => {
     const lines = ["import type * as React from 'react';"];
     const used = [...reactNames].filter((name) => new RegExp(`\\b${name}\\b`).test(text)).sort();
@@ -210,55 +234,42 @@ export function buildTypes({ manifest, reactDist, previousIndexDts }) {
     if (virtualizer) lines.push("import type { Virtualizer } from '@tanstack/react-virtual';");
     return lines.join('\n');
   };
-  const helperComment = (helper) => (helper === 'Verdict' ? 'VerdictBadge' : HELPERS[helper].from);
+  const inlined = (helper, label) =>
+    `// (${label}, inlined from ${HELPERS[helper].from})\n${HELPERS[helper].text}\n`;
 
-  /* index.d.ts: each helper once, in the first section that needs it. */
-  const emitted = new Set();
-  const allTanstack = new Set();
-  for (const section of sections) tanstackFor(section).forEach((name) => allTanstack.add(name));
-  const indexSections = sections.map((section) => {
-    let body = '';
-    for (const helper of section.helpers) {
-      if (emitted.has(helper)) continue;
-      emitted.add(helper);
-      body += `// (shared helper types, inlined from ${helperComment(helper)})\n${HELPERS[helper].text}\n`;
-    }
-    if (section.name === 'VerdictBadge') emitted.add('Verdict');
-    if (section.name === 'VirtualTable') {
-      body +=
-        '// ColumnDef, TableBaseProps and TableElementProps are declared in the Table section.\n';
-    }
-    /* DecisionCard comes before VerdictBadge, whose own text declares Verdict. */
-    if (section.name === 'DecisionCard') {
-      body = body.replace(
-        `// (shared helper types, inlined from VerdictBadge)\n${HELPERS.Verdict.text}\n`,
-        '// Verdict is declared in the VerdictBadge section.\n',
-      );
-    }
-    return `// ── ${section.name}\n${body}${section.text}\n`;
-  });
-  const indexBody = indexSections.join('\n');
-  const reactVersion = manifest.version;
+  /* index.d.ts declares each helper once. The first section that needs it
+     inlines it, or points at its owner; every later one points at where it is. */
+  const declaredIn = new Map();
+  const indexBody = sections
+    .map((section) => {
+      let body = '';
+      for (const helper of section.helpers) {
+        const { owner, names } = HELPERS[helper];
+        const where = declaredIn.get(helper) ?? owner;
+        if (where)
+          body += `// ${names} ${names.includes(' and ') ? 'are' : 'is'} declared in the ${where} section.\n`;
+        else body += inlined(helper, 'shared helper types');
+        if (!declaredIn.has(helper)) declaredIn.set(helper, where ?? section.name);
+      }
+      return `// ── ${section.name}\n${body}${section.text}\n`;
+    })
+    .join('\n');
   const header =
     '// Miltinson Design System — component types, one section per component (from components/<Comp>/<Comp>.d.ts).\n' +
-    `// Built from @elirobinson/react ${reactVersion} dist/components/**/*.d.ts (relative imports removed, helper types inlined); ChatComposer and PromptSuggestions are artifact-only.\n`;
-  const index = `${header}${preamble(indexBody, allTanstack, true)}\n\n${indexBody}`;
+    `// Built from @elirobinson/react ${manifest.version} dist/components/**/*.d.ts (relative imports removed, helper types inlined); ChatComposer and PromptSuggestions are artifact-only.\n`;
+  const index = `${header}${preamble(indexBody, new Set(sections.flatMap((section) => [...tanstackFor(section)])), true)}\n\n${indexBody}`;
   const declarations = (index.match(/export type Verdict =/g) ?? []).length;
   if (declarations !== 1) throw new Error(`index.d.ts declares Verdict ${declarations} times`);
 
   const perComponent = new Map();
   for (const section of sections) {
     const body =
-      section.helpers
-        .map(
-          (helper) =>
-            `// (helper types, inlined from ${helperComment(helper)})\n${HELPERS[helper].text}\n`,
-        )
-        .join('') + `${section.text}\n`;
-    const own = `// Miltinson Design System — ${section.name} types.\n`;
+      section.helpers.map((helper) => inlined(helper, 'helper types')).join('') +
+      `${section.text}\n`;
     perComponent.set(
       section.name,
-      `${own}${preamble(body, tanstackFor(section), /Virtualizer/.test(body))}\n\n// ── ${section.name}\n${body}`,
+      `// Miltinson Design System — ${section.name} types.\n` +
+        `${preamble(body, tanstackFor(section), /Virtualizer/.test(body))}\n\n// ── ${section.name}\n${body}`,
     );
   }
   return { index, perComponent };

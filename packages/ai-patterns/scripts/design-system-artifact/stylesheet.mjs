@@ -15,13 +15,26 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import {
+  readPlatformStylesheets,
+  readTokenStylesheets,
+} from '@elirobinson/tokens/token-stylesheets';
 import postcss from 'postcss';
 
-export const AI_LAYERS = ['ai-core', 'ai-agent', 'ai-media', 'ai-canvas', 'ai-shell'];
-export const ARTIFACT_ONLY_STYLESHEETS = [
-  'components/ai/ChatComposer.css',
-  'components/ai/PromptSuggestions.css',
-];
+import { ARTIFACT_ONLY } from './artifact-only.mjs';
+
+const AI_THEME_ENTRY = 'apps/docs/src/app/elements.css';
+/* The token bridge is not a class layer: the artifact carries it as its own file. */
+const AI_THEME_NOT_LAYERS = ['ai-bridge'];
+
+/** The AI Elements class layers, in the order the docs app imports them. */
+export function aiLayers(entryCss) {
+  const layers = [...entryCss.matchAll(/@import '\.\/ai-theme\/(ai-[a-z]+)\.css';/g)]
+    .map((match) => match[1])
+    .filter((layer) => !AI_THEME_NOT_LAYERS.includes(layer));
+  if (!layers.length) throw new Error(`${AI_THEME_ENTRY} imports no ai-theme layer`);
+  return layers;
+}
 const CARRIED = '(previous artifact bundle)';
 
 const marker = (label) => `/* ── ${label} ── */`;
@@ -41,8 +54,8 @@ export function previousSection(bundleCss, path) {
 
 function tokenNames(tokensSrc) {
   const names = new Set();
-  for (const file of ['tokens.css', 'palettes.css', 'mobile.css']) {
-    postcss.parse(readFileSync(join(tokensSrc, file), 'utf8')).walkDecls((decl) => {
+  for (const css of [...readTokenStylesheets(tokensSrc), ...readPlatformStylesheets(tokensSrc)]) {
+    postcss.parse(css).walkDecls((decl) => {
       if (decl.prop.startsWith('--')) names.add(decl.prop);
     });
   }
@@ -133,16 +146,17 @@ export function buildBundleCss({ repoRoot, extrasCss, previousBundleCss, reactVe
     postcss.parse(css).walkDecls((decl) => {
       if (tokens.has(decl.prop)) throw new Error(`${label} declares the token ${decl.prop}`);
     });
+  const layers = aiLayers(read(AI_THEME_ENTRY));
   let ai =
-    '/* The Miltinson × AI Elements class layers (ai-core, ai-agent, ai-media, ai-canvas, ai-shell) from\n' +
-    '   apps/docs/src/app/ai-theme/, then the stylesheets of the two artifact-only components, ChatComposer\n' +
-    '   and PromptSuggestions, carried from the previous artifact bundle. No token declarations. */';
-  for (const layer of AI_LAYERS) {
+    `/* The Miltinson × AI Elements class layers (${layers.join(', ')}) from\n` +
+    '   apps/docs/src/app/ai-theme/, then the stylesheets of the artifact-only components,\n' +
+    `   ${ARTIFACT_ONLY.names.join(' and ')}, carried from the previous artifact bundle. No token declarations. */`;
+  for (const layer of layers) {
     const css = read(`apps/docs/src/app/ai-theme/${layer}.css`).trim();
     noTokenDeclarations(css, `${layer}.css`);
     ai += `\n\n${marker(`components/ai/${layer}.css (apps/docs/src/app/ai-theme)`)}\n${css}`;
   }
-  for (const path of ARTIFACT_ONLY_STYLESHEETS) {
+  for (const path of ARTIFACT_ONLY.names.map(ARTIFACT_ONLY.stylesheet)) {
     const css = previousSection(previousBundleCss, path);
     noTokenDeclarations(css, path);
     ai += `\n\n${marker(`${path} ${CARRIED}`)}\n${css}`;

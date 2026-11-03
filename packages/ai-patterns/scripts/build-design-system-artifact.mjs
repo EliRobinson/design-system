@@ -2,7 +2,7 @@
 /* Builds the repo-owned files of the Claude "Design System" artifact
  * (https://claude.ai/artifact/Xvkzcg7hpZRPBZ5ijZcTL1) into a local folder.
  *
- *   pnpm -F @elirobinson/ai-patterns build:design-system-artifact -- --previous <dir>
+ *   pnpm -F @elirobinson/ai-patterns build:design-system-artifact --previous <dir>
  *
  * --previous  a local copy of the live artifact's `project/` files (read them
  *             with the Artifact tool). Prose and the two artifact-only
@@ -35,10 +35,11 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
+import { ARTIFACT_ONLY } from './design-system-artifact/artifact-only.mjs';
 import { buildBundleJs } from './design-system-artifact/bundle.mjs';
 import { checkLimits } from './design-system-artifact/limits.mjs';
 import { buildBundleCss } from './design-system-artifact/stylesheet.mjs';
-import { FONTS, buildTokens } from './design-system-artifact/tokens.mjs';
+import { buildTokens, latinFonts } from './design-system-artifact/tokens.mjs';
 import { buildTypes } from './design-system-artifact/types.mjs';
 
 const packageDir = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -50,8 +51,7 @@ const PREVIOUS_INPUTS = [
   'tokens.json',
   'components/bundle.css',
   'components/index.d.ts',
-  'components/src/components/ai/ChatComposer.jsx',
-  'components/src/components/ai/PromptSuggestions.jsx',
+  ...ARTIFACT_ONLY.names.map(ARTIFACT_ONLY.source),
 ];
 
 const CONTENT_TYPES = {
@@ -84,6 +84,9 @@ async function main() {
   if (missing.length) throw new Error(`--previous ${previousDir} is missing ${missing.join(', ')}`);
   const outRoot = resolve(values.out ?? join(repoRoot, 'dist/design-system-artifact'));
   const outDir = join(outRoot, 'project');
+  if (!relative(outDir, previousDir).startsWith('..')) {
+    throw new Error(`--out ${outRoot} would delete --previous ${previousDir}. Pick another --out.`);
+  }
 
   const require = createRequire(import.meta.url);
   let manifestPath;
@@ -127,19 +130,30 @@ async function main() {
     ['components/index.d.ts', types.index],
   ]);
   for (const [name, text] of types.perComponent) files.set(`components/${name}/${name}.d.ts`, text);
+  const fonts = new Map(
+    latinFonts(tokensSrc).map((font) => [
+      `fonts/${font.file}`,
+      join(tokensSrc, 'fonts', font.file),
+    ]),
+  );
 
-  rmSync(outRoot, { recursive: true, force: true });
+  /* Check every cap before touching the output folder. */
+  const sizes = {
+    ...Object.fromEntries([...files].map(([path, text]) => [path, Buffer.byteLength(text)])),
+    ...Object.fromEntries([...fonts].map(([path, source]) => [path, statSync(source).size])),
+  };
+  checkLimits({ tokensJson: tokens.json, sizes });
+  const paths = Object.keys(sizes);
+
+  /* Remove only what this script writes: --out may name a folder that holds other things. */
+  rmSync(outDir, { recursive: true, force: true });
+  rmSync(join(outRoot, 'publish-files.json'), { force: true });
   for (const [path, text] of files) {
     mkdirSync(dirname(join(outDir, path)), { recursive: true });
     writeFileSync(join(outDir, path), text);
   }
   mkdirSync(join(outDir, 'fonts'), { recursive: true });
-  for (const font of FONTS)
-    copyFileSync(join(tokensSrc, 'fonts', font.file), join(outDir, 'fonts', font.file));
-
-  const paths = [...files.keys(), ...FONTS.map((font) => `fonts/${font.file}`)];
-  const sizes = Object.fromEntries(paths.map((path) => [path, statSync(join(outDir, path)).size]));
-  checkLimits({ tokensJson: tokens.json, sizes });
+  for (const [path, source] of fonts) copyFileSync(source, join(outDir, path));
 
   const publish = Object.fromEntries(
     paths.map((path) => [
