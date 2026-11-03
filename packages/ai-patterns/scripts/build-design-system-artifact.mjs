@@ -32,7 +32,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
-import { basename, dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
@@ -106,7 +106,8 @@ async function main() {
     values.out ? resolve(invokedFrom, values.out) : join(repoRoot, 'dist/design-system-artifact'),
   );
   const outDir = join(outRoot, 'project');
-  if (!relative(outDir, previousDir).startsWith('..')) {
+  const fromOut = relative(outDir, previousDir);
+  if (fromOut !== '..' && !fromOut.startsWith(`..${sep}`)) {
     throw new Error(`--out ${outRoot} would delete --previous ${previousDir}. Pick another --out.`);
   }
 
@@ -126,13 +127,15 @@ async function main() {
   const reactDist = dirname(manifestPath);
   const git = (...args) => execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' }).trim();
   const sha = git('rev-parse', '--short', 'HEAD');
+  /* A detached HEAD has no branch name to stamp. */
   const branch = git('rev-parse', '--abbrev-ref', 'HEAD');
+  const ref = branch === 'HEAD' ? sha : `${branch}@${sha}`;
   const previousText = (path) => readFileSync(join(previousDir, path), 'utf8');
 
   const tokens = buildTokens({
     srcDir: tokensSrc,
     previous: JSON.parse(previousText('tokens.json')),
-    meta: { ref: `${branch}@${sha}`, synced: new Date().toISOString().slice(0, 10) },
+    meta: { ref, synced: new Date().toISOString().slice(0, 10) },
   });
   const bundleCss = buildBundleCss({
     repoRoot,
