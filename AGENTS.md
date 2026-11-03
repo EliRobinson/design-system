@@ -45,6 +45,7 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 - [AI Elements accessibility](docs/agents/ai-elements-accessibility.md) — `pnpm a11y:elements`, the per-control touch-target verdicts, and what the sweep handed to the token bridge
 - [AI Elements theme](docs/agents/ai-elements-theme.md) — the Miltinson × AI Elements CSS layers, the import chain, and the canvas keyboard path that gates `ai-canvas.css`
 - [AI patterns](docs/agents/ai-patterns.md) — the `ds` discovery CLI, contracts, agent templates
+- [Design System artifact](docs/agents/design-system-artifact.md) — `build:design-system-artifact`, which files the repo owns in the Claude artifact, and how to publish them
 - [Consumer tooling](docs/agents/consumer-tooling.md) — what a consuming app installs, and why each piece lives here
 - [Publishing](docs/agents/publishing.md)
 - [Git workflow](docs/agents/git-workflow.md) — commit style, hooks, the Nx cache worktrees share, before/after screenshots for front-end PRs
