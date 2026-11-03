@@ -8,16 +8,23 @@ import {
   TOOLS,
   branchRefsOf,
   countsAsRun,
-  handbackReport,
   decidePr,
   decideReviewerStart,
   findPrCommands,
+  handbackReport,
   isMcpCreatePr,
   prCommandsOf,
   reviewersWithoutRun,
   unfilledReviewLabels,
 } from './review-gate-policy.mjs';
-import { CREATE, GH, filledReview, handbackLine } from './review-gate-fixtures';
+import {
+  CREATE,
+  GH,
+  filledReview,
+  handbackLine,
+  handbackResultLine,
+  promptLine,
+} from './review-gate-fixtures';
 
 // This file lives at scripts/agent-hooks/, two levels below the repo root.
 // Reads below are repo-root-relative, not cwd-relative: nx runs this
@@ -385,6 +392,20 @@ describe('handbackReport', () => {
   it('returns undefined when the subagent never handed back', () => {
     expect(handbackReport('{"type":"user"}\n')).toBeUndefined();
     expect(handbackReport('')).toBeUndefined();
+  });
+
+  it('ignores a handback from an earlier turn of a resumed subagent', () => {
+    const transcript = [handbackLine('old'), promptLine('Check again.')];
+    expect(handbackReport(transcript.join('\n'))).toBeUndefined();
+    transcript.push(handbackLine('new', 'toolu_2'));
+    expect(handbackReport(transcript.join('\n'))).toBe('new');
+  });
+
+  it('ignores a handback the runtime rejected', () => {
+    const delivered = [handbackLine('sent', 'toolu_1'), handbackResultLine('toolu_1', true)];
+    const rejected = [handbackLine('again', 'toolu_2'), handbackResultLine('toolu_2', false)];
+    expect(handbackReport([...delivered, ...rejected].join('\n'))).toBe('sent');
+    expect(handbackReport([promptLine('Go.'), ...rejected].join('\n'))).toBeUndefined();
   });
 });
 
