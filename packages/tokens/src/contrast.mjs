@@ -204,6 +204,29 @@ export function unreadableSelectors(sources) {
 }
 
 /**
+ * Every token's declared value in one palette × theme, as the cascade leaves it:
+ * the winning declaration, `var()` references kept. `combinationValues` is this
+ * plus resolution. A reader that keeps aliases as aliases, such as the Claude
+ * artifact build, starts here.
+ *
+ * @param {string[]} sources stylesheets in cascade order
+ * @param {{palette: string, theme: string}} combination
+ * @returns {Map<string, string>}
+ */
+export function combinationDeclarations(sources, combination) {
+  const applicable = tokenBlocks(sources)
+    .map((rule) => ({ ...rule, weight: specificity(rule.selector, combination) }))
+    .filter((rule) => rule.weight !== null)
+    .sort((a, b) => a.weight - b.weight || a.file - b.file || a.order - b.order);
+
+  const declared = new Map();
+  for (const rule of applicable) {
+    for (const [name, value] of rule.declarations) declared.set(name, value);
+  }
+  return declared;
+}
+
+/**
  * Every token's concrete value in one palette × theme, `var()` chains followed.
  *
  * Blocks are applied in the order a browser would: by specificity first, then
@@ -218,15 +241,7 @@ export function unreadableSelectors(sources) {
  * @returns {Map<string, string>}
  */
 export function combinationValues(sources, combination) {
-  const applicable = tokenBlocks(sources)
-    .map((rule) => ({ ...rule, weight: specificity(rule.selector, combination) }))
-    .filter((rule) => rule.weight !== null)
-    .sort((a, b) => a.weight - b.weight || a.file - b.file || a.order - b.order);
-
-  const declared = new Map();
-  for (const rule of applicable) {
-    for (const [name, value] of rule.declarations) declared.set(name, value);
-  }
+  const declared = combinationDeclarations(sources, combination);
 
   const MAX_DEPTH = 8;
   const resolve = (value, depth = 0) => {
@@ -256,7 +271,7 @@ export function combinationValues(sources, combination) {
    Only the one form the ramp uses is evaluated — a multiplication of two
    literals — so this cannot quietly become a general calc() engine that
    disagrees with a browser about anything more interesting. */
-function flattenCalc(value) {
+export function flattenCalc(value) {
   return value.replace(
     /calc\(\s*([\d.]+)\s*\*\s*([\d.]+)\s*\)/g,
     (_, a, b) => `${Number((Number(a) * Number(b)).toFixed(6))}`,
