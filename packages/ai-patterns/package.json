@@ -117,6 +117,7 @@
   "scripts": {
     "build": "node scripts/build-artifacts.mjs",
     "build:design-project": "node scripts/build-design-project.mjs",
+    "build:design-system-artifact": "node scripts/build-design-system-artifact.mjs",
     "sync:voice": "node scripts/sync-voice.mjs",
     "prepack": "node scripts/build-artifacts.mjs",
     "lint": "echo 'No lint configured for ai-patterns'",
@@ -128,7 +129,10 @@
     "@elirobinson/tokens": "workspace:*",
     "ai": "^7.0.92",
     "axe-core": "^4.11.0",
+    "esbuild": "^0.27.7",
     "playwright": "^1.56.0",
+    "postcss": "^8.5.23",
+    "typescript": "^6.0.3",
     "vitest": "^3.2.4",
     "zod": "^4.5.4"
   }
