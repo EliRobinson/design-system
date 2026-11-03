@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { REVIEWERS } from './review-gate-policy.mjs';
-import { CREATE, GH, filledReview } from './review-gate-fixtures';
+import { CREATE, GH, filledReview, handbackLine } from './review-gate-fixtures';
 
 // End-to-end: runs the hook script with each tool's stdin format, in a
 // throwaway git repo. The rules themselves are covered in
@@ -58,6 +58,13 @@ const stop = (agent: string, output = 'No findings.') => ({
   last_assistant_message: output,
   cwd: repo,
 });
+// A background reviewer ends with a SubagentHandback call, not a text
+// message, so its report is only in its transcript.
+const handbackStop = (agent: string, report: string) => {
+  const transcript = join(repo, `${agent}.jsonl`);
+  writeFileSync(transcript, `${handbackLine(report)}\n`);
+  return { ...stop(agent, ''), agent_transcript_path: transcript };
+};
 const finishAllReviewers = () => {
   for (const { agent } of REVIEWERS) expect(run('claude', stop(agent)).code).toBe(0);
 };
@@ -105,6 +112,19 @@ describe('Claude Code', () => {
   it('does not count a reviewer that returned nothing', () => {
     for (const { agent } of REVIEWERS)
       run('claude', stop(agent, agent === 'review-dry' ? '' : 'ok'));
+    const result = openPr();
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/review-dry/);
+  });
+
+  it('counts a background reviewer by the report it handed back', () => {
+    for (const { agent } of REVIEWERS) run('claude', handbackStop(agent, 'No findings.'));
+    expect(openPr().code).toBe(0);
+  });
+
+  it('does not count a background reviewer that handed back nothing', () => {
+    for (const { agent } of REVIEWERS)
+      run('claude', handbackStop(agent, agent === 'review-dry' ? ' ' : 'ok'));
     const result = openPr();
     expect(result.code).toBe(2);
     expect(result.stderr).toMatch(/review-dry/);
