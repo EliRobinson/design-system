@@ -15,11 +15,10 @@ import { join } from 'node:path';
 
 import { build } from 'esbuild';
 
+import { ARTIFACT_ONLY, inArtifactOrder } from './artifact-only.mjs';
+
 /* Existing previews, kits and templates call this name. Never change it. */
 export const NAMESPACE = 'MiltinsonDesignSystem_e160cb';
-export const ARTIFACT_ONLY_COMPONENTS = ['ChatComposer', 'PromptSuggestions'];
-/* The artifact-only components sit after this one in the bundle order. */
-const ARTIFACT_ONLY_AFTER = 'StreamingCaret';
 
 /* react/jsx-runtime over createElement, so the bundle needs nothing but window.React. */
 const JSX_SHIM = `
@@ -63,30 +62,22 @@ const reactGlobals = {
 
 /** The bundle's components in order, each with its exports and its source file. */
 export function bundleComponents({ manifest, reactDist, previousDir }) {
-  const components = [];
-  for (const component of manifest.components) {
-    components.push({
+  const components = inArtifactOrder(
+    manifest.components,
+    (component) => ({
       name: component.name,
       exports: component.exports,
       file: join(reactDist, 'components', `${component.subpath}.js`),
       sourcePath: `components/${component.subpath}.tsx`,
-    });
-    if (component.name === ARTIFACT_ONLY_AFTER) {
-      for (const name of ARTIFACT_ONLY_COMPONENTS) {
-        components.push({
-          name,
-          exports: [name],
-          file: join(previousDir, 'components/src/components/ai', `${name}.jsx`),
-          sourcePath: `components/ai/${name}.jsx`,
-        });
-      }
-    }
-  }
-  if (!components.some((component) => component.name === ARTIFACT_ONLY_COMPONENTS[0])) {
-    throw new Error(
-      `the manifest has no ${ARTIFACT_ONLY_AFTER}; place the artifact-only components`,
-    );
-  }
+    }),
+    (name) => ({
+      name,
+      exports: [name],
+      file: join(previousDir, ARTIFACT_ONLY.source(name)),
+      /* The header names a source relative to components/src/, as the published ones do. */
+      sourcePath: ARTIFACT_ONLY.source(name).replace(/^components\/src\//, ''),
+    }),
+  );
   const seen = new Set();
   for (const component of components) {
     if (!existsSync(component.file)) throw new Error(`bundle.js: missing ${component.file}`);

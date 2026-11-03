@@ -1,43 +1,50 @@
 /* tokens.json, tokens.css and the token rules tokens.json cannot hold, for the
  * Claude "Design System" artifact.
  *
- * Values come from packages/tokens/src. Prose comes from the artifact: the
- * usage note on each token and the type style notes are written on the
- * artifact's page, so they are read back from the previous tokens.json and
- * kept. A token the previous file does not have gets an empty note and is
- * listed in the report.
- *
- * The artifact holds 8 colour themes at most. The repo has 5 palettes, each
- * light and dark. Slate is left out.
+ * Values come from packages/tokens/src, through the same palette × theme
+ * cascade the contrast checks use (@elirobinson/tokens/contrast). Prose comes
+ * from the artifact: the usage note on each token and the type style notes are
+ * written on the artifact's page, so they are read back from the previous
+ * tokens.json and kept. A token the previous file does not have gets an empty
+ * note and is listed in the report.
  */
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import {
+  COMBINATIONS,
+  DEFAULT_PALETTE,
+  combinationDeclarations,
+  flattenCalc,
+  tokenBlocks,
+  unreadableSelectors,
+} from '@elirobinson/tokens/contrast';
+import { effectiveTokens, parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
+import {
+  PLATFORM_STYLESHEETS,
+  TOKEN_STYLESHEETS,
+  readPlatformStylesheets,
+  readTokenStylesheets,
+} from '@elirobinson/tokens/token-stylesheets';
 import postcss from 'postcss';
 
-/** Theme ids in artifact order. The first is the default. */
-export const THEMES = [
-  'light',
-  'dark',
-  'palette-miltinson',
-  'palette-miltinson-dark',
-  'palette-miltinson-tech',
-  'palette-miltinson-tech-dark',
-  'palette-steady',
-  'palette-steady-dark',
-];
-export const THEMES_LEFT_OUT = ['palette-slate', 'palette-slate-dark'];
+/* The artifact holds 8 colour themes at most, and the repo has 5 palettes ×
+   light and dark. These palettes are left out. */
+export const PALETTES_LEFT_OUT = ['slate'];
 
-export const FONTS = [
-  { family: 'Geist', file: 'geist-latin-wght-normal.woff2', weight: '100 900', style: 'normal' },
-  {
-    family: 'JetBrains Mono',
-    file: 'jetbrains-mono-latin-wght-normal.woff2',
-    weight: '100 800',
-    style: 'normal',
-  },
-];
+/** The artifact's theme id for a palette × theme. The default palette keeps the bare theme name. */
+function themeId({ palette, theme }) {
+  if (palette === DEFAULT_PALETTE) return theme;
+  return `palette-${palette}${theme === 'dark' ? '-dark' : ''}`;
+}
+
+const KEPT = COMBINATIONS.filter(({ palette }) => !PALETTES_LEFT_OUT.includes(palette));
+/** Theme ids in artifact order. The first is the default. */
+export const ARTIFACT_THEMES = KEPT.map(themeId);
+export const THEMES_LEFT_OUT = COMBINATIONS.filter(
+  (combination) => !KEPT.includes(combination),
+).map(themeId);
 
 /* The type styles the artifact shows, by group. Values are read from the
    `body` rule and the `.t-*` classes in tokens.css. t-display-1, t-display-2
@@ -49,8 +56,9 @@ const TYPE_GROUPS = [
   { name: 'Text', styles: ['t-lead', 't-body', 't-body-sm', 't-caption', 't-eyebrow', 't-mono'] },
 ];
 
-/* Non-colour families, used for a token the previous tokens.json does not
-   place. First match wins. */
+/* Non-colour families, for a token the previous tokens.json does not place.
+   First match wins. These are the artifact type's sections, not the published
+   tokens.json groups, so they are not shared with tokens-json.mjs. */
 const FAMILY_RULES = [
   ['spacing', /^(container-|target|tr-|space-|anchored-)/],
   ['radius', /^radius-/],
@@ -61,199 +69,129 @@ const FAMILY_RULES = [
   ['lineHeight', /^lh-/],
   ['fontWeight', /^fw-/],
 ];
-const FAMILY_ORDER = FAMILY_RULES.map(([family]) => family);
 const COLOUR_NAME =
   /^(signal|anchor|accent|focus|link|status|chart|ink|bg|surface|border|fg|scrim)/;
-/* These live in bundle.css: tokens.json has no grammar for them. */
-const NOT_IN_JSON = ['link-on-fill', 'gutter', 'safe-t', 'safe-r', 'safe-b', 'safe-l'];
-const FONT_VARS = ['font-sans', 'font-display', 'font-mono'];
+const FONT_KEYS = ['sans', 'display', 'mono'];
+/* tokens.json has no grammar for these values, so bundle.css declares them. */
+const LINK_ON_FILL = 'link-on-fill';
+const NOT_IN_JSON = [
+  LINK_ON_FILL,
+  'gutter',
+  'safe-t',
+  'safe-r',
+  'safe-b',
+  'safe-l',
+  ...FONT_KEYS.map((key) => `font-${key}`),
+];
 
 const COLOUR_RE = /^(#[0-9a-fA-F]{3,8}|(rgba?|hsla?|oklch|oklab|lab|lch|color)\([-\d.% /a-z,]*\))$/;
 const NUMERIC_ARGS = /^[a-z]+\(([-\d.%/ ,]|none)*\)$/;
 
-function norm(value) {
-  return value.trim().replace(/\s+/g, ' ').replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
-}
-
-/** Top-level rules that declare custom properties, keyed by normalised selector. */
-function customPropertyBlocks(css) {
-  const blocks = new Map();
-  for (const node of postcss.parse(css).nodes) {
-    if (node.type !== 'rule') continue;
-    const decls = new Map();
-    for (const decl of node.nodes) {
-      if (decl.type === 'decl' && decl.prop.startsWith('--'))
-        decls.set(decl.prop, norm(decl.value));
-    }
-    if (decls.size) blocks.set(node.selector.replace(/\s+/g, ' ').trim(), decls);
-  }
-  return blocks;
-}
-
-function need(blocks, selector, file) {
-  const block = blocks.get(selector);
-  if (!block) throw new Error(`${file}: no top-level block for ${selector}`);
-  return block;
-}
-
 /**
- * Every custom property per theme, with the cascade the browser applies.
- * The --ink-* steps are mixed from the --n-h and --n-mult dials, which each
- * palette sets, so they are resolved per theme here.
+ * Every custom property's declared value per artifact theme, in a stable name
+ * order. The --ink-* steps are mixed from the --n-h and --n-mult dials, which
+ * each palette sets, so those two are substituted per theme; every other
+ * reference stays a reference, because the artifact keeps colour aliases.
  */
 export function resolveThemes(srcDir) {
-  const palettes = customPropertyBlocks(readFileSync(join(srcDir, 'palettes.css'), 'utf8'));
-  const tokens = customPropertyBlocks(readFileSync(join(srcDir, 'tokens.css'), 'utf8'));
-  const dark = "[data-theme='dark'], .dark";
-  const paletteRoot = need(palettes, ':root', 'palettes.css');
-  const paletteDark = need(palettes, dark, 'palettes.css');
-  const tokensRoot = need(tokens, ':root', 'tokens.css');
-  const tokensDark = need(tokens, dark, 'tokens.css');
-
-  const shared = [...paletteRoot.keys()].filter(
-    (name) => tokensRoot.has(name) || tokensDark.has(name),
-  );
-  if (shared.length)
-    throw new Error(`palettes.css and tokens.css both declare ${shared.join(', ')}`);
-
-  const paletteBlock = (name, isDark) =>
-    need(
-      palettes,
-      isDark
-        ? `[data-palette='${name}'][data-theme='dark'], [data-palette='${name}'].dark`
-        : `[data-palette='${name}']`,
-      'palettes.css',
-    );
-
-  /* Later wins. Specificity is folded into the order: every block is (0,1,0)
-     except the palette's dark block, which is (0,2,0) and so beats them all. */
-  function cascade(theme) {
-    const isDark = theme.endsWith('dark');
-    const palette = theme.startsWith('palette-')
-      ? theme.slice('palette-'.length).replace(/-dark$/, '')
-      : null;
-    const seq = [paletteRoot];
-    if (isDark) seq.push(paletteDark);
-    if (palette) seq.push(paletteBlock(palette, false));
-    seq.push(tokensRoot);
-    if (isDark) seq.push(tokensDark);
-    if (palette && isDark) seq.push(paletteBlock(palette, true));
-    return seq;
-  }
-
-  const order = [];
-  const add = (block) => {
-    for (const name of block.keys()) if (!order.includes(name)) order.push(name);
-  };
-  add(paletteRoot);
-  add(tokensRoot);
-  for (const block of palettes.values()) add(block);
-  add(tokensDark);
-
+  const sources = readTokenStylesheets(srcDir);
+  const unreadable = unreadableSelectors(sources);
+  if (unreadable.length) throw new Error(`token blocks no theme reads: ${unreadable.join('; ')}`);
   const resolved = {};
-  for (const theme of THEMES) {
-    const raw = new Map();
-    for (const block of cascade(theme)) for (const [name, value] of block) raw.set(name, value);
-    const out = new Map();
-    for (const [name, value] of raw) out.set(name, substituteNeutral(value, raw));
-    resolved[theme] = out;
-  }
-  return { resolved, order: order.map((name) => name.slice(2)), paletteRoot, tokensRoot };
-}
-
-function substituteNeutral(value, raw) {
-  if (!value.includes('var(--n-')) return value;
-  return value
-    .replaceAll('var(--n-h)', raw.get('--n-h'))
-    .replaceAll('var(--n-mult)', raw.get('--n-mult'))
-    .replace(/calc\(([\d.]+) \* ([\d.]+)\)/g, (_, a, b) =>
-      (Number(a) * Number(b)).toFixed(6).replace(/0+$/, '').replace(/\.$/, ''),
+  KEPT.forEach((combination, index) => {
+    const declared = combinationDeclarations(sources, combination);
+    const dial = (value) =>
+      flattenCalc(
+        value
+          .replaceAll('var(--n-h)', declared.get('--n-h'))
+          .replaceAll('var(--n-mult)', declared.get('--n-mult')),
+      );
+    /* The tokens package keeps the source's line breaks inside parens as spaces; the artifact does not. */
+    const tidy = (value) => value.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
+    resolved[ARTIFACT_THEMES[index]] = new Map(
+      [...declared].map(([name, raw]) => {
+        const value = tidy(raw);
+        return [name, value.includes('var(--n-') ? dial(value) : value];
+      }),
     );
+  });
+  /* `:root` blocks first, then the rest in cascade order. */
+  const blocks = tokenBlocks(sources);
+  const isRoot = (block) => block.selector.trim() === ':root';
+  const order = [];
+  for (const block of [...blocks.filter(isRoot), ...blocks.filter((block) => !isRoot(block))]) {
+    for (const [name] of block.declarations) if (!order.includes(name)) order.push(name);
+  }
+  return { resolved, order: order.map((name) => name.slice(2)) };
 }
 
 function isLiteralColour(value) {
   return COLOUR_RE.test(value) && (value.startsWith('#') || NUMERIC_ARGS.test(value));
 }
 
-function aliasOf(value) {
-  return /^var\(--([a-z0-9-]+)\)$/.exec(value)?.[1] ?? null;
-}
-
 /** A per-theme value collapses to one string when every theme agrees. */
-function collapse(values) {
-  return new Set(Object.values(values)).size === 1 ? values[THEMES[0]] : values;
+function perTheme(read) {
+  const values = Object.fromEntries(ARTIFACT_THEMES.map((theme) => [theme, read(theme)]));
+  return new Set(Object.values(values)).size === 1 ? values[ARTIFACT_THEMES[0]] : values;
 }
 
 function valueIn(token, theme) {
   return typeof token.value === 'string' ? token.value : token.value[theme];
 }
 
-/** Name -> {family, usage, order} from the previous tokens.json, if any. */
+/** Name -> {family, usage} from the previous tokens.json. */
 function previousIndex(previous) {
   const index = new Map();
-  if (!previous) return index;
   for (const [family, entry] of Object.entries(previous)) {
-    if (family === 'type' || !entry || !Array.isArray(entry.tokens)) continue;
-    entry.tokens.forEach((token, position) =>
-      index.set(token.name, { family, usage: token.usage ?? '', position, value: token.value }),
-    );
+    if (family === 'type' || !Array.isArray(entry?.tokens)) continue;
+    for (const token of entry.tokens) index.set(token.name, { family, usage: token.usage ?? '' });
   }
   return index;
 }
 
-/**
- * @param {object} options
- * @param {string} options.srcDir   packages/tokens/src
- * @param {object} [options.previous] the live artifact's tokens.json, for prose and order
- * @param {object} options.meta     the provenance note: {ref, synced}
- */
-export function buildTokens({ srcDir, previous, meta }) {
-  const { resolved: R, order, paletteRoot, tokensRoot } = resolveThemes(srcDir);
-  const prev = previousIndex(previous);
-  const report = { newTokens: [], notPlaced: [], keptFromPrevious: [] };
-  const usage = (name) => {
-    if (prev.has(name)) return prev.get(name).usage;
-    report.newTokens.push(name);
-    return '';
-  };
-
-  /* ---- colour */
-  const colourValue = (name, theme) => {
+/** Colour value of one token in one theme: a literal, an alias `{name}`, or null. */
+function colourReader(R) {
+  return (name, theme) => {
     let value = R[theme].get(`--${name}`);
     if (value === undefined) return null;
     if (value.startsWith('#')) value = value.toLowerCase();
     if (isLiteralColour(value)) return value;
-    const alias = aliasOf(value);
-    return alias === null ? null : `{${alias}}`;
+    const alias = /^var\(--([a-z0-9-]+)\)$/.exec(value)?.[1];
+    return alias ? `{${alias}}` : null;
   };
-  const colour = [];
-  for (const name of order) {
+}
+
+function colourTokens({ R, order, prev, usage, report }) {
+  const colourValue = colourReader(R);
+  const names = order.filter((name) => {
     const previousFamily = prev.get(name)?.family;
-    if (previousFamily && previousFamily !== 'color') continue;
-    if (NOT_IN_JSON.includes(name) || FONT_VARS.includes(name)) continue;
-    if (THEMES.some((theme) => !R[theme].has(`--${name}`))) continue;
-    if (!previousFamily && !COLOUR_NAME.test(name)) continue;
-    if (THEMES.some((theme) => colourValue(name, theme) === null)) {
+    if (previousFamily && previousFamily !== 'color') return false;
+    if (NOT_IN_JSON.includes(name)) return false;
+    if (ARTIFACT_THEMES.some((theme) => !R[theme].has(`--${name}`))) return false;
+    if (!previousFamily && !COLOUR_NAME.test(name)) return false;
+    if (ARTIFACT_THEMES.some((theme) => colourValue(name, theme) === null)) {
       report.notPlaced.push(name);
-      continue;
+      return false;
     }
-    colour.push(name);
-  }
-  for (const name of colour) {
-    for (const theme of THEMES) {
+    return true;
+  });
+  for (const name of names) {
+    for (const theme of ARTIFACT_THEMES) {
       const value = colourValue(name, theme);
-      if (value.startsWith('{') && !colour.includes(value.slice(1, -1))) {
+      if (value.startsWith('{') && !names.includes(value.slice(1, -1))) {
         throw new Error(`--${name} aliases ${value}, which is not a colour token`);
       }
     }
   }
-  const colourTokens = colour.map((name) => ({
+  return names.map((name) => ({
     name,
-    value: collapse(Object.fromEntries(THEMES.map((theme) => [theme, colourValue(name, theme)]))),
+    value: perTheme((theme) => colourValue(name, theme)),
     usage: usage(name),
   }));
+}
 
-  /* ---- other families. Shadows reference colours, so resolve them per theme. */
+function familyTokens({ R, order, previous, placed, usage, report }) {
+  const colourValue = colourReader(R);
   const literal = (name, theme) => {
     let value = colourValue(name, theme);
     for (let depth = 0; value?.startsWith('{'); depth++) {
@@ -263,24 +201,21 @@ export function buildTokens({ srcDir, previous, meta }) {
     if (value === null) throw new Error(`--${name} has no colour value in ${theme}`);
     return value;
   };
+  const first = ARTIFACT_THEMES[0];
   const familyValue = (name, family) => {
+    /* Shadows reference colours, and tokens.json takes no var(), so resolve them per theme. */
     if (family === 'shadow') {
-      return collapse(
-        Object.fromEntries(
-          THEMES.map((theme) => [
-            theme,
-            R[theme]
-              .get(`--${name}`)
-              .replace(/var\(--([a-z0-9-]+)\)/g, (_, ref) => literal(ref, theme)),
-          ]),
-        ),
+      return perTheme((theme) =>
+        R[theme]
+          .get(`--${name}`)
+          .replace(/var\(--([a-z0-9-]+)\)/g, (_, ref) => literal(ref, theme)),
       );
     }
     /* The neutral dials differ per palette, but the inks are already resolved
-       per theme, so the dial rows show ember's value. */
-    if (name === 'n-h' || name === 'n-mult') return paletteRoot.get(`--${name}`);
-    const value = R[THEMES[0]].get(`--${name}`);
-    for (const theme of THEMES) {
+       per theme, so the dial rows show the default palette's value. */
+    const value = R[first].get(`--${name}`);
+    if (name === 'n-h' || name === 'n-mult') return value;
+    for (const theme of ARTIFACT_THEMES) {
       if (R[theme].get(`--${name}`) !== value) {
         throw new Error(`--${name} differs by theme but is not a colour or a shadow`);
       }
@@ -288,38 +223,29 @@ export function buildTokens({ srcDir, previous, meta }) {
     return value;
   };
 
-  const placed = new Set(colour);
+  const previousFamilies = Object.keys(previous).filter(
+    (key) => key !== 'color' && key !== 'type' && Array.isArray(previous[key]?.tokens),
+  );
   const families = new Map();
-  const familyOf = (name) => FAMILY_RULES.find(([, pattern]) => pattern.test(name))?.[0];
-  const previousFamilies = previous
-    ? Object.keys(previous).filter(
-        (key) => key !== 'color' && key !== 'type' && Array.isArray(previous[key]?.tokens),
-      )
-    : [];
-  for (const family of [...previousFamilies, ...FAMILY_ORDER]) {
+  for (const family of [...previousFamilies, ...FAMILY_RULES.map(([family]) => family)]) {
     if (!families.has(family)) families.set(family, []);
   }
   /* Previous members first, in their order, so a re-sync does not reshuffle the page. */
   for (const family of previousFamilies) {
     for (const token of previous[family].tokens) {
       placed.add(token.name);
-      if (!R[THEMES[0]].has(`--${token.name}`)) {
-        report.keptFromPrevious.push(token.name);
-        families
-          .get(family)
-          .push({ name: token.name, value: token.value, usage: token.usage ?? '' });
-        continue;
-      }
+      const inRepo = R[first].has(`--${token.name}`);
+      if (!inRepo) report.keptFromPrevious.push(token.name);
       families.get(family).push({
         name: token.name,
-        value: familyValue(token.name, family),
+        value: inRepo ? familyValue(token.name, family) : token.value,
         usage: token.usage ?? '',
       });
     }
   }
   for (const name of order) {
-    if (placed.has(name) || NOT_IN_JSON.includes(name) || FONT_VARS.includes(name)) continue;
-    const family = familyOf(name);
+    if (placed.has(name) || NOT_IN_JSON.includes(name)) continue;
+    const family = FAMILY_RULES.find(([, pattern]) => pattern.test(name))?.[0];
     if (!family) {
       report.notPlaced.push(name);
       continue;
@@ -327,26 +253,35 @@ export function buildTokens({ srcDir, previous, meta }) {
     families.get(family).push({ name, value: familyValue(name, family), usage: usage(name) });
   }
   for (const [family, members] of families) if (!members.length) families.delete(family);
+  return families;
+}
 
-  /* ---- type */
-  const tokensCss = readFileSync(join(srcDir, 'tokens.css'), 'utf8').replace(
-    /\/\*[\s\S]*?\*\//g,
-    '',
-  );
-  const classes = new Map();
-  for (const match of tokensCss.matchAll(/\.(t-[a-z0-9-]+)\s*\{([^}]*)\}/g)) {
-    classes.set(match[1], declarations(match[2]));
-  }
-  const bodyRule = [...tokensCss.matchAll(/\nbody\s*\{([^}]*)\}/g)]
-    .map((match) => match[1])
-    .find((body) => body.includes('font-family'));
-  if (!bodyRule) throw new Error('tokens.css: no body rule with a font-family');
-  classes.set('body', declarations(bodyRule));
+/** The top-level `body` rule and every `.t-*` class in tokens.css, as declaration maps. */
+function typeRules(tokensCss) {
+  const rules = new Map();
+  postcss.parse(tokensCss).walkRules((rule) => {
+    const selector = rule.selector.trim();
+    const name =
+      selector === 'body' && rule.parent.type === 'root'
+        ? 'body'
+        : /^\.(t-[a-z0-9-]+)$/.exec(selector)?.[1];
+    if (!name || rules.has(name)) return;
+    const decls = {};
+    rule.each((node) => {
+      if (node.type === 'decl') decls[node.prop] = node.value.replace(/\s+/g, ' ');
+    });
+    if (name === 'body' && !decls['font-family']) return;
+    rules.set(name, decls);
+  });
+  return rules;
+}
 
+function typeStyles({ srcDir, R, previous }) {
+  const rules = typeRules(readFileSync(join(srcDir, 'tokens.css'), 'utf8'));
   const lit = (value) =>
-    value.replace(/var\(--([a-z0-9-]+)\)/g, (_, name) => R[THEMES[0]].get(`--${name}`));
+    value.replace(/var\(--([a-z0-9-]+)\)/g, (_, name) => R[ARTIFACT_THEMES[0]].get(`--${name}`));
   const previousStyles = new Map(
-    (previous?.type?.groups ?? []).flatMap((group) =>
+    (previous.type?.groups ?? []).flatMap((group) =>
       group.styles.map((style) => [style.name, style]),
     ),
   );
@@ -354,10 +289,10 @@ export function buildTokens({ srcDir, previous, meta }) {
     name: group.name,
     family: 'sans',
     styles: group.styles.map((name) => {
-      const decl = classes.get(name);
-      if (!decl) throw new Error(`tokens.css: no .${name} rule`);
+      const decl = rules.get(name);
+      if (!decl) throw new Error(`tokens.css: no ${name === 'body' ? 'body' : `.${name}`} rule`);
       const familyKey = /^var\(--font-([a-z]+)\)$/.exec(decl['font-family'])?.[1];
-      if (!familyKey) throw new Error(`.${name}: font-family is not a --font-* token`);
+      if (!familyKey) throw new Error(`${name}: font-family is not a --font-* token`);
       const style = { name };
       if (familyKey !== 'sans') style.family = familyKey;
       style.fontSize = lit(decl['font-size']);
@@ -371,19 +306,67 @@ export function buildTokens({ srcDir, previous, meta }) {
       return style;
     }),
   }));
-  const stack = (key) => {
-    const value = tokensRoot.get(`--font-${key}`);
-    const match = /^var\(--ds-font-[a-z]+-override, (.*)\)$/.exec(value ?? '');
-    if (!match) throw new Error(`--font-${key} is not an override fallback: ${value}`);
-    return match[1];
-  };
-  const type = {
-    fonts: FONTS,
-    families: Object.fromEntries(['sans', 'display', 'mono'].map((key) => [key, stack(key)])),
-    groups,
+  /* The fallback stack behind each --ds-font-*-override hook. */
+  const effective = effectiveTokens(parseTokensCss(readTokenStylesheets(srcDir)));
+  const families = Object.fromEntries(
+    FONT_KEYS.map((key) => [key, effective.get(`--font-${key}`).resolved]),
+  );
+  return { fonts: latinFonts(srcDir), families, groups };
+}
+
+/** The latin subset of each family, from the @font-face rules in fonts.css. */
+export function latinFonts(srcDir) {
+  const fonts = [];
+  postcss
+    .parse(readFileSync(join(srcDir, 'fonts.css'), 'utf8'))
+    .walkAtRules('font-face', (rule) => {
+      const decls = {};
+      rule.walkDecls((decl) => {
+        decls[decl.prop] = decl.value;
+      });
+      const file = /url\(['"]?\.\/fonts\/([\w-]+-latin-wght-normal\.woff2)['"]?\)/.exec(
+        decls.src,
+      )?.[1];
+      if (!file) return;
+      fonts.push({
+        family: decls['font-family'].replace(/^['"]|['"]$/g, ''),
+        file,
+        weight: decls['font-weight'],
+        style: decls['font-style'],
+      });
+    });
+  if (!fonts.length) throw new Error('fonts.css has no latin @font-face');
+  return fonts;
+}
+
+/**
+ * @param {object} options
+ * @param {string} options.srcDir    packages/tokens/src
+ * @param {object} options.previous  the live artifact's tokens.json, for prose and order ({} for none)
+ * @param {object} options.meta      the provenance note: {ref, synced}
+ */
+export function buildTokens({ srcDir, previous, meta }) {
+  const { resolved: R, order } = resolveThemes(srcDir);
+  const prev = previousIndex(previous);
+  const report = { newTokens: [], notPlaced: [], keptFromPrevious: [] };
+  const usage = (name) => {
+    if (prev.has(name)) return prev.get(name).usage;
+    report.newTokens.push(name);
+    return '';
   };
 
-  /* ---- tokens.json */
+  const colours = colourTokens({ R, order, prev, usage, report });
+  const families = familyTokens({
+    R,
+    order,
+    previous,
+    /* A colour already reported as not placed must not be reported again as a family miss. */
+    placed: new Set([...colours.map((token) => token.name), ...report.notPlaced]),
+    usage,
+    report,
+  });
+  const type = typeStyles({ srcDir, R, previous });
+
   const json = {
     version: 1,
     meta: {
@@ -392,67 +375,54 @@ export function buildTokens({ srcDir, previous, meta }) {
       ref: meta.ref,
       package: 'packages/tokens',
       paths: {
+        /* tokens.css is the entry, which @imports the rest. */
         tokens: [
-          'packages/tokens/src/tokens.css',
-          'packages/tokens/src/palettes.css',
-          'packages/tokens/src/mobile.css',
-        ],
+          'tokens.css',
+          ...TOKEN_STYLESHEETS.filter((file) => file !== 'tokens.css'),
+          ...PLATFORM_STYLESHEETS,
+        ].map((file) => `packages/tokens/src/${file}`),
         fonts: ['packages/tokens/src/fonts.css'],
       },
       synced: meta.synced,
       themesLeftOut: THEMES_LEFT_OUT,
     },
     color: {
-      themes: THEMES.map((id) => ({
+      themes: ARTIFACT_THEMES.map((id) => ({
         id,
         name: id.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()),
       })),
-      tokens: colourTokens,
+      tokens: colours,
     },
     type,
   };
-  for (const [family, tokens] of families) {
-    json[family] = { ...(previous?.[family] ?? {}), tokens };
-  }
+  for (const [family, tokens] of families) json[family] = { ...(previous[family] ?? {}), tokens };
+
   /* Keep the previous file's key order, so the page sections do not move. */
   const ordered = {};
-  for (const key of Object.keys(previous ?? {})) if (key in json) ordered[key] = json[key];
+  for (const key of Object.keys(previous)) if (key in json) ordered[key] = json[key];
   for (const key of Object.keys(json)) if (!(key in ordered)) ordered[key] = json[key];
 
   return {
     json: ordered,
-    css: compileTokensCss({ colourTokens, families, type }),
-    extrasCss: notInJsonCss({ srcDir, paletteRoot, tokensRoot, resolved: R }),
+    css: compileTokensCss({ colours, families, type }),
+    extrasCss: notInJsonCss({ srcDir, R }),
     report,
   };
 }
 
-function declarations(body) {
-  const out = {};
-  for (const part of body.split(';')) {
-    const at = part.indexOf(':');
-    if (at < 0) continue;
-    out[part.slice(0, at).trim()] = part
-      .slice(at + 1)
-      .trim()
-      .replace(/\s+/g, ' ');
-  }
-  return out;
-}
-
 /** tokens.css in the shape the artifact compiles it to. */
-function compileTokensCss({ colourTokens, families, type }) {
+function compileTokensCss({ colours, families, type }) {
   const css = (value) => value.replace(/\{([^}]+)\}/g, 'var(--$1)');
   const shadows = families.get('shadow') ?? [];
-  const [first, ...rest] = THEMES;
+  const [first, ...rest] = ARTIFACT_THEMES;
   const lines = ['/* Miltinson Design System — generated from tokens.json */'];
   lines.push(`:root, [data-theme="${first}"] {`);
-  for (const token of colourTokens) lines.push(`  --${token.name}: ${css(valueIn(token, first))};`);
+  for (const token of colours) lines.push(`  --${token.name}: ${css(valueIn(token, first))};`);
   for (const token of shadows) lines.push(`  --${token.name}: ${valueIn(token, first)};`);
   lines.push('}');
   for (const theme of rest) {
     lines.push(`[data-theme="${theme}"] {`);
-    for (const token of colourTokens) {
+    for (const token of colours) {
       const value = valueIn(token, theme);
       /* Aliases are re-declared so they resolve against this theme's ramps. */
       if (value !== valueIn(token, first) || value.startsWith('{')) {
@@ -504,23 +474,21 @@ function compileTokensCss({ colourTokens, families, type }) {
   return `${lines.join('\n')}\n`;
 }
 
-/** The token values tokens.json has no grammar for, plus mobile.css verbatim. */
-function notInJsonCss({ srcDir, paletteRoot, tokensRoot, resolved }) {
-  const linkOnFill = new Set(THEMES.map((theme) => resolved[theme].get('--link-on-fill')));
-  if (linkOnFill.size !== 1)
-    throw new Error('--link-on-fill differs by theme; it needs a theme block');
+/** The token values tokens.json has no grammar for, plus the platform layer verbatim. */
+function notInJsonCss({ srcDir, R }) {
+  const linkOnFill = new Set(ARTIFACT_THEMES.map((theme) => R[theme].get(`--${LINK_ON_FILL}`)));
+  if (linkOnFill.size !== 1) {
+    throw new Error(`--${LINK_ON_FILL} differs by theme; it needs a theme block`);
+  }
+  const root = R[ARTIFACT_THEMES[0]];
   const lines = [
     '/* tokens.css :root and palettes.css (every palette block, light and dark, declares --link-on-fill: currentColor) */',
     ':root {',
-    `  --link-on-fill: ${paletteRoot.get('--link-on-fill')};`,
-  ];
-  for (const name of ['gutter', 'safe-t', 'safe-r', 'safe-b', 'safe-l', ...FONT_VARS]) {
-    lines.push(`  --${name}: ${tokensRoot.get(`--${name}`)};`);
-  }
-  lines.push('}', '');
-  lines.push(
+    ...NOT_IN_JSON.map((name) => `  --${name}: ${root.get(`--${name}`)};`),
+    '}',
+    '',
     '/* mobile.css, verbatim: the platform layer, keyed on data-platform and a media query, not on a theme */',
-  );
-  lines.push(readFileSync(join(srcDir, 'mobile.css'), 'utf8').trimEnd());
+    ...readPlatformStylesheets(srcDir).map((css) => css.trimEnd()),
+  ];
   return `${lines.join('\n')}\n`;
 }

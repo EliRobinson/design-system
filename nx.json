@@ -50,7 +50,9 @@
        `nx run ai-patterns:test` still reports 1 of 1 from cache — the drift
        check passes without running. `pnpm sync:deps` exists precisely because
        that drift is real.
-       Those two are the whole list. Swept for the rest: everything else these
+       Those two are the whole list for sharedGlobals. One narrower read has its
+       own target input: ai-patterns:test reads apps/docs' AI theme layers (see
+       packages/ai-patterns/project.json). Swept for the rest: everything else these
        builds and tests read across project boundaries (packages/tokens/src,
        packages/react/src/components, each package.json) is a dependency edge
        Nx already models, and root package.json, pnpm-lock.yaml, nx.json and

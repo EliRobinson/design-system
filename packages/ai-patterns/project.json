@@ -32,7 +32,18 @@
       "command": "pnpm run test",
       "options": {
         "cwd": "packages/ai-patterns"
-      }
+      },
+      /* scripts/design-system-artifact reads the AI Elements class layers from
+         apps/docs, and the docs app depends on this package, not the other way.
+         With no edge Nx can see, a change to those layers alone would replay a
+         cached pass. "default" and "^default" are what Nx uses when a target
+         names no inputs, so they are restated here. */
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/apps/docs/src/app/elements.css",
+        "{workspaceRoot}/apps/docs/src/app/ai-theme/**"
+      ]
     }
   },
   /* brand-boundary.test.mjs and dependency-boundary.test.mjs scan EVERY
