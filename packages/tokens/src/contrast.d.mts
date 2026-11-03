@@ -45,6 +45,15 @@ export declare function combinationValues(
   combination: { palette: string; theme: string },
 ): Map<string, string>;
 
+/** Every token's winning declaration in one palette x theme, `var()` references kept. */
+export declare function combinationDeclarations(
+  sources: string[],
+  combination: { palette: string; theme: string },
+): Map<string, string>;
+
+/** Evaluates `calc(a * b)` of two literals, the one form the neutral ramp uses. */
+export declare function flattenCalc(value: string): string;
+
 /** `combinationValues` for one theme under the default palette. */
 export declare function themeValues(
   sources: string | string[],

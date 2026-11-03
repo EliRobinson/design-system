@@ -1,4 +1,5 @@
 ---
+'@elirobinson/tokens': minor
 ---
 
-Add `build:design-system-artifact` to `@elirobinson/ai-patterns`, a repo-only script that rebuilds the Claude Design System artifact's token, bundle, type and font files. Nothing published changes.
+`@elirobinson/tokens/contrast` exports `combinationDeclarations`, the cascade's winning declaration per palette × theme with `var()` references kept, and `flattenCalc`. `combinationValues` is now that plus resolution, with the same output.
