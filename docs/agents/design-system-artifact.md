@@ -40,11 +40,9 @@ is left out. The 8 ids, in order: `light` and `dark` (ember), `palette-miltinson
 
 ## Rebuild and publish
 
-1. Build react. The bundle and the types come from its `dist/`.
-
-   ```bash
-   pnpm nx run react:build
-   ```
+1. Work from an up-to-date `main`. The build stamps `<branch>@<sha>` into `tokens.json`, and it
+   runs `pnpm nx run react:build` itself, because the bundle and the types come from react's
+   `dist/`.
 
 2. Read the live inputs with the Artifact tool: `action: "read"`, the artifact URL above,
    `out_dir` set to a scratch folder, and these `paths`:
@@ -61,7 +59,8 @@ is left out. The 8 ids, in order: `light` and `dark` (ember), `palette-miltinson
 
    This read also lets you publish to the artifact later in the same session.
 
-3. Build. Pass the `project/` folder the read wrote.
+3. Build. Pass the `project/` folder the read wrote. A relative path is read from the folder
+   you run the command in.
 
    ```bash
    pnpm -F @elirobinson/ai-patterns build:design-system-artifact --previous <scratch>/project
@@ -70,11 +69,14 @@ is left out. The 8 ids, in order: `light` and `dark` (ember), `palette-miltinson
    It writes `dist/design-system-artifact/project/` at the repo root (gitignored, published by
    no package) and `dist/design-system-artifact/publish-files.json`. It fails if any file breaks
    an artifact cap (8 themes, 512 KB `tokens.json`, 6 MB `bundle.js`, 2 MB `bundle.css`,
-   255 paths per publish).
+   255 paths per publish). It writes only `project/` and `publish-files.json` under `--out`,
+   and refuses an `--out` that would delete the `--previous` copy.
 
 4. Read the report it prints. "New tokens with no usage note yet" and "in the repo but not in
    tokens.json" are for you to handle on the page. "Kept from the artifact" names tokens the
-   artifact has and the repo no longer declares: ask Eli before you remove one.
+   artifact has and the repo no longer declares: ask Eli before you remove one. "Colours dropped
+   from the artifact" names colours the repo removed: find the previews and kits that use them
+   before you publish.
 
 5. Publish the files: `action: "publish"`, the artifact URL as `url`, and the contents of
    `publish-files.json` as `files`. Every `.js` and `.ts` entry already carries

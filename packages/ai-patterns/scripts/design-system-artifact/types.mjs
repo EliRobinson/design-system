@@ -7,7 +7,7 @@
  * removed, the few shared helper types are inlined, and `type XProps = A & {…}`
  * becomes an interface the card can read.
  *
- * ChatComposer and PromptSuggestions exist only in the artifact. Their
+ * The artifact-only components (artifact-only.mjs) have no dist .d.ts. Their
  * sections are read back from its previous index.d.ts.
  */
 
@@ -16,7 +16,7 @@ import { join } from 'node:path';
 
 import ts from 'typescript';
 
-import { inArtifactOrder } from './artifact-only.mjs';
+import { ARTIFACT_ONLY, inArtifactOrder } from './artifact-only.mjs';
 
 /* Types a component imports from a sibling module. `from` names the source in
    the inlined comment. `owner` is a section whose own text already declares
@@ -27,11 +27,13 @@ const HELPERS = {
     from: 'VerdictBadge',
     owner: 'VerdictBadge',
     names: 'Verdict',
+    verb: 'is',
     text: "export type Verdict = 'go' | 'no' | 'hold';",
   },
   TableHelpers: {
     from: 'table/core',
     names: 'ColumnDef, TableBaseProps and TableElementProps',
+    verb: 'are',
     tanstack: ['RowData', 'CellData', 'ColumnDef as TanStackColumnDef', 'TableFeature'],
     text: [
       '/** The feature set both table components register (short form of `tableFeatureSet` in table/core: the row-model factories and sort functions are left out). */',
@@ -60,14 +62,30 @@ const HELPERS = {
   },
 };
 
-/* The inlined table helpers restate parts of table/core.d.ts. If these
-   strings leave it, the restatement is stale. */
-export const TABLE_CORE_FACTS = [
-  'emptyMessage?: string;',
-  'filterable?: boolean;',
-  'filterPlaceholder?: string;',
-  "export type TableElementProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'>;",
-  'TanStackColumnDef<TableFeatureSet, T, TValue>',
+/* HELPERS and ANCHORED_PICK restate parts of react's dist types. If one of
+   these strings leaves its file, the restatement is stale and the build stops. */
+export const RESTATED_FACTS = [
+  {
+    file: 'components/organisms/table/core.d.ts',
+    update: 'HELPERS.TableHelpers',
+    facts: [
+      'emptyMessage?: string;',
+      'filterable?: boolean;',
+      'filterPlaceholder?: string;',
+      "export type TableElementProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'>;",
+      'TanStackColumnDef<TableFeatureSet, T, TValue>',
+    ],
+  },
+  {
+    file: 'components/molecules/VerdictBadge.d.ts',
+    update: 'HELPERS.Verdict',
+    facts: [HELPERS.Verdict.text],
+  },
+  {
+    file: 'hooks/useAnchoredPosition.d.ts',
+    update: 'ANCHORED_PICK',
+    facts: ["type Side = 'top' | 'bottom';", "type Align = 'start' | 'center' | 'end';"],
+  },
 ];
 
 const ANCHORED_PICK = [
@@ -193,10 +211,10 @@ export function selfContainedDts(source, name) {
  */
 export function buildTypes({ manifest, reactDist, previousIndexDts }) {
   const read = (path) => readFileSync(join(reactDist, path), 'utf8');
-  const core = read('components/organisms/table/core.d.ts');
-  for (const fact of TABLE_CORE_FACTS) {
-    if (!core.includes(fact)) {
-      throw new Error(`table/core.d.ts changed; update HELPERS.TableHelpers (${fact})`);
+  for (const { file, update, facts } of RESTATED_FACTS) {
+    const text = read(file);
+    for (const fact of facts) {
+      if (!text.includes(fact)) throw new Error(`${file} changed; update ${update} (${fact})`);
     }
   }
 
@@ -244,10 +262,9 @@ export function buildTypes({ manifest, reactDist, previousIndexDts }) {
     .map((section) => {
       let body = '';
       for (const helper of section.helpers) {
-        const { owner, names } = HELPERS[helper];
+        const { owner, names, verb } = HELPERS[helper];
         const where = declaredIn.get(helper) ?? owner;
-        if (where)
-          body += `// ${names} ${names.includes(' and ') ? 'are' : 'is'} declared in the ${where} section.\n`;
+        if (where) body += `// ${names} ${verb} declared in the ${where} section.\n`;
         else body += inlined(helper, 'shared helper types');
         if (!declaredIn.has(helper)) declaredIn.set(helper, where ?? section.name);
       }
@@ -256,7 +273,7 @@ export function buildTypes({ manifest, reactDist, previousIndexDts }) {
     .join('\n');
   const header =
     '// Miltinson Design System — component types, one section per component (from components/<Comp>/<Comp>.d.ts).\n' +
-    `// Built from @elirobinson/react ${manifest.version} dist/components/**/*.d.ts (relative imports removed, helper types inlined); ChatComposer and PromptSuggestions are artifact-only.\n`;
+    `// Built from @elirobinson/react ${manifest.version} dist/components/**/*.d.ts (relative imports removed, helper types inlined); ${ARTIFACT_ONLY.names.join(' and ')} are artifact-only.\n`;
   const index = `${header}${preamble(indexBody, new Set(sections.flatMap((section) => [...tanstackFor(section)])), true)}\n\n${indexBody}`;
   const declarations = (index.match(/export type Verdict =/g) ?? []).length;
   if (declarations !== 1) throw new Error(`index.d.ts declares Verdict ${declarations} times`);

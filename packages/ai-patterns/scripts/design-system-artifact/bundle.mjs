@@ -3,8 +3,8 @@
  * One classic script: an IIFE that assigns window.<NAMESPACE> and reads React
  * from window.React and window.ReactDOM (the artifact loads React 18.3.1 from
  * components/lib/ first). Built from @elirobinson/react's dist, in manifest
- * order, plus ChatComposer and PromptSuggestions, which exist only in the
- * artifact and are built from its components/src/components/ai/*.jsx.
+ * order, plus the artifact-only components (artifact-only.mjs), built from
+ * their sources in the artifact.
  *
  * Line 1 is the header the artifact reads for the namespace and the
  * component order.

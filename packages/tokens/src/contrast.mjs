@@ -209,6 +209,13 @@ export function unreadableSelectors(sources) {
  * plus resolution. A reader that keeps aliases as aliases, such as the Claude
  * artifact build, starts here.
  *
+ * Blocks are applied in the order a browser would: by specificity first, then
+ * by source order within the cascade — which is @imported files before the
+ * file that imports them. That ordering is the only thing standing between
+ * `[data-palette='slate']` (block 3) and the ember dark block (block 2), and
+ * it is why slate's dark block has to restate the whole set rather than diff
+ * block 2. See the header of palettes.css.
+ *
  * @param {string[]} sources stylesheets in cascade order
  * @param {{palette: string, theme: string}} combination
  * @returns {Map<string, string>}
@@ -227,14 +234,8 @@ export function combinationDeclarations(sources, combination) {
 }
 
 /**
- * Every token's concrete value in one palette × theme, `var()` chains followed.
- *
- * Blocks are applied in the order a browser would: by specificity first, then
- * by source order within the cascade — which is @imported files before the
- * file that imports them. That ordering is the only thing standing between
- * `[data-palette='slate']` (block 3) and the ember dark block (block 2), and
- * it is why slate's dark block has to restate the whole set rather than diff
- * block 2. See the header of palettes.css.
+ * Every token's concrete value in one palette × theme: `combinationDeclarations`
+ * with every `var()` chain followed.
  *
  * @param {string[]} sources stylesheets in cascade order
  * @param {{palette: string, theme: string}} combination

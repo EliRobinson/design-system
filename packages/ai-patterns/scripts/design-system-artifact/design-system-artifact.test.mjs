@@ -83,17 +83,31 @@ describe('tokens', () => {
     },
   );
 
-  it.each(ARTIFACT_THEMES)(
-    'compiles tokens.css so %s declares every colour and shadow',
-    (theme) => {
+  it.each(kept.map((combination, index) => [ARTIFACT_THEMES[index], combination]))(
+    'compiles tokens.css so %s declares every colour and shadow, at the resolved value',
+    (theme, combination) => {
       const declared = declaredFor(css, theme);
+      const expected = combinationValues(readTokenStylesheets(tokensSrc), combination);
+      const follow = (value) =>
+        value.replace(/var\(--([\w-]+)\)/g, (_, name) => follow(declared.get(name)));
       const shadows = json.shadow.tokens.map((token) => token.name);
       for (const name of [...colours.map((token) => token.name), ...shadows]) {
         expect(declared.has(name), `--${name} in ${theme}`).toBe(true);
+        expect(follow(declared.get(name)), `--${name} in ${theme}`).toBe(
+          tidy(expected.get(`--${name}`)),
+        );
       }
       expect(declared.size).toBe(colours.length + shadows.length);
     },
   );
+
+  it('reports a colour the artifact has and the repo no longer declares', () => {
+    const previous = {
+      color: { themes: [], tokens: [{ name: 'retired-colour', value: '#000', usage: '' }] },
+    };
+    const { report: rebuilt } = buildTokens({ srcDir: tokensSrc, previous, meta });
+    expect(rebuilt.droppedColours).toEqual(['retired-colour']);
+  });
 
   it('keeps the usage notes and the family order of the previous tokens.json', () => {
     const previous = {
