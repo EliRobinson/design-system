@@ -7,8 +7,8 @@
  *      @imports removed: the artifact's tokens.css holds those values)
  *   c. @elirobinson/react's styles.css, its imports inlined in order
  *   d. the Miltinson × AI Elements class layers from apps/docs, then the
- *      stylesheets of ChatComposer and PromptSuggestions, which exist only in
- *      the artifact and are read back from its previous bundle.css
+ *      stylesheets of the artifact-only components (artifact-only.mjs), read
+ *      back from the previous bundle.css
  *   e. the scoped [data-palette] blocks from palettes.css (blocks 3-10)
  */
 
@@ -24,6 +24,9 @@ import postcss from 'postcss';
 import { ARTIFACT_ONLY } from './artifact-only.mjs';
 
 const AI_THEME_ENTRY = 'apps/docs/src/app/elements.css';
+const AI_THEME_DIR = `${AI_THEME_ENTRY.slice(0, AI_THEME_ENTRY.lastIndexOf('/'))}/ai-theme`;
+/* Section e's title. A carried section ends where it starts. */
+const SCOPED_PALETTES = 'Scoped palettes';
 /* The token bridge is not a class layer: the artifact carries it as its own file. */
 const AI_THEME_NOT_LAYERS = ['ai-bridge'];
 
@@ -45,7 +48,12 @@ export function previousSection(bundleCss, path) {
   const start = lines.indexOf(marker(`${path} ${CARRIED}`));
   if (start < 0) throw new Error(`previous bundle.css has no section for ${path}`);
   let end = start + 1;
-  while (end < lines.length && !/^\/\* (── |Scoped palettes)/.test(lines[end])) end++;
+  while (
+    end < lines.length &&
+    !lines[end].startsWith('/* ── ') &&
+    !lines[end].startsWith(`/* ${SCOPED_PALETTES}`)
+  )
+    end++;
   return lines
     .slice(start + 1, end)
     .join('\n')
@@ -149,12 +157,12 @@ export function buildBundleCss({ repoRoot, extrasCss, previousBundleCss, reactVe
   const layers = aiLayers(read(AI_THEME_ENTRY));
   let ai =
     `/* The Miltinson × AI Elements class layers (${layers.join(', ')}) from\n` +
-    '   apps/docs/src/app/ai-theme/, then the stylesheets of the artifact-only components,\n' +
+    `   ${AI_THEME_DIR}/, then the stylesheets of the artifact-only components,\n` +
     `   ${ARTIFACT_ONLY.names.join(' and ')}, carried from the previous artifact bundle. No token declarations. */`;
   for (const layer of layers) {
-    const css = read(`apps/docs/src/app/ai-theme/${layer}.css`).trim();
+    const css = read(`${AI_THEME_DIR}/${layer}.css`).trim();
     noTokenDeclarations(css, `${layer}.css`);
-    ai += `\n\n${marker(`components/ai/${layer}.css (apps/docs/src/app/ai-theme)`)}\n${css}`;
+    ai += `\n\n${marker(`components/ai/${layer}.css (${AI_THEME_DIR})`)}\n${css}`;
   }
   for (const path of ARTIFACT_ONLY.names.map(ARTIFACT_ONLY.stylesheet)) {
     const css = previousSection(previousBundleCss, path);
@@ -164,7 +172,7 @@ export function buildBundleCss({ repoRoot, extrasCss, previousBundleCss, reactVe
   parts.push(ai);
 
   parts.push(
-    '/* Scoped palettes, verbatim from packages/tokens/src/palettes.css (blocks 3-10).\n' +
+    `/* ${SCOPED_PALETTES}, verbatim from packages/tokens/src/palettes.css (blocks 3-10).\n` +
       '   The theme switch sets palettes on <html> through tokens.css. These blocks let a card show\n' +
       '   several palettes side by side with data-palette on an element. No :root rules here. */\n' +
       scopedPalettes(read('packages/tokens/src/palettes.css')),

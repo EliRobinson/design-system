@@ -26,12 +26,13 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
@@ -63,6 +64,25 @@ const CONTENT_TYPES = {
   '.woff2': 'font/woff2',
 };
 
+/* pnpm -F runs this from the package folder; resolve what the person typed from where they typed it. */
+const invokedFrom = process.env.INIT_CWD ?? process.cwd();
+
+/** The real path, through symlinks such as macOS's /tmp, of a path that may not exist yet. */
+function realPath(path) {
+  if (existsSync(path)) return realpathSync(path);
+  return join(realPath(dirname(path)), basename(path));
+}
+
+const REPORT_LINES = [
+  ['newTokens', 'new tokens with no usage note yet'],
+  ['notPlaced', 'in the repo but not in tokens.json (no family fits)'],
+  ['keptFromPrevious', 'kept from the artifact, not declared in the repo'],
+  [
+    'droppedColours',
+    'colours dropped from the artifact (no longer in the repo; previews that name them break)',
+  ],
+];
+
 function contentType(path) {
   const type = CONTENT_TYPES[path.slice(path.lastIndexOf('.'))];
   if (!type) throw new Error(`no content type for ${path}`);
@@ -79,14 +99,21 @@ async function main() {
         'See docs/agents/design-system-artifact.md.',
     );
   }
-  const previousDir = resolve(values.previous);
+  const previousDir = realPath(resolve(invokedFrom, values.previous));
   const missing = PREVIOUS_INPUTS.filter((path) => !existsSync(join(previousDir, path)));
   if (missing.length) throw new Error(`--previous ${previousDir} is missing ${missing.join(', ')}`);
-  const outRoot = resolve(values.out ?? join(repoRoot, 'dist/design-system-artifact'));
+  const outRoot = realPath(
+    values.out ? resolve(invokedFrom, values.out) : join(repoRoot, 'dist/design-system-artifact'),
+  );
   const outDir = join(outRoot, 'project');
   if (!relative(outDir, previousDir).startsWith('..')) {
     throw new Error(`--out ${outRoot} would delete --previous ${previousDir}. Pick another --out.`);
   }
+
+  /* bundle.js and the types come from react's dist, so build it now: the
+     output is stamped with HEAD's sha and must not ship an older dist. Nx
+     replays it from cache when nothing changed. */
+  execFileSync('pnpm', ['nx', 'run', 'react:build'], { cwd: repoRoot, stdio: 'inherit' });
 
   const require = createRequire(import.meta.url);
   let manifestPath;
@@ -97,16 +124,15 @@ async function main() {
   }
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   const reactDist = dirname(manifestPath);
-  const sha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  }).trim();
+  const git = (...args) => execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' }).trim();
+  const sha = git('rev-parse', '--short', 'HEAD');
+  const branch = git('rev-parse', '--abbrev-ref', 'HEAD');
   const previousText = (path) => readFileSync(join(previousDir, path), 'utf8');
 
   const tokens = buildTokens({
     srcDir: tokensSrc,
     previous: JSON.parse(previousText('tokens.json')),
-    meta: { ref: `main@${sha}`, synced: new Date().toISOString().slice(0, 10) },
+    meta: { ref: `${branch}@${sha}`, synced: new Date().toISOString().slice(0, 10) },
   });
   const bundleCss = buildBundleCss({
     repoRoot,
@@ -168,18 +194,8 @@ async function main() {
     `design-system-artifact: ${paths.length} files, ${tokens.json.color.tokens.length} colours x ${tokens.json.color.themes.length} themes, ` +
       `${components.length} components (${manifest.package}@${manifest.version}, ${sha}) -> ${relative(repoRoot, outDir)}`,
   ];
-  if (report.newTokens.length) {
-    lines.push(`  new tokens with no usage note yet: ${report.newTokens.join(', ')}`);
-  }
-  if (report.notPlaced.length) {
-    lines.push(
-      `  in the repo but not in tokens.json (no family fits): ${report.notPlaced.join(', ')}`,
-    );
-  }
-  if (report.keptFromPrevious.length) {
-    lines.push(
-      `  kept from the artifact, not declared in the repo: ${report.keptFromPrevious.join(', ')}`,
-    );
+  for (const [key, label] of REPORT_LINES) {
+    if (report[key].length) lines.push(`  ${label}: ${report[key].join(', ')}`);
   }
   process.stdout.write(`${lines.join('\n')}\n`);
 }
