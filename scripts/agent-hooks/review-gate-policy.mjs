@@ -292,16 +292,22 @@ export function branchRefsOf(pr) {
 }
 
 /**
- * The report a background subagent handed back: the `message` of the last
- * `SubagentHandback` call in its transcript (JSON lines). A background
- * subagent ends with that call instead of a text message, so its
- * `last_assistant_message` is empty.
+ * The report a background subagent handed back in its last turn: the
+ * `message` of the last accepted `SubagentHandback` call in its transcript
+ * (JSON lines). A background subagent ends with that call instead of a text
+ * message, so its `last_assistant_message` is empty.
+ *
+ * A resumed subagent keeps one transcript across turns, so a new prompt
+ * clears the report: a handback from an earlier turn never counts for this
+ * one. A handback the runtime rejected (`"success":false`) does not count.
  * @param {string} transcript
  * @returns {string | undefined}
  */
 export function handbackReport(transcript) {
   /** @type {string | undefined} */
   let report;
+  /** @type {{ id: unknown, before: string | undefined } | undefined} */
+  let last;
   for (const line of transcript.split('\n')) {
     let entry;
     try {
@@ -309,16 +315,61 @@ export function handbackReport(transcript) {
     } catch {
       continue;
     }
-    const content = entry?.type === 'assistant' ? entry.message?.content : undefined;
-    if (!Array.isArray(content)) continue;
-    for (const block of content) {
-      if (block?.type === 'tool_use' && block.name === 'SubagentHandback') {
-        const message = block.input?.message;
-        report = typeof message === 'string' ? message : undefined;
+    const content = entry?.message?.content;
+    if (entry?.type === 'user') {
+      if (isPrompt(content)) report = last = undefined;
+      for (const block of Array.isArray(content) ? content : []) {
+        const isLastResult = block?.type === 'tool_result' && block.tool_use_id === last?.id;
+        if (isLastResult && textOf(block.content).includes('"success":false')) {
+          report = last?.before;
+        }
+      }
+    } else if (entry?.type === 'assistant' && Array.isArray(content)) {
+      for (const block of content) {
+        if (block?.type === 'tool_use' && block.name === 'SubagentHandback') {
+          const message = block.input?.message;
+          last = { id: block.id, before: report };
+          report = typeof message === 'string' ? message : undefined;
+        }
       }
     }
   }
   return report;
+}
+
+/**
+ * Whether a user transcript line is a new prompt, not only tool results.
+ * @param {unknown} content
+ */
+function isPrompt(content) {
+  if (typeof content === 'string') return true;
+  return Array.isArray(content) && content.some((block) => block?.type === 'text');
+}
+
+/**
+ * The text of a tool result's content: a string, or a list of text blocks.
+ * @param {unknown} content
+ */
+function textOf(content) {
+  if (typeof content === 'string') return content;
+  return Array.isArray(content) ? content.map((block) => block?.text ?? '').join('') : '';
+}
+
+/**
+ * @param {unknown} agent
+ * @returns {agent is ReviewerAgent}
+ */
+export function isReviewer(agent) {
+  return REVIEWERS.some((reviewer) => reviewer.agent === agent);
+}
+
+/**
+ * Whether a subagent's output is a report: a string that is not blank.
+ * @param {unknown} output
+ * @returns {output is string}
+ */
+export function isReport(output) {
+  return typeof output === 'string' && output.trim() !== '';
 }
 
 /**
@@ -329,11 +380,7 @@ export function handbackReport(transcript) {
  * @returns {agent is ReviewerAgent}
  */
 export function countsAsRun(agent, output) {
-  return (
-    REVIEWERS.some((reviewer) => reviewer.agent === agent) &&
-    typeof output === 'string' &&
-    output.trim() !== ''
-  );
+  return isReviewer(agent) && isReport(output);
 }
 
 /**

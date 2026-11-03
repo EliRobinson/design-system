@@ -130,6 +130,19 @@ describe('Claude Code', () => {
     expect(result.stderr).toMatch(/review-dry/);
   });
 
+  it('records no run when the transcript cannot be read', () => {
+    for (const { agent } of REVIEWERS) {
+      const event =
+        agent === 'review-dry'
+          ? { ...stop(agent, ''), agent_transcript_path: join(repo, 'missing.jsonl') }
+          : stop(agent);
+      expect(run('claude', event).code).toBe(0);
+    }
+    const result = openPr();
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/review-dry/);
+  });
+
   it('keeps branch runs apart, even for names that look alike', () => {
     finishAllReviewers();
     git('checkout', '-q', '-b', 'feat_x');

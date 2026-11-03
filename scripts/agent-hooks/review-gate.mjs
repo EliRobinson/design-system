@@ -18,9 +18,11 @@ import {
   branchRefsOf,
   countsAsRun,
   decidePr,
-  handbackReport,
   decideReviewerStart,
+  handbackReport,
   isMcpCreatePr,
+  isReport,
+  isReviewer,
   prCommandsOf,
   reviewersWithoutRun,
 } from './review-gate-policy.mjs';
@@ -187,24 +189,17 @@ function readRuns(cwd, branch) {
 }
 
 /**
- * What a finished subagent returned. A background subagent's report is in
- * its transcript, not in `last_assistant_message`.
- * @param {unknown} output
- * @param {unknown} transcript
+ * Records a reviewer's run when it returned a report. A background
+ * subagent's report is in its transcript, not in `last_assistant_message`,
+ * so the transcript is read only for a reviewer with no last message.
+ * @param {string} cwd @param {unknown} agent @param {unknown} output @param {unknown} transcript
  */
-function reportOf(output, transcript) {
-  if (typeof output === 'string' && output.trim() !== '') return output;
-  if (typeof transcript !== 'string') return output;
-  try {
-    return handbackReport(readFileSync(transcript, 'utf8'));
-  } catch {
-    return output;
-  }
-}
-
-/** @param {string} cwd @param {unknown} agent @param {unknown} output */
-function recordRun(cwd, agent, output) {
-  if (!countsAsRun(agent, output)) return;
+function recordRun(cwd, agent, output, transcript) {
+  if (!isReviewer(agent)) return;
+  const text =
+    isReport(output) || typeof transcript !== 'string' ? null : readFile(transcript, cwd);
+  const report = text === null ? output : handbackReport(text);
+  if (!countsAsRun(agent, report)) return;
   const branch = currentBranch(cwd);
   const head = tryGit(cwd, 'rev-parse', 'HEAD');
   const dir = branch && runsDir(cwd, branch);
@@ -290,7 +285,7 @@ function main() {
     const decision = decideReviewerStart(call.input);
     if (decision) block(adapter, decision.deny);
   } else if (call.kind === 'agent-stop') {
-    recordRun(cwd, call.agent, reportOf(call.output, call.transcript));
+    recordRun(cwd, call.agent, call.output, call.transcript);
   } else if (call.kind === 'shell' || call.kind === 'mcp') {
     for (const pr of prCommandsOf(call)) checkPr(pr, cwd, tool);
   }
