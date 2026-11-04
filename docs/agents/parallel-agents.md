@@ -14,6 +14,7 @@ git worktree add .claude/worktrees/<name> -b <branch> origin/main
 ```
 
 - Never commit on `main`. Not in the main checkout. Not anywhere.
+- A hook refuses git that changes the tree in the main checkout. See [The main checkout guard](git-workflow.md#the-main-checkout-guard).
 - Claim the issue before you start. Add the `in-progress` label. Comment the branch name and the worktree path.
 - You own the files your issue names. Never edit files another agent owns. Ask the owner, or comment on their issue.
 - Before you build a helper, check if someone else has it:

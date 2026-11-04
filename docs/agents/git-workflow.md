@@ -14,6 +14,41 @@
 - Skip a hook only when Eli says so.
 - `.husky/pre-commit` runs `sync-workspace-deps`, `lint-staged` and `pnpm lint` on the whole repo. So it can fail on a file you do not own. If it does, stop. Tell the owner and the coordinator.
 
+## The main checkout guard
+
+The main checkout (`/Users/elirobinson/Code/design-system`) is shared. The coordinator lives there, and every worktree hangs off it. A write there can commit another agent's files or delete their unstaged edits, with no reflog entry to get them back. So a Claude Code `PreToolUse` hook refuses tree-changing git there.
+
+- Code: `scripts/agent-hooks/guard-main-checkout.mjs` (the entry) and `guard-main-checkout-policy.mjs` (the rules). Wired in `.claude/settings.json`, next to the review gate.
+- Refused in the main checkout: `add`, `am`, `apply`, `checkout`, `cherry-pick`, `clean`, `commit`, `merge`, `mv`, `pull`, `rebase`, `reset`, `restore`, `revert`, `rm`, `stash`, `switch`, `worktree remove`, `worktree prune`, `worktree move`.
+- Allowed everywhere: every other git command. For example `status`, `log`, `diff`, `show`, `fetch`, `rev-parse`, `ls-remote`, `ls-tree`, `push`, `branch`, `worktree add`, `stash list`, `apply --check`.
+- In a worktree, or any folder outside the main checkout, nothing is refused.
+
+### How it finds the folder
+
+- It starts from the folder the call runs in.
+- It follows `cd` and `pushd`. A `cd` it cannot evaluate counts as the main checkout: `cd $DIR`, `cd "$(...)"`, `cd ~/...`, `cd -`, `cd` with a flag, and a bare `cd`.
+- `git -C <path>` moves git, but only the first command on the line can use it to name another folder. After any other command, a `-C` can only add a folder to check.
+- `--git-dir`, `--work-tree`, `-c core.worktree=...`, and a `GIT_DIR=` or `GIT_WORK_TREE=` prefix count as the main checkout.
+- It parses with `scripts/agent-hooks/shell-parse.mjs`, the review gate's parser. So it sees `$(...)`, `bash -c`, `eval` and wrappers like `sudo`, and it ignores heredoc bodies.
+
+So in a later call, use `git -C <worktree> ...` as the first command, or an absolute `cd <worktree> && git ...`.
+
+### The escape
+
+Put `ALLOW_MAIN_CHECKOUT_WRITE=1` in front of the one git command that must run in the main checkout:
+
+```bash
+ALLOW_MAIN_CHECKOUT_WRITE=1 git pull --ff-only
+```
+
+Then say in your next message that you used it, and why. It covers only the command it prefixes. The hook never reads it from the environment, so `export ALLOW_MAIN_CHECKOUT_WRITE=1` does nothing.
+
+### What it does not do
+
+- It guards against an accident, not an attacker. It does not see `env -C <dir> git ...`, a `cd` in a subshell that ended, or git run from a script file.
+- It runs for Claude Code only. Codex, Gemini, Cursor and Copilot do not have it yet.
+- If the hook crashes, it allows the call and prints `guard-main-checkout: hook crashed` on stderr. A guard that refused every Bash call would leave no way to run the fix.
+
 ## This repo rebase-merges
 
 Squash and merge commits are both disabled; `gh pr merge --squash` fails with
