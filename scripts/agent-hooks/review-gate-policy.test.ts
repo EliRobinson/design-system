@@ -157,6 +157,10 @@ describe('findPrCommands: reads pr create flags', () => {
     expect(dir(`cd a && cd b/c && ${CREATE} -F ../x.md`)).toBe('a/b/c');
     expect(dir(`cd /abs/repo && ${CREATE} -F x.md`)).toBe('/abs/repo');
     expect(dir(`cd a && cd /abs && cd b && ${CREATE} -F x.md`)).toBe('/abs/b');
+    // A group and a background list keep the cd that leads them.
+    expect(dir(`{ cd sub; ${CREATE} -F x.md; }`)).toBe('sub');
+    expect(dir(`cd sub && ${CREATE} -F x.md &`)).toBe('sub');
+    expect(dir(`cd a && (${CREATE} -F x.md)`)).toBe('a');
     // A pipeline runs in subshells, so it does not end the leading run of cds.
     expect(dir(`ls | cat; cd sub && ${CREATE} -F x.md`)).toBe('sub');
   });
