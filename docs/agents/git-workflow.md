@@ -27,8 +27,9 @@ The main checkout is the folder whose `.git` is a folder. Every worktree's `.git
 ### How it finds the folder
 
 - It starts from the folder the call runs in, with symlinks resolved.
-- It follows a top-level `cd` and `pushd`. A `cd` in a subshell, a pipeline or a background job does not move the line.
-- A `cd` it cannot evaluate counts as the main checkout. That is `cd $DIR`, `cd "$(...)"`, `cd ~/...`, `cd -`, `cd` with a flag, a bare `cd`, and any `popd`.
+- It follows `cd` and `pushd` in the shell they run in. A `cd` in a subshell, a pipeline, a background job, `$(...)` or `bash -c` moves only that shell.
+- A `cd` it cannot evaluate counts as the main checkout. That is `cd $DIR`, `cd "$(...)"`, `cd ~/...`, `cd -`, a bare `cd`, and any `popd`. `cd -P` and `cd -L` are followed.
+- A folder that a `git worktree add` earlier on the line makes counts as a worktree.
 - `git -C <path>` moves git. Only the first command on the line can use it to name another folder. After any other command, a `-C` can only add a folder to check.
 - `--git-dir`, `--work-tree`, `-c core.worktree=...`, and a `GIT_DIR=` or `GIT_WORK_TREE=` prefix count as the main checkout.
 - It parses with `scripts/agent-hooks/shell-parse.mjs`, the review gate's parser. It sees `$(...)`, `bash -c`, `eval` and wrappers like `sudo`. It ignores heredoc bodies.
@@ -37,7 +38,7 @@ A `cd` in an earlier call does not carry over. So in each call, start the line w
 
 ### The escape
 
-Use it only when no worktree can do the job. Put `ALLOW_MAIN_CHECKOUT_WRITE=1` in front of the one git command that must run in the main checkout:
+Use it only when no worktree can do the job. Put `ALLOW_MAIN_CHECKOUT_WRITE=1` in front of the one git command that must run in the main checkout. Put it on `git` itself, not on a wrapper such as `bash -c`. The one routine use is to remove your own worktree after merge:
 
 ```bash
 ALLOW_MAIN_CHECKOUT_WRITE=1 git worktree remove .claude/worktrees/<branch>
@@ -48,7 +49,10 @@ Then say in your next message that you used it, and why. It covers only the comm
 ### What it does not do
 
 - It guards against an accident, not an attacker.
+- It reads git and `gh pr checkout` only. A shell write into the main checkout, such as `rm`, `sed -i` or `>`, is not refused.
+- Some git commands that move refs are allowed: `branch -f`, `branch -m`, `update-ref`, `symbolic-ref` with a value, and `reflog expire`.
 - It does not see a `GIT_DIR` exported in an earlier call, `env -C <main checkout> git ...` from a worktree, `find -exec git ...`, or git run from a script file.
+- It reads aliases from this repo's git config, not from the config of a repo named with `-C`.
 - A `cd` that fails is read as if it worked. With `;` the next command then runs in the old folder.
 - It runs for Claude Code only. Codex, Gemini, Cursor and Copilot do not have it yet.
 - If the hook crashes, it allows the call and prints `guard-main-checkout: hook crashed` on stderr. A guard that refused every Bash call would leave no way to run the fix.
