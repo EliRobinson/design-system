@@ -41,3 +41,28 @@
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
 }
+
+/* Visually hidden, still announced. The row keeps its 44px height and the
+   label its hit area; the text just draws nothing. */
+.ds-checkbox__label--hidden {
+  border: 0;
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+/* Disabled, its own or a disabled fieldset's: :disabled matches both. */
+.ds-checkbox:has(.ds-checkbox__input:disabled),
+.ds-checkbox__input:disabled,
+.ds-checkbox:has(.ds-checkbox__input:disabled) .ds-checkbox__label {
+  cursor: not-allowed;
+}
+
+.ds-checkbox:has(.ds-checkbox__input:disabled) .ds-checkbox__label {
+  color: var(--fg-disabled);
+}

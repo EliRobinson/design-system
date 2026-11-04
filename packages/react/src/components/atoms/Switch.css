@@ -66,3 +66,47 @@
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
 }
+
+/* Visually hidden, still announced. The row keeps its 44px height and the
+   label its hit area; the text just draws nothing. */
+.ds-switch__label--hidden {
+  border: 0;
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+/* Disabled, its own or a disabled fieldset's: :disabled matches both. The look
+   uses Button's tokens, and --fg-disabled keeps the label at 4.5:1. */
+.ds-switch:has(.ds-switch__input:disabled),
+.ds-switch__input:disabled,
+.ds-switch:has(.ds-switch__input:disabled) .ds-switch__label {
+  cursor: not-allowed;
+}
+
+.ds-switch__input:disabled {
+  background: var(--bg-muted);
+  color: var(--fg-disabled); /* the input has no text; this keeps a link's hover colour off it */
+}
+
+.ds-switch__input:disabled::before {
+  background: var(--fg-disabled);
+}
+
+.ds-switch__input:disabled:checked {
+  background: var(--fg-disabled);
+  color: var(--fg-disabled);
+}
+
+.ds-switch__input:disabled:checked::before {
+  background: var(--bg);
+}
+
+.ds-switch:has(.ds-switch__input:disabled) .ds-switch__label {
+  color: var(--fg-disabled);
+}

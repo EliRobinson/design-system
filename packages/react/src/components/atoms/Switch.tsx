@@ -12,10 +12,16 @@ export type SwitchProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | '
    * flex or grid parent it is laid out as its own item.
    */
   error?: string;
+  /**
+   * Keeps the label for assistive tech and as the 44px hit area, and draws no
+   * text. Use it where something else already names the control, such as a row
+   * header in a table.
+   */
+  hideLabel?: boolean;
 };
 
 export const Switch = forwardRef<HTMLInputElement, SwitchProps>(function Switch(
-  { className, id, label, error, 'aria-describedby': ariaDescribedBy, ...props },
+  { className, id, label, hideLabel, error, 'aria-describedby': ariaDescribedBy, ...props },
   ref,
 ) {
   const generatedId = useId();
@@ -37,7 +43,9 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(function Switch(
           {...controlProps}
           {...props}
         />
-        <span className="ds-switch__label">{label}</span>
+        <span className={cn('ds-switch__label', hideLabel && 'ds-switch__label--hidden')}>
+          {label}
+        </span>
       </label>
       {/* A sibling, not a wrapper: see useControlError. */}
       {message}
