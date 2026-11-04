@@ -31,7 +31,7 @@ Rules: [Backlog](backlog.md). Your part:
 
 Rules for lanes, messages, models and briefs: [Parallel agents](parallel-agents.md). Your part:
 
-- Give each agent one issue, one worktree, one branch, and the list of files it owns. Every agent that writes gets its own worktree, subagents and side sessions too. See [Every agent that writes gets its own worktree](parallel-agents.md#every-agent-that-writes-gets-its-own-worktree).
+- Give each agent that writes one issue, one worktree, one branch, and the list of files it owns. That includes subagents and side sessions: see [How each kind of agent gets its worktree](parallel-agents.md#how-each-kind-of-agent-gets-its-worktree).
 - Write every brief with the checklist in that doc.
 - If a subagent says its permissions blocked an action, bring it to Eli.
 
