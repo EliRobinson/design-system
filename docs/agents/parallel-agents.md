@@ -27,6 +27,28 @@ If someone owns it, ask them for it.
 
 - Run agents in parallel only when the work is truly independent. No shared files. No result one needs from the other.
 
+## Every agent that writes gets its own worktree
+
+This applies to subagents and side sessions too, not only to the agent Eli talks to. An agent that writes files, commits, or runs a command that changes the tree works in its own worktree, on its own feature branch, cut from a fresh `origin/main`.
+
+Why: two agents in one checkout lose work without a trace. One switches the branch or reverts a file, and `git status` in the other comes back clean. Health App lost uncommitted work this way more than once.
+
+How each way of starting an agent gets its worktree:
+
+| You start it with               | Do this                                                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| The `Agent` tool                | Pass `isolation: "worktree"`. Or create the worktree first and put its absolute path in the brief.                             |
+| A new session (`start_session`) | Pass `use_worktree: true`, or a `cwd` that is already the worktree. Never `use_worktree: false` for work that writes.          |
+| Your own shell                  | `git fetch origin`, then `git worktree add .claude/worktrees/<branch> -b <branch> origin/main`. Then work only in that folder. |
+
+- **Read-only agents may share a checkout.** These are the `review-*` reviewers, `Explore`, and any agent whose brief says it only reads. Say "read-only" in the brief.
+- **A reviewer never edits.** Apply its findings yourself, in your own commits. A reviewer that edits is a second author with no review.
+- **Start a session inside its worktree.** A session runs its hooks from the folder it started in (`$CLAUDE_PROJECT_DIR`). A session that starts in the main checkout and then moves into a worktree still runs the main checkout's hooks, on the main checkout's branch. So a hook fix on its branch never runs for it. This blocked the review gate on #283.
+- **Never touch a worktree you did not create.** Nothing on disk shows if its owner is in the middle of an edit. If you need one, make your own.
+- **Commit early.** Uncommitted work in a worktree has no protection.
+- **Put the branch in the issue.** Comment the branch name and the worktree path when you claim the issue.
+- **Clean up after merge.** The owner removes its own worktree. See [Git, hooks, and pull requests](git-and-prs.md).
+
 ## Shared state between worktrees
 
 - **Nx cache.** All worktrees share the main checkout's `.nx/cache`. Never run `nx reset`. Use `--skip-nx-cache` for a cold run. See [Git workflow](git-workflow.md).

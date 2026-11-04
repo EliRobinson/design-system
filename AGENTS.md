@@ -16,7 +16,7 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 
 **Components:** Components live under `packages/react/src/components/<tier>/` (atoms/molecules/organisms/ai). Every interactive component uses `forwardRef`. Touch targets are scoped, not blanket: >=44x44 for primary controls (buttons, pagination, segmented-control, nav items), shadcn/MUI-scale sizing for dense inline affordances (chip remove, search clear, rating stars, calendar days) — either way, an expanded hit area must never overlap sibling content. See [Components](docs/agents/components.md) for the tier boundary rule and full constraints.
 
-**Work:** Every piece of work is a GitHub issue, done in its own worktree. See How we work below.
+**Work:** Every piece of work is a GitHub issue, done in its own worktree on its own feature branch. That includes every subagent and side session that writes files. Read-only agents may share a checkout. See How we work below.
 
 ## Do not
 
