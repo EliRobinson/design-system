@@ -236,6 +236,12 @@ describe('cd', () => {
     expect(refused(`git -C ${main} add .`, wt)).toBe(true);
   });
 
+  it('keeps a trailing slash on a new worktree from hiding it', () => {
+    const made = `${main}/.claude/wt-nonexistent-x`;
+    expect(refused(`git worktree add ${made}/ -b b && cd ${made} && git commit -m x`)).toBe(false);
+    expect(refused(`git worktree add ${made} -b b && cd ${made}/ && git commit -m x`)).toBe(false);
+  });
+
   it('reads &> as a redirect, not a background job', () => {
     expect(refused(`cd ${wt} &>/dev/null && git commit -m x`)).toBe(false);
     expect(refused(`git -C ${wt} commit -m x &>/dev/null`)).toBe(false);

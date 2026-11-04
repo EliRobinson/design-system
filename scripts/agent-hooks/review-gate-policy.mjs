@@ -3,9 +3,7 @@
 // No I/O: the entry script (review-gate.mjs) reads files and git and passes
 // the results in, so every rule here is unit-tested.
 
-import { posix } from 'node:path';
-
-import { afterFlags, placeCommands } from './shell-parse.mjs';
+import { ghCommand, placeCommands } from './shell-parse.mjs';
 
 /** The reviewers, in the order the PR template lists them. */
 export const REVIEWERS = /** @type {const} */ ([
@@ -41,9 +39,9 @@ export function isMcpCreatePr(name) {
 }
 
 /**
- * A call that opens a PR. `dir` is where leading `cd` commands moved the
- * shell, relative to the hook's working directory, or null when a `cd`
- * went somewhere the hook cannot tell, such as `cd "$DIR"`.
+ * A call that opens a PR. `dir` is the folder the command runs in, from
+ * `placeCommands`, relative to the hook's working directory (`.` when no `cd`
+ * moved it), or null when it cannot tell, such as after `cd "$DIR"`.
  * @typedef {{ kind: 'pr-create', bodyFile?: string, fill: boolean, web: boolean, head?: string, base?: string, dir?: string | null }
  *   | { kind: 'mcp-create', body: string, head?: string, base?: string }
  *   | { kind: 'api-create' }
@@ -118,7 +116,6 @@ const PR_CREATE_VALUE_FLAGS = flagSet(
   'title body body-file base head assignee label milestone project reviewer repo template recover',
   ['-t', '-b', '-F', '-B', '-H', '-a', '-l', '-m', '-p', '-r', '-R', '-T'],
 );
-const REPO_FLAGS = flagSet('repo', ['-R']);
 
 /**
  * @param {string[]} args  argv after `gh pr create`
@@ -179,16 +176,12 @@ export function findPrCommands(script) {
   const found = [];
   for (const { command, folder: dir } of placeCommands(script, '.')) {
     const { argv } = command;
-    if (posix.basename(argv[0] ?? '') !== 'gh') continue;
-    const [group, ...rest] = afterFlags(argv.slice(1), REPO_FLAGS);
-    if (group === 'pr') {
-      const [sub, ...subArgs] = afterFlags(rest, REPO_FLAGS);
-      if (sub === 'create' || sub === 'new') {
-        const pr = classifyPrCreate(subArgs, dir);
-        if (pr) found.push(pr);
-      }
-    } else if (group === 'api') {
-      const api = classifyApi(rest, dir);
+    const gh = ghCommand(argv);
+    if (gh?.group === 'pr' && (gh.sub === 'create' || gh.sub === 'new')) {
+      const pr = classifyPrCreate(gh.subArgs, dir);
+      if (pr) found.push(pr);
+    } else if (gh?.group === 'api') {
+      const api = classifyApi(gh.rest, dir);
       if (api) found.push(api);
     }
   }

@@ -12,7 +12,7 @@ export const GIT_REPO_ENV = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_
 export function withoutGitRepoEnv(env) {
   return Object.fromEntries(
     Object.entries(env).filter(
-      (entry) => entry[1] !== undefined && !GIT_REPO_ENV.includes(entry[0]),
+      ([key, value]) => value !== undefined && !GIT_REPO_ENV.includes(key),
     ),
   );
 }

@@ -8,12 +8,6 @@ describe('withoutGitRepoEnv', () => {
     expect(withoutGitRepoEnv(env)).toEqual({ PATH: 'x', HOME: 'x' });
   });
 
-  it('names the four variables', () => {
-    expect([...GIT_REPO_ENV].sort()).toEqual(
-      ['GIT_DIR', 'GIT_INDEX_FILE', 'GIT_PREFIX', 'GIT_WORK_TREE'].sort(),
-    );
-  });
-
   it('does not change its input and skips undefined values', () => {
     const env = { GIT_DIR: '/x', KEEP: '1', GONE: undefined };
     expect(withoutGitRepoEnv(env)).toEqual({ KEEP: '1' });

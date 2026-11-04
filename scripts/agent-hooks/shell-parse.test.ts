@@ -4,6 +4,7 @@ import {
   afterFlags,
   cdTarget,
   cdWord,
+  ghCommand,
   parseCommands,
   quoteArgv,
   shellScriptOf,
@@ -155,6 +156,10 @@ describe('cdTarget', () => {
     expect(cdTarget('a', 'b/c')).toBe('a/b/c');
     expect(cdTarget('a', '../b')).toBe('b');
     expect(cdTarget('.', '/abs//x/')).toBe('/abs/x');
+    expect(cdTarget('/a', 'b/')).toBe('/a/b');
+    expect(cdTarget('.', 'sub/')).toBe('sub');
+    expect(cdTarget('/a', '/')).toBe('/');
+    expect(cdTarget('/', '..')).toBe('/');
   });
 
   it('is null when it cannot tell', () => {
@@ -219,5 +224,26 @@ describe('afterFlags', () => {
     expect(afterFlags(['--repo=o/r', '-x', 'pr'], values)).toEqual(['pr']);
     expect(afterFlags(['pr', '-R', 'x'], values)).toEqual(['pr', '-R', 'x']);
     expect(afterFlags([], values)).toEqual([]);
+  });
+});
+
+describe('ghCommand', () => {
+  const gh = (script: string) => ghCommand(parseCommands(script)[0]?.argv ?? []);
+
+  it('reads the group and subcommand past gh flags', () => {
+    expect(gh('gh pr create -t x')).toMatchObject({
+      group: 'pr',
+      sub: 'create',
+      subArgs: ['-t', 'x'],
+    });
+    expect(gh('gh -R o/r pr checkout 5')).toMatchObject({ group: 'pr', sub: 'checkout' });
+    expect(gh('gh --repo=o/r pr -R x new')).toMatchObject({ group: 'pr', sub: 'new' });
+    expect(gh('gh api graphql')).toMatchObject({ group: 'api', rest: ['graphql'] });
+    expect(gh('/usr/bin/gh pr create')).toMatchObject({ group: 'pr' });
+  });
+
+  it('is null for another program or a bare gh', () => {
+    expect(gh('git pr create')).toBeNull();
+    expect(gh('gh')).toBeNull();
   });
 });
