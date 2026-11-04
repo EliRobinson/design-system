@@ -50,12 +50,35 @@ describe('parseCommands', () => {
       parseCommands(script).map(({ argv, top: isTop }) => `${argv[0]}:${isTop}`);
     expect(top('a && b')).toEqual(['a:true', 'b:true']);
     expect(top('(a); b')).toEqual(['a:false', 'b:true']);
-    expect(top('echo $(a)')).toEqual(['echo:true', 'a:false']);
+    expect(top('echo $(a)')).toEqual(['a:false', 'echo:true']);
     expect(top('bash -c "a"')).toEqual(['bash:true', 'a:false']);
     expect(top('a | b; c')).toEqual(['a:false', 'b:false', 'c:true']);
     expect(top('a |& b')).toEqual(['a:false', 'b:false']);
     expect(top('a & b')).toEqual(['a:false', 'b:true']);
     expect(top('a && b || c')).toEqual(['a:true', 'b:true', 'c:true']);
+    expect(top('a &> out; b &>> out')).toEqual(['a:true', 'b:true']);
+  });
+
+  it('lists commands in the order they run', () => {
+    expect(names('echo $(a); b; bash -c "c"; d')).toEqual(['a', 'echo', 'b', 'bash', 'c', 'd']);
+    expect(names('eval "a"; b')).toEqual(['eval', 'a', 'b']);
+  });
+
+  it('gives commands in one shell the same scope, and others their own', () => {
+    const scopes = (script: string) => parseCommands(script).map(({ scope }) => scope);
+    const [a, b, c, d] = scopes('(a; b); c; (d)');
+    expect(a).toEqual(b);
+    expect(a).toHaveLength(1);
+    expect(c).toEqual([]);
+    expect(d).toHaveLength(1);
+    expect(d).not.toEqual(a);
+    const [p, q] = scopes('p | q');
+    expect(p).not.toEqual(q);
+    const [inner, outer] = scopes('x $(y)');
+    expect(outer).toEqual([]);
+    expect(inner).toHaveLength(1);
+    const [, nested] = scopes('(bash -c "z")');
+    expect(nested).toHaveLength(2);
   });
 
   it('skips redirect targets and file descriptors', () => {
