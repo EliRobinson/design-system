@@ -9,6 +9,8 @@
   display: flex;
   gap: var(--space-3);
   min-height: 44px;
+  /* Anchors the hidden label's absolute box to the row. */
+  position: relative;
 }
 
 .ds-switch__input {
@@ -91,7 +93,9 @@
 
 .ds-switch__input:disabled {
   background: var(--bg-muted);
-  color: var(--fg-disabled); /* the input has no text; this keeps a link's hover colour off it */
+  color: var(
+    --fg-disabled
+  ); /* no text here; component-css.test.mjs wants a color beside any state background */
 }
 
 .ds-switch__input:disabled::before {
