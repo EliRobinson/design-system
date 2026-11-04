@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { mainCheckoutOf } from './guard-main-checkout-policy.mjs';
+import { OVERRIDE, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
 
 // End-to-end: runs the hook script the way Claude Code does. The hook guards
 // the main checkout of the repo it sits in, so these tests point `cwd` at that
@@ -43,7 +43,7 @@ describe('guard-main-checkout hook', () => {
     const { code, stderr } = run(bash('git add -A'));
     expect(code).toBe(2);
     expect(stderr).toContain('git add');
-    expect(stderr).toContain('ALLOW_MAIN_CHECKOUT_WRITE=1');
+    expect(stderr).toContain(`${OVERRIDE}=1`);
   });
 
   it("refuses an alias from git's own config", () => {
@@ -54,8 +54,8 @@ describe('guard-main-checkout hook', () => {
     expect(stderr).toContain('`git zzcm` (an alias for `git commit`)');
   });
 
-  it('ignores ALLOW_MAIN_CHECKOUT_WRITE in its own environment', () => {
-    expect(run(bash('git commit -m x'), { ALLOW_MAIN_CHECKOUT_WRITE: '1' }).code).toBe(2);
+  it('ignores the escape in its own environment', () => {
+    expect(run(bash('git commit -m x'), { [OVERRIDE]: '1' }).code).toBe(2);
   });
 
   it('allows reads in the main checkout', () => {

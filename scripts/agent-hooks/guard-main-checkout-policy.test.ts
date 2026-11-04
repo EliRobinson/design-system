@@ -191,6 +191,30 @@ describe('cd', () => {
     expect(refused(`out=$(git pull 2>&1); cd ${wt} && git status`)).toBe(true);
   });
 
+  it('sends a whole and-or list to the background with &', () => {
+    expect(refused(`cd ${wt} && sleep 1 & git add .`)).toBe(true);
+    expect(refused(`cd ${main} && sleep 1 & git add .`, wt)).toBe(false);
+  });
+
+  it('counts a piped or backgrounded compound body as its own shell', () => {
+    expect(refused(`{ cd ${wt}; } | cat; git add .`)).toBe(true);
+    expect(refused(`{ cd ${wt}; } & git add .`)).toBe(true);
+    expect(refused(`if true; then cd ${wt}; fi | cat; git add .`)).toBe(true);
+    expect(refused(`echo | { cd ${wt}; git add .; }`)).toBe(false);
+  });
+
+  it('leaves the folder unknown after a cd in a compound body', () => {
+    expect(refused(`{ cd ${main}; }; git add .`, wt)).toBe(true);
+    expect(refused(`if true; then cd ${main}; fi; git add .`, wt)).toBe(true);
+    expect(refused(`f() { cd ${wt}; }; git add .`)).toBe(true);
+    expect(refused(`{ cd ${wt}; git add .; }`)).toBe(false);
+  });
+
+  it('runs eval in the current shell', () => {
+    expect(refused(`eval "cd ${main}"; git add .`, wt)).toBe(true);
+    expect(refused(`eval "cd ${wt}"; git add .`)).toBe(false);
+  });
+
   it('skips the link flags of cd', () => {
     expect(refused(`cd -P ${wt} && git commit -m x`)).toBe(false);
     expect(refused(`cd -L -- ${wt} && git commit -m x`)).toBe(false);
@@ -210,9 +234,14 @@ describe('cd', () => {
     ).toBe(false);
     expect(
       refused(`git -C ${main} worktree add ${made} -b new origin/main && git -C ${made} add .`),
-    ).toBe(true);
+    ).toBe(false);
     expect(refused(`git worktree add ${made} && cd ${made} && git add .`, wt)).toBe(false);
     expect(refused(`git worktree add ${made} && git add .`)).toBe(true);
+  });
+
+  it('does not count a path that exists as a new worktree', () => {
+    expect(refused('git worktree add . ; git add .')).toBe(true);
+    expect(refused('git worktree add packages; cd packages && git add .')).toBe(true);
   });
 
   it('does not refuse a read after a cd it cannot evaluate', () => {
@@ -221,16 +250,32 @@ describe('cd', () => {
 });
 
 describe('git -C', () => {
-  it('names another folder only as the first command on the line', () => {
-    expect(refused(`git -C ${wt} commit -m x`)).toBe(false);
-    expect(refused('git -C .claude/worktrees/wt add .')).toBe(false);
-    expect(refused(`true && git -C ${wt} commit -m x`)).toBe(true);
-    expect(refused(`echo hi; git -C ${wt} add .`)).toBe(true);
+  it('lets a relative -C name another folder only as the first command', () => {
+    const rel = '.claude/worktrees/wt';
+    expect(refused(`git -C ${rel} add .`)).toBe(false);
+    expect(refused(`true && git -C ${rel} commit -m x`)).toBe(true);
+    expect(refused(`echo hi; git -C ${rel} add .`)).toBe(true);
+    expect(refused(`echo hi; echo "$(git -C ${rel} add .)"`)).toBe(true);
   });
 
-  it('counts the first command to run as first, in a substitution or a pipe', () => {
-    expect(refused(`echo "$(git -C ${wt} add .)"`)).toBe(false);
-    expect(refused(`echo hi; echo "$(git -C ${wt} add .)"`)).toBe(true);
+  it('lets an absolute -C name another folder anywhere on the line', () => {
+    expect(refused(`git -C ${wt} commit -m x`)).toBe(false);
+    expect(refused(`true && git -C ${wt} commit -m x`)).toBe(false);
+    expect(refused(`git -C ${wt} add . && git -C ${wt} commit -m x`)).toBe(false);
+  });
+
+  it('does not trust a later -C after a command that may point git elsewhere', () => {
+    expect(refused(`export GIT_DIR=x; git -C ${wt} add .`)).toBe(true);
+    expect(refused(`source env.sh && git -C ${wt} add .`)).toBe(true);
+  });
+
+  it('does not count its own substitutions or pipe stages as earlier', () => {
+    const heredoc = `git -C ${wt} commit -m "$(cat <<'EOF'\nfeat: x\n\nbody\nEOF\n)"`;
+    expect(refused(heredoc)).toBe(false);
+    expect(refused(`git -C .claude/worktrees/wt commit -m "$(date)"`)).toBe(false);
+    expect(refused(`git -C .claude/worktrees/wt add $(git diff --name-only)`)).toBe(false);
+    expect(refused('echo hi | git -C .claude/worktrees/wt commit -F -')).toBe(false);
+    expect(refused(`echo "$(git -C .claude/worktrees/wt add .)"`)).toBe(false);
     expect(refused(`git -C ${wt} commit -m x 2>&1 | tail -5`)).toBe(false);
   });
 
