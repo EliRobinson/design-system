@@ -527,7 +527,8 @@ function placeCommands(line, cwd) {
     placed.push({
       command,
       folder,
-      first: before.length === 0,
+      // A bare `NAME=value` cannot move the folder.
+      first: before.every((each) => each.argv.length === 0),
       gitPointed: before.some(pointsGit),
       envMayPointGit: before.some((each) => pointsGit(each) || mayPointGit(each)),
     });

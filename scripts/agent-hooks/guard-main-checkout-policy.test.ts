@@ -257,6 +257,7 @@ describe('git -C', () => {
     expect(refused(`true && git -C ${rel} commit -m x`)).toBe(true);
     expect(refused(`echo hi; git -C ${rel} add .`)).toBe(true);
     expect(refused(`echo hi; echo "$(git -C ${rel} add .)"`)).toBe(true);
+    expect(refused(`FOO=bar; git -C ${rel} commit -m x`)).toBe(false);
   });
 
   it('lets an absolute -C name another folder anywhere on the line', () => {
