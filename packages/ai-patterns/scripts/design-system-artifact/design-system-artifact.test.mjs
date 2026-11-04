@@ -4,21 +4,34 @@
  * The bundle and types tests read @elirobinson/react's dist, which this
  * package's devDependency on it builds first. */
 
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { COMBINATIONS, combinationValues } from '@elirobinson/tokens/contrast';
+import { COMBINATIONS, DEFAULT_PALETTE, combinationValues } from '@elirobinson/tokens/contrast';
 import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { describe, expect, it } from 'vitest';
 
 import { ARTIFACT_ONLY } from './artifact-only.mjs';
 import { NAMESPACE, buildBundleJs, readBundleHeader } from './bundle.mjs';
 import { LIMITS, checkLimits } from './limits.mjs';
-import { aiLayers, buildBundleCss, previousSection } from './stylesheet.mjs';
-import { ARTIFACT_THEMES, PALETTES_LEFT_OUT, buildTokens } from './tokens.mjs';
+import {
+  AI_THEME_DIR,
+  AI_THEME_ENTRY,
+  aiLayers,
+  buildBundleCss,
+  previousSection,
+} from './stylesheet.mjs';
+import { ARTIFACT_THEMES, KEPT, buildTokens } from './tokens.mjs';
 import { buildTypes, previousTypesSection } from './types.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -41,7 +54,8 @@ function declaredFor(css, theme) {
   return declared;
 }
 
-const tidy = (value) =>
+/* How the build writes a value: no space inside parens, lower-case hex. */
+const normalise = (value) =>
   value
     .replace(/\(\s+/g, '(')
     .replace(/\s+\)/g, ')')
@@ -50,11 +64,10 @@ const tidy = (value) =>
 describe('tokens', () => {
   const { json, css, report } = buildTokens({ srcDir: tokensSrc, previous: {}, meta });
   const colours = json.color.tokens;
-  const kept = COMBINATIONS.filter(({ palette }) => !PALETTES_LEFT_OUT.includes(palette));
 
   it('has one theme per kept palette × theme, at most 8, with slate left out', () => {
     expect(json.color.themes.map((theme) => theme.id)).toEqual(ARTIFACT_THEMES);
-    expect(ARTIFACT_THEMES).toHaveLength(kept.length);
+    expect(ARTIFACT_THEMES).toHaveLength(KEPT.length);
     expect(ARTIFACT_THEMES.length).toBeLessThanOrEqual(LIMITS.themes);
     expect(ARTIFACT_THEMES.slice(0, 2)).toEqual(['light', 'dark']);
     expect(json.meta.themesLeftOut).toEqual(['palette-slate', 'palette-slate-dark']);
@@ -67,7 +80,7 @@ describe('tokens', () => {
 
   /* The value check: follow tokens.json's aliases to a literal, and compare it
      with what the tokens package's own cascade resolves for that combination. */
-  it.each(kept.map((combination, index) => [ARTIFACT_THEMES[index], combination]))(
+  it.each(KEPT.map((combination, index) => [ARTIFACT_THEMES[index], combination]))(
     'gives every colour token in %s the value the tokens package resolves',
     (theme, combination) => {
       const expected = combinationValues(readTokenStylesheets(tokensSrc), combination);
@@ -78,12 +91,14 @@ describe('tokens', () => {
         return value.startsWith('{') ? literal(value.slice(1, -1)) : value;
       };
       for (const token of colours) {
-        expect(literal(token.name), `--${token.name}`).toBe(tidy(expected.get(`--${token.name}`)));
+        expect(literal(token.name), `--${token.name}`).toBe(
+          normalise(expected.get(`--${token.name}`)),
+        );
       }
     },
   );
 
-  it.each(kept.map((combination, index) => [ARTIFACT_THEMES[index], combination]))(
+  it.each(KEPT.map((combination, index) => [ARTIFACT_THEMES[index], combination]))(
     'compiles tokens.css so %s declares every colour and shadow, at the resolved value',
     (theme, combination) => {
       const declared = declaredFor(css, theme);
@@ -94,7 +109,7 @@ describe('tokens', () => {
       for (const name of [...colours.map((token) => token.name), ...shadows]) {
         expect(declared.has(name), `--${name} in ${theme}`).toBe(true);
         expect(follow(declared.get(name)), `--${name} in ${theme}`).toBe(
-          tidy(expected.get(`--${name}`)),
+          normalise(expected.get(`--${name}`)),
         );
       }
       expect(declared.size).toBe(colours.length + shadows.length);
@@ -122,6 +137,34 @@ describe('tokens', () => {
     expect(rebuilt.radius.tokens[0].value).not.toBe('1px');
     expect(Object.keys(rebuilt).indexOf('radius')).toBeLessThan(
       Object.keys(rebuilt).indexOf('spacing'),
+    );
+  });
+
+  it('writes an aliased non-colour token as the value it resolves to', () => {
+    const srcDir = join(mkdtempSync(join(tmpdir(), 'ds-tokens-')), 'src');
+    cpSync(tokensSrc, srcDir, { recursive: true });
+    appendFileSync(join(srcDir, 'tokens.css'), '\n:root { --radius-card: var(--radius-lg); }\n');
+    const { json: aliased } = buildTokens({ srcDir, previous: {}, meta });
+    const radius = new Map(aliased.radius.tokens.map((token) => [token.name, token.value]));
+    expect(radius.get('radius-card')).toBe(radius.get('radius-lg'));
+    expect(radius.get('radius-card')).not.toContain('var(');
+  });
+
+  it('refuses a non-colour value or a type style the artifact cannot read', () => {
+    const base = { color: { themes: [], tokens: [] } };
+    const radius = { tokens: [{ name: 'radius-card', value: 'var(--radius-lg)', usage: '' }] };
+    expect(() => checkLimits({ tokensJson: { ...base, radius }, sizes: {} })).toThrow(
+      /radius radius-card is not a literal value/,
+    );
+    const type = { groups: [{ styles: [{ name: 't-h1', fontSize: '1rem', fontWeight: null }] }] };
+    expect(() => checkLimits({ tokensJson: { ...base, type }, sizes: {} })).toThrow(
+      /t-h1 fontWeight/,
+    );
+    const many = {
+      tokens: Array.from({ length: 61 }, (_, i) => ({ name: `r${i}`, value: '1px' })),
+    };
+    expect(() => checkLimits({ tokensJson: { ...base, radius: many }, sizes: {} })).toThrow(
+      /61 tokens/,
     );
   });
 
@@ -216,10 +259,17 @@ describe('bundle.css', () => {
       .join('\n') + '\n/* Scoped palettes, from palettes.css */\n[data-palette="x"] {}\n';
   const out = buildBundleCss({
     repoRoot,
+    tokensSrc,
     extrasCss: ':root { --gutter: 1px; }\n',
     previousBundleCss: previous,
     reactVersion: '0.0.0',
     ref: '0000000',
+  });
+
+  it('ends a carried section at a marker line, not at a comment inside it', () => {
+    const css = '.a {}\n/* ── a note inside the stylesheet */\n.b {}';
+    const bundle = `${carried('x.css', css)}\n${carried('y.css', '.c {}')}`;
+    expect(previousSection(bundle, 'x.css')).toBe(css);
   });
 
   it('carries the artifact-only stylesheets so the next build finds them again', () => {
@@ -231,7 +281,7 @@ describe('bundle.css', () => {
   it('ends with every scoped palette block and none of the :root blocks', () => {
     const palettes = out.slice(out.indexOf('/* Scoped palettes'));
     for (const { palette } of COMBINATIONS.filter((combination) => combination.theme === 'dark')) {
-      if (palette === 'ember') continue;
+      if (palette === DEFAULT_PALETTE) continue;
       expect(palettes).toContain(`[data-palette='${palette}'] {`);
       expect(palettes).toContain(`[data-palette='${palette}'][data-theme='dark'],`);
     }
@@ -240,10 +290,10 @@ describe('bundle.css', () => {
   });
 
   it('includes the AI Elements layers the docs app imports, and the component stylesheets', () => {
-    const layers = aiLayers(readFileSync(join(repoRoot, 'apps/docs/src/app/elements.css'), 'utf8'));
+    const layers = aiLayers(readFileSync(join(repoRoot, AI_THEME_ENTRY), 'utf8'));
     expect(layers).not.toContain('ai-bridge');
     for (const layer of layers) {
-      expect(out).toContain(`/* ── components/ai/${layer}.css (apps/docs/src/app/ai-theme) ── */`);
+      expect(out).toContain(`/* ── components/ai/${layer}.css (${AI_THEME_DIR}) ── */`);
     }
     expect(out).toContain('/* ── components/atoms/Button.css ── */');
   });

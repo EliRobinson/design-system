@@ -40,7 +40,8 @@ function themeId({ palette, theme }) {
   return `palette-${palette}${theme === 'dark' ? '-dark' : ''}`;
 }
 
-const KEPT = COMBINATIONS.filter(({ palette }) => !PALETTES_LEFT_OUT.includes(palette));
+/** The palette × theme combinations the artifact shows, in artifact order. */
+export const KEPT = COMBINATIONS.filter(({ palette }) => !PALETTES_LEFT_OUT.includes(palette));
 /** Theme ids in artifact order. The first is the default. */
 export const ARTIFACT_THEMES = KEPT.map(themeId);
 export const THEMES_LEFT_OUT = COMBINATIONS.filter(
@@ -92,16 +93,16 @@ const NEUTRAL_DIALS = ['n-h', 'n-mult'];
 const tidy = (value) => value.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
 
 /**
- * Every custom property per artifact theme, twice: `resolved` keeps colour
+ * Every custom property per artifact theme, twice: `declared` keeps colour
  * aliases as references (the artifact keeps them) with only the neutral dials
- * substituted, and `literal` follows every reference to a value, for the
- * families tokens.json gives no var() to. Plus a stable name order.
+ * substituted, and `literal` follows every reference to a value, for
+ * everything tokens.json gives no var() to. Plus a stable name order.
  */
 export function resolveThemes(srcDir) {
   const sources = readTokenStylesheets(srcDir);
   const unreadable = unreadableSelectors(sources);
   if (unreadable.length) throw new Error(`token blocks no theme reads: ${unreadable.join('; ')}`);
-  const resolved = {};
+  const declaredBy = {};
   const literal = {};
   KEPT.forEach((combination, index) => {
     const theme = ARTIFACT_THEMES[index];
@@ -114,7 +115,7 @@ export function resolveThemes(srcDir) {
         ),
       );
     const usesDial = (value) => NEUTRAL_DIALS.some((name) => value.includes(`var(--${name})`));
-    resolved[theme] = new Map(
+    declaredBy[theme] = new Map(
       [...declared].map(([name, raw]) => {
         const value = tidy(raw);
         return [name, usesDial(value) ? dial(value) : value];
@@ -127,11 +128,11 @@ export function resolveThemes(srcDir) {
   /* `:root` blocks first, then the rest in cascade order. */
   const blocks = tokenBlocks(sources);
   const isRoot = (block) => block.selector.trim() === ':root';
-  const order = [];
+  const order = new Set();
   for (const block of [...blocks.filter(isRoot), ...blocks.filter((block) => !isRoot(block))]) {
-    for (const [name] of block.declarations) if (!order.includes(name)) order.push(name);
+    for (const [name] of block.declarations) order.add(name);
   }
-  return { resolved, literal, order: order.map((name) => name.slice(2)) };
+  return { declared: declaredBy, literal, order: [...order].map((name) => name.slice(2)) };
 }
 
 function isLiteralColour(value) {
@@ -159,9 +160,9 @@ function previousIndex(previous) {
 }
 
 /** Colour value of one token in one theme: a literal, an alias `{name}`, or null. */
-function colourReader(R) {
+function colourReader(declared) {
   return (name, theme) => {
-    let value = R[theme].get(`--${name}`);
+    let value = declared[theme].get(`--${name}`);
     if (value === undefined) return null;
     if (value.startsWith('#')) value = value.toLowerCase();
     if (isLiteralColour(value)) return value;
@@ -170,13 +171,19 @@ function colourReader(R) {
   };
 }
 
-function colourTokens({ R, order, prev, usage, report }) {
-  const colourValue = colourReader(R);
+/**
+ * The colour rows, and every name they claim: the colours placed and the ones
+ * reported as not placed, so the families do not report them again.
+ */
+function colourTokens({ declared, order, prev, usage, report }) {
+  const colourValue = colourReader(declared);
+  const claimed = new Set();
   const names = order.filter((name) => {
     const previousFamily = prev.get(name)?.family;
     if (previousFamily && previousFamily !== 'color') return false;
     if (NOT_IN_JSON.includes(name)) return false;
     if (!previousFamily && !COLOUR_NAME.test(name)) return false;
+    claimed.add(name);
     /* A colour some theme lacks, or one with no literal or alias value, has no tokens.json row. */
     if (ARTIFACT_THEMES.some((theme) => colourValue(name, theme) === null)) {
       report.notPlaced.push(name);
@@ -184,10 +191,11 @@ function colourTokens({ R, order, prev, usage, report }) {
     }
     return true;
   });
+  const placed = new Set(names);
   for (const name of names) {
     for (const theme of ARTIFACT_THEMES) {
       const value = colourValue(name, theme);
-      if (value.startsWith('{') && !names.includes(value.slice(1, -1))) {
+      if (value.startsWith('{') && !placed.has(value.slice(1, -1))) {
         throw new Error(`--${name} aliases ${value}, which is not a colour token`);
       }
     }
@@ -195,33 +203,35 @@ function colourTokens({ R, order, prev, usage, report }) {
   /* A colour the artifact has and the repo no longer declares leaves the page
      and tokens.css, so a preview that names it breaks. Say so. */
   for (const [name, { family }] of prev) {
-    if (family === 'color' && !names.includes(name)) report.droppedColours.push(name);
+    if (family === 'color' && !placed.has(name)) report.droppedColours.push(name);
   }
-  return names.map((name) => ({
+  const tokens = names.map((name) => ({
     name,
     value: perTheme((theme) => colourValue(name, theme)),
     usage: usage(name),
   }));
+  return { tokens, claimed };
 }
 
-function familyTokens({ R, literal, order, previous, placed, usage, report }) {
+/** A literal value, for a family or a type style: tokens.json takes no var(). */
+function literalIn(literal, theme, name) {
+  const value = literal[theme].get(`--${name}`);
+  if (value === undefined) throw new Error(`--${name} is not declared`);
+  if (value.includes('var(')) throw new Error(`--${name} has an unresolved reference: ${value}`);
+  return value;
+}
+
+function familyTokens({ literal, order, previous, claimed, usage, report }) {
   const first = ARTIFACT_THEMES[0];
   const familyValue = (name, family) => {
-    /* Shadows reference colours, and tokens.json takes no var(), so resolve them per theme. */
-    if (family === 'shadow') {
-      return perTheme((theme) => {
-        const value = literal[theme].get(`--${name}`);
-        if (value.includes('var('))
-          throw new Error(`--${name} has an unresolved reference: ${value}`);
-        return value;
-      });
-    }
+    /* Shadows reference colours, so they are resolved per theme. */
+    if (family === 'shadow') return perTheme((theme) => literalIn(literal, theme, name));
     /* The neutral dials differ per palette, but the inks are already resolved
        per theme, so the dial rows show the default palette's value. */
-    const value = R[first].get(`--${name}`);
+    const value = literalIn(literal, first, name);
     if (NEUTRAL_DIALS.includes(name)) return value;
     for (const theme of ARTIFACT_THEMES) {
-      if (R[theme].get(`--${name}`) !== value) {
+      if (literalIn(literal, theme, name) !== value) {
         throw new Error(`--${name} differs by theme but is not a colour or a shadow`);
       }
     }
@@ -235,11 +245,12 @@ function familyTokens({ R, literal, order, previous, placed, usage, report }) {
   for (const family of [...previousFamilies, ...FAMILY_RULES.map(([family]) => family)]) {
     if (!families.has(family)) families.set(family, []);
   }
+  const placed = new Set();
   /* Previous members first, in their order, so a re-sync does not reshuffle the page. */
   for (const family of previousFamilies) {
     for (const token of previous[family].tokens) {
       placed.add(token.name);
-      const inRepo = R[first].has(`--${token.name}`);
+      const inRepo = literal[first].has(`--${token.name}`);
       if (!inRepo) report.keptFromPrevious.push(token.name);
       families.get(family).push({
         name: token.name,
@@ -249,7 +260,7 @@ function familyTokens({ R, literal, order, previous, placed, usage, report }) {
     }
   }
   for (const name of order) {
-    if (placed.has(name) || NOT_IN_JSON.includes(name)) continue;
+    if (claimed.has(name) || placed.has(name) || NOT_IN_JSON.includes(name)) continue;
     const family = FAMILY_RULES.find(([, pattern]) => pattern.test(name))?.[0];
     if (!family) {
       report.notPlaced.push(name);
@@ -281,10 +292,12 @@ function typeRules(tokensCss) {
   return rules;
 }
 
-function typeStyles({ srcDir, R, previous }) {
+function typeStyles({ srcDir, literal, previous }) {
   const rules = typeRules(readFileSync(join(srcDir, 'tokens.css'), 'utf8'));
   const lit = (value) =>
-    value.replace(/var\(--([a-z0-9-]+)\)/g, (_, name) => R[ARTIFACT_THEMES[0]].get(`--${name}`));
+    value.replace(/var\(--([a-z0-9-]+)\)/g, (_, name) =>
+      literalIn(literal, ARTIFACT_THEMES[0], name),
+    );
   const previousStyles = new Map(
     (previous.type?.groups ?? []).flatMap((group) =>
       group.styles.map((style) => [style.name, style]),
@@ -302,7 +315,12 @@ function typeStyles({ srcDir, R, previous }) {
       if (familyKey !== 'sans') style.family = familyKey;
       style.fontSize = lit(decl['font-size']);
       style.lineHeight = lit(decl['line-height']);
-      if (decl['font-weight']) style.fontWeight = Number(lit(decl['font-weight']));
+      if (decl['font-weight']) {
+        style.fontWeight = Number(lit(decl['font-weight']));
+        if (!Number.isInteger(style.fontWeight)) {
+          throw new Error(`${name}: font-weight ${decl['font-weight']} is not a number`);
+        }
+      }
       if (decl['letter-spacing']) style.letterSpacing = lit(decl['letter-spacing']);
       style.usage =
         name === 'body'
@@ -311,7 +329,10 @@ function typeStyles({ srcDir, R, previous }) {
       return style;
     }),
   }));
-  /* The fallback stack behind each --ds-font-*-override hook. */
+  /* The fallback stack behind each --ds-font-*-override hook. The cascade does
+     not follow var() fallbacks, so the tokens parser reads these. bundle.css
+     re-declares --font-* with the hook on purpose (NOT_IN_JSON), so a consumer
+     override still wins on the page. */
   const effective = effectiveTokens(parseTokensCss(readTokenStylesheets(srcDir)));
   const families = Object.fromEntries(
     FONT_KEYS.map((key) => [key, effective.get(`--font-${key}`).resolved]),
@@ -351,7 +372,7 @@ export function latinFonts(srcDir) {
  * @param {object} options.meta      the provenance note: {ref, synced}
  */
 export function buildTokens({ srcDir, previous, meta }) {
-  const { resolved: R, literal, order } = resolveThemes(srcDir);
+  const { declared, literal, order } = resolveThemes(srcDir);
   const prev = previousIndex(previous);
   const report = { newTokens: [], notPlaced: [], keptFromPrevious: [], droppedColours: [] };
   const usage = (name) => {
@@ -360,18 +381,9 @@ export function buildTokens({ srcDir, previous, meta }) {
     return '';
   };
 
-  const colours = colourTokens({ R, order, prev, usage, report });
-  const families = familyTokens({
-    R,
-    literal,
-    order,
-    previous,
-    /* A colour already reported as not placed must not be reported again as a family miss. */
-    placed: new Set([...colours.map((token) => token.name), ...report.notPlaced]),
-    usage,
-    report,
-  });
-  const type = typeStyles({ srcDir, R, previous });
+  const { tokens: colours, claimed } = colourTokens({ declared, order, prev, usage, report });
+  const families = familyTokens({ literal, order, previous, claimed, usage, report });
+  const type = typeStyles({ srcDir, literal, previous });
 
   const json = {
     version: 1,
@@ -411,7 +423,7 @@ export function buildTokens({ srcDir, previous, meta }) {
   return {
     json: ordered,
     css: compileTokensCss({ colours, families, type }),
-    extrasCss: notInJsonCss({ srcDir, R }),
+    extrasCss: notInJsonCss({ srcDir, declared }),
     report,
   };
 }
@@ -481,13 +493,13 @@ function compileTokensCss({ colours, families, type }) {
 }
 
 /** The token values tokens.json has no grammar for, plus the platform layer verbatim. */
-function notInJsonCss({ srcDir, R }) {
+function notInJsonCss({ srcDir, declared }) {
   for (const name of NOT_IN_JSON) {
-    if (new Set(ARTIFACT_THEMES.map((theme) => R[theme].get(`--${name}`))).size !== 1) {
+    if (new Set(ARTIFACT_THEMES.map((theme) => declared[theme].get(`--${name}`))).size !== 1) {
       throw new Error(`--${name} differs by theme; bundle.css declares it once, on :root`);
     }
   }
-  const root = R[ARTIFACT_THEMES[0]];
+  const root = declared[ARTIFACT_THEMES[0]];
   const lines = [
     '/* tokens.css :root and palettes.css (every palette block, light and dark, declares --link-on-fill: currentColor) */',
     ':root {',

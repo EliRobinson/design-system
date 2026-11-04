@@ -9,12 +9,13 @@
  *   d. the Miltinson × AI Elements class layers from apps/docs, then the
  *      stylesheets of the artifact-only components (artifact-only.mjs), read
  *      back from the previous bundle.css
- *   e. the scoped [data-palette] blocks from palettes.css (blocks 3-10)
+ *   e. the scoped [data-palette] blocks from palettes.css
  */
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { tokenBlocks } from '@elirobinson/tokens/contrast';
 import {
   readPlatformStylesheets,
   readTokenStylesheets,
@@ -23,12 +24,17 @@ import postcss from 'postcss';
 
 import { ARTIFACT_ONLY } from './artifact-only.mjs';
 
-const AI_THEME_ENTRY = 'apps/docs/src/app/elements.css';
-const AI_THEME_DIR = `${AI_THEME_ENTRY.slice(0, AI_THEME_ENTRY.lastIndexOf('/'))}/ai-theme`;
+export const AI_THEME_ENTRY = 'apps/docs/src/app/elements.css';
+export const AI_THEME_DIR = `${AI_THEME_ENTRY.slice(0, AI_THEME_ENTRY.lastIndexOf('/'))}/ai-theme`;
 /* Section e's title. A carried section ends where it starts. */
 const SCOPED_PALETTES = 'Scoped palettes';
 /* The token bridge is not a class layer: the artifact carries it as its own file. */
 const AI_THEME_NOT_LAYERS = ['ai-bridge'];
+const CARRIED = '(previous artifact bundle)';
+
+const marker = (label) => `/* ── ${label} ── */`;
+/* A whole marker line. A comment inside a carried stylesheet does not end its section. */
+const MARKER_LINE = /^\/\* ── .+ ── \*\/$/;
 
 /** The AI Elements class layers, in the order the docs app imports them. */
 export function aiLayers(entryCss) {
@@ -38,9 +44,6 @@ export function aiLayers(entryCss) {
   if (!layers.length) throw new Error(`${AI_THEME_ENTRY} imports no ai-theme layer`);
   return layers;
 }
-const CARRIED = '(previous artifact bundle)';
-
-const marker = (label) => `/* ── ${label} ── */`;
 
 /** One section of a previous bundle.css, by its marker line. */
 export function previousSection(bundleCss, path) {
@@ -50,7 +53,7 @@ export function previousSection(bundleCss, path) {
   let end = start + 1;
   while (
     end < lines.length &&
-    !lines[end].startsWith('/* ── ') &&
+    !MARKER_LINE.test(lines[end]) &&
     !lines[end].startsWith(`/* ${SCOPED_PALETTES}`)
   )
     end++;
@@ -61,13 +64,8 @@ export function previousSection(bundleCss, path) {
 }
 
 function tokenNames(tokensSrc) {
-  const names = new Set();
-  for (const css of [...readTokenStylesheets(tokensSrc), ...readPlatformStylesheets(tokensSrc)]) {
-    postcss.parse(css).walkDecls((decl) => {
-      if (decl.prop.startsWith('--')) names.add(decl.prop);
-    });
-  }
-  return names;
+  const sources = [...readTokenStylesheets(tokensSrc), ...readPlatformStylesheets(tokensSrc)];
+  return new Set(tokenBlocks(sources).flatMap((block) => block.declarations.map(([name]) => name)));
 }
 
 function tokensElementRules(tokensCss) {
@@ -113,14 +111,22 @@ function scopedPalettes(palettesCss) {
 /**
  * @param {object} options
  * @param {string} options.repoRoot
+ * @param {string} options.tokensSrc   packages/tokens/src
  * @param {string} options.extrasCss   from buildTokens
  * @param {string} options.previousBundleCss  the live artifact's components/bundle.css
  * @param {string} options.reactVersion
  * @param {string} options.ref         short sha
  */
-export function buildBundleCss({ repoRoot, extrasCss, previousBundleCss, reactVersion, ref }) {
+export function buildBundleCss({
+  repoRoot,
+  tokensSrc,
+  extrasCss,
+  previousBundleCss,
+  reactVersion,
+  ref,
+}) {
   const read = (path) => readFileSync(join(repoRoot, path), 'utf8');
-  const tokensSrc = join(repoRoot, 'packages/tokens/src');
+  const readTokens = (file) => readFileSync(join(tokensSrc, file), 'utf8');
   const tokens = tokenNames(tokensSrc);
   const parts = [];
 
@@ -133,7 +139,7 @@ export function buildBundleCss({ repoRoot, extrasCss, previousBundleCss, reactVe
 
   parts.push(
     `${marker('b. @elirobinson/tokens src/tokens.css: the global element rules (custom-property blocks and @imports removed; the values come from tokens.css)')}\n` +
-      tokensElementRules(read('packages/tokens/src/tokens.css')),
+      tokensElementRules(readTokens('tokens.css')),
   );
 
   const styles = read('packages/react/src/styles.css');
@@ -172,10 +178,10 @@ export function buildBundleCss({ repoRoot, extrasCss, previousBundleCss, reactVe
   parts.push(ai);
 
   parts.push(
-    `/* ${SCOPED_PALETTES}, verbatim from packages/tokens/src/palettes.css (blocks 3-10).\n` +
+    `/* ${SCOPED_PALETTES}, verbatim from packages/tokens/src/palettes.css.\n` +
       '   The theme switch sets palettes on <html> through tokens.css. These blocks let a card show\n' +
       '   several palettes side by side with data-palette on an element. No :root rules here. */\n' +
-      scopedPalettes(read('packages/tokens/src/palettes.css')),
+      scopedPalettes(readTokens('palettes.css')),
   );
 
   const out =

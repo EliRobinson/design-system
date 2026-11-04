@@ -10,6 +10,8 @@
  *             written on the artifact's page.
  * --out       where to write. Default: <repo>/dist/design-system-artifact, which no
  *             package publishes.
+ * --print-inputs  print the artifact paths --previous must hold, as a JSON
+ *             array for an Artifact read, and stop.
  *
  * Writes <out>/project/<path> for each file below, and <out>/publish-files.json,
  * the `files` map to publish them in one call. docs/agents/design-system-artifact.md
@@ -64,12 +66,16 @@ const CONTENT_TYPES = {
   '.woff2': 'font/woff2',
 };
 
+/* Where an uncommitted edit would change the output without changing the stamp. */
+const STAMPED_SOURCES = ['packages/tokens/src', 'packages/react/src', 'apps/docs/src/app'];
+
 /* pnpm -F runs this from the package folder; resolve what the person typed from where they typed it. */
 const invokedFrom = process.env.INIT_CWD ?? process.cwd();
 
 /** The real path, through symlinks such as macOS's /tmp, of a path that may not exist yet. */
 function realPath(path) {
-  if (existsSync(path)) return realpathSync(path);
+  /* .native also fixes the letter case on a case-insensitive disk, so the --out guard compares like with like. */
+  if (existsSync(path)) return realpathSync.native(path);
   return join(realPath(dirname(path)), basename(path));
 }
 
@@ -77,6 +83,10 @@ const REPORT_LINES = [
   ['newTokens', 'new tokens with no usage note yet'],
   ['notPlaced', 'in the repo but not in tokens.json (no family fits)'],
   ['keptFromPrevious', 'kept from the artifact, not declared in the repo'],
+  [
+    'droppedComponents',
+    'components dropped from the artifact (their previews and README stay; remove them)',
+  ],
   [
     'droppedColours',
     'colours dropped from the artifact (no longer in the repo; previews that name them break)',
@@ -91,8 +101,17 @@ function contentType(path) {
 
 async function main() {
   const { values } = parseArgs({
-    options: { previous: { type: 'string' }, out: { type: 'string' } },
+    options: {
+      previous: { type: 'string' },
+      out: { type: 'string' },
+      'print-inputs': { type: 'boolean' },
+    },
   });
+  if (values['print-inputs']) {
+    const paths = PREVIOUS_INPUTS.map((path) => `project/${path}`);
+    process.stdout.write(`${JSON.stringify(paths, null, 2)}\n`);
+    return;
+  }
   if (!values.previous) {
     throw new Error(
       "--previous <dir> is required: a local copy of the live artifact's project/ files. " +
@@ -121,7 +140,7 @@ async function main() {
   try {
     manifestPath = require.resolve('@elirobinson/react/manifest');
   } catch {
-    throw new Error('@elirobinson/react has no dist/manifest.json. Run `pnpm nx run react:build`.');
+    throw new Error('react:build finished but @elirobinson/react has no dist/manifest.json.');
   }
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   const reactDist = dirname(manifestPath);
@@ -129,20 +148,24 @@ async function main() {
   const sha = git('rev-parse', '--short', 'HEAD');
   /* A detached HEAD has no branch name to stamp. */
   const branch = git('rev-parse', '--abbrev-ref', 'HEAD');
-  const ref = branch === 'HEAD' ? sha : `${branch}@${sha}`;
+  /* An uncommitted source edit is in the output but not in the sha. */
+  const dirty = git('status', '--porcelain', '--', ...STAMPED_SOURCES) !== '';
+  const stamp = dirty ? `${sha}-dirty` : sha;
+  const ref = branch === 'HEAD' ? stamp : `${branch}@${stamp}`;
   const previousText = (path) => readFileSync(join(previousDir, path), 'utf8');
 
   const tokens = buildTokens({
     srcDir: tokensSrc,
     previous: JSON.parse(previousText('tokens.json')),
-    meta: { ref, synced: new Date().toISOString().slice(0, 10) },
+    meta: { ref, synced: new Date().toLocaleDateString('en-CA') },
   });
   const bundleCss = buildBundleCss({
     repoRoot,
+    tokensSrc,
     extrasCss: tokens.extrasCss,
     previousBundleCss: previousText('components/bundle.css'),
     reactVersion: manifest.version,
-    ref: sha,
+    ref: stamp,
   });
   const { js: bundleJs, components } = await buildBundleJs({ manifest, reactDist, previousDir });
   const types = buildTypes({
@@ -192,10 +215,17 @@ async function main() {
   );
   writeFileSync(join(outRoot, 'publish-files.json'), `${JSON.stringify(publish, null, 2)}\n`);
 
-  const { report } = tokens;
+  /* A component that left the manifest leaves bundle.js, but its artifact-owned previews stay. */
+  const built = new Set(components.map((component) => component.name));
+  const report = {
+    ...tokens.report,
+    droppedComponents: [...previousText('components/index.d.ts').matchAll(/^\/\/ ── (\w+)$/gm)]
+      .map((match) => match[1])
+      .filter((name) => !built.has(name)),
+  };
   const lines = [
     `design-system-artifact: ${paths.length} files, ${tokens.json.color.tokens.length} colours x ${tokens.json.color.themes.length} themes, ` +
-      `${components.length} components (${manifest.package}@${manifest.version}, ${sha}) -> ${relative(repoRoot, outDir)}`,
+      `${components.length} components (${manifest.package}@${manifest.version}, ${stamp}) -> ${relative(repoRoot, outDir)}`,
   ];
   for (const [key, label] of REPORT_LINES) {
     if (report[key].length) lines.push(`  ${label}: ${report[key].join(', ')}`);

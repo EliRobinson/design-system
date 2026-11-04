@@ -171,7 +171,12 @@ export function previousTypesSection(indexDts, name) {
 export function selfContainedDts(source, name) {
   let text = source.replace(/^\/\/# sourceMappingURL=.*$/m, '');
   const out = { helpers: [], react: [], tanstack: [] };
-  for (const match of text.matchAll(/^import type \{([^}]+)\} from '([^']+)';$/gm)) {
+  const IMPORT = /^import type \{([^}]+)\} from '([^']+)';$/;
+  /* Every type import is removed below, so one in another form must fail here, not vanish. */
+  for (const line of text.match(/^import type .*$/gm) ?? []) {
+    if (!IMPORT.test(line)) throw new Error(`${name}.d.ts: no rule for the import form ${line}`);
+  }
+  for (const match of text.matchAll(new RegExp(IMPORT.source, 'gm'))) {
     const rule = IMPORT_RULES[match[2]];
     if (!rule) throw new Error(`${name}.d.ts: no rule for the import from ${match[2]}`);
     const names = match[1]
@@ -275,8 +280,16 @@ export function buildTypes({ manifest, reactDist, previousIndexDts }) {
     '// Miltinson Design System — component types, one section per component (from components/<Comp>/<Comp>.d.ts).\n' +
     `// Built from @elirobinson/react ${manifest.version} dist/components/**/*.d.ts (relative imports removed, helper types inlined); ${ARTIFACT_ONLY.names.join(' and ')} are artifact-only.\n`;
   const index = `${header}${preamble(indexBody, new Set(sections.flatMap((section) => [...tanstackFor(section)])), true)}\n\n${indexBody}`;
-  const declarations = (index.match(/export type Verdict =/g) ?? []).length;
-  if (declarations !== 1) throw new Error(`index.d.ts declares Verdict ${declarations} times`);
+  for (const helper of new Set(sections.flatMap((section) => section.helpers))) {
+    for (const [, declared] of HELPERS[helper].text.matchAll(
+      /^export (?:type|interface) (\w+)/gm,
+    )) {
+      const count = (
+        index.match(new RegExp(`^export (?:type|interface) ${declared}\\b`, 'gm')) ?? []
+      ).length;
+      if (count !== 1) throw new Error(`index.d.ts declares ${declared} ${count} times`);
+    }
+  }
 
   const perComponent = new Map();
   for (const section of sections) {
