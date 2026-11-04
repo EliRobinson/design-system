@@ -28,6 +28,14 @@ If someone owns it, ask them for it.
 
 - Run agents in parallel only when the work is truly independent. No shared files. No result one needs from the other.
 
+- **Read-only agents may share a checkout.** These are the `review-*` reviewers, `Explore`, and any agent whose brief says it only reads. Say "read-only" in the brief. Apply a reviewer's findings yourself, in your own commits: a reviewer that edits is a second author with no review.
+- **Write only in a worktree that is yours.** That is one you made, or one your brief hands you. Nothing on disk shows if another owner is in the middle of an edit. A stalled agent still owns its worktree: resume it with `SendMessage`.
+- **Commit early.** Uncommitted work in a worktree has no protection.
+- **Install first.** A new worktree has no `node_modules`. Run `pnpm install --frozen-lockfile` in it before the first commit, or the hooks fail.
+- **Use absolute paths.** Between calls, the shell goes back to the folder the session started in, often the main checkout. A `cd` does not carry over. So never run a bare `git add -A` in the call after a `cd`. Use `git -C <worktree>` or absolute paths.
+- **Start a session inside its worktree.** Hook scripts load from the folder the session started in (`$CLAUDE_PROJECT_DIR`). A session that starts in the main checkout and then moves into a worktree still runs the main checkout's copy of the hooks. So a hook fix on its branch never runs for it. This blocked the review gate on #283.
+- **Clean up after merge.** The owner removes its own worktree. See [Git, hooks, and pull requests](git-and-prs.md).
+
 ### How each kind of agent gets its worktree
 
 | You start it with               | Do this                                                                                                                                                                     |
@@ -35,15 +43,6 @@ If someone owns it, ask them for it.
 | The `Agent` tool                | Make the worktree with the commands above and put its absolute path in the brief. Or pass `isolation: "worktree"`, and tell the agent to cut its branch from `origin/main`. |
 | A new session (`start_session`) | Pass `use_worktree: true`, or a `cwd` that is already the worktree. Never `use_worktree: false` for work that writes.                                                       |
 | Your own shell                  | Run the commands above. Then work only in that folder.                                                                                                                      |
-
-- **Read-only agents may share a checkout.** These are the `review-*` reviewers, `Explore`, and any agent whose brief says it only reads. Say "read-only" in the brief.
-- **A reviewer never edits.** Apply its findings yourself, in your own commits. A reviewer that edits is a second author with no review.
-- **Never write in a worktree you did not create.** Nothing on disk shows if its owner is in the middle of an edit. Make your own. A stalled agent still owns its worktree: resume it with `SendMessage`.
-- **Commit early.** Uncommitted work in a worktree has no protection.
-- **Install first.** A new worktree has no `node_modules`. Run `pnpm install --frozen-lockfile` in it before the first commit, or the hooks fail.
-- **Use absolute paths.** The shell goes back to the main checkout between calls. Use `git -C <worktree>` or an absolute path, never a bare `cd <worktree> && git add -A` in a later call.
-- **Start a session inside its worktree.** Hook scripts load from the folder the session started in (`$CLAUDE_PROJECT_DIR`). A session that starts in the main checkout and then moves into a worktree still runs the main checkout's copy of the hooks. So a hook fix on its branch never runs for it. This blocked the review gate on #283. Subagents run their parent session's hooks, for the same reason.
-- **Clean up after merge.** The owner removes its own worktree. See [Git, hooks, and pull requests](git-and-prs.md).
 
 ## Shared state between worktrees
 

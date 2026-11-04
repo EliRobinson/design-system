@@ -35,7 +35,7 @@ Two consequences, and the second is the one that changes how you write a branch:
 
 ## Worktrees share one Nx cache, so `nx reset` is repo-wide
 
-Run from a worktree — `.claude/worktrees/<branch>` — `nx reset` deletes the **main
+Run from a worktree — `.claude/worktrees/<name>` — `nx reset` deletes the **main
 checkout's** `.nx/cache`, not the worktree's. It also deletes the main checkout's
 `.nx/workspace-data`, where the cache's index lives. It is the least visible of the
 worktree traps because clearing a cache produces no error and no output naming a
