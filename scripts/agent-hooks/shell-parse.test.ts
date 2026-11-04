@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { parseCommands, quoteArgv, shellScriptOf } from './shell-parse.mjs';
+import { cdTarget, parseCommands, quoteArgv, shellScriptOf } from './shell-parse.mjs';
 
 const argvs = (script: string) => parseCommands(script).map(({ argv }) => argv);
 const names = (script: string) => argvs(script).map((argv) => argv[0]);
@@ -52,6 +52,10 @@ describe('parseCommands', () => {
     expect(top('(a); b')).toEqual(['a:false', 'b:true']);
     expect(top('echo $(a)')).toEqual(['echo:true', 'a:false']);
     expect(top('bash -c "a"')).toEqual(['bash:true', 'a:false']);
+    expect(top('a | b; c')).toEqual(['a:false', 'b:false', 'c:true']);
+    expect(top('a |& b')).toEqual(['a:false', 'b:false']);
+    expect(top('a & b')).toEqual(['a:false', 'b:true']);
+    expect(top('a && b || c')).toEqual(['a:true', 'b:true', 'c:true']);
   });
 
   it('skips redirect targets and file descriptors', () => {
@@ -75,6 +79,21 @@ describe('parseCommands', () => {
     expect(names("echo 'a <<Z'\nx")).toContain('x');
     expect(names('echo $((1 << y))\nx')).toContain('x');
     expect(names('(( n = 1 << 2 ))\nx')).toContain('x');
+  });
+});
+
+describe('cdTarget', () => {
+  it('resolves a literal target from the folder', () => {
+    expect(cdTarget('/a/b', 'c')).toBe('/a/b/c');
+    expect(cdTarget('/a/b', '../c')).toBe('/a/c');
+    expect(cdTarget('/a/b', '/x')).toBe('/x');
+  });
+
+  it('is null when it cannot tell', () => {
+    for (const target of [undefined, '-', '-P', '~', '~/x', '$X', '"$(pwd)"', '`pwd`']) {
+      expect(cdTarget('/a', target)).toBeNull();
+    }
+    expect(cdTarget(null, 'x')).toBeNull();
   });
 });
 

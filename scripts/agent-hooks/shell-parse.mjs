@@ -9,7 +9,8 @@ import { posix } from 'node:path';
 
 /**
  * A simple command. `top` is true when it runs in the script's own shell:
- * not in a subshell, a substitution, or a nested `bash -c` or `eval`.
+ * not in a subshell, a pipeline, a background job (`&`), a substitution, or
+ * a nested `bash -c` or `eval`.
  * `env` holds the `NAME=value` assignments dropped from its front, as in
  * `A=1 x` or `env A=1 x`.
  * @typedef {{ argv: string[], env: string[], top: boolean }} Command
@@ -41,6 +42,8 @@ function readLevel(script, start, closer, top) {
   let word = null;
   let redirectTarget = false;
   let subshell = 0;
+  // Whether the command being read takes its stdin from a pipe.
+  let pipedIn = false;
 
   const append = (/** @type {string} */ text) => {
     word = (word ?? '') + text;
@@ -51,11 +54,16 @@ function readLevel(script, start, closer, top) {
     else argv.push(word);
     word = null;
   };
-  const endCommand = () => {
+  // `op` is the operator that ends the command, if any. Each stage of a
+  // pipeline, and a command sent to the background, runs in a subshell.
+  const endCommand = (/** @type {string | null} */ op = null) => {
     endWord();
+    const piped = op === '|' || op === '|&';
+    const own = top && subshell === 0 && !pipedIn && !piped && op !== '&';
     const { argv: command, env } = unwrap(argv);
-    if (command.length > 0) commands.push({ argv: command, env, top: top && subshell === 0 });
+    if (command.length > 0) commands.push({ argv: command, env, top: own });
     argv = [];
+    pipedIn = piped;
   };
   // Reads a nested script and keeps its source text in the current word.
   const readNested = (/** @type {number} */ from, /** @type {')' | '`'} */ close) => {
@@ -178,7 +186,7 @@ function readLevel(script, start, closer, top) {
     } else {
       const op = OPERATORS.find((candidate) => script.startsWith(candidate, i));
       if (op) {
-        endCommand();
+        endCommand(op);
         i += op.length;
       } else {
         append(ch);
@@ -304,4 +312,17 @@ export function parseCommands(script, depth = 0) {
     else if (argv[0] === 'eval') inner.push(...parseCommands(argv.slice(1).join(' '), depth + 1));
   }
   return [...commands, ...inner];
+}
+
+/**
+ * The folder `cd <target>` (or `pushd <target>`) moves to from `dir`, or
+ * null when a parser cannot tell: no target, `-`, a flag, a leading `~`, or
+ * anything built at run time (`$`, backticks). A null `dir` stays null.
+ * @param {string | null} dir
+ * @param {string | undefined} target
+ * @returns {string | null}
+ */
+export function cdTarget(dir, target) {
+  if (dir === null || target === undefined || /^[-~]|[$`]/.test(target)) return null;
+  return posix.resolve(dir, target);
 }
