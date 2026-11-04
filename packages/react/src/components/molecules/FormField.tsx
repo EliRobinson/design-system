@@ -2,11 +2,14 @@ import type { HTMLAttributes, ReactNode } from 'react';
 import { forwardRef } from 'react';
 
 import { cn } from '../../lib/cn.js';
-import type { ControlErrorProps } from '../../lib/useControlError.js';
 import { useControlError } from '../../lib/useControlError.js';
 import { Label } from '../atoms/Label.js';
 
-export type FormFieldRenderProps = ControlErrorProps & {
+/* Written out, not `ControlErrorProps & …`: the Design System artifact build
+   inlines each component's public types and has no rule for a `lib/` import. */
+export type FormFieldRenderProps = {
+  'aria-describedby': string | undefined;
+  'aria-invalid': true | undefined;
   'aria-required': true | undefined;
 };
 
