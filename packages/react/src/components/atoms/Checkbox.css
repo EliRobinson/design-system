@@ -9,6 +9,8 @@
   display: flex;
   gap: var(--space-3);
   min-height: 44px;
+  /* Anchors the hidden label's absolute box to the row. */
+  position: relative;
 }
 
 .ds-checkbox__input {
@@ -65,4 +67,11 @@
 
 .ds-checkbox:has(.ds-checkbox__input:disabled) .ds-checkbox__label {
   color: var(--fg-disabled);
+}
+
+/* With the text hidden the row would shrink to the 18px box in a shrink-to-fit
+   parent. Keep the 44px width the hit area promises. */
+.ds-checkbox:has(.ds-checkbox__label--hidden) {
+  justify-content: center;
+  min-width: 44px;
 }
