@@ -11,6 +11,7 @@
 // every session, with no way to run the fix. The crash is named on stderr,
 // so it is not mistaken for a clean allow.
 
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -18,6 +19,33 @@ import { guardDecision, mainCheckoutOf } from './guard-main-checkout-policy.mjs'
 
 // The repo this file sits in: the main checkout, or a worktree of it.
 const OWN_CHECKOUT = fileURLToPath(new URL('../..', import.meta.url));
+
+// Git sets these when it runs a hook. Left in, they point the alias lookup
+// at whatever repo that hook is for.
+const GIT_REPO_ENV = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX'];
+
+/**
+ * `alias.<name>` from git's config, as git reads it for this repo: global
+ * and repo config together. Null when there is none, or git fails.
+ * @param {string} name
+ * @returns {string | null}
+ */
+function aliasOf(name) {
+  const env = { ...process.env };
+  for (const key of GIT_REPO_ENV) delete env[key];
+  try {
+    const value = execFileSync('git', ['config', '--get', `alias.${name}`], {
+      cwd: OWN_CHECKOUT,
+      env,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 2000,
+    }).trim();
+    return value === '' ? null : value;
+  } catch {
+    return null;
+  }
+}
 
 function main() {
   const raw = readFileSync(0, 'utf8');
@@ -28,10 +56,12 @@ function main() {
   const decision = guardDecision(
     { command, cwd: typeof event.cwd === 'string' ? event.cwd : process.cwd() },
     mainCheckoutOf(OWN_CHECKOUT),
+    aliasOf,
   );
   if (decision.blocked) {
+    // exitCode, not exit(): exit() can cut off a stderr pipe write.
     process.stderr.write(`${decision.reason}\n`);
-    process.exit(2);
+    process.exitCode = 2;
   }
 }
 
