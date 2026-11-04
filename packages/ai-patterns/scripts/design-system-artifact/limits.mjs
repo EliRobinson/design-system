@@ -5,6 +5,8 @@
 export const LIMITS = {
   themes: 8,
   colours: 600,
+  /* A non-colour family holds at most this many tokens. */
+  familyTokens: 60,
   /* One publish call takes at most 255 paths. */
   files: 255,
   bytes: {
@@ -16,9 +18,37 @@ export const LIMITS = {
   fontBytes: 1024 * 1024,
 };
 
-/** Throws naming every cap the output breaks. `sizes` maps project path to bytes. */
-export function checkLimits({ tokensJson, sizes }) {
+/* format.md: only colours may alias, and no value holds var(). */
+function grammarBreaks(tokensJson) {
   const broken = [];
+  for (const [family, entry] of Object.entries(tokensJson)) {
+    if (family === 'color' || family === 'type' || !Array.isArray(entry?.tokens)) continue;
+    if (entry.tokens.length > LIMITS.familyTokens) {
+      broken.push(`${family} has ${entry.tokens.length} tokens (max ${LIMITS.familyTokens})`);
+    }
+    for (const token of entry.tokens) {
+      const values = typeof token.value === 'string' ? [token.value] : Object.values(token.value);
+      if (values.some((value) => /var\(|\{/.test(value))) {
+        broken.push(
+          `${family} ${token.name} is not a literal value: ${JSON.stringify(token.value)}`,
+        );
+      }
+    }
+  }
+  for (const style of (tokensJson.type?.groups ?? []).flatMap((group) => group.styles)) {
+    for (const key of ['fontSize', 'lineHeight', 'letterSpacing']) {
+      if (style[key]?.includes('var(')) broken.push(`type ${style.name} ${key} is ${style[key]}`);
+    }
+    if ('fontWeight' in style && !Number.isInteger(style.fontWeight)) {
+      broken.push(`type ${style.name} fontWeight is ${style.fontWeight}`);
+    }
+  }
+  return broken;
+}
+
+/** Throws naming every cap or grammar rule the output breaks. `sizes` maps project path to bytes. */
+export function checkLimits({ tokensJson, sizes }) {
+  const broken = grammarBreaks(tokensJson);
   const themes = tokensJson.color.themes.length;
   if (themes > LIMITS.themes) broken.push(`${themes} themes (max ${LIMITS.themes})`);
   const colours = tokensJson.color.tokens.length;
