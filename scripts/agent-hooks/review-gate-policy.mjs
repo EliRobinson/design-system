@@ -5,7 +5,7 @@
 
 import { posix } from 'node:path';
 
-import { parseCommands, shellOf } from './shell-parse.mjs';
+import { afterFlags, placeCommands } from './shell-parse.mjs';
 
 /** The reviewers, in the order the PR template lists them. */
 export const REVIEWERS = /** @type {const} */ ([
@@ -105,17 +105,6 @@ function readFlags(args, valueFlags) {
 }
 
 /**
- * The args after any leading flags, skipping the values of `valueFlags`.
- * @param {string[]} args
- * @param {Set<string>} valueFlags
- */
-function afterFlags(args, valueFlags) {
-  let i = 0;
-  while (args[i]?.startsWith('-')) i += valueFlags.has(args[i] ?? '') ? 2 : 1;
-  return args.slice(i);
-}
-
-/**
  * @param {string} longNames  space-separated, without the `--`
  * @param {string[]} shortFlags
  */
@@ -179,47 +168,17 @@ function classifyApi(args, dir) {
 }
 
 /**
- * Where `cd <target>` moves the shell from `dir`, or null when the hook
- * cannot tell.
- * @param {string} dir
- * @param {string | undefined} target
- * @returns {string | null}
- */
-function cdInto(dir, target) {
-  if (target === undefined || target === '-' || /[$~`]/.test(target)) return null;
-  return target.startsWith('/') ? posix.normalize(target) : posix.join(dir, target);
-}
-
-/**
- * The PR-opening commands in a shell script, if any. Only a leading run of
- * `cd` commands moves `dir`: one before any other command ran in its shell
- * or a shell around it. It moves `dir` for its own shell and the shells
- * inside it, not for a shell around it.
+ * The PR-opening commands in a shell script, if any. `dir` is the folder
+ * each one runs in, from {@link placeCommands}, relative to the hook's
+ * working directory.
  * @param {string} script
  * @returns {PrCommand[]}
  */
 export function findPrCommands(script) {
   /** @type {PrCommand[]} */
   const found = [];
-  /** @type {Map<string, string | null>} The folder each shell moved to. */
-  const dirs = new Map();
-  /** @type {Set<string>} Shells where a command other than `cd` ran. */
-  const started = new Set();
-  const prefixes = (/** @type {number[]} */ shell) =>
-    shell.map((_, i) => shell.slice(0, shell.length - i).join('/')).concat('');
-  for (const { argv, scope } of parseCommands(script)) {
-    // A bare `NAME=value` cannot move the folder or open a PR.
-    if (argv.length === 0) continue;
-    const shell = shellOf(scope);
-    const keys = prefixes(shell);
-    const inherited = keys.find((key) => dirs.has(key));
-    /** @type {string | null | undefined} */
-    const dir = inherited === undefined ? undefined : dirs.get(inherited);
-    if (argv[0] === 'cd' && !keys.some((key) => started.has(key))) {
-      dirs.set(keys[0] ?? '', dir === null ? null : cdInto(dir ?? '.', argv[1]));
-      continue;
-    }
-    started.add(keys[0] ?? '');
+  for (const { command, folder: dir } of placeCommands(script, '.')) {
+    const { argv } = command;
     if (posix.basename(argv[0] ?? '') !== 'gh') continue;
     const [group, ...rest] = afterFlags(argv.slice(1), REPO_FLAGS);
     if (group === 'pr') {

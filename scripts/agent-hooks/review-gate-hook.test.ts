@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { withoutGitRepoEnv } from './git-env.mjs';
 import { REVIEWERS } from './review-gate-policy.mjs';
 import { CREATE, GH, filledReview, handbackLine } from './review-gate-fixtures';
 
@@ -19,10 +20,7 @@ let repo: string;
 // Git sets GIT_DIR and friends when it runs a hook such as pre-push. If the
 // child git and node calls inherit them, they act on this repo's real .git
 // instead of the throwaway repo.
-const GIT_ENV_LEAKS = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX'];
-const childEnv = Object.fromEntries(
-  Object.entries(process.env).filter(([key]) => !GIT_ENV_LEAKS.includes(key)),
-);
+const childEnv = withoutGitRepoEnv(process.env);
 
 const git = (...args: string[]) =>
   execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {

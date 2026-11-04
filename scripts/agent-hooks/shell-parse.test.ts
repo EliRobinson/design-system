@@ -1,6 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { cdTarget, parseCommands, quoteArgv, shellScriptOf } from './shell-parse.mjs';
+import {
+  afterFlags,
+  cdTarget,
+  cdWord,
+  parseCommands,
+  quoteArgv,
+  shellScriptOf,
+} from './shell-parse.mjs';
 
 const argvs = (script: string) => parseCommands(script).map(({ argv }) => argv);
 const names = (script: string) => argvs(script).map((argv) => argv[0]);
@@ -143,6 +150,13 @@ describe('cdTarget', () => {
     expect(cdTarget('/a/b', '/x')).toBe('/x');
   });
 
+  it('keeps a relative folder relative', () => {
+    expect(cdTarget('.', 'sub')).toBe('sub');
+    expect(cdTarget('a', 'b/c')).toBe('a/b/c');
+    expect(cdTarget('a', '../b')).toBe('b');
+    expect(cdTarget('.', '/abs//x/')).toBe('/abs/x');
+  });
+
   it('is null when it cannot tell', () => {
     for (const target of [undefined, '-', '-P', '~', '~/x', '$X', '"$(pwd)"', '`pwd`']) {
       expect(cdTarget('/a', target)).toBeNull();
@@ -167,5 +181,43 @@ describe('quoteArgv', () => {
   it('round-trips through parseCommands', () => {
     const argv = ['gh', 'pr', 'create', '-F', "my body's.md", '#', '$(x)'];
     expect(argvs(quoteArgv(argv))).toEqual([argv]);
+  });
+});
+
+describe('cdWord', () => {
+  const word = (script: string) => cdWord(parseCommands(script)[0]?.argv ?? []);
+
+  it('reads the target of every cd form both hooks follow', () => {
+    expect(word('cd a')).toBe('a');
+    expect(word('cd "quoted path"')).toBe('quoted path');
+    expect(word('cd /abs/dir')).toBe('/abs/dir');
+    expect(word('cd ../rel')).toBe('../rel');
+    expect(word('cd -')).toBe('-');
+    expect(word('cd')).toBeUndefined();
+    expect(word('pushd a')).toBe('a');
+  });
+
+  it('skips link flags and --', () => {
+    expect(word('cd -P /x')).toBe('/x');
+    expect(word('cd -L -e -@ /x')).toBe('/x');
+    expect(word('cd -- /x')).toBe('/x');
+    expect(word('cd -P -- -weird')).toBe('-weird');
+  });
+
+  it('gives the same folder in both hooks for a flagged cd', () => {
+    expect(cdTarget('/a', word('cd -P b'))).toBe('/a/b');
+    expect(cdTarget('/a', word('cd -P -'))).toBeNull();
+    expect(cdTarget('/a', word('cd'))).toBeNull();
+  });
+});
+
+describe('afterFlags', () => {
+  const values = new Set(['-R', '--repo']);
+
+  it('drops leading flags and the values of value flags', () => {
+    expect(afterFlags(['-R', 'o/r', 'pr', 'create'], values)).toEqual(['pr', 'create']);
+    expect(afterFlags(['--repo=o/r', '-x', 'pr'], values)).toEqual(['pr']);
+    expect(afterFlags(['pr', '-R', 'x'], values)).toEqual(['pr', '-R', 'x']);
+    expect(afterFlags([], values)).toEqual([]);
   });
 });
