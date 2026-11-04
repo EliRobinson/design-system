@@ -42,22 +42,21 @@
 
 /* Forced colors (Windows High Contrast) drops background, box-shadow and
    colour, so the fill and ring above vanish and every segment looks the same.
-   Selection is painted with system colours instead: Highlight / HighlightText
-   fill, plus a border so the edge shows even where a fill is not drawn. The
-   border is on the selected item only; min-width and min-height still hold
-   the 44px target. Focus is a system-colour outline so it stays visible on
-   the Highlight fill. */
+   The selected item opts out of that and is painted with system colours:
+   Highlight / HighlightText, plus an inset CanvasText ring that separates it
+   from the track. The ring is inset, not a border, so the selected item keeps
+   the same size and its neighbours do not shift. Opting out leaves the focus
+   outline on var(--focus-ring), so it is set to CanvasText here. Keep this
+   block after the base rules: component-tokens.mjs reads the first rule. */
 @media (forced-colors: active) {
   .ds-segmented-control__item--active {
     forced-color-adjust: none;
     background: Highlight;
     color: HighlightText;
-    border: 1px solid CanvasText;
-    box-shadow: none;
+    box-shadow: inset 0 0 0 1px CanvasText;
   }
 
   .ds-segmented-control__item:focus-visible {
-    outline: 2px solid CanvasText;
-    outline-offset: 1px;
+    outline-color: CanvasText;
   }
 }

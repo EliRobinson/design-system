@@ -9,7 +9,7 @@
 
 import { expect, it } from 'vitest';
 
-import { sheet } from './component-tokens.mjs';
+import { rules, sheet } from './component-tokens.mjs';
 
 const css = sheet('molecules/SegmentedControl.css');
 
@@ -28,10 +28,8 @@ function forcedColorsBlock() {
 
 const block = forcedColorsBlock();
 
-function declarations(selector) {
-  const match = block.match(new RegExp(`${selector.replace(/[.]/g, '\\.')}\\s*\\{([^}]*)\\}`));
-  return match ? match[1] : '';
-}
+const declarations = (selector) =>
+  rules(block).find((rule) => rule.selector === selector)?.body ?? '';
 
 it('has a forced-colors block', () => {
   expect(block).not.toBe('');
@@ -44,13 +42,14 @@ it('paints the selected segment with Highlight and HighlightText', () => {
   expect(body).toMatch(/forced-color-adjust:\s*none/);
 });
 
-it('gives the selected segment a border that survives forced colors', () => {
+it('gives the selected segment an inset ring, not a border that would resize it', () => {
   const body = declarations('.ds-segmented-control__item--active');
-  expect(body).toMatch(/border:\s*1px solid\s*(Highlight|CanvasText)\b/);
+  expect(body).toMatch(/box-shadow:\s*inset 0 0 0 1px CanvasText\b/);
+  expect(body).not.toMatch(/\bborder\b/);
 });
 
 it('keeps focus visible with a system colour', () => {
   expect(declarations('.ds-segmented-control__item:focus-visible')).toMatch(
-    /outline:\s*2px solid\s*(Highlight|CanvasText)\b/,
+    /outline-color:\s*CanvasText\b/,
   );
 });
