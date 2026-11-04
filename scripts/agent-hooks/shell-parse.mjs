@@ -103,14 +103,18 @@ function readLevel(script, start, closer, scope, ids) {
     const piped = op === '|' || op === '|&';
     const own = (pipedIn && !opened) || piped ? [...here(), newScope()] : here();
     const { argv: command, env } = unwrap(argv);
-    if (command.length > 0)
-      commands.push({ argv: command, env, scope: own, top: own.length === 0 });
+    // A bare `NAME=value` is kept: it sets a variable in the current shell.
+    if (command.length > 0 || env.length > 0)
+      commands.push({ argv: command, env, scope: own, top: false });
     if (op === '&') {
       const id = newScope();
-      const at = here().length;
+      const prefix = here();
+      const at = prefix.length;
       for (const each of commands.slice(listStart)) {
+        // Only the list in this group goes to the background, not one
+        // that a `(` or `{` around this point started.
+        if (!prefix.every((scopeId, i) => each.scope[i] === scopeId)) continue;
         each.scope = [...each.scope.slice(0, at), id, ...each.scope.slice(at)];
-        each.top = false;
       }
     }
     if (op !== null && LIST_ENDS.has(op)) listStart = commands.length;
@@ -255,7 +259,21 @@ function readLevel(script, start, closer, scope, ids) {
   return { commands, end: script.length };
 }
 
-const KEYWORDS = new Set(['if', 'then', 'else', 'elif', 'do', 'while', 'until', '!', '{', '}']);
+const KEYWORDS = new Set([
+  'if',
+  'then',
+  'else',
+  'elif',
+  'fi',
+  'do',
+  'done',
+  'while',
+  'until',
+  'esac',
+  '!',
+  '{',
+  '}',
+]);
 
 // Commands that run the rest of their argv as a command, with the flags of
 // theirs that take a value, and how many positional args come first.
@@ -376,7 +394,19 @@ export function parseCommands(script, depth = 0, scope = [], ids = { last: 0 }) 
       all.push(...parseCommands(argv.slice(1).join(' '), depth + 1, command.scope, ids));
     }
   }
+  for (const command of all) command.top = command.scope.length === 0;
   return all;
+}
+
+/**
+ * The shell a scope runs in: its subshell ids, without the compound bodies
+ * (negative ids), which run in the shell around them. Two commands whose
+ * `shellOf` scopes are equal may share variables and a folder.
+ * @param {number[]} scope
+ * @returns {number[]}
+ */
+export function shellOf(scope) {
+  return scope.filter((id) => id > 0);
 }
 
 /**

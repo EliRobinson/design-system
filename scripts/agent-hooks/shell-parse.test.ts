@@ -16,7 +16,7 @@ describe('parseCommands', () => {
 
   it('drops env assignments, keywords, and wrappers with their flags', () => {
     expect(names('A=1 B=2 x')).toEqual(['x']);
-    expect(names('if true; then x; fi')).toEqual(['true', 'x', 'fi']);
+    expect(names('if true; then x; fi')).toEqual(['true', 'x']);
     expect(names('sudo -u me env -u FOO nice -n 5 x')).toEqual(['x']);
     expect(names('timeout 60 x')).toEqual(['x']);
     expect(names('timeout -s KILL 60 x')).toEqual(['x']);
@@ -85,6 +85,14 @@ describe('parseCommands', () => {
     const top = (script: string) => parseCommands(script).map(({ top: isTop }) => isTop);
     expect(top('a && b & c')).toEqual([false, false, true]);
     expect(top('a; b && c & d')).toEqual([true, false, false, true]);
+    expect(top('a && (b &); c')).toEqual([true, false, true]);
+  });
+
+  it('keeps a bare assignment as a command with no words', () => {
+    expect(parseCommands('A=1; x').map(({ argv, env }) => [argv, env])).toEqual([
+      [[], ['A=1']],
+      [['x'], []],
+    ]);
   });
 
   it('runs eval in the shell that runs it', () => {

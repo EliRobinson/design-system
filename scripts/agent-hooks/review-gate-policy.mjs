@@ -5,7 +5,7 @@
 
 import { posix } from 'node:path';
 
-import { parseCommands } from './shell-parse.mjs';
+import { parseCommands, shellOf } from './shell-parse.mjs';
 
 /** The reviewers, in the order the PR template lists them. */
 export const REVIEWERS = /** @type {const} */ ([
@@ -192,23 +192,32 @@ function cdInto(dir, target) {
 
 /**
  * The PR-opening commands in a shell script, if any. Only a leading run of
- * top-level `cd` commands moves `dir`; a `cd` in a subshell or after
- * another command does not.
+ * `cd` commands moves `dir`: one before any other command ran in its shell
+ * or a shell around it. It moves `dir` for its own shell and the shells
+ * inside it, not for a shell around it.
  * @param {string} script
  * @returns {PrCommand[]}
  */
 export function findPrCommands(script) {
   /** @type {PrCommand[]} */
   const found = [];
-  /** @type {string | null | undefined} */
-  let dir;
-  let leading = true;
-  for (const { argv, top } of parseCommands(script)) {
-    if (leading && top && argv[0] === 'cd') {
-      dir = dir === null ? null : cdInto(dir ?? '.', argv[1]);
+  /** @type {Map<string, string | null>} The folder each shell moved to. */
+  const dirs = new Map();
+  /** @type {Set<string>} Shells where a command other than `cd` ran. */
+  const started = new Set();
+  const prefixes = (/** @type {number[]} */ shell) =>
+    shell.map((_, i) => shell.slice(0, shell.length - i).join('/')).concat('');
+  for (const { argv, scope } of parseCommands(script)) {
+    const shell = shellOf(scope);
+    const keys = prefixes(shell);
+    const inherited = keys.find((key) => dirs.has(key));
+    /** @type {string | null | undefined} */
+    const dir = inherited === undefined ? undefined : dirs.get(inherited);
+    if (argv[0] === 'cd' && !keys.some((key) => started.has(key))) {
+      dirs.set(keys[0] ?? '', dir === null ? null : cdInto(dir ?? '.', argv[1]));
       continue;
     }
-    if (top) leading = false;
+    started.add(keys[0] ?? '');
     if (posix.basename(argv[0] ?? '') !== 'gh') continue;
     const [group, ...rest] = afterFlags(argv.slice(1), REPO_FLAGS);
     if (group === 'pr') {
