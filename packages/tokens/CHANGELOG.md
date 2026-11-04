@@ -1,5 +1,11 @@
 # @elirobinson/tokens
 
+## 0.20.0
+
+### Minor Changes
+
+- 2803fe3: `@elirobinson/tokens/contrast` exports `combinationDeclarations`, the cascade's winning declaration per palette × theme with `var()` references kept, and `flattenCalc`. `combinationValues` is now that plus resolution, with the same output.
+
 ## 0.19.0
 
 ### Minor Changes

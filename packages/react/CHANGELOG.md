@@ -1,5 +1,13 @@
 # @elirobinson/react
 
+## 3.6.1
+
+### Patch Changes
+
+- 5153c66: SegmentedControl: in forced-colors mode (Windows High Contrast) the selected option is drawn with `Highlight` / `HighlightText` and a border, so it can be told from the others. Focus stays visible.
+- Updated dependencies [2803fe3]
+  - @elirobinson/tokens@0.20.0
+
 ## 3.6.0
 
 ### Minor Changes
