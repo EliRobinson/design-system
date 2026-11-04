@@ -1,5 +1,11 @@
 # @elirobinson/react
 
+## 3.6.2
+
+### Patch Changes
+
+- c3d6131: `Input`, `Textarea` and `Select` no longer point `aria-describedby` at the hint's id while an error hides the hint. With both `hint` and `error` set, the control is now described by the error only, as `FormField` already was. Markup is otherwise unchanged.
+
 ## 3.6.1
 
 ### Patch Changes
