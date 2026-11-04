@@ -31,9 +31,11 @@ The main checkout is the folder whose `.git` is a folder. Every worktree's `.git
 - A `cd` inside `{ ... }`, a function, or an `if`, `while` or `for` body leaves the folder after it unknown. Bash may or may not run that body in the current shell.
 - A `cd` it cannot evaluate counts as the main checkout. That is `cd $DIR`, `cd "$(...)"`, `cd ~/...`, `cd -`, a bare `cd`, and any `popd`. The flags `-P`, `-L`, `-e` and `-@` are skipped.
 - A folder that a `git worktree add` earlier on the line makes counts as a worktree.
-- `git -C <path>` moves git. A relative `-C` can name another folder only on the first command on the line. An absolute `-C` can do it anywhere, unless an earlier `export`, `declare`, `typeset`, `set`, `source` or `.` may have pointed git elsewhere. Otherwise a `-C` only adds a folder to check.
+- `git -C <path>` moves git. A relative `-C` can name another folder only on the first command on the line. After another command, it only adds a folder to check.
+- An absolute `-C` can name another folder anywhere on the line. The refusal tells agents to chain `git -C <worktree>` commands, so this rule lets that advice work.
+- An absolute `-C` is not trusted after a command that may point git elsewhere in a way the guard cannot read: `source`, `.`, `set -a`, or an `export` whose variable name is built at run time.
 - A command's own `$(...)` and the other stages of its pipe do not stop it being first.
-- `--git-dir`, `--work-tree`, `-c core.worktree=...`, and a `GIT_DIR=` or `GIT_WORK_TREE=` prefix count as the main checkout.
+- `--git-dir`, `--work-tree`, `-c core.worktree=...`, and a `GIT_DIR=` or `GIT_WORK_TREE=` prefix count as the main checkout. So does `GIT_DIR=...` or `export GIT_DIR=...` earlier on the line.
 - It parses with `scripts/agent-hooks/shell-parse.mjs`, the review gate's parser. It sees `$(...)`, `bash -c`, `eval` and wrappers like `sudo`. It ignores heredoc bodies.
 
 A `cd` in an earlier call does not carry over. So in each call, start the line with `git -C <absolute worktree path> ...`, or with `cd <absolute worktree path> && git ...`.
@@ -49,7 +51,7 @@ Then say in your next message that you used it, and why. It covers only the comm
 - It guards against an accident, not an attacker.
 - It reads git and `gh pr checkout` only. A shell write into the main checkout, such as `rm`, `sed -i` or `>`, is not refused.
 - Some git commands that move refs are allowed: `branch -f`, `branch -m`, `update-ref`, `symbolic-ref` with a value, and `reflog expire`.
-- It does not see a `GIT_DIR` exported in an earlier call, `env -C <main checkout> git ...` from a worktree, `find -exec git ...`, or git run from a script file.
+- It does not see a `GIT_DIR` exported in an earlier tool call, `env -C <main checkout> git ...` from a worktree, `find -exec git ...`, or git run from a script file.
 - It reads aliases from this repo's git config, not from the config of a repo named with `-C`.
 - A `cd` that fails is read as if it worked. With `;` the next command then runs in the old folder.
 - It runs for Claude Code only. Codex, Gemini, Cursor and Copilot do not have it yet.

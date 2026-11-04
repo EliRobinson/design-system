@@ -55,7 +55,9 @@ git fetch origin && git log --oneline HEAD..origin/main
 
 1. Comment a short summary on the issue.
 2. Repoint any screenshot links to the landed commit. See [Git workflow](git-workflow.md).
-3. Clean up, from the main checkout. `<name>` is the worktree folder: the branch name without its `type/` prefix. See [Parallel agents](parallel-agents.md). The [main checkout guard](git-workflow.md#the-main-checkout-guard) refuses `git worktree remove` there. This is the one routine use of its escape:
+3. Clean up, from the main checkout. `<name>` is the worktree folder: the branch name without its `type/` prefix. See [Parallel agents](parallel-agents.md).
+
+   The [main checkout guard](git-workflow.md#the-main-checkout-guard) refuses `git worktree remove` there. This is the one routine use of its escape:
 
 ```bash
 ALLOW_MAIN_CHECKOUT_WRITE=1 git worktree remove .claude/worktrees/<name>
