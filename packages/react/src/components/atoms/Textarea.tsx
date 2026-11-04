@@ -2,6 +2,7 @@ import type { TextareaHTMLAttributes } from 'react';
 import { forwardRef, useId } from 'react';
 
 import { cn } from '../../lib/cn.js';
+import { useControlError } from '../../lib/useControlError.js';
 
 export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label: string;
@@ -14,12 +15,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
   ref,
 ) {
   const generatedId = useId();
-  const hintId = useId();
-  const errorId = useId();
   const textareaId = id ?? generatedId;
-  const describedBy =
-    [ariaDescribedBy, error ? errorId : null, hint ? hintId : null].filter(Boolean).join(' ') ||
-    undefined;
+  const { controlProps, message } = useControlError(error, ariaDescribedBy, hint);
 
   return (
     <div className="ds-field">
@@ -30,20 +27,10 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
         ref={ref}
         id={textareaId}
         className={cn('ds-input', 'ds-textarea', error && 'ds-input--error', className)}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy}
+        {...controlProps}
         {...props}
       />
-      {hint && !error && (
-        <span id={hintId} className="ds-hint">
-          {hint}
-        </span>
-      )}
-      {error && (
-        <span id={errorId} className="ds-hint ds-hint--error" role="alert">
-          {error}
-        </span>
-      )}
+      {message}
     </div>
   );
 });
