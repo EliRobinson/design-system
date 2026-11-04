@@ -16,7 +16,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
 ) {
   const generatedId = useId();
   const textareaId = id ?? generatedId;
-  const { controlProps, message } = useControlError(error, ariaDescribedBy, hint);
+  const { controlProps, message } = useControlError(error, ariaDescribedBy, { hint });
 
   return (
     <div className="ds-field">

@@ -16,7 +16,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
 ) {
   const generatedId = useId();
   const selectId = id ?? generatedId;
-  const { controlProps, message } = useControlError(error, ariaDescribedBy, hint);
+  const { controlProps, message } = useControlError(error, ariaDescribedBy, { hint });
 
   return (
     <div className="ds-field">

@@ -1,13 +1,12 @@
 import type { HTMLAttributes, ReactNode } from 'react';
-import { forwardRef, useId } from 'react';
+import { forwardRef } from 'react';
 
 import { cn } from '../../lib/cn.js';
-import { FieldMessage, messageDescribedBy } from '../../lib/FieldMessage.js';
+import type { ControlErrorProps } from '../../lib/useControlError.js';
+import { useControlError } from '../../lib/useControlError.js';
 import { Label } from '../atoms/Label.js';
 
-export type FormFieldRenderProps = {
-  'aria-describedby': string | undefined;
-  'aria-invalid': true | undefined;
+export type FormFieldRenderProps = ControlErrorProps & {
   'aria-required': true | undefined;
 };
 
@@ -31,8 +30,10 @@ export const FormField = forwardRef<HTMLDivElement, FormFieldProps>(function For
   { className, label, htmlFor, labelAside, hint, error, required, children, ...props },
   ref,
 ) {
-  // One id: FieldMessage shows at most one of the two messages at a time.
-  const messageId = useId();
+  const { controlProps, message } = useControlError(error, undefined, {
+    hint,
+    variant: 'form-field',
+  });
 
   const labelElement = (
     <Label htmlFor={htmlFor} className="ds-form-field__label">
@@ -57,19 +58,10 @@ export const FormField = forwardRef<HTMLDivElement, FormFieldProps>(function For
         labelElement
       )}
       {children({
-        'aria-describedby': messageDescribedBy(hint, error, messageId, messageId),
-        'aria-invalid': error ? true : undefined,
+        ...controlProps,
         'aria-required': required ? true : undefined,
       })}
-      <FieldMessage
-        as="p"
-        hint={hint}
-        error={error}
-        hintId={messageId}
-        errorId={messageId}
-        hintClassName="ds-form-field__message ds-form-field__message--hint"
-        errorClassName="ds-form-field__message ds-form-field__message--error"
-      />
+      {message}
     </div>
   );
 });

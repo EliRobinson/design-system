@@ -16,7 +16,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
 ) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
-  const { controlProps, message } = useControlError(error, ariaDescribedBy, hint);
+  const { controlProps, message } = useControlError(error, ariaDescribedBy, { hint });
 
   return (
     <div className="ds-field">
