@@ -4,6 +4,7 @@ import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { Checkbox } from '../components/atoms/Checkbox.js';
+import type { InputProps } from '../components/atoms/Input.js';
 import { Input } from '../components/atoms/Input.js';
 import { Switch } from '../components/atoms/Switch.js';
 import { Textarea } from '../components/atoms/Textarea.js';
@@ -142,6 +143,29 @@ describe.each([
     expectNoDanglingDescribedBy(control);
   });
 
+  it("keeps the caller's aria-describedby first with an error", () => {
+    render(
+      <>
+        <p id="policy">See the policy.</p>
+        {field({ label, hint, error: 'Required.', 'aria-describedby': 'policy' })}
+      </>,
+    );
+
+    const control = screen.getByRole(role, { name: label });
+    expect(control).toHaveAttribute('aria-describedby', `policy ${screen.getByRole('alert').id}`);
+    expect(control).toHaveAccessibleDescription('See the policy. Required.');
+  });
+
+  it('updates the same alert in place when the error text changes', () => {
+    const { rerender } = render(field({ label, error: 'Required.' }));
+    const first = screen.getByRole('alert');
+
+    rerender(field({ label, error: 'Too short.' }));
+
+    expect(screen.getByRole('alert')).toBe(first);
+    expect(first).toHaveTextContent('Too short.');
+  });
+
   it('renders no message and no description without hint or error', () => {
     render(field({ label }));
 
@@ -164,4 +188,4 @@ describe.each([
   });
 });
 
-type FieldProps = { label: string; hint?: string; error?: string; 'aria-describedby'?: string };
+type FieldProps = Pick<InputProps, 'label' | 'hint' | 'error' | 'aria-describedby'>;
