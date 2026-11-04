@@ -75,6 +75,9 @@ describe('guardDecision in the main checkout', () => {
     'git submodule update --init',
     'git stash -m list',
     'gh pr checkout 12',
+    'gh pr -R o/r checkout 12',
+    'gh -R o/r pr checkout 12',
+    'gh --repo=o/r pr checkout 12',
   ])('refuses `%s`', (command) => {
     expect(refused(command)).toBe(true);
   });
@@ -121,7 +124,7 @@ describe('guardDecision in the main checkout', () => {
     expect(decision.reason).toContain('git add');
     expect(decision.reason).toContain(main);
     expect(decision.reason).toContain(`${OVERRIDE}=1`);
-    expect(decision.reason).toContain('git worktree add');
+    expect(decision.reason).toContain(`git -C ${main} worktree add ${main}/.claude/worktrees/`);
   });
 });
 
@@ -159,7 +162,7 @@ describe('cd', () => {
     'cd ~/Code/design-system && git add .',
     'cd && git add .',
     'cd - && git add .',
-    'cd -P /tmp && git add .',
+    'cd -x /tmp && git add .',
     'pushd $X && git add .',
   ])('counts a cd it cannot evaluate as the main checkout: `%s`', (command) => {
     expect(refused(command, wt)).toBe(true);
@@ -170,14 +173,46 @@ describe('cd', () => {
     `cd ${wt} | true; git add .`,
     `cd ${wt} & git add .`,
     `pushd ${wt}; popd; git add .`,
-    `(cd ${wt} && git add .)`,
   ])('does not let a cd that ends move the line: `%s`', (command) => {
     expect(refused(command)).toBe(true);
   });
 
-  it('checks a nested git against both readings of the folder', () => {
+  it('follows a cd inside a subshell for that subshell only', () => {
+    expect(refused(`(cd ${wt} && git add .)`)).toBe(false);
     expect(refused(`(cd ${main} && git add .)`, wt)).toBe(true);
-    expect(refused('(cd sub && git add .)', wt)).toBe(false);
+    expect(refused(`(cd ${main}); git log | cat; (git add .)`, wt)).toBe(false);
+    expect(refused(`bash -c "cd ${wt} && git add ."`)).toBe(false);
+  });
+
+  it('checks a nested git in the folder it runs in, not a later one', () => {
+    expect(refused(`bash -c "git commit -m x"; cd ${wt}`)).toBe(true);
+    expect(refused(`echo $(git commit -m x); cd ${wt}`)).toBe(true);
+    expect(refused(`eval 'git commit -m x'; cd ${wt}`)).toBe(true);
+    expect(refused(`out=$(git pull 2>&1); cd ${wt} && git status`)).toBe(true);
+  });
+
+  it('skips the link flags of cd', () => {
+    expect(refused(`cd -P ${wt} && git commit -m x`)).toBe(false);
+    expect(refused(`cd -L -- ${wt} && git commit -m x`)).toBe(false);
+  });
+
+  it('reads &> as a redirect, not a background job', () => {
+    expect(refused(`cd ${wt} &>/dev/null && git commit -m x`)).toBe(false);
+    expect(refused(`git -C ${wt} commit -m x &>/dev/null`)).toBe(false);
+  });
+
+  it('counts a worktree that git worktree add makes earlier on the line', () => {
+    const made = join(main, '.claude/worktrees/new');
+    expect(
+      refused(
+        'git worktree add .claude/worktrees/new -b new origin/main && cd .claude/worktrees/new && git add .',
+      ),
+    ).toBe(false);
+    expect(
+      refused(`git -C ${main} worktree add ${made} -b new origin/main && git -C ${made} add .`),
+    ).toBe(true);
+    expect(refused(`git worktree add ${made} && cd ${made} && git add .`, wt)).toBe(false);
+    expect(refused(`git worktree add ${made} && git add .`)).toBe(true);
   });
 
   it('does not refuse a read after a cd it cannot evaluate', () => {
@@ -193,8 +228,10 @@ describe('git -C', () => {
     expect(refused(`echo hi; git -C ${wt} add .`)).toBe(true);
   });
 
-  it('does not count a command inside $(...) as first', () => {
-    expect(refused(`echo "$(git -C ${wt} add .)"`)).toBe(true);
+  it('counts the first command to run as first, in a substitution or a pipe', () => {
+    expect(refused(`echo "$(git -C ${wt} add .)"`)).toBe(false);
+    expect(refused(`echo hi; echo "$(git -C ${wt} add .)"`)).toBe(true);
+    expect(refused(`git -C ${wt} commit -m x 2>&1 | tail -5`)).toBe(false);
   });
 
   it('can always point INTO the main checkout', () => {
@@ -254,6 +291,16 @@ describe('aliases', () => {
   it('reads an alias given with -c', () => {
     expect(refused('git -c alias.ci=commit ci -m x')).toBe(true);
     expect(refused('git -c alias.ci=status ci')).toBe(false);
+  });
+
+  it('reads git options at the front of an alias', () => {
+    expect(refused("git -c alias.x='-c user.name=a commit' x -m y")).toBe(true);
+    expect(refused(`git -c alias.x='-C ${wt} commit' x -m y`)).toBe(false);
+  });
+
+  it('ignores case in alias names, as git does', () => {
+    expect(refused('git -c alias.CM=commit cm -m x')).toBe(true);
+    expect(guardDecision({ command: 'git CM x', cwd: main }, main, aliasOf).blocked).toBe(true);
   });
 
   it('names the alias and what it runs in the refusal', () => {

@@ -11,8 +11,9 @@
 // call can also edit this file. When it cannot tell where git will run, it
 // says "the main checkout", and the escape below lets one command through.
 //
-// Pure: it reads the filesystem to classify folders and nothing else, so the
-// tests drive every branch from on-disk fixtures.
+// It has no side effects. It reads the filesystem to classify folders, so
+// the tests drive every branch from on-disk fixtures. Git's aliases come in
+// through a lookup function, so this file runs no process.
 
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, posix, resolve, sep } from 'node:path';
@@ -201,8 +202,11 @@ export function gitCallOf({ argv, env }) {
     if (name === '-C' && value !== undefined) chdirs.push(value);
     if (name === '--git-dir' || name === '--work-tree') pointed = true;
     if (name === '-c' && value?.toLowerCase().startsWith('core.worktree')) pointed = true;
+    // Git alias names ignore case.
     const alias = name === '-c' ? /^alias\.([^=]+)=(.*)$/is.exec(value ?? '') : null;
-    if (alias?.[1] !== undefined && alias[2] !== undefined) aliases[alias[1]] = alias[2];
+    if (alias?.[1] !== undefined && alias[2] !== undefined) {
+      aliases[alias[1].toLowerCase()] = alias[2];
+    }
     i += consumed;
   }
   const verb = argv[i];
@@ -215,33 +219,54 @@ export function gitCallOf({ argv, env }) {
  * @typedef {(name: string) => string | null} AliasLookup
  */
 
-/**
- * How deep aliases and the shell commands of `!` aliases are followed.
- * Git refuses an alias loop itself, so this only bounds the work.
- */
-const MAX_DEPTH = 5;
+/** How many aliases deep a call is followed. Git refuses a loop itself. */
+const ALIAS_DEPTH = 5;
+
+/** How many shell aliases deep a call is followed. */
+const SHELL_ALIAS_DEPTH = 3;
 
 /**
- * A git call with its aliases swapped for what they run. A plain alias
- * (`cm = commit -m`) becomes its verb and words. A shell alias
- * (`sync = !git pull && git push`) becomes `shell`, the command it runs.
- * @param {GitCall} git
- * @param {AliasLookup} aliasOf
- * @returns {GitCall & { shell?: string }}
+ * What a git call runs once its aliases are swapped in. `name` is the verb
+ * as typed.
+ * - `builtin`: no alias; `git` is the call.
+ * - `alias`: a plain alias (`cm = commit -m`); `git` is what it expands to.
+ * - `shell`: a shell alias (`sync = !git pull && git push`); `script` is the
+ *   shell command it runs.
+ * @typedef {{ kind: 'builtin' | 'alias', name: string, git: GitCall }
+ *   | { kind: 'shell', name: string, git: GitCall, script: string }} Resolved
  */
-function expandAliases(git, aliasOf) {
-  let call = git;
-  for (let depth = 0; depth < MAX_DEPTH; depth++) {
-    if (MUTATING_GIT_VERBS.has(call.verb) || READ_ONLY_GIT_VERBS.has(call.verb)) return call;
-    const value = call.aliases[call.verb] ?? aliasOf(call.verb);
-    if (value === null) return call;
-    if (value.startsWith('!')) return { ...call, shell: value.slice(1) };
-    const [verb, ...words] = parseCommands(value)[0]?.argv ?? [];
-    if (verb === undefined) return call;
-    call = { ...call, verb, rest: [...words, ...call.rest] };
+
+/**
+ * @param {GitCall} call
+ * @param {AliasLookup} aliasOf
+ * @returns {Resolved}
+ */
+function resolveAliases(call, aliasOf) {
+  const name = call.verb;
+  let git = call;
+  for (let depth = 0; depth < ALIAS_DEPTH; depth++) {
+    if (MUTATING_GIT_VERBS.has(git.verb) || READ_ONLY_GIT_VERBS.has(git.verb)) break;
+    const key = git.verb.toLowerCase();
+    const value = git.aliases[key] ?? aliasOf(key);
+    if (value === null) break;
+    if (value.startsWith('!')) return { kind: 'shell', name, git, script: value.slice(1) };
+    // An alias may start with git's own options: `ci = -c x=y commit`.
+    const words = parseCommands(value)[0]?.argv ?? [];
+    const inner = gitCallOf({ argv: ['git', ...words], env: [], scope: [], top: true });
+    if (inner === null) break;
+    git = {
+      verb: inner.verb,
+      rest: [...inner.rest, ...git.rest],
+      chdirs: [...git.chdirs, ...inner.chdirs],
+      pointed: git.pointed || inner.pointed,
+      aliases: { ...git.aliases, ...inner.aliases },
+    };
   }
-  return call;
+  return { kind: git === call ? 'builtin' : 'alias', name, git };
 }
+
+/** `gh` flags that take a value and may come before `pr checkout`. */
+const GH_VALUE_FLAGS = new Set(['-R', '--repo']);
 
 /**
  * Whether a command is `gh pr checkout`, which switches the branch of the
@@ -249,7 +274,15 @@ function expandAliases(git, aliasOf) {
  * @param {string[]} argv
  */
 function isGhPrCheckout(argv) {
-  return posix.basename(argv[0] ?? '') === 'gh' && argv[1] === 'pr' && argv[2] === 'checkout';
+  if (posix.basename(argv[0] ?? '') !== 'gh') return false;
+  /** @type {string[]} */
+  const words = [];
+  for (let i = 1; i < argv.length; i++) {
+    const word = argv[i] ?? '';
+    if (GH_VALUE_FLAGS.has(word)) i++;
+    else if (!/^--repo=/.test(word)) words.push(word);
+  }
+  return words[0] === 'pr' && words[1] === 'checkout';
 }
 
 /**
@@ -311,12 +344,16 @@ export function mainCheckoutOf(dir) {
  * Whether `dir` is in the main checkout `mainRoot`. A null `dir` is a folder
  * this file could not work out, and counts as the main checkout. A null
  * `mainRoot` means the hook could not find its own repo, and then every main
- * checkout counts, so the guard keeps guarding.
+ * checkout counts, so the guard keeps guarding. `added` holds the worktrees
+ * that a `git worktree add` earlier on the line makes: they do not exist
+ * yet, so the disk cannot say what they are.
  * @param {string | null} dir
  * @param {string | null} mainRoot
+ * @param {string[]} added
  */
-function inMainCheckout(dir, mainRoot) {
+function inMainCheckout(dir, mainRoot, added) {
   if (dir === null) return true;
+  if (added.some((path) => dir === path || dir.startsWith(`${path}${sep}`))) return false;
   const checkout = checkoutOf(dir);
   return (
     checkout !== null &&
@@ -342,27 +379,104 @@ function foldersOf(git, dir, first) {
   return first ? [target] : [dir, target];
 }
 
+/** `git worktree add` flags that take a value. */
+const WORKTREE_ADD_VALUE_FLAGS = new Set(['-b', '-B', '--reason']);
+
+/**
+ * The path a `git worktree add` makes, or null when the call is not one.
+ * @param {GitCall} git
+ * @returns {string | null}
+ */
+function worktreeAddPath(git) {
+  if (git.verb !== 'worktree' || subcommandOf(git.rest) !== 'add') return null;
+  const words = git.rest.slice(git.rest.indexOf('add') + 1);
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i] ?? '';
+    if (WORKTREE_ADD_VALUE_FLAGS.has(word)) i++;
+    else if (!word.startsWith('-')) return word;
+  }
+  return null;
+}
+
+// `cd` flags that change how a link is followed, not where it goes.
+const CD_FLAGS = new Set(['-L', '-P', '-e', '-@']);
+
+/**
+ * The target word of a `cd` or `pushd`, past its link flags and `--`.
+ * @param {string[]} argv
+ */
+function cdWord(argv) {
+  let i = 1;
+  while (CD_FLAGS.has(argv[i] ?? '')) i++;
+  if (argv[i] === '--') i++;
+  return argv[i];
+}
+
+/**
+ * @typedef {object} Placed
+ * @property {import('./shell-parse.mjs').Command} command
+ * @property {string | null} folder The folder its shell is in. Null when this
+ *   file cannot tell.
+ * @property {boolean} first Whether it is the first command on the line.
+ */
+
+/**
+ * Each command on the line that is not a `cd`, with the folder it runs in.
+ *
+ * The parser lists commands in the order they run, each with the shells it
+ * runs in (`scope`). Each shell has its own folder. A shell starts in the
+ * folder its parent is in at that point, and a `cd` or `pushd` moves only
+ * its own shell, as if it always ran. `popd` lands where this file cannot
+ * tell.
+ * @param {string} line
+ * @param {string | null} cwd
+ * @returns {Placed[]}
+ */
+function placeCommands(line, cwd) {
+  /** @type {Map<string, string | null>} */
+  const folders = new Map([['', cwd]]);
+  /** @type {(scope: number[]) => string | null} */
+  const folderIn = (scope) => {
+    const key = scope.join('/');
+    if (!folders.has(key)) folders.set(key, folderIn(scope.slice(0, -1)));
+    return folders.get(key) ?? null;
+  };
+  /** @type {Placed[]} */
+  const placed = [];
+  for (const [index, command] of parseCommands(line).entries()) {
+    const folder = folderIn(command.scope);
+    const program = command.argv[0];
+    if (program === 'cd' || program === 'pushd' || program === 'popd') {
+      const next = program === 'popd' ? null : cdTarget(folder, cdWord(command.argv));
+      folders.set(command.scope.join('/'), next);
+    } else {
+      placed.push({ command, folder, first: index === 0 });
+    }
+  }
+  return placed;
+}
+
 /**
  * @param {string} what The refused command, as {@link refusedIn} names it.
  * @param {string | null} root
  */
 function refusalFor(what, root) {
-  const where = root ?? 'the main checkout';
+  const main = root ?? '<main checkout>';
   return [
-    `Refused: ${what} would change the main checkout (${where}).`,
+    `Refused: ${what} would change the main checkout (${main}).`,
     '',
     'Other agents share that folder. A write there can commit their files or delete their unstaged edits.',
     '',
-    'Work in your own worktree. Make one from the root of the main checkout:',
+    'Work in your own worktree:',
     '',
-    '  git fetch origin',
-    '  git worktree add .claude/worktrees/<branch> -b <branch> origin/main',
+    `  git -C ${main} fetch origin`,
+    `  git -C ${main} worktree add ${main}/.claude/worktrees/<branch> -b <branch> origin/main`,
     '',
     'A `cd` in an earlier call does not carry over. In each command, start the line with',
     '`git -C <absolute worktree path> ...`, or with `cd <absolute worktree path> && git ...`.',
     'A `cd` this hook cannot read (`cd $DIR`, `cd ~`, `cd -`) counts as the main checkout.',
     '',
-    `Use the escape only when no worktree can do the job: put ${OVERRIDE}=1 in front of that one command, and say why in your next message.`,
+    `Use the escape only when no worktree can do the job: put ${OVERRIDE}=1 in front of that one git command, and say why in your next message.`,
     'See docs/agents/git-workflow.md.',
   ].join('\n');
 }
@@ -370,62 +484,56 @@ function refusalFor(what, root) {
 /** @typedef {{ blocked: false } | { blocked: true, reason: string }} GuardDecision */
 
 /**
- * The first command in `command` this guard refuses, named for the
- * refusal, or null.
- *
- * A top-level `cd` or `pushd` moves the folder for the commands after it,
- * as if it always ran. A `cd` in a subshell, a pipeline, a background job,
- * `$(...)` or `bash -c` cannot move the top-level shell, so it moves only a
- * second reading, `nested`, and a nested git call is checked against both.
- * `popd` lands where this file cannot tell.
- *
- * The escape counts only as an env prefix on the git command itself, never
+ * The first command on `line` this guard refuses, named for the refusal, or
+ * null. The escape counts only as an env prefix on the command itself, never
  * from `process.env`: a session that exported it would switch the guard off
  * and nobody would see.
- * @param {string} command
+ * @param {string} line
  * @param {string | null} cwd
  * @param {string | null} mainRoot
  * @param {AliasLookup} aliasOf
- * @param {number} depth
+ * @param {number} depth How many shell aliases deep this line is.
  * @returns {string | null}
  */
-function refusedIn(command, cwd, mainRoot, aliasOf, depth) {
-  if (depth > MAX_DEPTH) return null;
-  let dir = cwd;
-  let nested = cwd;
-  for (const [index, each] of parseCommands(command).entries()) {
-    const [program, target] = each.argv;
-    if (program === 'cd' || program === 'pushd' || program === 'popd') {
-      const next = program === 'popd' ? null : cdTarget(each.top ? dir : nested, target);
-      if (each.top) dir = next;
-      nested = next;
+function refusedIn(line, cwd, mainRoot, aliasOf, depth) {
+  /** @type {string[]} */
+  const added = [];
+  const inMain = (/** @type {string | null} */ folder) => inMainCheckout(folder, mainRoot, added);
+  for (const { command, folder, first } of placeCommands(line, cwd)) {
+    if (command.env.includes(`${OVERRIDE}=1`)) continue;
+    if (isGhPrCheckout(command.argv)) {
+      if (inMain(folder)) return '`gh pr checkout`';
       continue;
     }
-    if (each.env.includes(`${OVERRIDE}=1`)) continue;
-    const here = each.top ? [dir] : [dir, nested];
-    if (isGhPrCheckout(each.argv)) {
-      if (here.some((folder) => inMainCheckout(folder, mainRoot))) return '`gh pr checkout`';
-      continue;
-    }
-    const call = gitCallOf(each);
+    const call = gitCallOf(command);
     if (call === null) continue;
-    const git = expandAliases(call, aliasOf);
-    const first = index === 0 && each.top;
-    const folders = here.flatMap((folder) => foldersOf(git, folder, first));
-    if (git.shell !== undefined) {
+    const resolved = resolveAliases(call, aliasOf);
+    const folders = foldersOf(resolved.git, folder, first);
+    if (resolved.kind === 'shell') {
       // A shell alias runs from the top of the checkout git was in.
-      for (const folder of folders) {
-        if (refusedIn(git.shell, folder, mainRoot, aliasOf, depth + 1) !== null) {
-          return `\`git ${call.verb}\` (a shell alias)`;
-        }
+      const refused =
+        depth < SHELL_ALIAS_DEPTH &&
+        folders.some((at) => {
+          const top = at === null ? null : (checkoutOf(at)?.root ?? at);
+          return refusedIn(resolved.script, top, mainRoot, aliasOf, depth + 1) !== null;
+        });
+      if (refused) return `\`git ${resolved.name}\` (a shell alias)`;
+      continue;
+    }
+    const { git } = resolved;
+    const path = worktreeAddPath(git);
+    if (path !== null) {
+      for (const at of folders) {
+        const made = cdTarget(at, path);
+        if (made !== null) added.push(made);
       }
       continue;
     }
     if (!MUTATING_GIT_VERBS.get(git.verb)?.(git.rest)) continue;
-    if (folders.some((folder) => inMainCheckout(folder, mainRoot))) {
-      return git.verb === call.verb
-        ? `\`git ${call.verb}\``
-        : `\`git ${call.verb}\` (an alias for \`git ${git.verb}\`)`;
+    if (folders.some(inMain)) {
+      return resolved.kind === 'alias'
+        ? `\`git ${resolved.name}\` (an alias for \`git ${git.verb}\`)`
+        : `\`git ${resolved.name}\``;
     }
   }
   return null;
