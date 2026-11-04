@@ -8,13 +8,19 @@
 import { posix } from 'node:path';
 
 /**
- * A simple command. `top` is true when it runs in the script's own shell:
- * not in a subshell, a pipeline, a background job (`&`), a substitution, or
- * a nested `bash -c` or `eval`.
- * `env` holds the `NAME=value` assignments dropped from its front, as in
- * `A=1 x` or `env A=1 x`.
- * @typedef {{ argv: string[], env: string[], top: boolean }} Command
+ * A simple command.
+ * - `env` holds the `NAME=value` assignments dropped from its front, as in
+ *   `A=1 x` or `env A=1 x`.
+ * - `scope` names the shells it runs in, outermost first: one id for each
+ *   subshell, pipeline stage, background job (`&`), substitution, and nested
+ *   `bash -c` or `eval` around it. Two commands with the same `scope` run in
+ *   the same shell, so a `cd` in one moves the other.
+ * - `top` is true when `scope` is empty: it runs in the script's own shell.
+ * @typedef {{ argv: string[], env: string[], scope: number[], top: boolean }} Command
  */
+
+let lastScopeId = 0;
+const newScope = () => ++lastScopeId;
 
 const OPERATORS = ['&&', '||', ';;', '|&', ';', '|', '&'];
 const HEREDOC = /^<<(-?)[ \t]*(?:'([^']*)'|"([^"]*)"|([^\s;&|()<>]+))/;
@@ -22,18 +28,20 @@ const HEREDOC = /^<<(-?)[ \t]*(?:'([^']*)'|"([^"]*)"|([^\s;&|()<>]+))/;
 /**
  * Reads one level of a script, from `start` to its `closer` (`)` for
  * `$(...)`, a backtick for backticks) or the end. One pass handles quotes,
- * substitutions, arithmetic, comments, redirects, and heredocs.
+ * substitutions, arithmetic, comments, redirects, and heredocs. Commands
+ * come back in the order they run: a substitution's commands come before
+ * the command that holds them.
  * @param {string} script
  * @param {number} start
  * @param {')' | '`' | null} closer
- * @param {boolean} top
+ * @param {number[]} scope The shells this level runs in.
  * @returns {{ commands: Command[], end: number }}
  */
-function readLevel(script, start, closer, top) {
+function readLevel(script, start, closer, scope) {
   /** @type {Command[]} */
   const commands = [];
-  /** @type {Command[]} */
-  const nested = [];
+  /** @type {number[]} The open `(...)` groups. */
+  const groups = [];
   /** @type {Array<{ delimiter: string, dash: boolean }>} */
   const heredocs = [];
   /** @type {string[]} */
@@ -41,7 +49,6 @@ function readLevel(script, start, closer, top) {
   /** @type {string | null} */
   let word = null;
   let redirectTarget = false;
-  let subshell = 0;
   // Whether the command being read takes its stdin from a pipe.
   let pipedIn = false;
 
@@ -56,19 +63,21 @@ function readLevel(script, start, closer, top) {
   };
   // `op` is the operator that ends the command, if any. Each stage of a
   // pipeline, and a command sent to the background, runs in a subshell.
+  const here = () => [...scope, ...groups];
   const endCommand = (/** @type {string | null} */ op = null) => {
     endWord();
     const piped = op === '|' || op === '|&';
-    const own = top && subshell === 0 && !pipedIn && !piped && op !== '&';
+    const own = pipedIn || piped || op === '&' ? [...here(), newScope()] : here();
     const { argv: command, env } = unwrap(argv);
-    if (command.length > 0) commands.push({ argv: command, env, top: own });
+    if (command.length > 0)
+      commands.push({ argv: command, env, scope: own, top: own.length === 0 });
     argv = [];
     pipedIn = piped;
   };
   // Reads a nested script and keeps its source text in the current word.
   const readNested = (/** @type {number} */ from, /** @type {')' | '`'} */ close) => {
-    const level = readLevel(script, from, close, false);
-    nested.push(...level.commands);
+    const level = readLevel(script, from, close, [...here(), newScope()]);
+    commands.push(...level.commands);
     append(script.slice(from - (close === '`' ? 1 : 2), level.end));
     return level.end;
   };
@@ -108,9 +117,9 @@ function readLevel(script, start, closer, top) {
       (ch === '$' && next === '(' && script[i + 2] === '(') ||
       (ch === '(' && next === '(' && word === null);
 
-    if ((closer === '`' && ch === '`') || (closer === ')' && ch === ')' && subshell === 0)) {
+    if ((closer === '`' && ch === '`') || (closer === ')' && ch === ')' && groups.length === 0)) {
       endCommand();
-      return { commands: [...commands, ...nested], end: i + 1 };
+      return { commands, end: i + 1 };
     }
     if (ch === ' ' || ch === '\t') {
       endWord();
@@ -165,6 +174,11 @@ function readLevel(script, start, closer, top) {
       } else {
         i += 2;
       }
+    } else if (ch === '&' && next === '>') {
+      // `&>` and `&>>` send stdout and stderr to a file. Not a background job.
+      endWord();
+      i += next === '>' && script[i + 2] === '>' ? 3 : 2;
+      redirectTarget = true;
     } else if (ch === '<' || ch === '>') {
       // A file descriptor before a redirect, as in `2>&1`, is not a word.
       if (word !== null && /^\d+$/.test(word)) word = null;
@@ -174,11 +188,11 @@ function readLevel(script, start, closer, top) {
       redirectTarget = true;
     } else if (ch === '(') {
       endCommand();
-      subshell++;
+      groups.push(newScope());
       i++;
     } else if (ch === ')') {
       endCommand();
-      subshell = Math.max(0, subshell - 1);
+      groups.pop();
       i++;
     } else if (ch === '\n') {
       endCommand();
@@ -195,7 +209,7 @@ function readLevel(script, start, closer, top) {
     }
   }
   endCommand();
-  return { commands: [...commands, ...nested], end: script.length };
+  return { commands, end: script.length };
 }
 
 const KEYWORDS = new Set(['if', 'then', 'else', 'elif', 'do', 'while', 'until', '!', '{', '}']);
@@ -295,23 +309,26 @@ export function quoteArgv(argv) {
 }
 
 /**
- * Every simple command in the script. Commands of the script itself come
- * first, in order; commands from nested scripts follow.
+ * Every simple command in the script, in the order they run. The commands
+ * of a `bash -c` or `eval` script come right after the command that runs
+ * them, in a scope of their own.
  * @param {string} script
  * @param {number} [depth]
+ * @param {number[]} [scope]
  * @returns {Command[]}
  */
-export function parseCommands(script, depth = 0) {
+export function parseCommands(script, depth = 0, scope = []) {
   if (depth > 5) return [];
-  const { commands } = readLevel(script, 0, null, depth === 0);
   /** @type {Command[]} */
-  const inner = [];
-  for (const { argv } of commands) {
-    const shellScript = shellScriptOf(argv);
-    if (shellScript !== null) inner.push(...parseCommands(shellScript, depth + 1));
-    else if (argv[0] === 'eval') inner.push(...parseCommands(argv.slice(1).join(' '), depth + 1));
+  const all = [];
+  for (const command of readLevel(script, 0, null, scope).commands) {
+    all.push(command);
+    const { argv } = command;
+    const inner = shellScriptOf(argv) ?? (argv[0] === 'eval' ? argv.slice(1).join(' ') : null);
+    if (inner !== null)
+      all.push(...parseCommands(inner, depth + 1, [...command.scope, newScope()]));
   }
-  return [...commands, ...inner];
+  return all;
 }
 
 /**

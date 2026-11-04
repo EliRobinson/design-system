@@ -157,6 +157,8 @@ describe('findPrCommands: reads pr create flags', () => {
     expect(dir(`cd a && cd b/c && ${CREATE} -F ../x.md`)).toBe('a/b/c');
     expect(dir(`cd /abs/repo && ${CREATE} -F x.md`)).toBe('/abs/repo');
     expect(dir(`cd a && cd /abs && cd b && ${CREATE} -F x.md`)).toBe('/abs/b');
+    // A pipeline runs in subshells, so it does not end the leading run of cds.
+    expect(dir(`ls | cat; cd sub && ${CREATE} -F x.md`)).toBe('sub');
   });
 
   it('does not follow a cd in a subshell, a substitution, or after another command', () => {
@@ -164,6 +166,8 @@ describe('findPrCommands: reads pr create flags', () => {
     expect(dir(`(cd sub && ls); ${CREATE} -F b.md`)).toBeUndefined();
     expect(dir(`echo $(${CREATE} -F b.md); cd sub`)).toBeUndefined();
     expect(dir(`ls && cd sub && ${CREATE} -F b.md`)).toBeUndefined();
+    expect(dir(`cd sub | cat; ${CREATE} -F b.md`)).toBeUndefined();
+    expect(dir(`cd sub & ${CREATE} -F b.md`)).toBeUndefined();
   });
 
   it('marks a cd it cannot follow as unknown', () => {
