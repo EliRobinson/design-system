@@ -178,10 +178,11 @@ const GIT_VALUE_OPTIONS = new Set([
 
 /**
  * The git call a command makes, or null when it is not git or has no verb.
- * @param {import('./shell-parse.mjs').Command} command
+ * @param {string[]} argv
+ * @param {string[]} [env] The `NAME=value` prefixes on the command.
  * @returns {GitCall | null}
  */
-export function gitCallOf({ argv, env }) {
+export function gitCallOf(argv, env = []) {
   if (posix.basename(argv[0] ?? '') !== 'git') return null;
   /** @type {string[]} */
   const chdirs = [];
@@ -252,7 +253,7 @@ function resolveAliases(call, aliasOf) {
     if (value.startsWith('!')) return { kind: 'shell', name, git, script: value.slice(1) };
     // An alias may start with git's own options: `ci = -c x=y commit`.
     const words = parseCommands(value)[0]?.argv ?? [];
-    const inner = gitCallOf({ argv: ['git', ...words], env: [], scope: [], top: true });
+    const inner = gitCallOf(['git', ...words]);
     if (inner === null) break;
     git = {
       verb: inner.verb,
@@ -364,19 +365,21 @@ function inMainCheckout(dir, mainRoot, added) {
 
 /**
  * The folders a git call may act in. Each `-C` moves git from where it was.
- * Only the first command on the line may use `-C` to leave the folder it
- * runs in: after another command, the folder is this file's best reading,
- * so a later `-C` can add a folder to check but not replace one.
+ * A `-C` leaves the folder the command runs in only when the folder is
+ * settled (see {@link Placed}): when the command is the first on the line,
+ * or when the `-C` is absolute and nothing earlier on the line may have
+ * pointed git elsewhere. Otherwise the folder is this file's best reading,
+ * so the `-C` adds a folder to check but does not replace one.
  * @param {GitCall} git
- * @param {string | null} dir The folder the command runs in.
- * @param {boolean} first
+ * @param {Placed} placed
  * @returns {Array<string | null>}
  */
-function foldersOf(git, dir, first) {
+function foldersOf(git, { folder, first, envMayPointGit }) {
   if (git.pointed) return [null];
-  if (git.chdirs.length === 0) return [dir];
-  const target = git.chdirs.reduce(cdTarget, dir);
-  return first ? [target] : [dir, target];
+  if (git.chdirs.length === 0) return [folder];
+  const target = git.chdirs.reduce(cdTarget, folder);
+  const absolute = git.chdirs[0]?.startsWith('/') === true;
+  return first || (absolute && !envMayPointGit) ? [target] : [folder, target];
 }
 
 /** `git worktree add` flags that take a value. */
@@ -388,12 +391,18 @@ const WORKTREE_ADD_VALUE_FLAGS = new Set(['-b', '-B', '--reason']);
  * @returns {string | null}
  */
 function worktreeAddPath(git) {
-  if (git.verb !== 'worktree' || subcommandOf(git.rest) !== 'add') return null;
-  const words = git.rest.slice(git.rest.indexOf('add') + 1);
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i] ?? '';
-    if (WORKTREE_ADD_VALUE_FLAGS.has(word)) i++;
-    else if (!word.startsWith('-')) return word;
+  if (git.verb !== 'worktree') return null;
+  let seenAdd = false;
+  for (let i = 0; i < git.rest.length; i++) {
+    const word = git.rest[i] ?? '';
+    if (word.startsWith('-')) {
+      if (seenAdd && WORKTREE_ADD_VALUE_FLAGS.has(word)) i++;
+    } else if (!seenAdd) {
+      if (word !== 'add') return null;
+      seenAdd = true;
+    } else {
+      return word;
+    }
   }
   return null;
 }
@@ -412,13 +421,31 @@ function cdWord(argv) {
   return argv[i];
 }
 
+// Commands that may set GIT_DIR or GIT_WORK_TREE for the rest of the line.
+const ENV_SETTERS = new Set(['export', 'declare', 'typeset', 'set', 'source', '.']);
+
 /**
  * @typedef {object} Placed
  * @property {import('./shell-parse.mjs').Command} command
  * @property {string | null} folder The folder its shell is in. Null when this
  *   file cannot tell.
- * @property {boolean} first Whether it is the first command on the line.
+ * @property {boolean} first Whether no command ran before it in its own
+ *   shell or a shell around it. Its own substitutions, and other stages of
+ *   its pipeline, do not count: they cannot move its shell.
+ * @property {boolean} envMayPointGit Whether an earlier command in its own
+ *   shell or a shell around it may have pointed git at another repo.
  */
+
+/** @param {number[]} scope */
+const keyOf = (scope) => scope.join('/');
+
+/**
+ * Whether `outer` is `inner` or a shell around it.
+ * @param {number[]} outer
+ * @param {number[]} inner
+ */
+const encloses = (outer, inner) =>
+  outer.length <= inner.length && outer.every((id, i) => inner[i] === id);
 
 /**
  * Each command on the line that is not a `cd`, with the folder it runs in.
@@ -427,7 +454,9 @@ function cdWord(argv) {
  * runs in (`scope`). Each shell has its own folder. A shell starts in the
  * folder its parent is in at that point, and a `cd` or `pushd` moves only
  * its own shell, as if it always ran. `popd` lands where this file cannot
- * tell.
+ * tell. A compound body (`{ ... }`, `if ... fi`, a negative scope id) runs in
+ * the shell around it unless it is piped or sent to the background, so a
+ * `cd` inside one leaves the folder around it unknown.
  * @param {string} line
  * @param {string | null} cwd
  * @returns {Placed[]}
@@ -437,21 +466,37 @@ function placeCommands(line, cwd) {
   const folders = new Map([['', cwd]]);
   /** @type {(scope: number[]) => string | null} */
   const folderIn = (scope) => {
-    const key = scope.join('/');
+    const key = keyOf(scope);
     if (!folders.has(key)) folders.set(key, folderIn(scope.slice(0, -1)));
     return folders.get(key) ?? null;
   };
+  /** @type {(scope: number[], next: string | null) => void} */
+  const move = (scope, next) => {
+    folders.set(keyOf(scope), next);
+    for (let s = scope; (s.at(-1) ?? 0) < 0; s = s.slice(0, -1)) {
+      const outer = s.slice(0, -1);
+      if (folderIn(outer) !== next) folders.set(keyOf(outer), null);
+    }
+  };
   /** @type {Placed[]} */
   const placed = [];
-  for (const [index, command] of parseCommands(line).entries()) {
+  /** @type {import('./shell-parse.mjs').Command[]} */
+  const earlier = [];
+  for (const command of parseCommands(line)) {
+    const before = earlier.filter((each) => encloses(each.scope, command.scope));
+    earlier.push(command);
     const folder = folderIn(command.scope);
     const program = command.argv[0];
     if (program === 'cd' || program === 'pushd' || program === 'popd') {
-      const next = program === 'popd' ? null : cdTarget(folder, cdWord(command.argv));
-      folders.set(command.scope.join('/'), next);
-    } else {
-      placed.push({ command, folder, first: index === 0 });
+      move(command.scope, program === 'popd' ? null : cdTarget(folder, cdWord(command.argv)));
+      continue;
     }
+    placed.push({
+      command,
+      folder,
+      first: before.length === 0,
+      envMayPointGit: before.some((each) => ENV_SETTERS.has(each.argv[0] ?? '')),
+    });
   }
   return placed;
 }
@@ -493,29 +538,30 @@ function refusalFor(what, root) {
  * @param {string | null} mainRoot
  * @param {AliasLookup} aliasOf
  * @param {number} depth How many shell aliases deep this line is.
+ * @param {string[]} added Worktrees `git worktree add` has made on the line
+ *   so far. Shared with the shell aliases the line runs, and added to.
  * @returns {string | null}
  */
-function refusedIn(line, cwd, mainRoot, aliasOf, depth) {
-  /** @type {string[]} */
-  const added = [];
+function refusedIn(line, cwd, mainRoot, aliasOf, depth, added) {
   const inMain = (/** @type {string | null} */ folder) => inMainCheckout(folder, mainRoot, added);
-  for (const { command, folder, first } of placeCommands(line, cwd)) {
+  for (const placed of placeCommands(line, cwd)) {
+    const { command, folder } = placed;
     if (command.env.includes(`${OVERRIDE}=1`)) continue;
     if (isGhPrCheckout(command.argv)) {
       if (inMain(folder)) return '`gh pr checkout`';
       continue;
     }
-    const call = gitCallOf(command);
+    const call = gitCallOf(command.argv, command.env);
     if (call === null) continue;
     const resolved = resolveAliases(call, aliasOf);
-    const folders = foldersOf(resolved.git, folder, first);
+    const folders = foldersOf(resolved.git, placed);
     if (resolved.kind === 'shell') {
       // A shell alias runs from the top of the checkout git was in.
       const refused =
         depth < SHELL_ALIAS_DEPTH &&
         folders.some((at) => {
           const top = at === null ? null : (checkoutOf(at)?.root ?? at);
-          return refusedIn(resolved.script, top, mainRoot, aliasOf, depth + 1) !== null;
+          return refusedIn(resolved.script, top, mainRoot, aliasOf, depth + 1, added) !== null;
         });
       if (refused) return `\`git ${resolved.name}\` (a shell alias)`;
       continue;
@@ -524,8 +570,9 @@ function refusedIn(line, cwd, mainRoot, aliasOf, depth) {
     const path = worktreeAddPath(git);
     if (path !== null) {
       for (const at of folders) {
+        // A path that exists already is not a new worktree.
         const made = cdTarget(at, path);
-        if (made !== null) added.push(made);
+        if (made !== null && !existsSync(made)) added.push(made);
       }
       continue;
     }
@@ -547,7 +594,7 @@ function refusedIn(line, cwd, mainRoot, aliasOf, depth) {
  * @returns {GuardDecision}
  */
 export function guardDecision({ command, cwd }, mainRoot, aliasOf = () => null) {
-  const refused = refusedIn(command, cwd, mainRoot, aliasOf, 0);
+  const refused = refusedIn(command, cwd, mainRoot, aliasOf, 0, []);
   return refused === null
     ? { blocked: false }
     : { blocked: true, reason: refusalFor(refused, mainRoot) };
