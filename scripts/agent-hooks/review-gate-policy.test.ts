@@ -40,6 +40,8 @@ const labels = REVIEWERS.map(({ label }) => label);
 const agents = REVIEWERS.map(({ agent }) => agent);
 const firstAgent = REVIEWERS[0].agent;
 
+const dir = (script: string) => (first(script) as { dir?: string | null }).dir;
+
 describe('findPrCommands: detects PR-opening commands', () => {
   it.each([
     ['plain', `${CREATE} --title x --body-file b.md`],
@@ -153,7 +155,6 @@ describe('findPrCommands: reads pr create flags', () => {
   });
 
   it('tracks the directory the leading cd commands move to', () => {
-    const dir = (script: string) => (first(script) as { dir?: string | null }).dir;
     expect(dir(`cd a && cd b/c && ${CREATE} -F ../x.md`)).toBe('a/b/c');
     expect(dir(`cd /abs/repo && ${CREATE} -F x.md`)).toBe('/abs/repo');
     expect(dir(`cd a && cd /abs && cd b && ${CREATE} -F x.md`)).toBe('/abs/b');
@@ -167,7 +168,6 @@ describe('findPrCommands: reads pr create flags', () => {
   });
 
   it('does not follow a cd in a subshell, a substitution, a pipe, or a background job', () => {
-    const dir = (script: string) => (first(script) as { dir?: string | null }).dir;
     expect(dir(`(cd sub && ls); ${CREATE} -F b.md`)).toBe('.');
     expect(dir(`echo $(${CREATE} -F b.md); cd sub`)).toBe('.');
     expect(dir(`cd sub | cat; ${CREATE} -F b.md`)).toBe('.');
@@ -176,14 +176,12 @@ describe('findPrCommands: reads pr create flags', () => {
   });
 
   it('follows a cd that comes after another command, as the guard does', () => {
-    const dir = (script: string) => (first(script) as { dir?: string | null }).dir;
     expect(dir(`ls && cd sub && ${CREATE} -F b.md`)).toBe('sub');
     // A cd inside a compound body may or may not have run.
     expect(dir(`{ cd sub; }; ${CREATE} -F b.md`)).toBeNull();
   });
 
   it('reads every cd form the guard reads, the same way', () => {
-    const dir = (script: string) => (first(script) as { dir?: string | null }).dir;
     expect(dir(`cd sub && ${CREATE} -F b.md`)).toBe('sub');
     expect(dir(`cd "my dir" && ${CREATE} -F b.md`)).toBe('my dir');
     expect(dir(`cd -P sub && ${CREATE} -F b.md`)).toBe('sub');
@@ -197,7 +195,6 @@ describe('findPrCommands: reads pr create flags', () => {
   });
 
   it('marks a cd it cannot follow as unknown', () => {
-    const dir = (script: string) => (first(script) as { dir?: string | null }).dir;
     expect(dir(`cd "$DIR" && ${CREATE} -F x.md`)).toBeNull();
     expect(dir(`cd "$DIR" && cd sub && ${CREATE} -F x.md`)).toBeNull();
     expect(dir(`cd - && ${CREATE} -F x.md`)).toBeNull();

@@ -18,7 +18,7 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, posix, resolve, sep } from 'node:path';
 
-import { afterFlags, cdTarget, parseCommands, placeCommands } from './shell-parse.mjs';
+import { afterFlags, cdTarget, ghCommand, parseCommands, placeCommands } from './shell-parse.mjs';
 
 /** The one escape: `ALLOW_MAIN_CHECKOUT_WRITE=1 git ...`, on that command. */
 export const OVERRIDE = 'ALLOW_MAIN_CHECKOUT_WRITE';
@@ -259,18 +259,14 @@ function resolveAliases(call, aliasOf) {
   return { kind: git === call ? 'builtin' : 'alias', name, git };
 }
 
-/** `gh` flags that take a value and may come before `pr checkout`. */
-const GH_VALUE_FLAGS = new Set(['-R', '--repo']);
-
 /**
  * Whether a command is `gh pr checkout`, which switches the branch of the
  * folder it runs in.
  * @param {string[]} argv
  */
 function isGhPrCheckout(argv) {
-  if (posix.basename(argv[0] ?? '') !== 'gh') return false;
-  const [group, ...rest] = afterFlags(argv.slice(1), GH_VALUE_FLAGS);
-  return group === 'pr' && afterFlags(rest, GH_VALUE_FLAGS)[0] === 'checkout';
+  const gh = ghCommand(argv);
+  return gh?.group === 'pr' && gh.sub === 'checkout';
 }
 
 /**
@@ -373,6 +369,9 @@ function foldersOf(git, { folder, first, gitPointed, envMayPointGit }) {
   return first || (absolute && !envMayPointGit) ? [target] : [folder, target];
 }
 
+/** For a walk where no flag takes a value. */
+const NO_VALUE_FLAGS = new Set();
+
 /** `git worktree add` flags that take a value. */
 const WORKTREE_ADD_VALUE_FLAGS = new Set(['-b', '-B', '--reason']);
 
@@ -383,7 +382,7 @@ const WORKTREE_ADD_VALUE_FLAGS = new Set(['-b', '-B', '--reason']);
  */
 function worktreeAddPath(git) {
   if (git.verb !== 'worktree') return null;
-  const [sub, ...rest] = afterFlags(git.rest, new Set());
+  const [sub, ...rest] = afterFlags(git.rest, NO_VALUE_FLAGS);
   return sub === 'add' ? (afterFlags(rest, WORKTREE_ADD_VALUE_FLAGS)[0] ?? null) : null;
 }
 
@@ -485,8 +484,9 @@ function refusalFor(what, root) {
  */
 function refusedIn(line, cwd, mainRoot, aliasOf, depth, added) {
   const inMain = (/** @type {string | null} */ folder) => inMainCheckout(folder, mainRoot, added);
-  for (const { command, folder, before } of placeCommands(line, cwd)) {
-    const placed = placementOf({ command, folder, before });
+  for (const item of placeCommands(line, cwd)) {
+    const { command, folder } = item;
+    const placed = placementOf(item);
     if (command.env.includes(`${OVERRIDE}=1`)) continue;
     if (isGhPrCheckout(command.argv)) {
       if (inMain(folder)) return '`gh pr checkout`';

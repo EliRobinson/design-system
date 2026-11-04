@@ -405,7 +405,7 @@ export function parseCommands(script, depth = 0, scope = [], ids = { last: 0 }) 
  * @param {number[]} scope
  * @returns {number[]}
  */
-export function shellOf(scope) {
+function shellOf(scope) {
   return scope.filter((id) => id > 0);
 }
 
@@ -435,9 +435,9 @@ export function cdWord(argv) {
  */
 export function cdTarget(dir, target) {
   if (dir === null || target === undefined || /^[-~]|[$`]/.test(target)) return null;
-  return target.startsWith('/')
-    ? posix.normalize(target).replace(/(.)\/$/, '$1')
-    : posix.join(dir, target);
+  const folder = target.startsWith('/') ? posix.normalize(target) : posix.join(dir, target);
+  // `join` and `normalize` keep a trailing slash; a folder is the same one without it.
+  return folder.replace(/(.)\/$/, '$1');
 }
 
 /**
@@ -450,6 +450,25 @@ export function afterFlags(args, valueFlags) {
   let i = 0;
   while (args[i]?.startsWith('-')) i += valueFlags.has(args[i] ?? '') ? 2 : 1;
   return args.slice(i);
+}
+
+/** `gh` flags that take a value and may come before its command. */
+const GH_VALUE_FLAGS = new Set(['-R', '--repo']);
+
+/**
+ * The parts of a `gh` command: `group` is the first word past gh's own
+ * flags, `rest` the args after it, and `sub` and `subArgs` the same walk
+ * once more, as in `gh pr create ...`. Null when it is not `gh` or has no
+ * group.
+ * @param {string[]} argv
+ * @returns {{ group: string, rest: string[], sub: string | undefined, subArgs: string[] } | null}
+ */
+export function ghCommand(argv) {
+  if (posix.basename(argv[0] ?? '') !== 'gh') return null;
+  const [group, ...rest] = afterFlags(argv.slice(1), GH_VALUE_FLAGS);
+  if (group === undefined) return null;
+  const [sub, ...subArgs] = afterFlags(rest, GH_VALUE_FLAGS);
+  return { group, rest, sub, subArgs };
 }
 
 /** @param {number[]} scope */
