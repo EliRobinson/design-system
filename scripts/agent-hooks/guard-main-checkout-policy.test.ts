@@ -1,8 +1,8 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { OVERRIDE, guardDecision, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
 
 // On-disk fixtures, shaped the way git lays them out:
@@ -24,6 +24,7 @@ beforeAll(() => {
   mkdirSync(wt, { recursive: true });
   writeFileSync(join(wt, '.git'), `gitdir: ${join(main, '.git/worktrees/wt')}\n`);
   mkdirSync(join(other, '.git'), { recursive: true });
+  symlinkSync(join(main, 'packages'), join(wt, 'shared'));
 });
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
@@ -66,6 +67,14 @@ describe('guardDecision in the main checkout', () => {
     'git cherry-pick abc',
     'git revert abc',
     'git apply fix.patch',
+    'git read-tree HEAD',
+    'git checkout-index -a -f',
+    'git update-index --add x',
+    'git bisect start HEAD HEAD~5',
+    'git sparse-checkout set x',
+    'git submodule update --init',
+    'git stash -m list',
+    'gh pr checkout 12',
   ])('refuses `%s`', (command) => {
     expect(refused(command)).toBe(true);
   });
@@ -87,6 +96,10 @@ describe('guardDecision in the main checkout', () => {
     'git stash show -p',
     'git apply --check fix.patch',
     'git branch -D old',
+    'git bisect log',
+    'git sparse-checkout list',
+    'git submodule status',
+    'gh pr view 12',
   ])('allows `%s`', (command) => {
     expect(refused(command)).toBe(false);
   });
@@ -122,6 +135,11 @@ describe('guardDecision outside the main checkout', () => {
     expect(refused('git commit -m x', other)).toBe(false);
   });
 
+  it('follows a symlink into the main checkout', () => {
+    expect(refused('git add .', join(wt, 'shared'))).toBe(true);
+    expect(refused('cd shared && git add .', wt)).toBe(true);
+  });
+
   it('allows a folder that is in no checkout', () => {
     expect(refused('git init && git add .', root)).toBe(false);
   });
@@ -147,6 +165,21 @@ describe('cd', () => {
     expect(refused(command, wt)).toBe(true);
   });
 
+  it.each([
+    `(cd ${wt}) && git add .`,
+    `cd ${wt} | true; git add .`,
+    `cd ${wt} & git add .`,
+    `pushd ${wt}; popd; git add .`,
+    `(cd ${wt} && git add .)`,
+  ])('does not let a cd that ends move the line: `%s`', (command) => {
+    expect(refused(command)).toBe(true);
+  });
+
+  it('checks a nested git against both readings of the folder', () => {
+    expect(refused(`(cd ${main} && git add .)`, wt)).toBe(true);
+    expect(refused('(cd sub && git add .)', wt)).toBe(false);
+  });
+
   it('does not refuse a read after a cd it cannot evaluate', () => {
     expect(refused('cd $WORKTREE && git status', wt)).toBe(false);
   });
@@ -158,6 +191,10 @@ describe('git -C', () => {
     expect(refused('git -C .claude/worktrees/wt add .')).toBe(false);
     expect(refused(`true && git -C ${wt} commit -m x`)).toBe(true);
     expect(refused(`echo hi; git -C ${wt} add .`)).toBe(true);
+  });
+
+  it('does not count a command inside $(...) as first', () => {
+    expect(refused(`echo "$(git -C ${wt} add .)"`)).toBe(true);
   });
 
   it('can always point INTO the main checkout', () => {
@@ -181,6 +218,53 @@ describe('git -C', () => {
     expect(refused(`git -c core.worktree=${main} add .`, wt)).toBe(true);
     expect(refused(`GIT_DIR=${main}/.git git add .`, wt)).toBe(true);
     expect(refused(`GIT_WORK_TREE=${main} git add .`, wt)).toBe(true);
+  });
+});
+
+describe('aliases', () => {
+  const aliases: Record<string, string> = {
+    cm: 'commit -m',
+    aa: 'add -A',
+    lg: 'log --graph',
+    sync: '!git pull --rebase && git push',
+    hist: '!git log --oneline',
+    outer: 'inner',
+    inner: 'checkout',
+  };
+  const aliasOf = (name: string) => aliases[name] ?? null;
+  const decideWith = (command: string, cwd = main) =>
+    guardDecision({ command, cwd }, main, aliasOf);
+
+  it.each(['git cm "wip"', 'git aa', 'git sync', 'git outer main'])(
+    'refuses a mutating alias: `%s`',
+    (command) => {
+      expect(decideWith(command).blocked).toBe(true);
+    },
+  );
+
+  it.each(['git lg', 'git hist'])('allows a read-only alias: `%s`', (command) => {
+    expect(decideWith(command).blocked).toBe(false);
+  });
+
+  it('allows a mutating alias in a worktree', () => {
+    expect(decideWith('git cm "wip"', wt).blocked).toBe(false);
+    expect(decideWith('git sync', wt).blocked).toBe(false);
+  });
+
+  it('reads an alias given with -c', () => {
+    expect(refused('git -c alias.ci=commit ci -m x')).toBe(true);
+    expect(refused('git -c alias.ci=status ci')).toBe(false);
+  });
+
+  it('names the alias and what it runs in the refusal', () => {
+    const decision = decideWith('git cm "wip"');
+    expect(decision.blocked && decision.reason).toContain('`git cm` (an alias for `git commit`)');
+  });
+
+  it('does not look up a built-in verb, since git runs the built-in', () => {
+    const lookup = vi.fn(aliasOf);
+    guardDecision({ command: 'git status && git add .', cwd: wt }, main, lookup);
+    expect(lookup).not.toHaveBeenCalled();
   });
 });
 

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,6 +44,14 @@ describe('guard-main-checkout hook', () => {
     expect(code).toBe(2);
     expect(stderr).toContain('git add');
     expect(stderr).toContain('ALLOW_MAIN_CHECKOUT_WRITE=1');
+  });
+
+  it("refuses an alias from git's own config", () => {
+    const config = join(elsewhere, 'gitconfig');
+    writeFileSync(config, '[alias]\n\tzzcm = commit -m\n');
+    const { code, stderr } = run(bash('git zzcm wip'), { GIT_CONFIG_GLOBAL: config });
+    expect(code).toBe(2);
+    expect(stderr).toContain('`git zzcm` (an alias for `git commit`)');
   });
 
   it('ignores ALLOW_MAIN_CHECKOUT_WRITE in its own environment', () => {
