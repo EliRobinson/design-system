@@ -58,7 +58,7 @@ git fetch origin && git log --oneline HEAD..origin/main
 3. Clean up:
 
 ```bash
-git worktree remove .claude/worktrees/<branch>
+git worktree remove .claude/worktrees/<name>
 git branch -D <branch>
 git push origin --delete <branch>
 ```

@@ -4,16 +4,17 @@ Many agents work in this repo at once. These rules keep them out of each other's
 
 ## One agent, one worktree, one lane
 
-- Every agent works in its own git worktree and branch.
-- Cut the branch from a fresh `origin/main`:
+- Every agent that writes works in its own git worktree, on its own feature branch. That includes subagents and side sessions, not only the agent Eli talks to. "Writes" means it edits files, commits, or runs a command that changes the tree.
+- Why: two agents in one checkout lose work without a trace. One switches the branch, reverts a file, or runs `git add -A`, and `git status` in the other comes back clean.
+- Cut the branch from a fresh `origin/main`. `<name>` is the branch name without its `type/` prefix, so the folder is not nested:
 
 ```bash
 git fetch origin
-git worktree add .claude/worktrees/<branch> -b <branch> origin/main
+git worktree add .claude/worktrees/<name> -b <branch> origin/main
 ```
 
 - Never commit on `main`. Not in the main checkout. Not anywhere.
-- Claim the issue before you start. Add the `in-progress` label. Comment the branch name.
+- Claim the issue before you start. Add the `in-progress` label. Comment the branch name and the worktree path.
 - You own the files your issue names. Never edit files another agent owns. Ask the owner, or comment on their issue.
 - Before you build a helper, check if someone else has it:
 
@@ -27,26 +28,21 @@ If someone owns it, ask them for it.
 
 - Run agents in parallel only when the work is truly independent. No shared files. No result one needs from the other.
 
-## Every agent that writes gets its own worktree
+### How each kind of agent gets its worktree
 
-This applies to subagents and side sessions too, not only to the agent Eli talks to. An agent that writes files, commits, or runs a command that changes the tree works in its own worktree, on its own feature branch, cut from a fresh `origin/main`.
-
-Why: two agents in one checkout lose work without a trace. One switches the branch or reverts a file, and `git status` in the other comes back clean. Health App lost uncommitted work this way more than once.
-
-How each way of starting an agent gets its worktree:
-
-| You start it with               | Do this                                                                                                                        |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| The `Agent` tool                | Pass `isolation: "worktree"`. Or create the worktree first and put its absolute path in the brief.                             |
-| A new session (`start_session`) | Pass `use_worktree: true`, or a `cwd` that is already the worktree. Never `use_worktree: false` for work that writes.          |
-| Your own shell                  | `git fetch origin`, then `git worktree add .claude/worktrees/<branch> -b <branch> origin/main`. Then work only in that folder. |
+| You start it with               | Do this                                                                                                                                                                     |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The `Agent` tool                | Make the worktree with the commands above and put its absolute path in the brief. Or pass `isolation: "worktree"`, and tell the agent to cut its branch from `origin/main`. |
+| A new session (`start_session`) | Pass `use_worktree: true`, or a `cwd` that is already the worktree. Never `use_worktree: false` for work that writes.                                                       |
+| Your own shell                  | Run the commands above. Then work only in that folder.                                                                                                                      |
 
 - **Read-only agents may share a checkout.** These are the `review-*` reviewers, `Explore`, and any agent whose brief says it only reads. Say "read-only" in the brief.
 - **A reviewer never edits.** Apply its findings yourself, in your own commits. A reviewer that edits is a second author with no review.
-- **Start a session inside its worktree.** A session runs its hooks from the folder it started in (`$CLAUDE_PROJECT_DIR`). A session that starts in the main checkout and then moves into a worktree still runs the main checkout's hooks, on the main checkout's branch. So a hook fix on its branch never runs for it. This blocked the review gate on #283.
-- **Never touch a worktree you did not create.** Nothing on disk shows if its owner is in the middle of an edit. If you need one, make your own.
+- **Never write in a worktree you did not create.** Nothing on disk shows if its owner is in the middle of an edit. Make your own. A stalled agent still owns its worktree: resume it with `SendMessage`.
 - **Commit early.** Uncommitted work in a worktree has no protection.
-- **Put the branch in the issue.** Comment the branch name and the worktree path when you claim the issue.
+- **Install first.** A new worktree has no `node_modules`. Run `pnpm install --frozen-lockfile` in it before the first commit, or the hooks fail.
+- **Use absolute paths.** The shell goes back to the main checkout between calls. Use `git -C <worktree>` or an absolute path, never a bare `cd <worktree> && git add -A` in a later call.
+- **Start a session inside its worktree.** Hook scripts load from the folder the session started in (`$CLAUDE_PROJECT_DIR`). A session that starts in the main checkout and then moves into a worktree still runs the main checkout's copy of the hooks. So a hook fix on its branch never runs for it. This blocked the review gate on #283. Subagents run their parent session's hooks, for the same reason.
 - **Clean up after merge.** The owner removes its own worktree. See [Git, hooks, and pull requests](git-and-prs.md).
 
 ## Shared state between worktrees
