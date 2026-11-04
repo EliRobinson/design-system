@@ -208,6 +208,8 @@ export function findPrCommands(script) {
   const prefixes = (/** @type {number[]} */ shell) =>
     shell.map((_, i) => shell.slice(0, shell.length - i).join('/')).concat('');
   for (const { argv, scope } of parseCommands(script)) {
+    // A bare `NAME=value` cannot move the folder or open a PR.
+    if (argv.length === 0) continue;
     const shell = shellOf(scope);
     const keys = prefixes(shell);
     const inherited = keys.find((key) => dirs.has(key));
