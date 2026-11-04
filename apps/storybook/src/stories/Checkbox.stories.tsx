@@ -26,3 +26,11 @@ export const Disabled: Story = {
 export const WithError: Story = {
   args: { label: 'I accept the terms', error: 'Accept the terms to continue.' },
 };
+
+export const DisabledChecked: Story = {
+  args: { disabled: true, defaultChecked: true },
+};
+
+export const HiddenLabel: Story = {
+  args: { hideLabel: true },
+};

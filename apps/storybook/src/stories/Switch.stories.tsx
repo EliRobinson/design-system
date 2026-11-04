@@ -26,3 +26,11 @@ export const Disabled: Story = {
 export const WithError: Story = {
   args: { error: 'Not saved. Try again.' },
 };
+
+export const DisabledChecked: Story = {
+  args: { disabled: true, defaultChecked: true },
+};
+
+export const HiddenLabel: Story = {
+  args: { hideLabel: true },
+};

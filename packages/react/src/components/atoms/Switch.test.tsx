@@ -30,4 +30,36 @@ describe('Switch', () => {
     );
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
+
+  it('keeps the accessible name when hideLabel is set', () => {
+    render(<Switch label="Notifications" hideLabel />);
+
+    expect(screen.getByRole('switch', { name: 'Notifications' })).toBeInTheDocument();
+    expect(screen.getByText('Notifications')).toHaveClass('ds-switch__label--hidden');
+  });
+
+  it('draws the label when hideLabel is not set', () => {
+    render(<Switch label="Notifications" />);
+
+    expect(screen.getByText('Notifications')).not.toHaveClass('ds-switch__label--hidden');
+  });
+
+  it('does not pass hideLabel to the input', () => {
+    render(<Switch label="Notifications" hideLabel />);
+
+    expect(screen.getByRole('switch')).not.toHaveAttribute('hidelabel');
+  });
+
+  it('does not toggle when disabled', async () => {
+    const user = userEvent.setup();
+
+    render(<Switch label="Notifications" disabled />);
+
+    const control = screen.getByRole('switch', { name: 'Notifications' });
+    await user.click(control);
+    await user.click(screen.getByText('Notifications'));
+
+    expect(control).toBeDisabled();
+    expect(control).not.toBeChecked();
+  });
 });
