@@ -194,6 +194,7 @@ describe('cd', () => {
   it('sends a whole and-or list to the background with &', () => {
     expect(refused(`cd ${wt} && sleep 1 & git add .`)).toBe(true);
     expect(refused(`cd ${main} && sleep 1 & git add .`, wt)).toBe(false);
+    expect(refused(`cd ${main} && (true &) ; git commit -m x`, wt)).toBe(true);
   });
 
   it('counts a piped or backgrounded compound body as its own shell', () => {
@@ -265,8 +266,28 @@ describe('git -C', () => {
   });
 
   it('does not trust a later -C after a command that may point git elsewhere', () => {
-    expect(refused(`export GIT_DIR=x; git -C ${wt} add .`)).toBe(true);
     expect(refused(`source env.sh && git -C ${wt} add .`)).toBe(true);
+    expect(refused(`set -a; git -C ${wt} add .`)).toBe(true);
+    expect(refused(`export $NAME=x; git -C ${wt} add .`)).toBe(true);
+  });
+
+  it('trusts a later absolute -C after setup lines that cannot point git', () => {
+    expect(refused(`set -euo pipefail; git -C ${wt} commit -m x`)).toBe(false);
+    expect(refused(`export PATH=$PATH:/x && git -C ${wt} commit -m x`)).toBe(false);
+    expect(refused(`export FOO=1; git add .`, wt)).toBe(false);
+  });
+
+  it('counts GIT_DIR set earlier on the line as the main checkout', () => {
+    expect(refused(`GIT_DIR=${main}/.git; git -C ${wt} add .`)).toBe(true);
+    expect(refused(`GIT_DIR=x\ngit add .`, wt)).toBe(true);
+    expect(refused('export GIT_DIR=x; git add .', wt)).toBe(true);
+    expect(refused(`{ export GIT_DIR=${main}/.git; }; git -C ${wt} commit -m x`)).toBe(true);
+  });
+
+  it('trusts an absolute -C after a folder it cannot read', () => {
+    expect(refused(`cd "$HOME" && git -C ${wt} commit -m x`)).toBe(false);
+    expect(refused(`{ cd ${wt}; }; git -C ${wt} commit -m x`)).toBe(false);
+    expect(refused(`popd; git -C ${wt} commit -m x`)).toBe(false);
   });
 
   it('does not count its own substitutions or pipe stages as earlier', () => {
@@ -345,7 +366,7 @@ describe('aliases', () => {
 
   it('ignores case in alias names, as git does', () => {
     expect(refused('git -c alias.CM=commit cm -m x')).toBe(true);
-    expect(guardDecision({ command: 'git CM x', cwd: main }, main, aliasOf).blocked).toBe(true);
+    expect(decideWith('git CM x').blocked).toBe(true);
   });
 
   it('names the alias and what it runs in the refusal', () => {

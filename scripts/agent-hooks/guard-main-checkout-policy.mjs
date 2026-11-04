@@ -18,7 +18,7 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, posix, resolve, sep } from 'node:path';
 
-import { cdTarget, parseCommands } from './shell-parse.mjs';
+import { cdTarget, parseCommands, shellOf } from './shell-parse.mjs';
 
 /** The one escape: `ALLOW_MAIN_CHECKOUT_WRITE=1 git ...`, on that command. */
 export const OVERRIDE = 'ALLOW_MAIN_CHECKOUT_WRITE';
@@ -374,10 +374,14 @@ function inMainCheckout(dir, mainRoot, added) {
  * @param {Placed} placed
  * @returns {Array<string | null>}
  */
-function foldersOf(git, { folder, first, envMayPointGit }) {
-  if (git.pointed) return [null];
+function foldersOf(git, { folder, first, gitPointed, envMayPointGit }) {
+  if (git.pointed || gitPointed) return [null];
   if (git.chdirs.length === 0) return [folder];
-  const target = git.chdirs.reduce(cdTarget, folder);
+  // An absolute `-C` does not depend on the folder before it.
+  const target = git.chdirs.reduce(
+    (dir, path) => cdTarget(path.startsWith('/') ? '/' : dir, path),
+    folder,
+  );
   const absolute = git.chdirs[0]?.startsWith('/') === true;
   return first || (absolute && !envMayPointGit) ? [target] : [folder, target];
 }
@@ -421,8 +425,35 @@ function cdWord(argv) {
   return argv[i];
 }
 
-// Commands that may set GIT_DIR or GIT_WORK_TREE for the rest of the line.
-const ENV_SETTERS = new Set(['export', 'declare', 'typeset', 'set', 'source', '.']);
+const GIT_REPO_VARIABLE = /^GIT_(DIR|WORK_TREE)=/;
+const DECLARERS = new Set(['export', 'declare', 'typeset', 'readonly', 'local']);
+
+/**
+ * Whether a command sets `GIT_DIR` or `GIT_WORK_TREE` for the rest of its
+ * shell: `GIT_DIR=x` on its own, or `export GIT_DIR=x`.
+ * @param {import('./shell-parse.mjs').Command} command
+ */
+function pointsGit({ argv, env }) {
+  if (argv.length === 0) return env.some((each) => GIT_REPO_VARIABLE.test(each));
+  return DECLARERS.has(argv[0] ?? '') && argv.slice(1).some((w) => GIT_REPO_VARIABLE.test(w));
+}
+
+/**
+ * Whether a command may set them, in a way this file cannot read: `source`
+ * or `.` runs another file, `set -a` exports every later assignment, and a
+ * declaration can build the variable's NAME at run time (`export $X=y`).
+ * @param {import('./shell-parse.mjs').Command} command
+ */
+function mayPointGit({ argv }) {
+  const [program = '', ...args] = argv;
+  if (program === 'source' || program === '.') return true;
+  if (program === 'set') {
+    return args.some(
+      (arg, i) => /^-[a-zA-Z]*a/.test(arg) || (arg === '-o' && args[i + 1] === 'allexport'),
+    );
+  }
+  return DECLARERS.has(program) && args.some((arg) => /[$`]/.test(arg.split('=')[0] ?? ''));
+}
 
 /**
  * @typedef {object} Placed
@@ -432,8 +463,9 @@ const ENV_SETTERS = new Set(['export', 'declare', 'typeset', 'set', 'source', '.
  * @property {boolean} first Whether no command ran before it in its own
  *   shell or a shell around it. Its own substitutions, and other stages of
  *   its pipeline, do not count: they cannot move its shell.
- * @property {boolean} envMayPointGit Whether an earlier command in its own
- *   shell or a shell around it may have pointed git at another repo.
+ * @property {boolean} gitPointed Whether an earlier command in its own shell
+ *   or a shell around it set `GIT_DIR` or `GIT_WORK_TREE`.
+ * @property {boolean} envMayPointGit Whether one may have.
  */
 
 /** @param {number[]} scope */
@@ -483,7 +515,8 @@ function placeCommands(line, cwd) {
   /** @type {import('./shell-parse.mjs').Command[]} */
   const earlier = [];
   for (const command of parseCommands(line)) {
-    const before = earlier.filter((each) => encloses(each.scope, command.scope));
+    const shell = shellOf(command.scope);
+    const before = earlier.filter((each) => encloses(shellOf(each.scope), shell));
     earlier.push(command);
     const folder = folderIn(command.scope);
     const program = command.argv[0];
@@ -495,7 +528,8 @@ function placeCommands(line, cwd) {
       command,
       folder,
       first: before.length === 0,
-      envMayPointGit: before.some((each) => ENV_SETTERS.has(each.argv[0] ?? '')),
+      gitPointed: before.some(pointsGit),
+      envMayPointGit: before.some((each) => pointsGit(each) || mayPointGit(each)),
     });
   }
   return placed;
