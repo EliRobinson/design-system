@@ -24,6 +24,13 @@ describe('parseCommands', () => {
     expect(names('command -- x')).toEqual(['x']);
   });
 
+  it('keeps the env assignments it drops, per command', () => {
+    const envs = (script: string) => parseCommands(script).map(({ env }) => env);
+    expect(envs('A=1 B=2 x && y')).toEqual([['A=1', 'B=2'], []]);
+    expect(envs('sudo env C=3 x')).toEqual([['C=3']]);
+    expect(envs('export D=4; x')).toEqual([[], []]);
+  });
+
   it('reads function bodies', () => {
     expect(names('function f { x; }; f')).toContain('x');
     expect(names('f() { x; }; f')).toContain('x');
