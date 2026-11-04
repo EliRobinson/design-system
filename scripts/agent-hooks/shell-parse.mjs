@@ -10,7 +10,9 @@ import { posix } from 'node:path';
 /**
  * A simple command. `top` is true when it runs in the script's own shell:
  * not in a subshell, a substitution, or a nested `bash -c` or `eval`.
- * @typedef {{ argv: string[], top: boolean }} Command
+ * `env` holds the `NAME=value` assignments dropped from its front, as in
+ * `A=1 x` or `env A=1 x`.
+ * @typedef {{ argv: string[], env: string[], top: boolean }} Command
  */
 
 const OPERATORS = ['&&', '||', ';;', '|&', ';', '|', '&'];
@@ -51,8 +53,8 @@ function readLevel(script, start, closer, top) {
   };
   const endCommand = () => {
     endWord();
-    const command = unwrap(argv);
-    if (command.length > 0) commands.push({ argv: command, top: top && subshell === 0 });
+    const { argv: command, env } = unwrap(argv);
+    if (command.length > 0) commands.push({ argv: command, env, top: top && subshell === 0 });
     argv = [];
   };
   // Reads a nested script and keeps its source text in the current word.
@@ -231,16 +233,23 @@ const ASSIGNMENT = /^[A-Za-z_]\w*=/;
 
 /**
  * Drops env assignments, shell keywords, `function <name>`, and wrapper
- * commands (with their flags) from the front of a command.
+ * commands (with their flags) from the front of a command. Returns the
+ * assignments it dropped as `env`.
  * @param {string[]} argv
+ * @returns {{ argv: string[], env: string[] }}
  */
 function unwrap(argv) {
   let rest = argv;
+  /** @type {string[]} */
+  const env = [];
   for (;;) {
     const first = rest[0];
-    if (first === undefined) return rest;
+    if (first === undefined) return { argv: rest, env };
     const wrapper = WRAPPERS[posix.basename(first)];
-    if (ASSIGNMENT.test(first) || KEYWORDS.has(first)) {
+    if (ASSIGNMENT.test(first)) {
+      env.push(first);
+      rest = rest.slice(1);
+    } else if (KEYWORDS.has(first)) {
       rest = rest.slice(1);
     } else if (first === 'function') {
       rest = rest.slice(2);
@@ -253,7 +262,7 @@ function unwrap(argv) {
       }
       rest = rest.slice(wrapper.positional ?? 0);
     } else {
-      return rest;
+      return { argv: rest, env };
     }
   }
 }
