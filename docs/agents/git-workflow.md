@@ -27,10 +27,12 @@ The main checkout is the folder whose `.git` is a folder. Every worktree's `.git
 ### How it finds the folder
 
 - It starts from the folder the call runs in, with symlinks resolved.
-- It follows `cd` and `pushd` in the shell they run in. A `cd` in a subshell, a pipeline, a background job, `$(...)` or `bash -c` moves only that shell.
-- A `cd` it cannot evaluate counts as the main checkout. That is `cd $DIR`, `cd "$(...)"`, `cd ~/...`, `cd -`, a bare `cd`, and any `popd`. `cd -P` and `cd -L` are followed.
+- It follows `cd` and `pushd` in the shell they run in. A `cd` in a subshell, a pipeline, a background job, `$(...)` or `bash -c` moves only that shell. `eval` runs in the current shell.
+- A `cd` inside `{ ... }`, a function, or an `if`, `while` or `for` body leaves the folder after it unknown. Bash may or may not run that body in the current shell.
+- A `cd` it cannot evaluate counts as the main checkout. That is `cd $DIR`, `cd "$(...)"`, `cd ~/...`, `cd -`, a bare `cd`, and any `popd`. The flags `-P`, `-L`, `-e` and `-@` are skipped.
 - A folder that a `git worktree add` earlier on the line makes counts as a worktree.
-- `git -C <path>` moves git. Only the first command on the line can use it to name another folder. After any other command, a `-C` can only add a folder to check.
+- `git -C <path>` moves git. A relative `-C` can name another folder only on the first command on the line. An absolute `-C` can do it anywhere, unless an earlier `export`, `declare`, `typeset`, `set`, `source` or `.` may have pointed git elsewhere. Otherwise a `-C` only adds a folder to check.
+- A command's own `$(...)` and the other stages of its pipe do not stop it being first.
 - `--git-dir`, `--work-tree`, `-c core.worktree=...`, and a `GIT_DIR=` or `GIT_WORK_TREE=` prefix count as the main checkout.
 - It parses with `scripts/agent-hooks/shell-parse.mjs`, the review gate's parser. It sees `$(...)`, `bash -c`, `eval` and wrappers like `sudo`. It ignores heredoc bodies.
 
@@ -38,11 +40,7 @@ A `cd` in an earlier call does not carry over. So in each call, start the line w
 
 ### The escape
 
-Use it only when no worktree can do the job. Put `ALLOW_MAIN_CHECKOUT_WRITE=1` in front of the one git command that must run in the main checkout. Put it on `git` itself, not on a wrapper such as `bash -c`. The one routine use is to remove your own worktree after merge:
-
-```bash
-ALLOW_MAIN_CHECKOUT_WRITE=1 git worktree remove .claude/worktrees/<branch>
-```
+Use it only when no worktree can do the job. Put `ALLOW_MAIN_CHECKOUT_WRITE=1` in front of the one git command that must run in the main checkout. Put it on `git` itself, not on a wrapper such as `bash -c`. The one routine use is to remove your own worktree after merge. See [After merge](git-and-prs.md#after-merge).
 
 Then say in your next message that you used it, and why. It covers only the command it prefixes. The hook never reads it from the environment, so `export ALLOW_MAIN_CHECKOUT_WRITE=1` does nothing.
 
