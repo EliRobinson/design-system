@@ -81,6 +81,29 @@ describe('parseCommands', () => {
     expect(nested).toHaveLength(2);
   });
 
+  it('sends a whole and-or list to the background with &', () => {
+    const top = (script: string) => parseCommands(script).map(({ top: isTop }) => isTop);
+    expect(top('a && b & c')).toEqual([false, false, true]);
+    expect(top('a; b && c & d')).toEqual([true, false, false, true]);
+  });
+
+  it('runs eval in the shell that runs it', () => {
+    const [evalCommand, inner] = parseCommands('eval "x"');
+    expect(inner?.scope).toEqual(evalCommand?.scope);
+  });
+
+  it('gives a compound body a negative scope id, inside a pipe stage when piped into', () => {
+    const scopes = (script: string) => parseCommands(script).map(({ scope }) => scope);
+    const [inBraces, after] = scopes('{ a; }; b');
+    expect(inBraces?.[0]).toBeLessThan(0);
+    expect(after).toEqual([]);
+    const [, x, y] = scopes('echo | { x; y; }');
+    expect(x).toEqual(y);
+    expect(x).toHaveLength(2);
+    expect(x?.[1]).toBeLessThan(0);
+    expect(scopes('if a; then b; fi; c').at(-1)).toEqual([]);
+  });
+
   it('skips redirect targets and file descriptors', () => {
     expect(argvs('x > out.txt 2>&1 < in.txt')).toEqual([['x']]);
   });

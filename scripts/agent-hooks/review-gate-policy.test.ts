@@ -168,6 +168,7 @@ describe('findPrCommands: reads pr create flags', () => {
     expect(dir(`ls && cd sub && ${CREATE} -F b.md`)).toBeUndefined();
     expect(dir(`cd sub | cat; ${CREATE} -F b.md`)).toBeUndefined();
     expect(dir(`cd sub & ${CREATE} -F b.md`)).toBeUndefined();
+    expect(dir(`cd sub && ls & ${CREATE} -F b.md`)).toBeUndefined();
   });
 
   it('marks a cd it cannot follow as unknown', () => {
