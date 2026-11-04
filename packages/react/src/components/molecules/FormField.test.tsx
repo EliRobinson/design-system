@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { expectNoDanglingDescribedBy } from '../../test/describedBy.js';
 import { FormField } from './FormField.js';
 
 describe('FormField', () => {
@@ -89,6 +90,20 @@ describe('FormField error announcement', () => {
     expect(screen.getByRole('textbox', { name: 'Email' })).toHaveAccessibleDescription(
       "We'll never share this",
     );
+  });
+
+  it.each([
+    { hint: "We'll never share this", error: undefined },
+    { hint: undefined, error: 'Required' },
+    { hint: "We'll never share this", error: 'Required' },
+  ])('points aria-describedby only at a rendered message (%o)', ({ hint, error }) => {
+    render(
+      <FormField label="Email" htmlFor="email" hint={hint} error={error}>
+        {(fieldProps) => <input id="email" {...fieldProps} />}
+      </FormField>,
+    );
+
+    expectNoDanglingDescribedBy(screen.getByRole('textbox', { name: 'Email' }));
   });
 
   it('renders no alert when there is no error', () => {

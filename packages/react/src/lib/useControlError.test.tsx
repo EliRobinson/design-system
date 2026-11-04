@@ -4,7 +4,11 @@ import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { Checkbox } from '../components/atoms/Checkbox.js';
+import { Input } from '../components/atoms/Input.js';
 import { Switch } from '../components/atoms/Switch.js';
+import { Textarea } from '../components/atoms/Textarea.js';
+import { Select } from '../components/organisms/Select.js';
+import { expectNoDanglingDescribedBy } from '../test/describedBy.js';
 
 /* The `error` contract the labelled-row controls share through
    useControlError, run once per control. Each control's own test file keeps
@@ -80,3 +84,84 @@ describe.each([
     expect(control).toBeChecked();
   });
 });
+
+/* The same contract with a hint, for the field controls that render their own
+   label, hint and error through useControlError. */
+describe.each([
+  { name: 'Input', role: 'textbox', render: (p: FieldProps) => <Input {...p} /> },
+  { name: 'Textarea', role: 'textbox', render: (p: FieldProps) => <Textarea {...p} /> },
+  {
+    name: 'Select',
+    role: 'combobox',
+    render: (p: FieldProps) => (
+      <Select {...p}>
+        <option value="a">A</option>
+      </Select>
+    ),
+  },
+])('$name hint and error', ({ role, render: field }) => {
+  const label = 'Email';
+  const hint = 'We will never share it.';
+
+  it('describes the control by the hint, without marking it invalid', () => {
+    render(field({ label, hint }));
+
+    const control = screen.getByRole(role, { name: label });
+    expect(control).toHaveAccessibleDescription(hint);
+    expect(control).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByText(hint)).toHaveClass('ds-hint');
+    expect(screen.getByText(hint)).not.toHaveClass('ds-hint--error');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expectNoDanglingDescribedBy(control);
+  });
+
+  it('renders the error as an alert that replaces the hint', () => {
+    render(field({ label, hint, error: 'Required.' }));
+
+    const control = screen.getByRole(role, { name: label });
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Required.');
+    expect(alert).toHaveClass('ds-hint', 'ds-hint--error');
+    expect(screen.queryByText(hint)).not.toBeInTheDocument();
+    expect(control).toHaveAttribute('aria-invalid', 'true');
+    expect(control).toHaveAttribute('aria-describedby', alert.id);
+    expectNoDanglingDescribedBy(control);
+  });
+
+  it("keeps the caller's aria-describedby first", () => {
+    render(
+      <>
+        <p id="policy">See the policy.</p>
+        {field({ label, hint, 'aria-describedby': 'policy' })}
+      </>,
+    );
+
+    const control = screen.getByRole(role, { name: label });
+    expect(control.getAttribute('aria-describedby')?.split(' ')[0]).toBe('policy');
+    expect(control).toHaveAccessibleDescription(`See the policy. ${hint}`);
+    expectNoDanglingDescribedBy(control);
+  });
+
+  it('renders no message and no description without hint or error', () => {
+    render(field({ label }));
+
+    const control = screen.getByRole(role, { name: label });
+    expect(control).not.toHaveAttribute('aria-describedby');
+    expect(control).not.toHaveAttribute('aria-invalid');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('mounts a fresh alert element when the hint turns into an error', () => {
+    const { rerender } = render(field({ label, hint }));
+    const control = screen.getByRole(role, { name: label });
+    const hintNode = screen.getByText(hint);
+
+    rerender(field({ label, hint, error: 'Required.' }));
+
+    expect(screen.getByRole('alert')).not.toBe(hintNode);
+    expect(hintNode).not.toBeInTheDocument();
+    expect(screen.getByRole(role, { name: label })).toBe(control);
+  });
+});
+
+type FieldProps = { label: string; hint?: string; error?: string; 'aria-describedby'?: string };
