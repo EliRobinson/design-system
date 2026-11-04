@@ -39,3 +39,25 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
+
+/* Forced colors (Windows High Contrast) drops background, box-shadow and
+   colour, so the fill and ring above vanish and every segment looks the same.
+   Selection is painted with system colours instead: Highlight / HighlightText
+   fill, plus a border so the edge shows even where a fill is not drawn. The
+   border is on the selected item only; min-width and min-height still hold
+   the 44px target. Focus is a system-colour outline so it stays visible on
+   the Highlight fill. */
+@media (forced-colors: active) {
+  .ds-segmented-control__item--active {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border: 1px solid CanvasText;
+    box-shadow: none;
+  }
+
+  .ds-segmented-control__item:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 1px;
+  }
+}
