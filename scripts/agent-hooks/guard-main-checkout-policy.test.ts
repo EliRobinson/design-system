@@ -221,6 +221,21 @@ describe('cd', () => {
     expect(refused(`cd -L -- ${wt} && git commit -m x`)).toBe(false);
   });
 
+  it('reads the same cd forms as the review gate', () => {
+    // A cd the hook cannot read counts as the main checkout.
+    expect(refused('cd && git add .', wt)).toBe(true);
+    expect(refused('cd - && git add .', wt)).toBe(true);
+    expect(refused('cd ~/x && git add .', wt)).toBe(true);
+    // A quoted path is one word, and a relative path is read from the cwd.
+    expect(refused(`cd "${wt}" && git add .`, main)).toBe(false);
+    expect(refused('cd .. && git add .', wt)).toBe(true);
+    expect(refused(`cd ${wt}/. && git add .`, main)).toBe(false);
+    expect(refused(`pushd ${wt} && git add .`, main)).toBe(false);
+    // `git -C` and `cd` agree on where git runs.
+    expect(refused(`git -C ${wt} add .`, main)).toBe(false);
+    expect(refused(`git -C ${main} add .`, wt)).toBe(true);
+  });
+
   it('reads &> as a redirect, not a background job', () => {
     expect(refused(`cd ${wt} &>/dev/null && git commit -m x`)).toBe(false);
     expect(refused(`git -C ${wt} commit -m x &>/dev/null`)).toBe(false);

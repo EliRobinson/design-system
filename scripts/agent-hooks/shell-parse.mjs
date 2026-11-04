@@ -409,15 +409,115 @@ export function shellOf(scope) {
   return scope.filter((id) => id > 0);
 }
 
+// `cd` flags that change how a link is followed, not where it goes.
+const CD_FLAGS = new Set(['-L', '-P', '-e', '-@']);
+
+/**
+ * The target word of a `cd` or `pushd`, past its link flags and `--`.
+ * @param {string[]} argv
+ * @returns {string | undefined}
+ */
+export function cdWord(argv) {
+  let i = 1;
+  while (CD_FLAGS.has(argv[i] ?? '')) i++;
+  if (argv[i] === '--') i++;
+  return argv[i];
+}
+
 /**
  * The folder `cd <target>` (or `pushd <target>`) moves to from `dir`, or
  * null when a parser cannot tell: no target, `-`, a flag, a leading `~`, or
- * anything built at run time (`$`, backticks). A null `dir` stays null.
+ * anything built at run time (`$`, backticks). A null `dir` stays null. A
+ * relative `dir` gives a relative folder, as a hook's working directory does.
  * @param {string | null} dir
  * @param {string | undefined} target
  * @returns {string | null}
  */
 export function cdTarget(dir, target) {
   if (dir === null || target === undefined || /^[-~]|[$`]/.test(target)) return null;
-  return posix.resolve(dir, target);
+  return target.startsWith('/')
+    ? posix.normalize(target).replace(/(.)\/$/, '$1')
+    : posix.join(dir, target);
+}
+
+/**
+ * The args after any leading flags, skipping the values of `valueFlags`.
+ * @param {string[]} args
+ * @param {Set<string>} valueFlags
+ * @returns {string[]}
+ */
+export function afterFlags(args, valueFlags) {
+  let i = 0;
+  while (args[i]?.startsWith('-')) i += valueFlags.has(args[i] ?? '') ? 2 : 1;
+  return args.slice(i);
+}
+
+/** @param {number[]} scope */
+const keyOf = (scope) => scope.join('/');
+
+/**
+ * Whether `outer` is `inner` or a shell around it.
+ * @param {number[]} outer
+ * @param {number[]} inner
+ */
+const encloses = (outer, inner) =>
+  outer.length <= inner.length && outer.every((id, i) => inner[i] === id);
+
+/**
+ * A command that is not a `cd`, with the folder it runs in.
+ * - `folder` is null when a parser cannot tell.
+ * - `before` holds each command that ran earlier in its own shell or a shell
+ *   around it. Its own substitutions, and the other stages of its pipeline,
+ *   are not in it: they cannot move its shell.
+ * @typedef {{ command: Command, folder: string | null, before: Command[] }} Placed
+ */
+
+/**
+ * Each command in the script that is not a `cd`, with the folder it runs in.
+ *
+ * The parser lists commands in the order they run, each with the shells it
+ * runs in (`scope`). Each shell has its own folder. A shell starts in the
+ * folder its parent is in at that point, and a `cd` or `pushd` moves only
+ * its own shell, as if it always ran. `popd` lands where a parser cannot
+ * tell. A compound body (`{ ... }`, `if ... fi`, a negative scope id) runs in
+ * the shell around it unless it is piped or sent to the background, so a
+ * `cd` inside one leaves the folder around it unknown.
+ * @param {string} script
+ * @param {string | null} cwd
+ * @returns {Placed[]}
+ */
+export function placeCommands(script, cwd) {
+  /** @type {Map<string, string | null>} */
+  const folders = new Map([['', cwd]]);
+  /** @type {(scope: number[]) => string | null} */
+  const folderIn = (scope) => {
+    const key = keyOf(scope);
+    if (!folders.has(key)) folders.set(key, folderIn(scope.slice(0, -1)));
+    return folders.get(key) ?? null;
+  };
+  /** @type {(scope: number[], next: string | null) => void} */
+  const move = (scope, next) => {
+    folders.set(keyOf(scope), next);
+    for (let s = scope; (s.at(-1) ?? 0) < 0; s = s.slice(0, -1)) {
+      const outer = s.slice(0, -1);
+      if (folderIn(outer) !== next) folders.set(keyOf(outer), null);
+    }
+  };
+  /** @type {Placed[]} */
+  const placed = [];
+  /** @type {Command[]} */
+  const earlier = [];
+  for (const command of parseCommands(script)) {
+    const shell = shellOf(command.scope);
+    const before = earlier.filter((each) => encloses(shellOf(each.scope), shell));
+    earlier.push(command);
+    const folder = folderIn(command.scope);
+    const program = command.argv[0];
+    if (program === 'cd' || program === 'pushd' || program === 'popd') {
+      move(command.scope, program === 'popd' ? null : cdTarget(folder, cdWord(command.argv)));
+      continue;
+    }
+    placed.push({ command, folder, before });
+  }
+  return placed;
 }

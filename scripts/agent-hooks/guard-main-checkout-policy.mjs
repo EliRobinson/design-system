@@ -18,7 +18,7 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, posix, resolve, sep } from 'node:path';
 
-import { cdTarget, parseCommands, shellOf } from './shell-parse.mjs';
+import { afterFlags, cdTarget, parseCommands, placeCommands } from './shell-parse.mjs';
 
 /** The one escape: `ALLOW_MAIN_CHECKOUT_WRITE=1 git ...`, on that command. */
 export const OVERRIDE = 'ALLOW_MAIN_CHECKOUT_WRITE';
@@ -35,14 +35,7 @@ const SUBCOMMAND_VALUE_FLAGS = new Set(['-m', '--message']);
  * @param {string[]} rest
  * @returns {string | undefined}
  */
-function subcommandOf(rest) {
-  for (let i = 0; i < rest.length; i++) {
-    const word = rest[i] ?? '';
-    if (!word.startsWith('-')) return word;
-    if (SUBCOMMAND_VALUE_FLAGS.has(word)) i++;
-  }
-  return undefined;
-}
+const subcommandOf = (rest) => afterFlags(rest, SUBCOMMAND_VALUE_FLAGS)[0];
 
 /**
  * Mutating unless the sub-subcommand is one of `safe`.
@@ -276,14 +269,8 @@ const GH_VALUE_FLAGS = new Set(['-R', '--repo']);
  */
 function isGhPrCheckout(argv) {
   if (posix.basename(argv[0] ?? '') !== 'gh') return false;
-  /** @type {string[]} */
-  const words = [];
-  for (let i = 1; i < argv.length; i++) {
-    const word = argv[i] ?? '';
-    if (GH_VALUE_FLAGS.has(word)) i++;
-    else if (!/^--repo=/.test(word)) words.push(word);
-  }
-  return words[0] === 'pr' && words[1] === 'checkout';
+  const [group, ...rest] = afterFlags(argv.slice(1), GH_VALUE_FLAGS);
+  return group === 'pr' && afterFlags(rest, GH_VALUE_FLAGS)[0] === 'checkout';
 }
 
 /**
@@ -366,12 +353,12 @@ function inMainCheckout(dir, mainRoot, added) {
 /**
  * The folders a git call may act in. Each `-C` moves git from where it was.
  * A `-C` leaves the folder the command runs in only when the folder is
- * settled (see {@link Placed}): when the command is the first on the line,
+ * settled (see {@link Placement}): when the command is the first on the line,
  * or when the `-C` is absolute and nothing earlier on the line may have
  * pointed git elsewhere. Otherwise the folder is this file's best reading,
  * so the `-C` adds a folder to check but does not replace one.
  * @param {GitCall} git
- * @param {Placed} placed
+ * @param {Placement} placed
  * @returns {Array<string | null>}
  */
 function foldersOf(git, { folder, first, gitPointed, envMayPointGit }) {
@@ -396,33 +383,8 @@ const WORKTREE_ADD_VALUE_FLAGS = new Set(['-b', '-B', '--reason']);
  */
 function worktreeAddPath(git) {
   if (git.verb !== 'worktree') return null;
-  let seenAdd = false;
-  for (let i = 0; i < git.rest.length; i++) {
-    const word = git.rest[i] ?? '';
-    if (word.startsWith('-')) {
-      if (seenAdd && WORKTREE_ADD_VALUE_FLAGS.has(word)) i++;
-    } else if (!seenAdd) {
-      if (word !== 'add') return null;
-      seenAdd = true;
-    } else {
-      return word;
-    }
-  }
-  return null;
-}
-
-// `cd` flags that change how a link is followed, not where it goes.
-const CD_FLAGS = new Set(['-L', '-P', '-e', '-@']);
-
-/**
- * The target word of a `cd` or `pushd`, past its link flags and `--`.
- * @param {string[]} argv
- */
-function cdWord(argv) {
-  let i = 1;
-  while (CD_FLAGS.has(argv[i] ?? '')) i++;
-  if (argv[i] === '--') i++;
-  return argv[i];
+  const [sub, ...rest] = afterFlags(git.rest, new Set());
+  return sub === 'add' ? (afterFlags(rest, WORKTREE_ADD_VALUE_FLAGS)[0] ?? null) : null;
 }
 
 const GIT_REPO_VARIABLE = /^GIT_(DIR|WORK_TREE)=/;
@@ -456,84 +418,28 @@ function mayPointGit({ argv }) {
 }
 
 /**
- * @typedef {object} Placed
- * @property {import('./shell-parse.mjs').Command} command
- * @property {string | null} folder The folder its shell is in. Null when this
- *   file cannot tell.
+ * @typedef {object} Placement
+ * @property {string | null} folder The folder the command's shell is in.
+ *   Null when this file cannot tell.
  * @property {boolean} first Whether no command ran before it in its own
- *   shell or a shell around it. Its own substitutions, and other stages of
- *   its pipeline, do not count: they cannot move its shell.
+ *   shell or a shell around it.
  * @property {boolean} gitPointed Whether an earlier command in its own shell
  *   or a shell around it set `GIT_DIR` or `GIT_WORK_TREE`.
  * @property {boolean} envMayPointGit Whether one may have.
  */
 
-/** @param {number[]} scope */
-const keyOf = (scope) => scope.join('/');
-
 /**
- * Whether `outer` is `inner` or a shell around it.
- * @param {number[]} outer
- * @param {number[]} inner
+ * @param {import('./shell-parse.mjs').Placed} placed
+ * @returns {Placement}
  */
-const encloses = (outer, inner) =>
-  outer.length <= inner.length && outer.every((id, i) => inner[i] === id);
-
-/**
- * Each command on the line that is not a `cd`, with the folder it runs in.
- *
- * The parser lists commands in the order they run, each with the shells it
- * runs in (`scope`). Each shell has its own folder. A shell starts in the
- * folder its parent is in at that point, and a `cd` or `pushd` moves only
- * its own shell, as if it always ran. `popd` lands where this file cannot
- * tell. A compound body (`{ ... }`, `if ... fi`, a negative scope id) runs in
- * the shell around it unless it is piped or sent to the background, so a
- * `cd` inside one leaves the folder around it unknown.
- * @param {string} line
- * @param {string | null} cwd
- * @returns {Placed[]}
- */
-function placeCommands(line, cwd) {
-  /** @type {Map<string, string | null>} */
-  const folders = new Map([['', cwd]]);
-  /** @type {(scope: number[]) => string | null} */
-  const folderIn = (scope) => {
-    const key = keyOf(scope);
-    if (!folders.has(key)) folders.set(key, folderIn(scope.slice(0, -1)));
-    return folders.get(key) ?? null;
+function placementOf({ folder, before }) {
+  return {
+    folder,
+    // A bare `NAME=value` cannot move the folder.
+    first: before.every((each) => each.argv.length === 0),
+    gitPointed: before.some(pointsGit),
+    envMayPointGit: before.some((each) => pointsGit(each) || mayPointGit(each)),
   };
-  /** @type {(scope: number[], next: string | null) => void} */
-  const move = (scope, next) => {
-    folders.set(keyOf(scope), next);
-    for (let s = scope; (s.at(-1) ?? 0) < 0; s = s.slice(0, -1)) {
-      const outer = s.slice(0, -1);
-      if (folderIn(outer) !== next) folders.set(keyOf(outer), null);
-    }
-  };
-  /** @type {Placed[]} */
-  const placed = [];
-  /** @type {import('./shell-parse.mjs').Command[]} */
-  const earlier = [];
-  for (const command of parseCommands(line)) {
-    const shell = shellOf(command.scope);
-    const before = earlier.filter((each) => encloses(shellOf(each.scope), shell));
-    earlier.push(command);
-    const folder = folderIn(command.scope);
-    const program = command.argv[0];
-    if (program === 'cd' || program === 'pushd' || program === 'popd') {
-      move(command.scope, program === 'popd' ? null : cdTarget(folder, cdWord(command.argv)));
-      continue;
-    }
-    placed.push({
-      command,
-      folder,
-      // A bare `NAME=value` cannot move the folder.
-      first: before.every((each) => each.argv.length === 0),
-      gitPointed: before.some(pointsGit),
-      envMayPointGit: before.some((each) => pointsGit(each) || mayPointGit(each)),
-    });
-  }
-  return placed;
 }
 
 /**
@@ -579,8 +485,8 @@ function refusalFor(what, root) {
  */
 function refusedIn(line, cwd, mainRoot, aliasOf, depth, added) {
   const inMain = (/** @type {string | null} */ folder) => inMainCheckout(folder, mainRoot, added);
-  for (const placed of placeCommands(line, cwd)) {
-    const { command, folder } = placed;
+  for (const { command, folder, before } of placeCommands(line, cwd)) {
+    const placed = placementOf({ command, folder, before });
     if (command.env.includes(`${OVERRIDE}=1`)) continue;
     if (isGhPrCheckout(command.argv)) {
       if (inMain(folder)) return '`gh pr checkout`';

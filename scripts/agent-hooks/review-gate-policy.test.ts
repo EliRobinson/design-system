@@ -86,7 +86,7 @@ describe('findPrCommands: detects PR-opening commands', () => {
     expect(first(`${GH} api graphql -f query=@m.graphql`)).toEqual({
       kind: 'graphql-files',
       files: ['m.graphql'],
-      dir: undefined,
+      dir: '.',
     });
     expect(first(`cd sub && ${GH} api graphql --input m.json`)).toMatchObject({
       files: ['m.json'],
@@ -166,14 +166,34 @@ describe('findPrCommands: reads pr create flags', () => {
     expect(dir(`ls | cat; cd sub && ${CREATE} -F x.md`)).toBe('sub');
   });
 
-  it('does not follow a cd in a subshell, a substitution, or after another command', () => {
+  it('does not follow a cd in a subshell, a substitution, a pipe, or a background job', () => {
     const dir = (script: string) => (first(script) as { dir?: string | null }).dir;
-    expect(dir(`(cd sub && ls); ${CREATE} -F b.md`)).toBeUndefined();
-    expect(dir(`echo $(${CREATE} -F b.md); cd sub`)).toBeUndefined();
-    expect(dir(`ls && cd sub && ${CREATE} -F b.md`)).toBeUndefined();
-    expect(dir(`cd sub | cat; ${CREATE} -F b.md`)).toBeUndefined();
-    expect(dir(`cd sub & ${CREATE} -F b.md`)).toBeUndefined();
-    expect(dir(`cd sub && ls & ${CREATE} -F b.md`)).toBeUndefined();
+    expect(dir(`(cd sub && ls); ${CREATE} -F b.md`)).toBe('.');
+    expect(dir(`echo $(${CREATE} -F b.md); cd sub`)).toBe('.');
+    expect(dir(`cd sub | cat; ${CREATE} -F b.md`)).toBe('.');
+    expect(dir(`cd sub & ${CREATE} -F b.md`)).toBe('.');
+    expect(dir(`cd sub && ls & ${CREATE} -F b.md`)).toBe('.');
+  });
+
+  it('follows a cd that comes after another command, as the guard does', () => {
+    const dir = (script: string) => (first(script) as { dir?: string | null }).dir;
+    expect(dir(`ls && cd sub && ${CREATE} -F b.md`)).toBe('sub');
+    // A cd inside a compound body may or may not have run.
+    expect(dir(`{ cd sub; }; ${CREATE} -F b.md`)).toBeNull();
+  });
+
+  it('reads every cd form the guard reads, the same way', () => {
+    const dir = (script: string) => (first(script) as { dir?: string | null }).dir;
+    expect(dir(`cd sub && ${CREATE} -F b.md`)).toBe('sub');
+    expect(dir(`cd "my dir" && ${CREATE} -F b.md`)).toBe('my dir');
+    expect(dir(`cd -P sub && ${CREATE} -F b.md`)).toBe('sub');
+    expect(dir(`cd -- sub && ${CREATE} -F b.md`)).toBe('sub');
+    expect(dir(`cd /abs/x && ${CREATE} -F b.md`)).toBe('/abs/x');
+    expect(dir(`cd ../up && ${CREATE} -F b.md`)).toBe('../up');
+    expect(dir(`cd && ${CREATE} -F b.md`)).toBeNull();
+    expect(dir(`cd - && ${CREATE} -F b.md`)).toBeNull();
+    expect(dir(`cd ~/x && ${CREATE} -F b.md`)).toBeNull();
+    expect(dir(`pushd sub && ${CREATE} -F b.md`)).toBe('sub');
   });
 
   it('marks a cd it cannot follow as unknown', () => {
