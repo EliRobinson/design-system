@@ -2,7 +2,7 @@ import type { TextareaHTMLAttributes } from 'react';
 import { forwardRef, useId } from 'react';
 
 import { cn } from '../../lib/cn.js';
-import { useControlError } from '../../lib/useControlError.js';
+import { useFieldMessage } from '../../lib/useFieldMessage.js';
 
 export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label: string;
@@ -16,7 +16,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
 ) {
   const generatedId = useId();
   const textareaId = id ?? generatedId;
-  const { controlProps, message } = useControlError(error, ariaDescribedBy, { hint });
+  const { controlProps, message } = useFieldMessage({ error, hint, ariaDescribedBy });
 
   return (
     <div className="ds-field">

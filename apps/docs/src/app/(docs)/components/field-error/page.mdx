@@ -1,0 +1,51 @@
+import { ComponentHeader } from '@/components/docs/ComponentHeader';
+import { DemoBlock } from '@/components/docs/DemoBlock';
+import { DoDont } from '@/components/docs/DoDont';
+import { PropsTables } from '@/components/docs/PropsTables';
+import { RelatedComponents } from '@/components/docs/RelatedComponents';
+import Basic from '@/components/demos/field-error/Basic';
+
+export const metadata = { title: 'FieldError' };
+
+<ComponentHeader slug="field-error" />
+
+<DemoBlock file="field-error/Basic.tsx">
+  <Basic />
+</DemoBlock>
+
+## When to use it
+
+`FieldError` is the error of a field with no control of its own: a list, a group of
+checkboxes, a set of rows. `Input`, `Textarea`, `Select`, `Checkbox` and `Switch` take an
+`error` prop and render this same element themselves, so use the prop there instead.
+
+## Props
+
+`FieldError` takes the native `<span>` attributes except `role`, which is always `alert`.
+
+<PropsTables slug="field-error" />
+
+## Accessibility
+
+- Renders `<span class="ds-hint ds-hint--error" role="alert">`, the same element the
+  controls render for `error`. It is announced when it appears.
+- Pass an `id` and point the group's `aria-describedby` at it, so the error is read with
+  the group.
+- With no message it renders nothing. Render it always and pass the error or nothing, so
+  no empty alert is left in the page.
+- The ref forwards to the `<span>`.
+
+<DoDont
+  do={[
+    'Use it for an error that belongs to a group or a list, not to one input.',
+    'Give it an id and point the group’s aria-describedby at it.',
+  ]}
+  dont={[
+    'Render it next to an Input, Checkbox or Switch — pass error to the control instead.',
+    'Hand-roll the ds-hint ds-hint--error span — this is that span.',
+  ]}
+/>
+
+## Related
+
+<RelatedComponents slugs={['form-field', 'input', 'checkbox']} />
