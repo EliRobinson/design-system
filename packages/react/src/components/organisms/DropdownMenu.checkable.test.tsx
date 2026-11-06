@@ -149,6 +149,7 @@ describe('DropdownMenuCheckboxItem', () => {
   it('cannot be toggled when disabled or aria-disabled', async () => {
     const user = userEvent.setup();
     const onCheckedChange = vi.fn();
+    const onClick = vi.fn();
     render(
       <Menu defaultOpen>
         <DropdownMenuCheckboxItem checked={false} disabled onCheckedChange={onCheckedChange}>
@@ -158,6 +159,7 @@ describe('DropdownMenuCheckboxItem', () => {
           checked={false}
           aria-disabled="true"
           onCheckedChange={onCheckedChange}
+          onClick={onClick}
         >
           Minimap
         </DropdownMenuCheckboxItem>
@@ -170,6 +172,7 @@ describe('DropdownMenuCheckboxItem', () => {
     await user.keyboard(' {Enter}');
 
     expect(onCheckedChange).not.toHaveBeenCalled();
+    expect(onClick).not.toHaveBeenCalled();
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });
 

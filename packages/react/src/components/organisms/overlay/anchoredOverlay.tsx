@@ -15,7 +15,7 @@ import { useMergedRef } from '../../../lib/useMergedRef.js';
  *
  * Both are a button that toggles a portalled panel anchored under it, dismissed
  * by Escape or a click outside the pair. What differs is the panel's role and
- * class names, and DropdownMenu's roving `activeIndex` — those stay in the
+ * class names, and DropdownMenu's focus handling — those stay in the
  * components. */
 
 export type AnchoredOverlayContextValue = {

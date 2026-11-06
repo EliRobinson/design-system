@@ -212,6 +212,22 @@ describe('DropdownMenu keyboard path', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });
 
+  // The reverse case: Enter on an item closes the menu and hands focus to the
+  // trigger mid-keydown, so the next repeat lands on the trigger and its
+  // native click would open the menu again.
+  it.each(['Enter', ' '])('cancels a held %j repeating onto the trigger', async (key) => {
+    const user = userEvent.setup();
+    const { trigger } = renderMenu();
+    await openWithKeyboard(user, trigger);
+    await user.keyboard('{Enter}');
+    expect(trigger).toHaveFocus();
+
+    const notCancelled = fireEvent.keyDown(trigger, { key, repeat: true });
+
+    expect(notCancelled).toBe(false);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
   it('does not toggle a checkbox item on a held Space or Enter', async () => {
     const user = userEvent.setup();
     const onPin = vi.fn();
