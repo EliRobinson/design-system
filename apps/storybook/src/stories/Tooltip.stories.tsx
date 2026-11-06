@@ -26,3 +26,88 @@ export const Default: Story = {
     </Tooltip>
   ),
 };
+
+/* A tooltip only exists while its trigger is hovered or focused, so each story
+   below focuses its button after render. Focus, not hover, because it needs no
+   pointer and holds the tooltip open for the screenshot. */
+function openOnFocus({ canvasElement }: { canvasElement: HTMLElement }) {
+  canvasElement.querySelector<HTMLElement>('.ds-tooltip__trigger button')?.focus();
+}
+
+export const SideRight: Story = {
+  args: { children: null },
+  parameters: { layout: 'centered' },
+  play: openOnFocus,
+  render: () => (
+    <Tooltip side="right">
+      <TooltipTrigger>
+        <Button variant="ghost">Inbox</Button>
+      </TooltipTrigger>
+      <TooltipContent>Beside the trigger.</TooltipContent>
+    </Tooltip>
+  ),
+};
+
+export const SideLeft: Story = {
+  args: { children: null },
+  parameters: { layout: 'padded' },
+  play: openOnFocus,
+  render: () => (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 'var(--space-8)' }}>
+      <Tooltip side="left">
+        <TooltipTrigger>
+          <Button variant="ghost">Settings</Button>
+        </TooltipTrigger>
+        <TooltipContent>Hangs to the left.</TooltipContent>
+      </Tooltip>
+    </div>
+  ),
+};
+
+export const SideTop: Story = {
+  args: { children: null },
+  parameters: { layout: 'centered' },
+  play: openOnFocus,
+  render: () => (
+    <Tooltip side="top">
+      <TooltipTrigger>
+        <Button variant="ghost">Above</Button>
+      </TooltipTrigger>
+      <TooltipContent>Hangs above the trigger.</TooltipContent>
+    </Tooltip>
+  ),
+};
+
+/* The trigger sits on the right edge, so a right-hand tooltip has no room and
+   flips to the left. */
+export const FlipsAtTheEdge: Story = {
+  args: { children: null },
+  parameters: { layout: 'padded' },
+  play: openOnFocus,
+  render: () => (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 'var(--space-8)' }}>
+      <Tooltip side="right">
+        <TooltipTrigger>
+          <Button variant="ghost">Near the edge</Button>
+        </TooltipTrigger>
+        <TooltipContent>Asked for the right, flipped to the left.</TooltipContent>
+      </Tooltip>
+    </div>
+  ),
+};
+
+export const LabelOnly: Story = {
+  args: { children: null },
+  parameters: { layout: 'centered' },
+  play: openOnFocus,
+  render: () => (
+    <Tooltip labelOnly side="right">
+      <TooltipTrigger>
+        <Button variant="ghost" aria-label="Search">
+          S
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>Search</TooltipContent>
+    </Tooltip>
+  ),
+};
