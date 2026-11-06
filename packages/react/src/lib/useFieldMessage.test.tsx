@@ -10,9 +10,11 @@ import { Switch } from '../components/atoms/Switch.js';
 import { Textarea } from '../components/atoms/Textarea.js';
 import { Select } from '../components/organisms/Select.js';
 import { expectNoDanglingDescribedBy } from '../test/describedBy.js';
+import type { FieldMessageOptions } from './useFieldMessage.js';
+import { useFieldMessage } from './useFieldMessage.js';
 
 /* The `error` contract the labelled-row controls share through
-   useControlError, run once per control. Each control's own test file keeps
+   useFieldMessage, run once per control. Each control's own test file keeps
    the snapshot of its markup without an error, which is the one case that
    differs between them. */
 describe.each([
@@ -87,7 +89,7 @@ describe.each([
 });
 
 /* The same contract with a hint, for the field controls that render their own
-   label, hint and error through useControlError. */
+   label, hint and error through useFieldMessage. */
 describe.each([
   { name: 'Input', role: 'textbox', render: (p: FieldProps) => <Input {...p} /> },
   { name: 'Textarea', role: 'textbox', render: (p: FieldProps) => <Textarea {...p} /> },
@@ -189,3 +191,59 @@ describe.each([
 });
 
 type FieldProps = Pick<InputProps, 'label' | 'hint' | 'error' | 'aria-describedby'>;
+
+/* The hook on its own, with one options object: each value goes by name, so
+   `error` and `aria-describedby` cannot be swapped by position. */
+describe('useFieldMessage', () => {
+  function Probe(options: FieldMessageOptions) {
+    const { controlProps, message } = useFieldMessage(options);
+    return (
+      <>
+        <p id="own">Own description.</p>
+        <input aria-label="Probe" {...controlProps} />
+        {message}
+      </>
+    );
+  }
+
+  it('is valid and undescribed with no options set', () => {
+    render(<Probe />);
+
+    const control = screen.getByRole('textbox');
+    expect(control).not.toHaveAttribute('aria-invalid');
+    expect(control).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('keeps ariaDescribedBy first and adds the error after it', () => {
+    render(<Probe error="Required." ariaDescribedBy="own" />);
+
+    const control = screen.getByRole('textbox');
+    expect(control).toHaveAttribute('aria-invalid', 'true');
+    expect(control).toHaveAttribute('aria-describedby', `own ${screen.getByRole('alert').id}`);
+    expectNoDanglingDescribedBy(control);
+  });
+
+  it('does not mark the control invalid from ariaDescribedBy alone', () => {
+    render(<Probe ariaDescribedBy="own" />);
+
+    const control = screen.getByRole('textbox');
+    expect(control).not.toHaveAttribute('aria-invalid');
+    expect(control).toHaveAttribute('aria-describedby', 'own');
+  });
+
+  it('renders the form-field variant as paragraphs', () => {
+    const { rerender } = render(<Probe hint="Hint." variant="form-field" />);
+    expect(screen.getByText('Hint.')).toHaveClass(
+      'ds-form-field__message',
+      'ds-form-field__message--hint',
+    );
+    expect(screen.getByText('Hint.').tagName).toBe('P');
+
+    rerender(<Probe hint="Hint." error="Required." variant="form-field" />);
+    expect(screen.getByRole('alert')).toHaveClass(
+      'ds-form-field__message',
+      'ds-form-field__message--error',
+    );
+    expectNoDanglingDescribedBy(screen.getByRole('textbox'));
+  });
+});
