@@ -1,60 +1,21 @@
-import type { HTMLAttributes, ReactNode, Ref } from 'react';
-import { forwardRef, useId } from 'react';
+import type { ReactNode } from 'react';
+import { useId } from 'react';
 
-import { cn } from './cn.js';
+import type { MessageVariant } from './MessageSlot.js';
+import { MessageSlot } from './MessageSlot.js';
 
 export type FieldMessageControlProps = {
   'aria-invalid': true | undefined;
   'aria-describedby': string | undefined;
 };
 
-const VARIANTS = {
-  /** `Input`, `Textarea`, `Select`, `Checkbox`, `Switch`, and the public `FieldError`. */
-  field: { Tag: 'span', hint: 'ds-hint', error: 'ds-hint ds-hint--error' },
-  /** `FormField`. */
-  'form-field': {
-    Tag: 'p',
-    hint: 'ds-form-field__message ds-form-field__message--hint',
-    error: 'ds-form-field__message ds-form-field__message--error',
-  },
-} as const;
-
-type Variant = keyof typeof VARIANTS;
-
 export type FieldMessageOptions = {
   error?: string;
   hint?: string;
   /** The caller's own `aria-describedby`. It comes first. */
   ariaDescribedBy?: string;
-  variant?: Variant;
+  variant?: MessageVariant;
 };
-
-type MessageSlotProps = HTMLAttributes<HTMLElement> & {
-  variant: Variant;
-  tone: 'hint' | 'error';
-};
-
-/**
- * One message element: a hint, or an error with `role="alert"`. The hook below
- * renders it for every labelled control, and `FieldError` renders it on its own,
- * so a standalone error is the same element a control's error is.
- */
-export const MessageSlot = forwardRef<HTMLElement, MessageSlotProps>(function MessageSlot(
-  { variant, tone, className, ...props },
-  ref,
-) {
-  const { Tag, ...classNames } = VARIANTS[variant];
-  return (
-    <Tag
-      /* A span or a p. Both are HTMLElements, which is all the ref is typed as;
-         TypeScript cannot pick the element type from a union tag. */
-      ref={ref as Ref<HTMLSpanElement & HTMLParagraphElement>}
-      {...props}
-      className={cn(classNames[tone], className)}
-      role={tone === 'error' ? 'alert' : undefined}
-    />
-  );
-});
 
 /**
  * The hint and error of every labelled control: the message slots and the
@@ -81,7 +42,7 @@ export function useFieldMessage({
   hint,
   ariaDescribedBy,
   variant = 'field',
-}: FieldMessageOptions = {}): { controlProps: FieldMessageControlProps; message: ReactNode } {
+}: FieldMessageOptions): { controlProps: FieldMessageControlProps; message: ReactNode } {
   const id = useId();
 
   return {

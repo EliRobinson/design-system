@@ -1,19 +1,19 @@
 import type { HTMLAttributes } from 'react';
 import { forwardRef } from 'react';
 
-import { MessageSlot } from '../../lib/useFieldMessage.js';
+import { MessageSlot } from '../../lib/MessageSlot.js';
 
 /* Written out, not taken from `lib/`: the Design System artifact build inlines
    each component's public types and has no rule for a `lib/` import. */
 export type FieldErrorProps = Omit<HTMLAttributes<HTMLSpanElement>, 'role'> & {
-  /** For a control or group's `aria-describedby`. */
+  /** For a control or group's `aria-describedby`. Restated from `HTMLAttributes` to document it. */
   id?: string;
 };
 
 /**
  * The error message of a field with no control of its own, such as a list or a
  * group. It is the same element `Input`'s `error` renders: a
- * `<span class="ds-hint ds-hint--error" role="alert">`. With no children it
+ * `<span class="ds-hint ds-hint--error" role="alert">`. With no message it
  * renders nothing, so render it always and pass the error or nothing.
  *
  * A control with an `error` prop renders this itself. Use `FieldError` only
@@ -23,7 +23,7 @@ export const FieldError = forwardRef<HTMLSpanElement, FieldErrorProps>(function 
   { children, ...props },
   ref,
 ) {
-  if (children == null || children === false || children === '') return null;
+  if (children == null || typeof children === 'boolean' || children === '') return null;
   return (
     <MessageSlot ref={ref} variant="field" tone="error" {...props}>
       {children}

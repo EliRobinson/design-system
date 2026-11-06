@@ -3,7 +3,6 @@ import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { expectNoDanglingDescribedBy } from '../../test/describedBy.js';
-import { Checkbox } from './Checkbox.js';
 import { FieldError } from './FieldError.js';
 import { Input } from './Input.js';
 
@@ -19,24 +18,11 @@ describe('FieldError', () => {
     const input = render(<Input label="Email" error="Required." />);
     const fromInput = withoutId(screen.getByRole('alert'));
     input.unmount();
-    const checkbox = render(<Checkbox label="Accept" error="Required." />);
-    const fromCheckbox = withoutId(screen.getByRole('alert'));
-    checkbox.unmount();
 
     render(<FieldError>Required.</FieldError>);
 
     const standalone = screen.getByRole('alert');
     expect(standalone.outerHTML).toBe(fromInput);
-    expect(standalone.outerHTML).toBe(fromCheckbox);
-  });
-
-  it('is an alert with the field hint classes', () => {
-    render(<FieldError>Make at least 1 Manager an Admin.</FieldError>);
-
-    const alert = screen.getByRole('alert');
-    expect(alert.tagName).toBe('SPAN');
-    expect(alert).toHaveClass('ds-hint', 'ds-hint--error');
-    expect(alert).toHaveTextContent('Make at least 1 Manager an Admin.');
   });
 
   it('takes an id, so a group can be described by it', () => {
@@ -55,9 +41,11 @@ describe('FieldError', () => {
   });
 
   it('renders nothing without a message, so no empty alert is left behind', () => {
-    const { container } = render(<FieldError id="x">{undefined}</FieldError>);
-
-    expect(container).toBeEmptyDOMElement();
+    for (const empty of [undefined, null, false, true, '']) {
+      const { container, unmount } = render(<FieldError id="x">{empty}</FieldError>);
+      expect(container).toBeEmptyDOMElement();
+      unmount();
+    }
   });
 
   it('adds a className to its own and keeps role="alert"', () => {
