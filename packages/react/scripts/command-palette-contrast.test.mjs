@@ -18,15 +18,17 @@ const ACTIVE = '.ds-command-palette__item--active';
 const SURFACE = systemToken('organisms/Dialog.css', '.ds-dialog__inner', 'background');
 const FILL = systemToken(SHEET, ACTIVE, 'background');
 const RING = systemToken(SHEET, ACTIVE, 'box-shadow');
+const QUIET = systemToken(SHEET, '.ds-command-palette__group', 'color');
+const STATUS = systemToken(SHEET, '.ds-command-palette__status', 'color');
 const DETAIL = systemToken(SHEET, `${ACTIVE} .ds-command-palette__detail`, 'color');
-const TEXT = systemToken(SHEET, ACTIVE, 'color');
+const TEXT = systemToken(SHEET, '.ds-command-palette__item', 'color');
 
 it('reads the tokens the active row is made of', () => {
   expect(SURFACE).toBe('--surface');
   const active = rules(sheet(SHEET)).find((rule) => rule.selector === ACTIVE);
   expect(active.body).toMatch(/inset\s+0\s+0\s+0\s+1px\s+var\(--/);
   expect(RING).toBe('--border-control');
-  expect(FILL).not.toBe('--bg-subtle');
+  expect(FILL).toBe('--surface-3');
 });
 
 describe('the active row stands out from the dialog surface', () => {
@@ -40,7 +42,8 @@ describe('the active row stands out from the dialog surface', () => {
     });
 
     it(`${id}: group headings and status text clear 4.5:1 on the surface`, () => {
-      expect(ratio(id, '--fg-3', SURFACE)).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(id, QUIET, SURFACE)).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(id, STATUS, SURFACE)).toBeGreaterThanOrEqual(4.5);
     });
 
     it(`${id}: the label clears 4.5:1 on the active fill`, () => {

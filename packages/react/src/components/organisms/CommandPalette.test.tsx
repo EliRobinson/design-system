@@ -1,4 +1,4 @@
-import { StrictMode, createRef } from 'react';
+import { StrictMode, createRef, useState } from 'react';
 
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -231,12 +231,43 @@ describe('CommandPalette', () => {
     });
 
     it('does not steal focus if the opener left the page', () => {
-      const { rerender } = render(
-        <CommandPalette open onOpenChange={vi.fn()} commands={commands} />,
-      );
+      const { container, unmount } = render(<button type="button">Gone</button>);
+      container.querySelector('button')?.focus();
+      const palette = render(<CommandPalette open onOpenChange={vi.fn()} commands={commands} />);
+      unmount();
       expect(() =>
-        rerender(<CommandPalette open={false} onOpenChange={vi.fn()} commands={commands} />),
+        palette.rerender(
+          <CommandPalette open={false} onOpenChange={vi.fn()} commands={commands} />,
+        ),
       ).not.toThrow();
+      expect(document.body).toHaveFocus();
+    });
+
+    it('leaves focus where a command put it', async () => {
+      const user = userEvent.setup();
+      function Harness() {
+        const [open, setOpen] = useState(true);
+        return (
+          <>
+            <button type="button">Opener</button>
+            <input aria-label="Target" />
+            <CommandPalette
+              open={open}
+              onOpenChange={setOpen}
+              commands={[
+                {
+                  id: 'go',
+                  label: 'Go to field',
+                  onSelect: () => screen.getByLabelText('Target').focus(),
+                },
+              ]}
+            />
+          </>
+        );
+      }
+      render(<Harness />);
+      await user.keyboard('{Enter}');
+      expect(screen.getByLabelText('Target')).toHaveFocus();
     });
   });
 
@@ -279,6 +310,12 @@ describe('CommandPalette', () => {
         />,
       );
       expect(screen.queryByRole('group')).not.toBeInTheDocument();
+    });
+
+    it('gives every option its own id across groups', () => {
+      render(<CommandPalette open onOpenChange={vi.fn()} commands={grouped} />);
+      const ids = screen.getAllByRole('option').map((option) => option.id);
+      expect(new Set(ids).size).toBe(ids.length);
     });
 
     it('keeps the list flat for arrow keys: headings are skipped', async () => {
@@ -422,7 +459,7 @@ describe('CommandPalette', () => {
       render(<CommandPalette open onOpenChange={vi.fn()} commands={commands} />);
       expect(screen.getAllByRole('option')).toHaveLength(2);
       expect(screen.queryByRole('group')).not.toBeInTheDocument();
-      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
       expect(screen.getByRole('listbox')).not.toHaveAttribute('aria-busy');
     });

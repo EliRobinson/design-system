@@ -2,6 +2,7 @@ import type { KeyboardEvent, ReactNode } from 'react';
 import { forwardRef, useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { cn } from '../../lib/cn.js';
+import { useLatest } from '../../lib/useLatest.js';
 import { useMergedRef } from '../../lib/useMergedRef.js';
 import { useActiveDescendant } from '../../hooks/useActiveDescendant.js';
 import { Kbd } from '../atoms/Kbd.js';
@@ -108,16 +109,19 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
     const text = { ...DEFAULT_LABELS, ...labels };
 
     const [ownQuery, setOwnQuery] = useState('');
-    const query = controlledQuery ?? ownQuery;
+    const isControlled = controlledQuery !== undefined;
+    const query = isControlled ? controlledQuery : ownQuery;
     const queryRef = useRef(query);
     queryRef.current = query;
-    const onQueryChangeRef = useRef(onQueryChange);
-    onQueryChangeRef.current = onQueryChange;
+    const onQueryChangeRef = useLatest(onQueryChange);
 
-    const setQuery = useCallback((next: string) => {
-      setOwnQuery(next);
-      onQueryChangeRef.current?.(next);
-    }, []);
+    const setQuery = useCallback(
+      (next: string) => {
+        setOwnQuery(next);
+        onQueryChangeRef.current?.(next);
+      },
+      [onQueryChangeRef],
+    );
 
     // The element that had focus when the palette opened. Read during render
     // on purpose: `showModal()` in DialogContent's effect may already have
@@ -165,7 +169,7 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
         setActiveIndex(0);
         inputRef.current?.focus();
       }
-    }, [open, setActiveIndex]);
+    }, [open, setActiveIndex, onQueryChangeRef]);
 
     // `open={false}` unmounts the <dialog>, so the browser's own return of
     // focus never runs. Give it back here, to whatever opened the palette.
@@ -183,7 +187,11 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
       wasOpenRef.current = false;
       const opener = openerRef.current;
       openerRef.current = null;
-      if (opener?.isConnected) {
+      // A command may have moved focus on purpose (to a field, say). Only
+      // step in when nothing holds it.
+      const active = document.activeElement;
+      const nothingFocused = !active || active === document.body || !active.isConnected;
+      if (opener?.isConnected && nothingFocused) {
         opener.focus();
       }
     }, [open]);
@@ -288,21 +296,21 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
             aria-busy={loading ? true : undefined}
             className="ds-command-palette__list"
           >
-            {toSections(filtered).map((section, sectionIndex) =>
+            {toSections(filtered).map((section) =>
               !section.group ? (
                 section.rows.map(renderRow)
               ) : (
-                <li key={`group-${sectionIndex}`} role="presentation">
+                <li key={`${section.group}-${section.rows[0].command.id}`} role="presentation">
                   <div
-                    id={`${baseId}-group-${sectionIndex}`}
-                    role="presentation"
+                    id={`${baseId}-group-${section.rows[0].index}`}
+                    aria-hidden="true"
                     className="ds-command-palette__group"
                   >
                     {section.group}
                   </div>
                   <ul
                     role="group"
-                    aria-labelledby={`${baseId}-group-${sectionIndex}`}
+                    aria-labelledby={`${baseId}-group-${section.rows[0].index}`}
                     className="ds-command-palette__group-list"
                   >
                     {section.rows.map(renderRow)}
@@ -311,11 +319,11 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
               ),
             )}
           </ul>
-          {loading ? (
-            <div className="ds-command-palette__status" role="status">
-              {text.loading}
-            </div>
-          ) : null}
+          {/* Always mounted: a live region that arrives already filled is often
+              not announced. Only its text changes. */}
+          <div className="ds-command-palette__status" role="status">
+            {loading ? text.loading : null}
+          </div>
           {error ? (
             <div
               className="ds-command-palette__status ds-command-palette__status--error"
@@ -325,7 +333,7 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
             </div>
           ) : null}
           {filtered.length === 0 && !loading && !error ? (
-            <div className="ds-command-palette__empty">{text.empty}</div>
+            <div className="ds-command-palette__status">{text.empty}</div>
           ) : null}
         </DialogContent>
       </Dialog>
