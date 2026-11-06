@@ -1,4 +1,4 @@
-import { createRef } from 'react';
+import { StrictMode, createRef } from 'react';
 
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -212,6 +212,24 @@ describe('CommandPalette', () => {
       expect(opener).toHaveFocus();
     });
 
+    it('still gives focus back under StrictMode', () => {
+      render(<button type="button">Open palette</button>);
+      const opener = screen.getByRole('button', { name: 'Open palette' });
+      opener.focus();
+
+      const { rerender } = render(
+        <StrictMode>
+          <CommandPalette open onOpenChange={vi.fn()} commands={commands} />
+        </StrictMode>,
+      );
+      rerender(
+        <StrictMode>
+          <CommandPalette open={false} onOpenChange={vi.fn()} commands={commands} />
+        </StrictMode>,
+      );
+      expect(opener).toHaveFocus();
+    });
+
     it('does not steal focus if the opener left the page', () => {
       const { rerender } = render(
         <CommandPalette open onOpenChange={vi.fn()} commands={commands} />,
@@ -250,6 +268,17 @@ describe('CommandPalette', () => {
       ];
       render(<CommandPalette open onOpenChange={vi.fn()} commands={interleaved} />);
       expect(screen.getAllByText('A')).toHaveLength(2);
+    });
+
+    it('treats an empty group as no group', () => {
+      render(
+        <CommandPalette
+          open
+          onOpenChange={vi.fn()}
+          commands={[{ id: 'x', label: 'X', group: '', onSelect: vi.fn() }]}
+        />,
+      );
+      expect(screen.queryByRole('group')).not.toBeInTheDocument();
     });
 
     it('keeps the list flat for arrow keys: headings are skipped', async () => {
