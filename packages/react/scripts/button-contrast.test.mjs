@@ -143,9 +143,8 @@ const VARIANTS = [
     threshold: 4.5,
     fills: { resting: '--accent', hovered: '--accent-hover', pressed: '--accent-press' },
   },
-  /* Hover and pressed darken the fill with color-mix toward black. A white
-     label only gains contrast on a darker fill, so the resting fill is the
-     worst case and is what all three states are measured against. */
+  /* The destructive fill never changes between states (hover and pressed add
+     an inner ring), so all three are measured against the same token. */
   {
     modifier: 'destructive',
     threshold: 4.5,

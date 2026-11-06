@@ -7,7 +7,7 @@
   },
   "Avatar": "Image avatar with initials fallback, in sm/md/lg sizes.",
   "Badge": "Small status label — default, signal, anchor, solid, and outline variants.",
-  "Button": "The primary action control — primary, accent, secondary, and ghost variants in three sizes.",
+  "Button": "The primary action control, in three sizes. Variants are listed in the prop table.",
   "Checkbox": "Labelled checkbox with a full-height 44px click row.",
   "Eyebrow": "Uppercase mono section label — marketing typography.",
   "Input": "Batteries-included labelled text input with hint and error wiring.",
