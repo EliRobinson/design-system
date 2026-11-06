@@ -101,7 +101,9 @@ describe('Tooltip', () => {
 
       await user.hover(screen.getByText('Help'));
 
-      expect(screen.getByRole('tooltip').style.transform).toBe('translateX(-50%)');
+      const tooltip = screen.getByRole('tooltip');
+      expect(tooltip.style.transform).toBe('translateX(-50%)');
+      expect(tooltip.style.bottom).toBe('auto');
     });
 
     it('hangs beside the trigger with side="right"', async () => {
@@ -123,7 +125,7 @@ describe('Tooltip', () => {
       expect(tooltip.style.transform).toBe('translateY(-50%)');
     });
 
-    it('hangs on the left with side="left"', async () => {
+    it('flips side="left" to the right when there is no room', async () => {
       const user = userEvent.setup();
       render(
         <Tooltip side="left">

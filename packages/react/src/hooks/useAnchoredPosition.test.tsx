@@ -21,7 +21,7 @@ function Anchored({
   panel = PANEL,
   open = true,
 }: {
-  options?: AnchoredPositionOptions;
+  options?: AnchoredPositionOptions | 'top' | 'bottom';
   trigger: { top: number; left: number; width: number; height: number };
   panel?: { width: number; height: number };
   open?: boolean;
@@ -361,6 +361,18 @@ describe('useAnchoredPosition', () => {
       expect(panel.style.top).toBe('100px');
     });
 
+    it('flips a start-aligned side panel to its bottom edge near the bottom of the viewport', () => {
+      /* 168px from the trigger's top to the viewport's bottom for a 200px
+         panel; 700px of room above the trigger's bottom edge. */
+      const panel = anchor({
+        options: { side: 'right', align: 'start' },
+        trigger: { top: 600, left: 40, width: 120, height: 100 },
+      });
+
+      expect(panel.style.bottom).toBe(`${VIEWPORT_HEIGHT - 700}px`);
+      expect(panel.style.top).toBe('auto');
+    });
+
     it('does not write a trigger-width floor for a side panel', () => {
       const panel = anchor({
         options: { side: 'right' },
@@ -370,9 +382,9 @@ describe('useAnchoredPosition', () => {
       expect(panel.style.minWidth).toBe('');
     });
 
-    it('does not change a bottom panel when given the bare string', () => {
+    it('takes a bare side string as well as an options object', () => {
       const panel = render(
-        <Anchored options={undefined} trigger={{ top: 100, left: 40, width: 120, height: 40 }} />,
+        <Anchored options="bottom" trigger={{ top: 100, left: 40, width: 120, height: 40 }} />,
       ).getByTestId('panel');
 
       expect(panel.style.top).toBe(`${140 + GAP}px`);

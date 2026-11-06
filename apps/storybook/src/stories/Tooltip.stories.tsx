@@ -43,7 +43,7 @@ export const SideRight: Story = {
       <TooltipTrigger>
         <Button variant="ghost">Inbox</Button>
       </TooltipTrigger>
-      <TooltipContent>Beside the trigger, so it never covers the next row.</TooltipContent>
+      <TooltipContent>Beside the trigger.</TooltipContent>
     </Tooltip>
   ),
 };
@@ -104,7 +104,7 @@ export const LabelOnly: Story = {
     <Tooltip labelOnly side="right">
       <TooltipTrigger>
         <Button variant="ghost" aria-label="Search">
-          🔍
+          S
         </Button>
       </TooltipTrigger>
       <TooltipContent>Search</TooltipContent>
