@@ -1,9 +1,10 @@
 import type { HTMLAttributes, ReactNode, RefObject } from 'react';
-import { createContext, forwardRef, useContext, useEffect, useId, useRef, useState } from 'react';
+import { createContext, forwardRef, useContext, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import type { AnchoredSide } from '../../hooks/useAnchoredPosition.js';
 import { useAnchoredPosition } from '../../hooks/useAnchoredPosition.js';
+import { useEscapeKey } from '../../hooks/useEscapeKey.js';
 import { useHasMounted } from '../../hooks/useHasMounted.js';
 import { cn } from '../../lib/cn.js';
 import { useMergedRef } from '../../lib/useMergedRef.js';
@@ -60,27 +61,15 @@ export function Tooltip({ children, side = 'bottom', labelOnly = false }: Toolti
   const [dismissed, setDismissed] = useState(false);
   const open = (hovered || focused) && !dismissed;
 
-  const setHovered = (next: boolean) => {
-    setHoveredState(next);
-    if (next) setDismissed(false);
+  // Starting either one over also lifts an Escape dismissal.
+  const track = (set: (on: boolean) => void) => (on: boolean) => {
+    set(on);
+    if (on) setDismissed(false);
   };
-  const setFocused = (next: boolean) => {
-    setFocusedState(next);
-    if (next) setDismissed(false);
-  };
+  const setHovered = track(setHoveredState);
+  const setFocused = track(setFocusedState);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setDismissed(true);
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open]);
+  useEscapeKey(() => setDismissed(true), open);
 
   // Same anchoring as Popover and DropdownMenu, so a tooltip follows its
   // trigger through a scroll or a resize instead of being measured once during

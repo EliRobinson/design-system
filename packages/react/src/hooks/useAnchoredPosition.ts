@@ -2,7 +2,6 @@ import type { RefObject } from 'react';
 import { useLayoutEffect, useRef } from 'react';
 
 export type AnchoredSide = 'top' | 'bottom' | 'left' | 'right';
-type Side = AnchoredSide;
 type Align = 'start' | 'center' | 'end';
 
 export type AnchoredPositionOptions = {
@@ -13,7 +12,7 @@ export type AnchoredPositionOptions = {
    * axis — `'start'` with the trigger's top edge, `'end'` with its bottom edge,
    * `'center'` on its middle — and no trigger-width floor is written.
    */
-  side?: Side;
+  side?: AnchoredSide;
   /**
    * `'start'` lines the panel's left edge up with the trigger's and gives it
    * the trigger's width as a minimum — the menu/listbox shape. `'end'` is the
@@ -30,7 +29,14 @@ export type AnchoredPositionOptions = {
 /** The single gap between a trigger and anything anchored to it. */
 const GAP = 4;
 
-const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+const OPPOSITE_ALIGN: Record<Align, Align> = { start: 'end', end: 'start', center: 'center' };
+
+const OPPOSITE: Record<AnchoredSide, AnchoredSide> = {
+  top: 'bottom',
+  bottom: 'top',
+  left: 'right',
+  right: 'left',
+};
 
 /**
  * The inline `min-width` for a start/end-aligned panel.
@@ -87,10 +93,10 @@ function shiftIntoView(offset: number, size: number, viewport: number) {
  * Geometry is written straight to the node's inline style rather than held in
  * state: this runs in a layout effect, before paint, so the panel never shows
  * up in the wrong place first. The fourth argument accepts a bare side for the
- * common case (`'top'` / `'bottom'`) or an options object.
+ * common case (`'top'`, `'bottom'`, `'left'` or `'right'`) or an options object.
  *
  * A panel that does not fit on the side it asked for flips to the opposite one
- * — `bottom` to `top`, `start` to `end` — provided the opposite side has room.
+ * — `bottom` to `top`, `left` to `right`, `start` to `end` — provided the opposite side has room.
  * Each axis flips at most once per open and never flips back, so the panel
  * cannot chase a threshold it is sitting on; `align: 'center'` is symmetric and
  * never flips. A panel that fits on *neither* side is shifted instead: it keeps
@@ -129,7 +135,7 @@ export function useAnchoredPosition(
   open: boolean,
   triggerRef: RefObject<HTMLElement | null>,
   contentRef: RefObject<HTMLElement | null>,
-  options: Side | AnchoredPositionOptions = 'bottom',
+  options: AnchoredSide | AnchoredPositionOptions = 'bottom',
 ) {
   const resolved = typeof options === 'string' ? { side: options } : options;
   const { side = 'bottom', align = 'start', zIndex = 'var(--z-overlay)' } = resolved;
@@ -186,15 +192,21 @@ export function useAnchoredPosition(
       const roomFromBottom = rect.bottom;
 
       /* A top/bottom panel runs its main axis vertically and its cross axis
-         horizontally; a left/right panel is the transpose. Everything below is
-         written once, against those two axes. */
+         horizontally; a left/right panel is the transpose. The flip decisions below are
+         written once against those two axes; the writes further down are not. */
       const beside = side === 'left' || side === 'right';
-      const room: Record<Side, number> = {
+      const room: Record<AnchoredSide, number> = {
         top: roomAbove,
         bottom: roomBelow,
         left: roomLeft,
         right: roomRight,
       };
+
+      /* Room along the cross axis, measured from the trigger's start edge
+         forwards or its end edge backwards, keyed by the alignment that uses it. */
+      const alignRoom: Record<'start' | 'end', number> = beside
+        ? { start: roomFromTop, end: roomFromBottom }
+        : { start: roomFromLeft, end: roomFromRight };
 
       if (!flippedSide.current) {
         const preferred = room[side];
@@ -208,38 +220,20 @@ export function useAnchoredPosition(
       /* Centring is symmetric — there is no opposite edge to pin instead — so
          a tooltip is left exactly where it was. */
       if (align !== 'center' && !flippedAlign.current) {
-        const preferred =
-          align === 'start'
-            ? beside
-              ? roomFromTop
-              : roomFromLeft
-            : beside
-              ? roomFromBottom
-              : roomFromRight;
-        const opposite =
-          align === 'start'
-            ? beside
-              ? roomFromBottom
-              : roomFromRight
-            : beside
-              ? roomFromTop
-              : roomFromLeft;
+        const preferred = alignRoom[align];
+        const opposite = alignRoom[align === 'start' ? 'end' : 'start'];
         const size = beside ? panel.height : panel.width;
         flippedAlign.current = size > preferred && size <= opposite;
       }
 
       /* `flippedAlign` only ever latches on a start/end panel, so the centred
          case needs no guard here. */
-      const effectiveSide: Side = flippedSide.current ? OPPOSITE[side] : side;
-      const effectiveAlign: Align = flippedAlign.current
-        ? align === 'start'
-          ? 'end'
-          : 'start'
-        : align;
+      const effectiveSide: AnchoredSide = flippedSide.current ? OPPOSITE[side] : side;
+      const effectiveAlign: Align = flippedAlign.current ? OPPOSITE_ALIGN[align] : align;
 
       content.style.zIndex = zIndex;
 
-      if (effectiveSide === 'left' || effectiveSide === 'right') {
+      if (beside) {
         // The main axis is horizontal: one edge is pinned a gap off the trigger.
         if (effectiveSide === 'right') {
           content.style.left = `${shiftIntoView(rect.right + GAP, panel.width, window.innerWidth)}px`;
@@ -249,9 +243,6 @@ export function useAnchoredPosition(
           content.style.right = `${shiftIntoView(pinned, panel.width, window.innerWidth)}px`;
           content.style.left = 'auto';
         }
-        // A trigger's width is no floor for a panel hung beside it. Cleared
-        // rather than left behind, in case the node was last placed above.
-        content.style.minWidth = '';
 
         // The cross axis is vertical, and `align` reads as top/centre/bottom.
         if (effectiveAlign === 'center') {
@@ -286,7 +277,6 @@ export function useAnchoredPosition(
           const shifted = shiftIntoView(centred - panel.width / 2, panel.width, window.innerWidth);
           content.style.left = `${shifted + panel.width / 2}px`;
           content.style.right = 'auto';
-          content.style.minWidth = '';
           content.style.transform = 'translateX(-50%)';
         } else if (effectiveAlign === 'end') {
           // Measured back from the same viewport width the `bottom` case below
