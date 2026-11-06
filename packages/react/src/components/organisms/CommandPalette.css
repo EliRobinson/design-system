@@ -34,6 +34,7 @@
 
 .ds-command-palette__item:hover {
   background: var(--surface-3);
+  color: var(--fg);
 }
 
 .ds-command-palette__item:hover .ds-command-palette__detail {
@@ -46,6 +47,7 @@
    every palette x theme; command-palette-contrast.test.mjs measures it). */
 .ds-command-palette__item--active {
   background: var(--surface-3);
+  color: var(--fg);
   box-shadow: inset 0 0 0 1px var(--border-control);
 }
 

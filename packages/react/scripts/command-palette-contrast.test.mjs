@@ -21,7 +21,7 @@ const RING = systemToken(SHEET, ACTIVE, 'box-shadow');
 const QUIET = systemToken(SHEET, '.ds-command-palette__group', 'color');
 const STATUS = systemToken(SHEET, '.ds-command-palette__status', 'color');
 const DETAIL = systemToken(SHEET, `${ACTIVE} .ds-command-palette__detail`, 'color');
-const TEXT = systemToken(SHEET, '.ds-command-palette__item', 'color');
+const TEXT = systemToken(SHEET, ACTIVE, 'color');
 
 it('reads the tokens the active row is made of', () => {
   expect(SURFACE).toBe('--surface');
