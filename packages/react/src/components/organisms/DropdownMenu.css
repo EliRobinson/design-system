@@ -73,8 +73,45 @@
   outline-offset: -2px;
 }
 
+/* A disabled item reads as inactive and takes no hover fill. Both kinds of
+   disabled, because aria-disabled leaves the button clickable and focusable —
+   DropdownMenu.tsx stops it doing anything, and this stops it looking live.
+   Placed after the hover rule, at the same specificity, so it wins. The
+   :focus-visible ring stays: a focused item says where focus is, even an
+   inert one. */
+.ds-dropdown__item:disabled,
+.ds-dropdown__item[aria-disabled='true'] {
+  background: transparent;
+  color: var(--fg-disabled); /* 4.85:1 light, 7.87:1 dark, on --surface */
+  cursor: not-allowed;
+}
+
 .ds-dropdown__item--inset {
   padding-left: var(--space-6);
+}
+
+/* The leading slot of a checkbox or radio item. It is always there, checked or
+   not, so a label never moves sideways when its mark appears. The mark is
+   drawn (see lib/marks.tsx) and painted in currentColor, so it follows the
+   item into the disabled colour with no rule of its own. */
+.ds-dropdown__indicator {
+  --mark-size: var(--fs-md);
+
+  align-items: center;
+  display: inline-flex;
+  flex: none;
+  height: var(--mark-size);
+  justify-content: center;
+  width: var(--mark-size);
+}
+
+/* The radio item's mark: a filled dot, a different shape from the check, so
+   the two kinds of item do not rely on colour to be told apart. */
+.ds-dropdown__dot {
+  background: currentColor;
+  border-radius: var(--radius-pill);
+  height: var(--space-2);
+  width: var(--space-2);
 }
 
 .ds-dropdown__label {
