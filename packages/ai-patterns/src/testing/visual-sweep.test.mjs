@@ -790,10 +790,6 @@ describe('the missing-asset guard', () => {
   });
 });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 describe('waitForStablePixels capture retries', () => {
   const CRASH =
     'page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture screenshot';
@@ -811,13 +807,18 @@ describe('waitForStablePixels capture retries', () => {
 
   function pageFailing(failures, message = CRASH) {
     const { page } = fakePage();
+    const order = [];
+    page.waitForTimeout = async () => {
+      order.push('wait');
+    };
     let calls = 0;
     page.screenshot = async () => {
       calls++;
+      order.push('shot');
       if (calls <= failures) throw new Error(message);
       return Buffer.from('same');
     };
-    return { page, calls: () => calls };
+    return { page, calls: () => calls, order };
   }
 
   it('survives the browser failing one capture with its transient protocol error (#299)', async () => {
@@ -826,11 +827,15 @@ describe('waitForStablePixels capture retries', () => {
     expect(calls()).toBe(3);
   });
 
+  it('pauses before each retry, so it does not land in the same gap', async () => {
+    const { page, order } = pageFailing(2);
+    await waitForStablePixels(page, { expect: pollingExpect });
+    expect(order.slice(0, 5)).toEqual(['shot', 'wait', 'shot', 'wait', 'shot']);
+  });
+
   it('gives up after three tries, so a page that really cannot be captured still fails', async () => {
     const { page, calls } = pageFailing(99);
-    await expect(waitForStablePixels(page, { expect: pollingExpect })).rejects.toThrow(
-      /Unable to capture screenshot/,
-    );
+    await expect(waitForStablePixels(page, { expect: pollingExpect })).rejects.toThrow(CRASH);
     expect(calls()).toBe(3);
   });
 
@@ -842,4 +847,8 @@ describe('waitForStablePixels capture retries', () => {
     await expect(waitForStablePixels(page, { expect: pollingExpect })).rejects.toThrow(/closed/);
     expect(calls()).toBe(1);
   });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
