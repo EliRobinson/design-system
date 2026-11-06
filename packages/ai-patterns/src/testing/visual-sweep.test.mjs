@@ -25,6 +25,7 @@ import {
   sweepChrome,
   sweepPages,
   sweepStorybook,
+  waitForStablePixels,
 } from './visual-sweep.mjs';
 
 function storybookBuild(index) {
@@ -791,4 +792,54 @@ describe('the missing-asset guard', () => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe('waitForStablePixels capture retries', () => {
+  const CRASH =
+    'page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture screenshot';
+
+  /* Real `expect.poll` semantics reduced to what the loop needs: call the
+     function until it returns true. */
+  const pollingExpect = {
+    poll: (fn) => ({
+      toBe: async (want) => {
+        for (let i = 0; i < 5; i++) if ((await fn()) === want) return;
+        throw new Error('poll never settled');
+      },
+    }),
+  };
+
+  function pageFailing(failures, message = CRASH) {
+    const { page } = fakePage();
+    let calls = 0;
+    page.screenshot = async () => {
+      calls++;
+      if (calls <= failures) throw new Error(message);
+      return Buffer.from('same');
+    };
+    return { page, calls: () => calls };
+  }
+
+  it('survives the browser failing one capture with its transient protocol error (#299)', async () => {
+    const { page, calls } = pageFailing(1);
+    await waitForStablePixels(page, { expect: pollingExpect });
+    expect(calls()).toBe(3);
+  });
+
+  it('gives up after three tries, so a page that really cannot be captured still fails', async () => {
+    const { page, calls } = pageFailing(99);
+    await expect(waitForStablePixels(page, { expect: pollingExpect })).rejects.toThrow(
+      /Unable to capture screenshot/,
+    );
+    expect(calls()).toBe(3);
+  });
+
+  it('does not retry any other screenshot error', async () => {
+    const { page, calls } = pageFailing(
+      1,
+      'page.screenshot: Target page, context or browser has been closed',
+    );
+    await expect(waitForStablePixels(page, { expect: pollingExpect })).rejects.toThrow(/closed/);
+    expect(calls()).toBe(1);
+  });
 });
