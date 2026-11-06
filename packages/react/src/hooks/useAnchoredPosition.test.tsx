@@ -257,4 +257,126 @@ describe('useAnchoredPosition', () => {
       expect({ left: panel.style.left, top: panel.style.top }).toEqual(placed);
     });
   });
+  /* `left` and `right` hang the panel beside the trigger, which is what a
+     narrow vertical rail needs: a label below its icon covers the next row. The
+     cross axis is then vertical, and `align` decides how the panel lines up
+     with the trigger's top, centre or bottom. */
+  describe('hanging beside the trigger', () => {
+    it('hangs to the right of the trigger when the panel fits there', () => {
+      const panel = anchor({
+        options: { side: 'right' },
+        trigger: { top: 100, left: 40, width: 120, height: 40 },
+      });
+
+      expect(panel.style.left).toBe(`${160 + GAP}px`);
+      expect(panel.style.right).toBe('auto');
+      expect(panel.style.top).toBe('100px');
+      expect(panel.style.bottom).toBe('auto');
+    });
+
+    it('hangs to the left of the trigger when the panel fits there', () => {
+      const panel = anchor({
+        options: { side: 'left' },
+        trigger: { top: 100, left: 500, width: 120, height: 40 },
+      });
+
+      expect(panel.style.right).toBe(`${VIEWPORT_WIDTH - 500 + GAP}px`);
+      expect(panel.style.left).toBe('auto');
+    });
+
+    it('flips a right panel to the left when it overruns the right edge', () => {
+      /* 120px of room on the right for a 180px panel; 796 on the left. */
+      const panel = anchor({
+        options: { side: 'right' },
+        trigger: { top: 100, left: 800, width: 100, height: 40 },
+      });
+
+      expect(panel.style.right).toBe(`${VIEWPORT_WIDTH - 800 + GAP}px`);
+      expect(panel.style.left).toBe('auto');
+    });
+
+    it('flips a left panel to the right when it overruns the left edge', () => {
+      /* 36px of room on the left; 800 on the right. */
+      const panel = anchor({
+        options: { side: 'left' },
+        trigger: { top: 100, left: 40, width: 100, height: 40 },
+      });
+
+      expect(panel.style.left).toBe(`${140 + GAP}px`);
+      expect(panel.style.right).toBe('auto');
+    });
+
+    it('does not flip when the opposite side has no more room', () => {
+      const panel = anchor({
+        options: { side: 'right' },
+        trigger: { top: 100, left: 40, width: 940, height: 40 },
+        panel: { width: 900, height: 200 },
+      });
+
+      expect(panel.style.left).not.toBe('auto');
+    });
+
+    it('stays flipped after scrolling back to where the preferred side fits', () => {
+      const view = render(
+        <Anchored
+          options={{ side: 'right' }}
+          trigger={{ top: 100, left: 800, width: 100, height: 40 }}
+        />,
+      );
+      const panel = view.getByTestId('panel');
+
+      placeAt(view.getByTestId('trigger'), { top: 100, left: 40, width: 100, height: 40 });
+      fireEvent.scroll(window);
+
+      expect(panel.style.left).toBe('auto');
+    });
+
+    it('centres vertically on the trigger with align centre', () => {
+      const panel = anchor({
+        options: { side: 'right', align: 'center' },
+        trigger: { top: 300, left: 40, width: 120, height: 40 },
+      });
+
+      expect(panel.style.top).toBe('320px');
+      expect(panel.style.transform).toBe('translateY(-50%)');
+    });
+
+    it('pins the bottom edge to the trigger with align end', () => {
+      const panel = anchor({
+        options: { side: 'right', align: 'end' },
+        trigger: { top: 300, left: 40, width: 120, height: 40 },
+      });
+
+      expect(panel.style.bottom).toBe(`${VIEWPORT_HEIGHT - 340}px`);
+      expect(panel.style.top).toBe('auto');
+    });
+
+    it('shifts a centred side panel back inside the top edge', () => {
+      const panel = anchor({
+        options: { side: 'right', align: 'center' },
+        trigger: { top: 0, left: 40, width: 120, height: 20 },
+      });
+
+      /* Centre would be 10, a 200px panel would start at -90. */
+      expect(panel.style.top).toBe('100px');
+    });
+
+    it('does not write a trigger-width floor for a side panel', () => {
+      const panel = anchor({
+        options: { side: 'right' },
+        trigger: { top: 100, left: 40, width: 120, height: 40 },
+      });
+
+      expect(panel.style.minWidth).toBe('');
+    });
+
+    it('does not change a bottom panel when given the bare string', () => {
+      const panel = render(
+        <Anchored options={undefined} trigger={{ top: 100, left: 40, width: 120, height: 40 }} />,
+      ).getByTestId('panel');
+
+      expect(panel.style.top).toBe(`${140 + GAP}px`);
+      expect(panel.style.transform).toBe('');
+    });
+  });
 });
