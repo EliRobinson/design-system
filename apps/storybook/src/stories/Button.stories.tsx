@@ -40,3 +40,22 @@ export const Small: Story = {
 export const Large: Story = {
   args: { size: 'lg' },
 };
+
+export const Destructive: Story = {
+  args: { variant: 'destructive', children: 'Delete draft' },
+};
+
+export const DestructiveDisabled: Story = {
+  args: { variant: 'destructive', disabled: true, children: 'Delete draft' },
+};
+
+export const DestructiveSizes: Story = {
+  args: { variant: 'destructive', children: 'Discard changes' },
+  render: (args) => (
+    <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
+      <Button {...args} size="sm" />
+      <Button {...args} size="md" />
+      <Button {...args} size="lg" />
+    </div>
+  ),
+};
