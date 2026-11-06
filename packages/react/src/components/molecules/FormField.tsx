@@ -2,10 +2,10 @@ import type { HTMLAttributes, ReactNode } from 'react';
 import { forwardRef } from 'react';
 
 import { cn } from '../../lib/cn.js';
-import { useControlError } from '../../lib/useControlError.js';
+import { useFieldMessage } from '../../lib/useFieldMessage.js';
 import { Label } from '../atoms/Label.js';
 
-/* Written out, not `ControlErrorProps & …`: the Design System artifact build
+/* Written out, not `FieldMessageControlProps & …`: the Design System artifact build
    inlines each component's public types and has no rule for a `lib/` import. */
 export type FormFieldRenderProps = {
   'aria-describedby': string | undefined;
@@ -33,10 +33,7 @@ export const FormField = forwardRef<HTMLDivElement, FormFieldProps>(function For
   { className, label, htmlFor, labelAside, hint, error, required, children, ...props },
   ref,
 ) {
-  const { controlProps, message } = useControlError(error, undefined, {
-    hint,
-    variant: 'form-field',
-  });
+  const { controlProps, message } = useFieldMessage({ error, hint, variant: 'form-field' });
 
   const labelElement = (
     <Label htmlFor={htmlFor} className="ds-form-field__label">

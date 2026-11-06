@@ -2,7 +2,7 @@ import type { InputHTMLAttributes } from 'react';
 import { forwardRef, useId } from 'react';
 
 import { cn } from '../../lib/cn.js';
-import { useControlError } from '../../lib/useControlError.js';
+import { useFieldMessage } from '../../lib/useFieldMessage.js';
 
 export type SwitchProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'role'> & {
   label: string;
@@ -26,7 +26,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(function Switch(
 ) {
   const generatedId = useId();
   const switchId = id ?? generatedId;
-  const { controlProps, message } = useControlError(error, ariaDescribedBy);
+  const { controlProps, message } = useFieldMessage({ error, ariaDescribedBy });
 
   /* Labelled row, for the reason spelled out in Checkbox: the track is 44x24,
      so it fails the 44px contract on height, and the text beside it carried no
@@ -47,7 +47,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(function Switch(
           {label}
         </span>
       </label>
-      {/* A sibling, not a wrapper: see useControlError. */}
+      {/* A sibling, not a wrapper: see useFieldMessage. */}
       {message}
     </>
   );
