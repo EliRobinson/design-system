@@ -25,7 +25,7 @@ export const FieldError = forwardRef<HTMLSpanElement, FieldErrorProps>(function 
 ) {
   if (children == null || typeof children === 'boolean' || children === '') return null;
   return (
-    <MessageSlot ref={ref} variant="field" tone="error" {...props}>
+    <MessageSlot ref={ref} {...props} variant="field" tone="error">
       {children}
     </MessageSlot>
   );

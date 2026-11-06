@@ -12,8 +12,8 @@ const reactSrc = join(repoRoot, 'packages/react/src');
 const docsSrc = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('component manifest', () => {
-  it('covers all 50 components and 7 hooks', () => {
-    expect(components).toHaveLength(50);
+  it('covers all 51 components and 7 hooks', () => {
+    expect(components).toHaveLength(51);
     expect(hooks).toHaveLength(7);
   });
 
