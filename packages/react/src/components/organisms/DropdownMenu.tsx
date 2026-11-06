@@ -38,7 +38,26 @@ import {
  * conditionally, and the next item is always worked out from the one that has
  * focus now. */
 
-const ITEM_SELECTOR = '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]';
+const ITEM_ROLES = ['menuitem', 'menuitemcheckbox', 'menuitemradio'] as const;
+type ItemRole = (typeof ITEM_ROLES)[number];
+
+/* "Disabled" is `disabled` or `aria-disabled="true"`, everywhere in this file:
+   the selector below for the live DOM, `isItemDisabled` for props at render,
+   and `.ds-dropdown__item:disabled, [aria-disabled='true']` in the stylesheet. */
+const ENABLED_ITEM_SELECTOR = ITEM_ROLES.map(
+  (role) => `[role="${role}"]:not(:disabled):not([aria-disabled="true"])`,
+).join(', ');
+
+function isItemDisabled(props: {
+  disabled?: boolean;
+  'aria-disabled'?: boolean | 'true' | 'false';
+}) {
+  return Boolean(props.disabled) || String(props['aria-disabled']) === 'true';
+}
+
+function itemClassName(inset: boolean | undefined, className: string | undefined) {
+  return cn('ds-dropdown__item', inset && 'ds-dropdown__item--inset', className);
+}
 
 /** Which end of the menu focus lands on when it opens. */
 type OpenEdge = 'first' | 'last';
@@ -60,44 +79,41 @@ function useDropdownMenuContext() {
   return context;
 }
 
-function isDisabled(element: Element) {
-  return (
-    (element as HTMLButtonElement).disabled || element.getAttribute('aria-disabled') === 'true'
-  );
-}
-
 /** Where focus goes: an end of the menu, or one step on from the focused item. */
 type FocusTarget = OpenEdge | 'next' | 'previous';
 
+/** The keys that move focus inside an open menu. */
+const KEY_TARGETS: Partial<Record<string, FocusTarget>> = {
+  ArrowDown: 'next',
+  ArrowUp: 'previous',
+  Home: 'first',
+  End: 'last',
+};
+
 /**
- * Focuses the item `target` names, skipping disabled items and wrapping. With
- * no item focused, `next` lands on the first item and `previous` on the last.
+ * Focuses the enabled item `target` names, wrapping at both ends. With no
+ * enabled item focused — on open, or after a click on an aria-disabled one —
+ * `next` lands on the first item and `previous` on the last.
+ *
+ * Not `useRovingFocus`: that hook takes both axes (a menu keeps ←/→ for
+ * submenus) and does nothing until an item has focus, and focus starts on the
+ * trigger here.
  */
 function focusItem(content: HTMLElement | null, target: FocusTarget) {
-  const items = Array.from(content?.querySelectorAll<HTMLElement>(ITEM_SELECTOR) ?? []);
-  if (!items.some((item) => !isDisabled(item))) {
-    return;
-  }
-
-  const step = target === 'last' || target === 'previous' ? -1 : 1;
+  const items = Array.from(content?.querySelectorAll<HTMLElement>(ENABLED_ITEM_SELECTOR) ?? []);
+  const last = items.length - 1;
   const focused = items.indexOf(document.activeElement as HTMLElement);
-  // Start one place outside the end being walked from, then step in.
-  let index =
-    target === 'first' || (target === 'next' && focused === -1)
-      ? -1
-      : target === 'last' || focused === -1
-        ? items.length
-        : focused;
 
-  // Bounded by the length, and at least one item is enabled, so this ends.
-  for (let tries = 0; tries < items.length; tries += 1) {
-    index = (index + step + items.length) % items.length;
-    const item = items[index];
-    if (item && !isDisabled(item)) {
-      item.focus({ preventScroll: true });
-      return;
-    }
-  }
+  const index =
+    target === 'first' || (target === 'next' && focused === -1)
+      ? 0
+      : target === 'last' || focused === -1
+        ? last
+        : target === 'next'
+          ? (focused + 1) % items.length
+          : (focused - 1 + items.length) % items.length;
+
+  items[index]?.focus({ preventScroll: true });
 }
 
 export type DropdownMenuProps = {
@@ -115,7 +131,21 @@ export function DropdownMenu({
 }: DropdownMenuProps) {
   const overlay = useAnchoredOverlay({ open, defaultOpen, onOpenChange });
   const openEdgeRef = useRef<OpenEdge>('first');
-  const { onOpenChange: setOpen, triggerRef } = overlay;
+  const { open: isOpen, onOpenChange: setOpen, triggerRef, contentRef } = overlay;
+
+  // Focus moves in on the closed → open change only. A menu that starts open
+  // (a story, a test, a controlled consumer restoring state) did not just
+  // receive a user's request, and taking focus on page load would be a theft.
+  // A parent's effect runs after its children's, so the portal is in the DOM
+  // by now.
+  const wasOpen = useRef(isOpen);
+  useEffect(() => {
+    if (isOpen && !wasOpen.current) {
+      focusItem(contentRef.current, openEdgeRef.current);
+      openEdgeRef.current = 'first';
+    }
+    wasOpen.current = isOpen;
+  }, [isOpen, contentRef]);
 
   const closeToTrigger = useCallback(() => {
     triggerRef.current?.focus();
@@ -144,11 +174,22 @@ export const DropdownMenuTrigger = forwardRef<HTMLButtonElement, DropdownMenuTri
         className={cn('ds-dropdown__trigger', className)}
         aria-haspopup="menu"
         onClick={(event) => {
+          // Every trigger path names its edge, so an ArrowUp a controlled
+          // consumer refused to open on cannot leak into the next click.
+          // DropdownMenu's open effect resets it after use for other opens.
           openEdgeRef.current = 'first';
           onClick?.(event);
         }}
         onKeyDown={(event) => {
           onKeyDown?.(event);
+          // Choosing an item with Enter hands focus back here mid-keydown, so
+          // a held key's next repeat lands on the trigger and its native click
+          // would open the menu again. The content's capture handler is the
+          // same guard in the other direction.
+          if (event.repeat && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            return;
+          }
           if (event.defaultPrevented || (event.key !== 'ArrowDown' && event.key !== 'ArrowUp')) {
             return;
           }
@@ -168,7 +209,12 @@ export const DropdownMenuTrigger = forwardRef<HTMLButtonElement, DropdownMenuTri
   },
 );
 
-/** `side` and `align` are forwarded to the positioner. `align: 'end'` pins the
+/** Keep it rendered rather than mounting it only while open: it already
+ * renders nothing while closed, and content that mounts on the same render as
+ * the open misses the move of focus into the menu (the portal arrives one
+ * render later).
+ *
+ * `side` and `align` are forwarded to the positioner. `align: 'end'` pins the
  * menu's right edge to the trigger's, which is what a trigger near the right
  * edge of the viewport needs — see `useAnchoredPosition`. */
 export type DropdownMenuContentProps = HTMLAttributes<HTMLDivElement> &
@@ -183,20 +229,7 @@ export function DropdownMenuContent({
   ...props
 }: DropdownMenuContentProps) {
   const context = useDropdownMenuContext();
-  const { open, onOpenChange, contentRef, triggerRef, openEdgeRef } = context;
-
-  // Focus moves in on the closed → open change only. A menu that starts open
-  // (a story, a test, a controlled consumer restoring state) did not just
-  // receive a user's request, and taking focus on page load would be a theft.
-  // This runs after the portal's own commit, so the items are in the DOM.
-  const wasOpen = useRef(open);
-  useEffect(() => {
-    if (open && !wasOpen.current) {
-      focusItem(contentRef.current, openEdgeRef.current);
-      openEdgeRef.current = 'first';
-    }
-    wasOpen.current = open;
-  }, [open, contentRef, openEdgeRef]);
+  const { contentRef, triggerRef, closeToTrigger } = context;
 
   return (
     <AnchoredOverlayContent
@@ -210,39 +243,33 @@ export function DropdownMenuContent({
         // Enter on the trigger opens the menu and moves focus to the first
         // item, so a held key's auto-repeat lands there and would choose it.
         // Cancelling the repeat stops a button's click; the checkable items
-        // read `defaultPrevented` for the same reason.
+        // check `event.repeat` themselves.
         if (event.repeat && (event.key === 'Enter' || event.key === ' ')) {
           event.preventDefault();
         }
       }}
       onKeyDown={(event) => {
         onKeyDown?.(event);
+        if (event.key === 'Escape') {
+          // Not skippable: useAnchoredOverlay's document listener closes the
+          // menu whatever a consumer's handler did, so focus has to come back
+          // either way or it would fall to <body>.
+          triggerRef.current?.focus();
+          return;
+        }
         if (event.defaultPrevented) {
           return;
         }
 
-        const content = contentRef.current;
-        if (event.key === 'ArrowDown') {
+        const target = KEY_TARGETS[event.key];
+        if (target) {
           event.preventDefault();
-          focusItem(content, 'next');
-        } else if (event.key === 'ArrowUp') {
-          event.preventDefault();
-          focusItem(content, 'previous');
-        } else if (event.key === 'Home') {
-          event.preventDefault();
-          focusItem(content, 'first');
-        } else if (event.key === 'End') {
-          event.preventDefault();
-          focusItem(content, 'last');
-        } else if (event.key === 'Escape') {
-          // useAnchoredOverlay's document listener does the closing.
-          triggerRef.current?.focus();
+          focusItem(contentRef.current, target);
         } else if (event.key === 'Tab') {
           // Not prevented: with focus back on the trigger, the browser's own
           // Tab carries on from there, to the control after the trigger (or
           // before it, with Shift) rather than off the end of <body>.
-          triggerRef.current?.focus();
-          onOpenChange(false);
+          closeToTrigger();
         }
       }}
       {...props}
@@ -266,18 +293,13 @@ type ItemBehaviourProps = {
 
 export type DropdownMenuItemProps = ButtonHTMLAttributes<HTMLButtonElement> & ItemBehaviourProps;
 
-/** `disabled` or `aria-disabled`: either way the item is skipped and inert. */
-function isInert(props: { disabled?: boolean; 'aria-disabled'?: boolean | 'true' | 'false' }) {
-  return Boolean(props.disabled) || String(props['aria-disabled']) === 'true';
-}
-
 export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemProps>(
   function DropdownMenuItem(
     { className, inset, closeOnSelect, onClick, type = 'button', ...props },
     ref,
   ) {
     const { closeToTrigger } = useDropdownMenuContext();
-    const inert = isInert(props);
+    const disabled = isItemDisabled(props);
 
     // Closing is a discrete update React flushes synchronously, still inside the
     // click dispatch — `AnchoredOverlayContent` returns null and the portal
@@ -296,11 +318,11 @@ export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemPr
         ref={ref}
         type={type}
         role="menuitem"
-        className={cn('ds-dropdown__item', inset && 'ds-dropdown__item--inset', className)}
+        className={itemClassName(inset, className)}
         onClick={(event) => {
           // aria-disabled keeps the button clickable, so it is stopped here —
           // including a submit item's form submission.
-          if (inert) {
+          if (disabled) {
             event.preventDefault();
             return;
           }
@@ -320,12 +342,12 @@ export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemPr
 
    The checkbox and the radio item are one button with two answers to "what is
    checked, and what does choosing change". Everything else — the indicator
-   slot, the Enter/Space split, the inert check, closing — lives here once.
+   slot, the Enter/Space split, the disabled check, closing — lives here once.
    -------------------------------------------------------------------------- */
 
 type CheckableItemProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'role' | 'type'> &
   ItemBehaviourProps & {
-    role: 'menuitemcheckbox' | 'menuitemradio';
+    role: Exclude<ItemRole, 'menuitem'>;
     checked: boolean;
     onSelect: () => void;
     indicator: ReactNode;
@@ -349,12 +371,9 @@ const CheckableItem = forwardRef<HTMLButtonElement, CheckableItemProps>(function
   ref,
 ) {
   const { closeToTrigger } = useDropdownMenuContext();
-  const inert = isInert(props);
+  const disabled = isItemDisabled(props);
 
   function choose(close: boolean) {
-    if (inert) {
-      return;
-    }
     onSelect();
     if (close) {
       closeToTrigger();
@@ -367,13 +386,14 @@ const CheckableItem = forwardRef<HTMLButtonElement, CheckableItemProps>(function
       type="button"
       role={role}
       aria-checked={checked}
-      className={cn(
-        'ds-dropdown__item',
-        'ds-dropdown__item--checkable',
-        inset && 'ds-dropdown__item--inset',
-        className,
-      )}
+      className={itemClassName(inset, className)}
       onClick={(event: MouseEvent<HTMLButtonElement>) => {
+        // The same guard as DropdownMenuItem's: aria-disabled leaves the
+        // button clickable, so nothing of the consumer's runs either.
+        if (disabled) {
+          event.preventDefault();
+          return;
+        }
         onClick?.(event);
         if (!event.defaultPrevented) {
           choose(closeOnSelect);
@@ -388,11 +408,11 @@ const CheckableItem = forwardRef<HTMLButtonElement, CheckableItemProps>(function
         if (event.key !== 'Enter' && event.key !== ' ') {
           return;
         }
-        // Already cancelled means a held key's repeat (see the content's
-        // capture handler) or a consumer opting out.
-        const cancelled = event.defaultPrevented;
+        // Cancel the native click in every case; choose only on a fresh,
+        // enabled press the consumer did not cancel.
+        const skip = event.repeat || event.defaultPrevented || disabled;
         event.preventDefault();
-        if (!cancelled) {
+        if (!skip) {
           choose(event.key === 'Enter' && closeOnSelect);
         }
       }}

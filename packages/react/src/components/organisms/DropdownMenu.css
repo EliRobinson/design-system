@@ -31,6 +31,9 @@
    reach it rather than be restated in JS. See the hook for the full story. */
 .ds-dropdown__content {
   --anchored-min-width: 180px;
+  /* The checkable items' leading slot. Read by the slot and by `--inset`, so
+     an inset label lines up with a checkbox or radio item's label. */
+  --dropdown-indicator-size: var(--fs-md);
 
   background: var(--surface);
   border: 1px solid var(--border);
@@ -86,8 +89,10 @@
   cursor: not-allowed;
 }
 
+/* Item padding + the indicator slot + the item gap: an inset item's text
+   starts where a checkbox or radio item's label does. */
 .ds-dropdown__item--inset {
-  padding-left: var(--space-6);
+  padding-left: calc(var(--space-3) + var(--dropdown-indicator-size) + var(--space-2));
 }
 
 /* The leading slot of a checkbox or radio item. It is always there, checked or
@@ -95,7 +100,7 @@
    drawn (see lib/marks.tsx) and painted in currentColor, so it follows the
    item into the disabled colour with no rule of its own. */
 .ds-dropdown__indicator {
-  --mark-size: var(--fs-md);
+  --mark-size: var(--dropdown-indicator-size);
 
   align-items: center;
   display: inline-flex;
@@ -125,7 +130,7 @@
 }
 
 .ds-dropdown__label--inset {
-  padding-left: var(--space-6);
+  padding-left: calc(var(--space-3) + var(--dropdown-indicator-size) + var(--space-2));
 }
 
 .ds-dropdown__separator {
