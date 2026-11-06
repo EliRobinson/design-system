@@ -109,7 +109,7 @@ describe('buildManifest against this package', () => {
     const variant = byName('Button').props.find((prop) => prop.name === 'variant');
 
     expect(variant).toMatchObject({
-      type: '"primary" | "accent" | "secondary" | "ghost"',
+      type: '"primary" | "accent" | "destructive" | "secondary" | "ghost"',
       required: false,
       defaultValue: 'primary',
     });
@@ -151,7 +151,7 @@ describe('buildManifest against this package', () => {
       {
         prop: 'variant',
         type: 'ButtonVariant',
-        values: ['primary', 'accent', 'secondary', 'ghost'],
+        values: ['primary', 'accent', 'destructive', 'secondary', 'ghost'],
       },
       { prop: 'size', type: 'ButtonSize', values: ['sm', 'md', 'lg'] },
     ]);

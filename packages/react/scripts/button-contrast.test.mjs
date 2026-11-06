@@ -143,6 +143,17 @@ const VARIANTS = [
     threshold: 4.5,
     fills: { resting: '--accent', hovered: '--accent-hover', pressed: '--accent-press' },
   },
+  /* The destructive fill never changes between states (hover and pressed add
+     an inner ring), so all three are measured against the same token. */
+  {
+    modifier: 'destructive',
+    threshold: 4.5,
+    fills: {
+      resting: '--status-danger',
+      hovered: '--status-danger',
+      pressed: '--status-danger',
+    },
+  },
   {
     modifier: 'secondary',
     threshold: 4.5,

@@ -7,6 +7,7 @@ export default function Variants() {
     <div className="demo-row">
       <Button variant="primary">Primary</Button>
       <Button variant="accent">Accent</Button>
+      <Button variant="destructive">Destructive</Button>
       <Button variant="secondary">Secondary</Button>
       <Button variant="ghost">Ghost</Button>
     </div>

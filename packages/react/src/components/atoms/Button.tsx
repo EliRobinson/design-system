@@ -3,7 +3,7 @@ import { forwardRef } from 'react';
 
 import { cn } from '../../lib/cn.js';
 
-export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost';
+export type ButtonVariant = 'primary' | 'accent' | 'destructive' | 'secondary' | 'ghost';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {

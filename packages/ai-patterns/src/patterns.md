@@ -15,6 +15,23 @@
 - Prefer semantic tokens over hardcoded values.
 - Ship keyboard-first interactions and visible focus states by default.
 
+### Confirm dialogs
+
+A confirm asks the user to approve an action that loses data (Delete, Discard,
+Leave without saving). `Dialog` has no variant for this. The two `Button`s carry
+the meaning:
+
+- **The button that loses data takes `variant="destructive"`.** Label it with
+  the action ("Delete draft"), not "OK" or "Yes".
+- **The safe button takes `variant="secondary"` and gets first focus.** That is
+  Cancel or Keep editing. `Dialog` opens with the native `showModal()`, which
+  focuses the first focusable element in DOM order. So write the safe button
+  before the destructive one in the markup. Do not use `autoFocus`: the dialog
+  is closed when React mounts it, so the call does nothing. Enter on a freshly
+  opened confirm then cancels instead of deleting.
+- **Never give `destructive` to both buttons**, and never to a non-destructive
+  confirm. A confirm that only saves or sends keeps `primary`.
+
 ## 4) Reusable Prompts
 
 - Prompt templates should include intent, constraints, and verification checklist.

@@ -1035,7 +1035,7 @@ describe('parseNxProjectList', () => {
    ours, and a version bump could change them silently. Renovate bumps
    Playwright in this repo. */
 describe.skipIf(!buildsPresent())('the emitted pattern, applied by Playwright itself', () => {
-  it('selects exactly the 30 tests a modified Button.tsx could have changed', () => {
+  it('selects exactly the 42 tests a modified Button.tsx could have changed', () => {
     const plan = scopeFor({
       changes: [{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }],
       affectedProjects: ['docs', 'storybook', 'react'],
@@ -1054,11 +1054,14 @@ describe.skipIf(!buildsPresent())('the emitted pattern, applied by Playwright it
     /* A missing Total line would otherwise read as "0 tests" — the silent
          under-selection answer this module exists to refuse. */
     expect(total, `no "Total: N tests" line in --list output:\n${listed}`).not.toBeNull();
-    /* 30: Button's four storybook shots (wide and narrow, two themes each…
+    /* 42: Button's four storybook shots (wide and narrow, two themes each…
        and one story per variant), plus its two `/components/button` docs
        shots, which came back with `docs-wide` at #105. It was 28 while that
-       project was off, which is the point of asserting an exact number. */
-    expect(Number(total[1])).toBe(30);
+       project was off, which is the point of asserting an exact number. #272
+       added three stories (Destructive, DestructiveDisabled,
+       DestructiveSizes), and 3 stories x 2 themes x 2 projects (wide and
+       narrow) is the 12 that took it from 30 to 42. */
+    expect(Number(total[1])).toBe(42);
   }, 120_000);
 
   /* #101 relaxed the `/components/*` drift guard while `docs-wide` was off,

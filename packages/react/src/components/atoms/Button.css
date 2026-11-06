@@ -84,6 +84,29 @@
   transform: translateY(1px);
 }
 
+/* For an action that loses data: Delete, Discard, Leave. Filled from the
+   status tokens, which do not change with the palette or the theme, so the
+   white label is 5.41:1 on the fill in every combination. The fill never
+   moves: --status-danger is 3.88:1 on a black page and darkening it for
+   hover would fall under the 3:1 floor. Hover and pressed show an inner ring
+   in the label colour instead, so every state keeps the measured pair. */
+.ds-button--destructive {
+  background-color: var(--status-danger);
+  color: var(--status-danger-on); /* 5.41:1 */
+}
+
+.ds-button--destructive:hover {
+  background-color: var(--status-danger);
+  box-shadow: inset 0 0 0 1px var(--status-danger-on);
+  color: var(--status-danger-on); /* 5.41:1 */
+}
+.ds-button--destructive:active {
+  background-color: var(--status-danger);
+  box-shadow: inset 0 0 0 2px var(--status-danger-on);
+  color: var(--status-danger-on); /* 5.41:1 */
+  transform: translateY(1px);
+}
+
 .ds-button--secondary {
   background-color: transparent;
   border-color: var(--border-control); /* 3.64:1 — SC 1.4.11 */
@@ -122,6 +145,7 @@
 .ds-button:disabled {
   background-color: var(--bg-muted);
   border-color: transparent;
+  box-shadow: none;
   color: var(--fg-disabled);
   cursor: not-allowed;
   transform: none;
@@ -132,6 +156,7 @@
 .ds-button--disabled:active,
 .ds-button:disabled:active {
   background-color: var(--bg-muted);
+  box-shadow: none;
   color: var(--fg-disabled);
   transform: none;
 }
