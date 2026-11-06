@@ -61,6 +61,11 @@
   font-size: var(--fs-xs);
 }
 
+/* --fg-3 on the active fill is 4.34:1 in light, so the detail steps up. */
+.ds-command-palette__item--active .ds-command-palette__detail {
+  color: var(--fg-2);
+}
+
 .ds-command-palette__group {
   padding: var(--space-2) var(--space-3) var(--space-1);
   color: var(--fg-3);

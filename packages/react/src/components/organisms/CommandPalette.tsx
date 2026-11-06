@@ -169,17 +169,23 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
 
     // `open={false}` unmounts the <dialog>, so the browser's own return of
     // focus never runs. Give it back here, to whatever opened the palette.
+    // Keyed on the close itself, not on an effect cleanup: StrictMode runs a
+    // cleanup right after mount, which would hand focus back too early.
+    const wasOpenRef = useRef(false);
     useEffect(() => {
-      if (!open) {
-        return undefined;
+      if (open) {
+        wasOpenRef.current = true;
+        return;
       }
-      return () => {
-        const opener = openerRef.current;
-        openerRef.current = null;
-        if (opener?.isConnected) {
-          opener.focus();
-        }
-      };
+      if (!wasOpenRef.current) {
+        return;
+      }
+      wasOpenRef.current = false;
+      const opener = openerRef.current;
+      openerRef.current = null;
+      if (opener?.isConnected) {
+        opener.focus();
+      }
     }, [open]);
 
     // Focus stays on the input at all times; the active item is tracked via
@@ -283,7 +289,7 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
             className="ds-command-palette__list"
           >
             {toSections(filtered).map((section, sectionIndex) =>
-              section.group === undefined ? (
+              !section.group ? (
                 section.rows.map(renderRow)
               ) : (
                 <li key={`group-${sectionIndex}`} role="presentation">
@@ -304,25 +310,23 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
                 </li>
               ),
             )}
-            {loading ? (
-              <li className="ds-command-palette__status" role="status">
-                {text.loading}
-              </li>
-            ) : null}
-            {error ? (
-              <li
-                className="ds-command-palette__status ds-command-palette__status--error"
-                role="alert"
-              >
-                {error}
-              </li>
-            ) : null}
-            {filtered.length === 0 && !loading && !error ? (
-              <li className="ds-command-palette__empty" role="presentation">
-                {text.empty}
-              </li>
-            ) : null}
           </ul>
+          {loading ? (
+            <div className="ds-command-palette__status" role="status">
+              {text.loading}
+            </div>
+          ) : null}
+          {error ? (
+            <div
+              className="ds-command-palette__status ds-command-palette__status--error"
+              role="alert"
+            >
+              {error}
+            </div>
+          ) : null}
+          {filtered.length === 0 && !loading && !error ? (
+            <div className="ds-command-palette__empty">{text.empty}</div>
+          ) : null}
         </DialogContent>
       </Dialog>
     );
