@@ -82,9 +82,20 @@ export const RESTATED_FACTS = [
     facts: [HELPERS.Verdict.text],
   },
   {
+    file: 'components/organisms/Tooltip.d.ts',
+    update: 'IMPORT_RULES for ../../hooks/useAnchoredPosition.js',
+    facts: ['side?: AnchoredSide;'],
+  },
+  {
     file: 'hooks/useAnchoredPosition.d.ts',
     update: 'ANCHORED_PICK',
-    facts: ["type Side = 'top' | 'bottom';", "type Align = 'start' | 'center' | 'end';"],
+    /* Popover and DropdownMenu still take `top | bottom` only (narrowed in
+       anchoredOverlay), so ANCHORED_PICK below stays as it is; the hook itself
+       also accepts left and right, for Tooltip. */
+    facts: [
+      "export type AnchoredSide = 'top' | 'bottom' | 'left' | 'right';",
+      "type Align = 'start' | 'center' | 'end';",
+    ],
   },
 ];
 
@@ -107,6 +118,10 @@ const IMPORT_RULES = {
   '@tanstack/react-virtual': {},
   './VerdictBadge.js': { helper: 'Verdict' },
   './table/core.js': { helper: 'TableHelpers' },
+  /* Tooltip's `side` is the hook's whole union; the rewrite spells it out. */
+  '../../hooks/useAnchoredPosition.js': {
+    rewrite: ['side?: AnchoredSide;', "side?: 'top' | 'bottom' | 'left' | 'right';"],
+  },
   './overlay/anchoredOverlay.js': {
     rewrite: ["Pick<AnchoredOverlayContentProps, 'side' | 'align'>", ANCHORED_PICK],
   },
