@@ -84,6 +84,26 @@
   transform: translateY(1px);
 }
 
+/* For an action that loses data: Delete, Discard, Leave. Filled from the
+   status tokens, which do not change with the palette or the theme, so the
+   white label is 5.41:1 on the fill in every combination. Hover and pressed
+   darken the fill toward black; a white label only gains contrast on a darker
+   fill, so the resting ratio is the floor. */
+.ds-button--destructive {
+  background-color: var(--status-danger);
+  color: var(--status-danger-on); /* 5.41:1 */
+}
+
+.ds-button--destructive:hover {
+  background-color: color-mix(in oklch, var(--status-danger), black 14%);
+  color: var(--status-danger-on); /* >= 5.41:1 */
+}
+.ds-button--destructive:active {
+  background-color: color-mix(in oklch, var(--status-danger), black 26%);
+  color: var(--status-danger-on); /* >= 5.41:1 */
+  transform: translateY(1px);
+}
+
 .ds-button--secondary {
   background-color: transparent;
   border-color: var(--border-control); /* 3.64:1 — SC 1.4.11 */

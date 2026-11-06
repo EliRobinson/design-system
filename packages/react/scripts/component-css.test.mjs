@@ -273,7 +273,7 @@ describe('Button, where the bug was reported', () => {
     expect(button).toBeDefined();
   });
 
-  for (const variant of ['primary', 'accent', 'secondary', 'ghost']) {
+  for (const variant of ['primary', 'accent', 'destructive', 'secondary', 'ghost']) {
     it(`--${variant} states its color resting, hovered, and pressed`, () => {
       for (const state of ['', ':hover', ':active']) {
         const rule = rules(button.css).find((r) => r.selector === `.ds-button--${variant}${state}`);
