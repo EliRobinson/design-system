@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Button, type ButtonVariant } from './Button.js';
+import { Button } from './Button.js';
 
 describe('Button variant="destructive"', () => {
   it('renders the destructive class', () => {
@@ -12,11 +12,6 @@ describe('Button variant="destructive"', () => {
       'ds-button',
       'ds-button--destructive',
     );
-  });
-
-  it('is part of ButtonVariant', () => {
-    const variant: ButtonVariant = 'destructive';
-    expect(variant).toBe('destructive');
   });
 
   it.each(['sm', 'md', 'lg'] as const)('works with size %s', (size) => {

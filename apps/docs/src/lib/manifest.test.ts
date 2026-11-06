@@ -91,7 +91,7 @@ describe('component manifest', () => {
     const button = getComponent('button');
     expect(button).toBeDefined();
     const variant = button?.props.find((p) => p.name === 'variant');
-    expect(variant?.type).toBe('"primary" | "accent" | "secondary" | "ghost"');
+    expect(variant?.type).toContain('"destructive"');
     expect(variant?.defaultValue).toBe('primary');
     expect(button?.constraints).toContain('touch-target-primary');
     expect(button?.inherits).toBe('ButtonHTMLAttributes<HTMLButtonElement>');

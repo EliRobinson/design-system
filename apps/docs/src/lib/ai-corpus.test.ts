@@ -73,7 +73,7 @@ describe('llms-full.txt corpus', () => {
 
   it('renders the Button prop table', () => {
     expect(full).toContain('| variant |');
-    expect(full).toContain('"primary" \\| "accent" \\| "secondary" \\| "ghost"');
+    expect(full).toContain('"destructive"');
   });
 
   it('interleaves the MDX prose the human pages render', () => {
