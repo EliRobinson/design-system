@@ -87,8 +87,10 @@ export const AnchoredOverlayTrigger = forwardRef<HTMLButtonElement, AnchoredOver
 
 export type AnchoredOverlayContentProps = HTMLAttributes<HTMLDivElement> &
   Pick<AnchoredPositionOptions, 'align'> & {
-    /* Popover and DropdownMenu hang above or below. Beside-the-trigger is a
-       Tooltip placement, so it is not offered here. */
+    /* Beside-the-trigger is a Tooltip placement, so it is not offered here. The
+       JSDoc below is word for word the hook's old one, so the docs props table
+       for Popover and DropdownMenu reads as it always did. */
+    /** Which edge of the trigger the panel hangs from. Default `'bottom'`. */
     side?: Exclude<AnchoredPositionOptions['side'], 'left' | 'right'>;
     overlay: AnchoredOverlayContextValue;
   };
