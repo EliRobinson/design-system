@@ -1,11 +1,18 @@
 import type { RefObject } from 'react';
 import { useLayoutEffect, useRef } from 'react';
 
-type Side = 'top' | 'bottom';
+export type AnchoredSide = 'top' | 'bottom' | 'left' | 'right';
+type Side = AnchoredSide;
 type Align = 'start' | 'center' | 'end';
 
 export type AnchoredPositionOptions = {
-  /** Which edge of the trigger the panel hangs from. Default `'bottom'`. */
+  /**
+   * Which edge of the trigger the panel hangs from. Default `'bottom'`.
+   * `'left'` and `'right'` hang it beside the trigger, which is what a narrow
+   * vertical rail wants; `align` then lines the panel up on the *vertical*
+   * axis — `'start'` with the trigger's top edge, `'end'` with its bottom edge,
+   * `'center'` on its middle — and no trigger-width floor is written.
+   */
   side?: Side;
   /**
    * `'start'` lines the panel's left edge up with the trigger's and gives it
@@ -22,6 +29,8 @@ export type AnchoredPositionOptions = {
 
 /** The single gap between a trigger and anything anchored to it. */
 const GAP = 4;
+
+const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
 
 /**
  * The inline `min-width` for a start/end-aligned panel.
@@ -169,32 +178,59 @@ export function useAnchoredPosition(
          pass had just set. */
       const roomBelow = window.innerHeight - rect.bottom - GAP;
       const roomAbove = rect.top - GAP;
+      const roomRight = window.innerWidth - rect.right - GAP;
+      const roomLeft = rect.left - GAP;
       const roomFromLeft = window.innerWidth - rect.left;
       const roomFromRight = rect.right;
+      const roomFromTop = window.innerHeight - rect.top;
+      const roomFromBottom = rect.bottom;
+
+      /* A top/bottom panel runs its main axis vertically and its cross axis
+         horizontally; a left/right panel is the transpose. Everything below is
+         written once, against those two axes. */
+      const beside = side === 'left' || side === 'right';
+      const room: Record<Side, number> = {
+        top: roomAbove,
+        bottom: roomBelow,
+        left: roomLeft,
+        right: roomRight,
+      };
 
       if (!flippedSide.current) {
-        const preferred = side === 'bottom' ? roomBelow : roomAbove;
-        const opposite = side === 'bottom' ? roomAbove : roomBelow;
+        const preferred = room[side];
+        const opposite = room[OPPOSITE[side]];
+        const size = beside ? panel.width : panel.height;
         /* Only worth flipping if the other side is actually better. A panel
            that fits nowhere stays where it was asked to go. */
-        flippedSide.current = panel.height > preferred && panel.height <= opposite;
+        flippedSide.current = size > preferred && size <= opposite;
       }
 
       /* Centring is symmetric — there is no opposite edge to pin instead — so
          a tooltip is left exactly where it was. */
       if (align !== 'center' && !flippedAlign.current) {
-        const preferred = align === 'start' ? roomFromLeft : roomFromRight;
-        const opposite = align === 'start' ? roomFromRight : roomFromLeft;
-        flippedAlign.current = panel.width > preferred && panel.width <= opposite;
+        const preferred =
+          align === 'start'
+            ? beside
+              ? roomFromTop
+              : roomFromLeft
+            : beside
+              ? roomFromBottom
+              : roomFromRight;
+        const opposite =
+          align === 'start'
+            ? beside
+              ? roomFromBottom
+              : roomFromRight
+            : beside
+              ? roomFromTop
+              : roomFromLeft;
+        const size = beside ? panel.height : panel.width;
+        flippedAlign.current = size > preferred && size <= opposite;
       }
 
       /* `flippedAlign` only ever latches on a start/end panel, so the centred
          case needs no guard here. */
-      const effectiveSide: Side = flippedSide.current
-        ? side === 'bottom'
-          ? 'top'
-          : 'bottom'
-        : side;
+      const effectiveSide: Side = flippedSide.current ? OPPOSITE[side] : side;
       const effectiveAlign: Align = flippedAlign.current
         ? align === 'start'
           ? 'end'
@@ -203,42 +239,80 @@ export function useAnchoredPosition(
 
       content.style.zIndex = zIndex;
 
-      // Exactly one horizontal edge is ever pinned. The other is released to
-      // `auto`, because a fixed box given both a left and a right is stretched
-      // between them rather than sized by its content.
-      if (effectiveAlign === 'center') {
-        /* Shifting is stated in terms of the edge that is on screen or not, so
-           the centre is taken apart into a left edge, shifted, and put back
-           together — `translateX(-50%)` is still what does the centring. */
-        const centred = rect.left + rect.width / 2;
-        const shifted = shiftIntoView(centred - panel.width / 2, panel.width, window.innerWidth);
-        content.style.left = `${shifted + panel.width / 2}px`;
-        content.style.right = 'auto';
-        content.style.transform = 'translateX(-50%)';
-      } else if (effectiveAlign === 'end') {
-        // Measured back from the same viewport width the `bottom` case below
-        // measures against, for the same reason: a classic scrollbar makes
-        // `window.innerWidth` a few pixels generous, and one consistent frame
-        // is worth more here than two subtly different ones.
-        const pinned = window.innerWidth - rect.right;
-        content.style.right = `${shiftIntoView(pinned, panel.width, window.innerWidth)}px`;
-        content.style.left = 'auto';
-        content.style.minWidth = minWidthFor(rect.width);
-        content.style.transform = '';
-      } else {
-        content.style.left = `${shiftIntoView(rect.left, panel.width, window.innerWidth)}px`;
-        content.style.right = 'auto';
-        content.style.minWidth = minWidthFor(rect.width);
-        content.style.transform = '';
-      }
+      if (effectiveSide === 'left' || effectiveSide === 'right') {
+        // The main axis is horizontal: one edge is pinned a gap off the trigger.
+        if (effectiveSide === 'right') {
+          content.style.left = `${shiftIntoView(rect.right + GAP, panel.width, window.innerWidth)}px`;
+          content.style.right = 'auto';
+        } else {
+          const pinned = window.innerWidth - rect.left + GAP;
+          content.style.right = `${shiftIntoView(pinned, panel.width, window.innerWidth)}px`;
+          content.style.left = 'auto';
+        }
+        // A trigger's width is no floor for a panel hung beside it. Cleared
+        // rather than left behind, in case the node was last placed above.
+        content.style.minWidth = '';
 
-      if (effectiveSide === 'bottom') {
-        content.style.top = `${shiftIntoView(rect.bottom + GAP, panel.height, window.innerHeight)}px`;
-        content.style.bottom = 'auto';
+        // The cross axis is vertical, and `align` reads as top/centre/bottom.
+        if (effectiveAlign === 'center') {
+          const centred = rect.top + rect.height / 2;
+          const shifted = shiftIntoView(
+            centred - panel.height / 2,
+            panel.height,
+            window.innerHeight,
+          );
+          content.style.top = `${shifted + panel.height / 2}px`;
+          content.style.bottom = 'auto';
+          content.style.transform = 'translateY(-50%)';
+        } else if (effectiveAlign === 'end') {
+          const pinned = window.innerHeight - rect.bottom;
+          content.style.bottom = `${shiftIntoView(pinned, panel.height, window.innerHeight)}px`;
+          content.style.top = 'auto';
+          content.style.transform = '';
+        } else {
+          content.style.top = `${shiftIntoView(rect.top, panel.height, window.innerHeight)}px`;
+          content.style.bottom = 'auto';
+          content.style.transform = '';
+        }
       } else {
-        const pinned = window.innerHeight - rect.top + GAP;
-        content.style.bottom = `${shiftIntoView(pinned, panel.height, window.innerHeight)}px`;
-        content.style.top = 'auto';
+        // Exactly one horizontal edge is ever pinned. The other is released to
+        // `auto`, because a fixed box given both a left and a right is
+        // stretched between them rather than sized by its content.
+        if (effectiveAlign === 'center') {
+          /* Shifting is stated in terms of the edge that is on screen or not, so
+             the centre is taken apart into a left edge, shifted, and put back
+             together — `translateX(-50%)` is still what does the centring. */
+          const centred = rect.left + rect.width / 2;
+          const shifted = shiftIntoView(centred - panel.width / 2, panel.width, window.innerWidth);
+          content.style.left = `${shifted + panel.width / 2}px`;
+          content.style.right = 'auto';
+          content.style.minWidth = '';
+          content.style.transform = 'translateX(-50%)';
+        } else if (effectiveAlign === 'end') {
+          // Measured back from the same viewport width the `bottom` case below
+          // measures against, for the same reason: a classic scrollbar makes
+          // `window.innerWidth` a few pixels generous, and one consistent frame
+          // is worth more here than two subtly different ones.
+          const pinned = window.innerWidth - rect.right;
+          content.style.right = `${shiftIntoView(pinned, panel.width, window.innerWidth)}px`;
+          content.style.left = 'auto';
+          content.style.minWidth = minWidthFor(rect.width);
+          content.style.transform = '';
+        } else {
+          content.style.left = `${shiftIntoView(rect.left, panel.width, window.innerWidth)}px`;
+          content.style.right = 'auto';
+          content.style.minWidth = minWidthFor(rect.width);
+          content.style.transform = '';
+        }
+
+        if (effectiveSide === 'bottom') {
+          content.style.top = `${shiftIntoView(rect.bottom + GAP, panel.height, window.innerHeight)}px`;
+          content.style.bottom = 'auto';
+        } else {
+          const pinned = window.innerHeight - rect.top + GAP;
+          content.style.bottom = `${shiftIntoView(pinned, panel.height, window.innerHeight)}px`;
+          content.style.top = 'auto';
+        }
       }
 
       /* The one case no offset can rescue, so the only case that gets a clamp.
