@@ -56,7 +56,8 @@ import { cn } from './cn.js';
  *
  * `cross` is used by the chip's remove, the search field's clear and the
  * toast's close; `chevron-left`/`chevron-right` by pagination and the date
- * picker's month nav; `star` by the rating, in both its states.
+ * picker's month nav; `star` by the rating, in both its states; `check` by the
+ * dropdown menu's checkbox item.
  */
 
 /* The chevron is written once, pointing right, and the left one is derived by
@@ -124,6 +125,12 @@ const MARK_PATHS = {
      round` then grows it symmetrically into a visible bar. */
   plus: 'M8 5 8 11M5 8 11 8',
   minus: 'M5 8 11 8',
+
+  /* The dropdown menu's checkbox item. 4.5..11.5 by 5.5..10.5: a little wider
+     than `cross` because a check is a wide, short shape, and the box is still
+     centred on (8, 8) — the short arm's end and the long arm's end sit 3.5
+     either side of x = 8, the elbow and the tip 2.5 either side of y = 8. */
+  check: 'M4.5 8 7 10.5 11.5 5.5',
 
   /* A regular five-pointed star, outer radius 7, inner radius at the regular
      ratio sin(18°)/sin(54°).
