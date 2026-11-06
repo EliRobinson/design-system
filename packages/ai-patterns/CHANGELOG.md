@@ -1,5 +1,11 @@
 # @elirobinson/ai-patterns
 
+## 0.29.1
+
+### Patch Changes
+
+- b1e0bf3: The visual sweep's settle loop now retries a capture three times when Chromium answers "Unable to capture screenshot", a transient browser error that reddened main on unchanged commits (#299). Other errors still fail at once.
+
 ## 0.29.0
 
 ### Minor Changes
