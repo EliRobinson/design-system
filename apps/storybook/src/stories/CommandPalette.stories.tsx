@@ -46,3 +46,76 @@ export const Default: Story = {
   args: { open: true, onOpenChange: () => {}, commands: [] },
   render: () => <CommandPaletteDemo />,
 };
+
+const noop = () => {};
+const placeholder = { open: true, onOpenChange: noop, commands: [] };
+
+export const GroupsAndDetail: Story = {
+  args: placeholder,
+  render: () => (
+    <CommandPalette
+      open
+      onOpenChange={noop}
+      commands={[
+        { id: 'alma', label: 'Alma Reyes', group: 'Residents', detail: 'Ready', onSelect: noop },
+        { id: 'ben', label: 'Ben Okafor', group: 'Residents', detail: 'Signed', onSelect: noop },
+        {
+          id: 'home',
+          label: 'Home',
+          group: 'Go to',
+          detail: '/home',
+          shortcut: ['G', 'H'],
+          onSelect: noop,
+        },
+        { id: 'help', label: 'Help', group: 'Go to', detail: '/help', onSelect: noop },
+      ]}
+    />
+  ),
+};
+
+export const Loading: Story = {
+  args: placeholder,
+  render: () => (
+    <CommandPalette
+      open
+      onOpenChange={noop}
+      query="al"
+      onQueryChange={noop}
+      filter={false}
+      loading
+      commands={[{ id: 'alma', label: 'Alma Reyes', group: 'Residents', onSelect: noop }]}
+    />
+  ),
+};
+
+export const ErrorState: Story = {
+  args: placeholder,
+  render: () => (
+    <CommandPalette
+      open
+      onOpenChange={noop}
+      query="al"
+      onQueryChange={noop}
+      filter={false}
+      error="Search failed. Try again."
+      commands={[]}
+    />
+  ),
+};
+
+export const TranslatedLabels: Story = {
+  args: placeholder,
+  render: () => (
+    <CommandPalette
+      open
+      onOpenChange={noop}
+      labels={{
+        title: 'Paleta de comandos',
+        search: 'Buscar comandos',
+        list: 'Comandos',
+        empty: 'Sin resultados',
+      }}
+      commands={[]}
+    />
+  ),
+};

@@ -34,10 +34,54 @@
   cursor: pointer;
 }
 
-.ds-command-palette__item:hover,
+.ds-command-palette__item:hover {
+  background: var(--surface-3);
+  color: var(--fg);
+}
+
+/* #275: --bg-subtle is ink-950 in dark, the same as the dialog's --surface
+   (1.00:1), so no row looked chosen. A fill alone tops out near 1.16:1 there,
+   so the active row also carries an inset ring (SC 1.4.11, 3.6:1 or better in
+   every palette x theme; command-palette-contrast.test.mjs measures it). */
 .ds-command-palette__item--active {
-  background: var(--bg-subtle);
-  color: var(--fg); /* 20.06:1 */
+  background: var(--surface-3);
+  color: var(--fg);
+  box-shadow: inset 0 0 0 1px var(--border-control);
+}
+
+.ds-command-palette__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-1) 0;
+}
+
+.ds-command-palette__detail {
+  color: var(--fg-3);
+  font-size: var(--fs-xs);
+}
+
+.ds-command-palette__group {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  color: var(--fg-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.ds-command-palette__group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ds-command-palette__status {
+  padding: var(--space-3);
+  color: var(--fg-3);
+  font-size: var(--fs-sm);
+}
+
+.ds-command-palette__status--error {
+  color: var(--status-danger-fg);
 }
 
 .ds-command-palette__shortcut {
