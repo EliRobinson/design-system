@@ -1,5 +1,19 @@
 # @elirobinson/react
 
+## 3.8.0
+
+### Minor Changes
+
+- 115add3: CommandPalette: the active row now shows in dark mode (fill plus a ring that clears 3:1), and focus returns to the opener when it closes. Commands take optional `group` and `detail`. New optional props: `query`, `onQueryChange`, `filter`, `loading`, `error` and `labels`. Using only `commands` works as before.
+- e03218c: `DropdownMenu` gets a keyboard path in, checkable items, and a disabled item style (#273).
+  - **Keyboard path.** Opening the menu moves focus to the first item that can be chosen (↑ on the trigger opens on the last). ↑ ↓ Home End move between every item role from the focused item, skipping disabled items. Focus returns to the trigger when an item is chosen, on Esc and on Tab (Tab then carries on from the trigger); a click outside leaves focus where it landed. A held Enter or Space no longer chooses the first item on its auto-repeat, and no longer reopens the menu after an item is chosen.
+  - **`DropdownMenuCheckboxItem`** (`role="menuitemcheckbox"`, `checked`, `onCheckedChange`) and **`DropdownMenuRadioGroup`** (`value`, `onValueChange`) with **`DropdownMenuRadioItem`** (`role="menuitemradio"`, `value`). They share a reserved leading slot for the mark, so labels do not move when it appears. `inset` now pads by that slot's width, so an inset label or item lines up with them (it was 24px; it is now 36px). Enter chooses and closes (unless `closeOnSelect={false}`); Space chooses and keeps the menu open. Both are controlled only: the menu unmounts its items when it closes, so state an item kept for itself would reset on every reopen.
+  - **Disabled items** (`disabled` or `aria-disabled="true"`) use `--fg-disabled`, `cursor: not-allowed` and no hover fill, and an `aria-disabled` item no longer runs its `onClick`.
+  - Keep `DropdownMenuContent` rendered rather than mounting it only while open: content that mounts on the same render as the open misses the move of focus into the menu.
+
+- 73a5786: Add `FieldError` at `@elirobinson/react/components/atoms/FieldError`: the error message of a field with no control of its own, such as a list or a group. It renders the same `<span class="ds-hint ds-hint--error" role="alert">` that `Input`, `Textarea`, `Select`, `Checkbox` and `Switch` render for their `error`, takes an optional `id` for `aria-describedby`, and renders nothing without a message.
+- c76c4a1: `Tooltip` takes a `side` prop (`top`, `bottom`, `left`, `right`; default `bottom`) and flips to the opposite side when there is no room. Escape now dismisses it, and hover and focus no longer share one state, so the pointer leaving does not hide a tooltip that keyboard focus still holds. A new `labelOnly` prop is for tooltips that only repeat the trigger's own name: the trigger gets no `aria-describedby` and the content is `aria-hidden`. `useAnchoredPosition` accepts `left` and `right` too; `top` and `bottom` behave as before.
+
 ## 3.7.0
 
 ### Minor Changes

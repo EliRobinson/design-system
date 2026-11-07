@@ -1,5 +1,11 @@
 # @elirobinson/ai-patterns
 
+## 0.29.2
+
+### Patch Changes
+
+- 5d597ba: The Design System artifact build tracks the renamed `AnchoredSide` type in `useAnchoredPosition`, which now also accepts `left` and `right`. The artifact's Popover and DropdownMenu types are unchanged.
+
 ## 0.29.1
 
 ### Patch Changes
