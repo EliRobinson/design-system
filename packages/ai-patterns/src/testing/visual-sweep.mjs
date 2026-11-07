@@ -296,7 +296,7 @@ export async function waitForStablePixels(page, { expect, fullPage = false, time
      The timeout is generous because the capture itself is the slow part. Under
      emulation a full-page shot of a long page takes seconds, so a 10s budget is
      spent on three or four captures and expires before two can agree. */
-  const capture = () => page.screenshot({ animations: 'disabled', fullPage });
+  const capture = () => captureForSettle(page, { fullPage });
 
   let previous = await capture();
 
@@ -311,6 +311,35 @@ export async function waitForStablePixels(page, { expect, fullPage = false, time
       { intervals: [100, 200, 400, 800], timeout },
     )
     .toBe(true);
+}
+
+/* Chromium's `Page.captureScreenshot` sometimes answers "Unable to capture
+   screenshot" and nothing else, as if the compositor had no frame to copy at
+   that instant. Issue #299 recorded three of these on GitHub's runners, each on
+   a settle capture, each gone on a re-run of the same commit. The page was not
+   the cause: /adoption is 2,769px tall with no images and no frames, and 160
+   cold-process runs of it in the pinned image (640 shots) produced no crash.
+   It is the browser failing a call, not the page failing a test.
+
+   Retried here and only here. These captures are the settle loop's own probes,
+   compared with each other and then thrown away, so repeating one cannot hide
+   a wrong pixel; the shot that is compared against a baseline is
+   `toHaveScreenshot`'s and is not touched. The match is the one message, not
+   any error, and the count is three, so a closed page or a page that really
+   cannot be captured still fails on the first or third try. A short pause sits
+   between tries so a retry does not land in the same gap. */
+const CAPTURE_ATTEMPTS = 3;
+
+async function captureForSettle(page, { fullPage }) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await page.screenshot({ animations: 'disabled', fullPage });
+    } catch (error) {
+      const transient = /Unable to capture screenshot/.test(String(error?.message));
+      if (!transient || attempt >= CAPTURE_ATTEMPTS) throw error;
+      await page.waitForTimeout(100);
+    }
+  }
 }
 
 /**

@@ -1,6 +1,6 @@
-import { createRef } from 'react';
+import { StrictMode, createRef, useState } from 'react';
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -195,6 +195,274 @@ describe('CommandPalette', () => {
 
     expect(screen.getByRole('searchbox')).toHaveValue('');
     expect(screen.getByText('Open file')).toBeInTheDocument();
+  });
+
+  describe('focus return (#275)', () => {
+    it('gives focus back to the opener when the palette closes', () => {
+      render(<button type="button">Open palette</button>);
+      const opener = screen.getByRole('button', { name: 'Open palette' });
+      opener.focus();
+
+      const { rerender } = render(
+        <CommandPalette open onOpenChange={vi.fn()} commands={commands} />,
+      );
+      expect(screen.getByRole('searchbox')).toHaveFocus();
+
+      rerender(<CommandPalette open={false} onOpenChange={vi.fn()} commands={commands} />);
+      expect(opener).toHaveFocus();
+    });
+
+    it('still gives focus back under StrictMode', () => {
+      render(<button type="button">Open palette</button>);
+      const opener = screen.getByRole('button', { name: 'Open palette' });
+      opener.focus();
+
+      const { rerender } = render(
+        <StrictMode>
+          <CommandPalette open onOpenChange={vi.fn()} commands={commands} />
+        </StrictMode>,
+      );
+      rerender(
+        <StrictMode>
+          <CommandPalette open={false} onOpenChange={vi.fn()} commands={commands} />
+        </StrictMode>,
+      );
+      expect(opener).toHaveFocus();
+    });
+
+    it('does not steal focus if the opener left the page', () => {
+      const { container, unmount } = render(<button type="button">Gone</button>);
+      container.querySelector('button')?.focus();
+      const palette = render(<CommandPalette open onOpenChange={vi.fn()} commands={commands} />);
+      unmount();
+      expect(() =>
+        palette.rerender(
+          <CommandPalette open={false} onOpenChange={vi.fn()} commands={commands} />,
+        ),
+      ).not.toThrow();
+      expect(document.body).toHaveFocus();
+    });
+
+    it('leaves focus where a command put it', async () => {
+      const user = userEvent.setup();
+      function Harness() {
+        const [open, setOpen] = useState(true);
+        return (
+          <>
+            <button type="button">Opener</button>
+            <input aria-label="Target" />
+            <CommandPalette
+              open={open}
+              onOpenChange={setOpen}
+              commands={[
+                {
+                  id: 'go',
+                  label: 'Go to field',
+                  onSelect: () => screen.getByLabelText('Target').focus(),
+                },
+              ]}
+            />
+          </>
+        );
+      }
+      render(<Harness />);
+      await user.keyboard('{Enter}');
+      expect(screen.getByLabelText('Target')).toHaveFocus();
+    });
+  });
+
+  describe('groups and row detail (#275)', () => {
+    const grouped = [
+      { id: 'a', label: 'Alma', group: 'Residents', detail: 'Ready', onSelect: vi.fn() },
+      { id: 'b', label: 'Ben', group: 'Residents', onSelect: vi.fn() },
+      { id: 'c', label: 'Home', group: 'Go to', detail: '/home', onSelect: vi.fn() },
+    ];
+
+    it('draws one heading per run of the same group, and headings are not options', () => {
+      render(<CommandPalette open onOpenChange={vi.fn()} commands={grouped} />);
+
+      expect(screen.getAllByText('Residents')).toHaveLength(1);
+      expect(screen.getAllByText('Go to')).toHaveLength(1);
+      expect(screen.getAllByRole('option')).toHaveLength(3);
+      expect(screen.queryByRole('option', { name: /Residents|Go to/ })).not.toBeInTheDocument();
+      expect(screen.getByRole('group', { name: 'Residents' })).toBeInTheDocument();
+      expect(
+        within(screen.getByRole('group', { name: 'Residents' })).getAllByRole('option'),
+      ).toHaveLength(2);
+    });
+
+    it('draws a heading again when a group returns after another', () => {
+      const interleaved = [
+        { id: '1', label: 'One', group: 'A', onSelect: vi.fn() },
+        { id: '2', label: 'Two', group: 'B', onSelect: vi.fn() },
+        { id: '3', label: 'Three', group: 'A', onSelect: vi.fn() },
+      ];
+      render(<CommandPalette open onOpenChange={vi.fn()} commands={interleaved} />);
+      expect(screen.getAllByText('A')).toHaveLength(2);
+    });
+
+    it('treats an empty group as no group', () => {
+      render(
+        <CommandPalette
+          open
+          onOpenChange={vi.fn()}
+          commands={[{ id: 'x', label: 'X', group: '', onSelect: vi.fn() }]}
+        />,
+      );
+      expect(screen.queryByRole('group')).not.toBeInTheDocument();
+    });
+
+    it('gives every option its own id across groups', () => {
+      render(<CommandPalette open onOpenChange={vi.fn()} commands={grouped} />);
+      const ids = screen.getAllByRole('option').map((option) => option.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it('keeps the list flat for arrow keys: headings are skipped', async () => {
+      const user = userEvent.setup();
+      render(<CommandPalette open onOpenChange={vi.fn()} commands={grouped} />);
+      const input = screen.getByRole('searchbox');
+
+      await user.keyboard('{ArrowDown}{ArrowDown}');
+      expect(
+        document.getElementById(input.getAttribute('aria-activedescendant') as string),
+      ).toHaveTextContent('Home');
+    });
+
+    it('announces detail as the row description', () => {
+      render(<CommandPalette open onOpenChange={vi.fn()} commands={grouped} />);
+      const alma = screen.getByRole('option', { name: /Alma/ });
+      expect(alma).toHaveAccessibleDescription('Ready');
+      expect(screen.getByRole('option', { name: /Ben/ })).not.toHaveAccessibleDescription();
+    });
+
+    it('draws no heading when no command has a group', () => {
+      const { container } = render(
+        <CommandPalette open onOpenChange={vi.fn()} commands={commands} />,
+      );
+      expect(container.ownerDocument.querySelector('.ds-command-palette__group')).toBeNull();
+      expect(screen.queryByRole('group')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('async search (#275)', () => {
+    it('is controlled when query is given, and reports typing through onQueryChange', async () => {
+      const user = userEvent.setup();
+      const onQueryChange = vi.fn();
+      render(
+        <CommandPalette
+          open
+          onOpenChange={vi.fn()}
+          commands={commands}
+          query="open"
+          onQueryChange={onQueryChange}
+        />,
+      );
+
+      expect(screen.getByRole('searchbox')).toHaveValue('open');
+      expect(screen.queryByText('New file')).not.toBeInTheDocument();
+      await user.type(screen.getByRole('searchbox'), 'x');
+      expect(onQueryChange).toHaveBeenLastCalledWith('openx');
+      // Controlled: the value does not move until the parent says so.
+      expect(screen.getByRole('searchbox')).toHaveValue('open');
+    });
+
+    it('filter={false} shows every command whatever the query', () => {
+      render(
+        <CommandPalette
+          open
+          onOpenChange={vi.fn()}
+          commands={commands}
+          query="zzz"
+          onQueryChange={vi.fn()}
+          filter={false}
+        />,
+      );
+      expect(screen.getAllByRole('option')).toHaveLength(2);
+    });
+
+    it('shows a busy loading row and no empty text while loading', () => {
+      render(<CommandPalette open onOpenChange={vi.fn()} commands={[]} loading />);
+      expect(screen.getByRole('listbox')).toHaveAttribute('aria-busy', 'true');
+      expect(screen.getByRole('status')).toHaveTextContent('Loading');
+      expect(screen.queryByText('No matching commands')).not.toBeInTheDocument();
+    });
+
+    it('keeps results visible while loading more', () => {
+      render(<CommandPalette open onOpenChange={vi.fn()} commands={commands} loading />);
+      expect(screen.getAllByRole('option')).toHaveLength(2);
+      expect(screen.getByRole('status')).toBeInTheDocument();
+    });
+
+    it('shows an error row, and no empty text', () => {
+      render(<CommandPalette open onOpenChange={vi.fn()} commands={[]} error="Search failed" />);
+      expect(screen.getByRole('alert')).toHaveTextContent('Search failed');
+      expect(screen.queryByText('No matching commands')).not.toBeInTheDocument();
+      expect(screen.getByRole('listbox')).not.toHaveAttribute('aria-busy', 'true');
+    });
+
+    it('does not report the open-time reset to a controlled parent when already empty', () => {
+      const onQueryChange = vi.fn();
+      render(
+        <CommandPalette
+          open
+          onOpenChange={vi.fn()}
+          commands={commands}
+          query=""
+          onQueryChange={onQueryChange}
+        />,
+      );
+      expect(onQueryChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('labels (#275)', () => {
+    it('uses English defaults', () => {
+      render(<CommandPalette open onOpenChange={vi.fn()} commands={[]} />);
+      expect(screen.getByRole('dialog')).toHaveAccessibleName('Command palette');
+      expect(screen.getByRole('searchbox')).toHaveAccessibleName('Search commands');
+      expect(screen.getByRole('listbox')).toHaveAccessibleName('Commands');
+      expect(screen.getByText('No matching commands')).toBeInTheDocument();
+    });
+
+    it('overrides every text, and a partial override keeps the other defaults', () => {
+      render(
+        <CommandPalette
+          open
+          onOpenChange={vi.fn()}
+          commands={[]}
+          labels={{ title: 'Palette', search: 'Buscar', list: 'Comandos', empty: 'Nada' }}
+        />,
+      );
+      expect(screen.getByRole('dialog')).toHaveAccessibleName('Palette');
+      expect(screen.getByRole('searchbox')).toHaveAccessibleName('Buscar');
+      expect(screen.getByRole('listbox')).toHaveAccessibleName('Comandos');
+      expect(screen.getByText('Nada')).toBeInTheDocument();
+    });
+
+    it('overrides the loading text', () => {
+      render(
+        <CommandPalette
+          open
+          onOpenChange={vi.fn()}
+          commands={[]}
+          loading
+          labels={{ loading: 'Cargando' }}
+        />,
+      );
+      expect(screen.getByRole('status')).toHaveTextContent('Cargando');
+    });
+  });
+
+  describe('existing usage is unchanged (#275)', () => {
+    it('with only `commands`, renders a flat list with no groups, status or alert', () => {
+      render(<CommandPalette open onOpenChange={vi.fn()} commands={commands} />);
+      expect(screen.getAllByRole('option')).toHaveLength(2);
+      expect(screen.queryByRole('group')).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByRole('listbox')).not.toHaveAttribute('aria-busy');
+    });
   });
 
   // Issue #103 named `.ds-command-palette` as needing the same `margin: auto`

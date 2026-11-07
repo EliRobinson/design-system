@@ -1,26 +1,26 @@
 import type { ReactNode } from 'react';
 import { useId } from 'react';
 
-export type ControlErrorProps = {
+import type { MessageVariant } from './MessageSlot.js';
+import { MessageSlot } from './MessageSlot.js';
+
+export type FieldMessageControlProps = {
   'aria-invalid': true | undefined;
   'aria-describedby': string | undefined;
 };
 
-const VARIANTS = {
-  /** `Input`, `Textarea`, `Select`, `Checkbox`, `Switch`. */
-  field: { Tag: 'span', hint: 'ds-hint', error: 'ds-hint ds-hint--error' },
-  /** `FormField`. */
-  'form-field': {
-    Tag: 'p',
-    hint: 'ds-form-field__message ds-form-field__message--hint',
-    error: 'ds-form-field__message ds-form-field__message--error',
-  },
-} as const;
+export type FieldMessageOptions = {
+  error?: string;
+  hint?: string;
+  /** The caller's own `aria-describedby`. It comes first. */
+  ariaDescribedBy?: string;
+  variant?: MessageVariant;
+};
 
 /**
  * The hint and error of every labelled control: the message slots and the
  * control's `aria-invalid` and `aria-describedby`. Internal: not exported from
- * the package.
+ * the package. `FieldError` is the public face of its error slot.
  *
  * At most one message shows, so both slots share one id, and the control is
  * described by it only while one is rendered: no id points at a missing node.
@@ -37,13 +37,13 @@ const VARIANTS = {
  * when one appears and drop an uncontrolled value. Without a hint or an error it
  * renders nothing, so the control renders the markup it always did.
  */
-export function useControlError(
-  error: string | undefined,
-  ariaDescribedBy: string | undefined,
-  { hint, variant = 'field' }: { hint?: string; variant?: keyof typeof VARIANTS } = {},
-): { controlProps: ControlErrorProps; message: ReactNode } {
+export function useFieldMessage({
+  error,
+  hint,
+  ariaDescribedBy,
+  variant = 'field',
+}: FieldMessageOptions): { controlProps: FieldMessageControlProps; message: ReactNode } {
   const id = useId();
-  const { Tag, ...className } = VARIANTS[variant];
 
   return {
     controlProps: {
@@ -54,14 +54,14 @@ export function useControlError(
     message: (
       <>
         {hint && !error ? (
-          <Tag id={id} className={className.hint}>
+          <MessageSlot id={id} variant={variant} tone="hint">
             {hint}
-          </Tag>
+          </MessageSlot>
         ) : null}
         {error ? (
-          <Tag id={id} className={className.error} role="alert">
+          <MessageSlot id={id} variant={variant} tone="error">
             {error}
-          </Tag>
+          </MessageSlot>
         ) : null}
       </>
     ),

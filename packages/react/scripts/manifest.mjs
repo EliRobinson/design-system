@@ -43,6 +43,8 @@ const SHARED_STYLESHEETS = {
   /* Their sibling sheet draws the row; the error message is .ds-hint--error. */
   Checkbox: { path: 'atoms/field.css' },
   Switch: { path: 'atoms/field.css' },
+  /* No sheet of its own: it is the .ds-hint--error message. */
+  FieldError: { path: 'atoms/field.css' },
   RadioGroup: {
     path: 'molecules/RuleLink.css',
     gap: 'ds-radio-group styles are defined in molecules/RuleLink.css, not a RadioGroup sheet',

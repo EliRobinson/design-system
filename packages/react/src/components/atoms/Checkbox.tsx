@@ -2,7 +2,7 @@ import type { InputHTMLAttributes } from 'react';
 import { forwardRef, useId } from 'react';
 
 import { cn } from '../../lib/cn.js';
-import { useControlError } from '../../lib/useControlError.js';
+import { useFieldMessage } from '../../lib/useFieldMessage.js';
 
 export type CheckboxProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
   label: string;
@@ -26,7 +26,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
 ) {
   const generatedId = useId();
   const checkboxId = id ?? generatedId;
-  const { controlProps, message } = useControlError(error, ariaDescribedBy);
+  const { controlProps, message } = useFieldMessage({ error, ariaDescribedBy });
 
   /* The row is the label, not a div wrapping one. The input is 18x18 and the
      text beside it was 23px tall, so the only thing a finger could aim at was
@@ -48,7 +48,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
           {label}
         </span>
       </label>
-      {/* A sibling, not a wrapper: see useControlError. */}
+      {/* A sibling, not a wrapper: see useFieldMessage. */}
       {message}
     </>
   );

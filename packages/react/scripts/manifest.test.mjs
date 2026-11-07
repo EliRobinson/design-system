@@ -105,6 +105,12 @@ describe('buildManifest against this package', () => {
     }
   });
 
+  it('lists field.css alone for FieldError, which has no sheet of its own', () => {
+    expect(byName('FieldError').stylesheetPaths).toEqual([
+      '@elirobinson/react/styles/atoms/field.css',
+    ]);
+  });
+
   it('resolves the prop table, defaults and all, through the type checker', () => {
     const variant = byName('Button').props.find((prop) => prop.name === 'variant');
 

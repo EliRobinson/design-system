@@ -25,6 +25,7 @@ import {
   sweepChrome,
   sweepPages,
   sweepStorybook,
+  waitForStablePixels,
 } from './visual-sweep.mjs';
 
 function storybookBuild(index) {
@@ -786,6 +787,65 @@ describe('the missing-asset guard', () => {
       regions: [{ name: 'header', selector: 'header' }],
     });
     await expect(chrome.bodies[0]({ page: chromePage.page })).rejects.toThrow(/wordmark\.svg/);
+  });
+});
+
+describe('waitForStablePixels capture retries', () => {
+  const CRASH =
+    'page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture screenshot';
+
+  /* Real `expect.poll` semantics reduced to what the loop needs: call the
+     function until it returns true. */
+  const pollingExpect = {
+    poll: (fn) => ({
+      toBe: async (want) => {
+        for (let i = 0; i < 5; i++) if ((await fn()) === want) return;
+        throw new Error('poll never settled');
+      },
+    }),
+  };
+
+  function pageFailing(failures, message = CRASH) {
+    const { page } = fakePage();
+    const order = [];
+    page.waitForTimeout = async () => {
+      order.push('wait');
+    };
+    let calls = 0;
+    page.screenshot = async () => {
+      calls++;
+      order.push('shot');
+      if (calls <= failures) throw new Error(message);
+      return Buffer.from('same');
+    };
+    return { page, calls: () => calls, order };
+  }
+
+  it('survives the browser failing one capture with its transient protocol error (#299)', async () => {
+    const { page, calls } = pageFailing(1);
+    await waitForStablePixels(page, { expect: pollingExpect });
+    expect(calls()).toBe(3);
+  });
+
+  it('pauses before each retry, so it does not land in the same gap', async () => {
+    const { page, order } = pageFailing(2);
+    await waitForStablePixels(page, { expect: pollingExpect });
+    expect(order.slice(0, 5)).toEqual(['shot', 'wait', 'shot', 'wait', 'shot']);
+  });
+
+  it('gives up after three tries, so a page that really cannot be captured still fails', async () => {
+    const { page, calls } = pageFailing(99);
+    await expect(waitForStablePixels(page, { expect: pollingExpect })).rejects.toThrow(CRASH);
+    expect(calls()).toBe(3);
+  });
+
+  it('does not retry any other screenshot error', async () => {
+    const { page, calls } = pageFailing(
+      1,
+      'page.screenshot: Target page, context or browser has been closed',
+    );
+    await expect(waitForStablePixels(page, { expect: pollingExpect })).rejects.toThrow(/closed/);
+    expect(calls()).toBe(1);
   });
 });
 

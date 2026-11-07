@@ -5,6 +5,7 @@ import { PropsTables } from '@/components/docs/PropsTables';
 import { RelatedComponents } from '@/components/docs/RelatedComponents';
 import Basic from '@/components/demos/dropdown-menu/Basic';
 import Alignment from '@/components/demos/dropdown-menu/Alignment';
+import Checkable from '@/components/demos/dropdown-menu/Checkable';
 
 export const metadata = { title: 'DropdownMenu' };
 
@@ -17,15 +18,36 @@ export const metadata = { title: 'DropdownMenu' };
 ## When to use it
 
 Use `DropdownMenu` for a set of actions anchored to a trigger — row actions in a table, a "…"
-overflow menu, a view switcher. It's action-oriented: items are `role="menuitem"` and run a
-handler, they don't navigate. If every item should actually change the URL, use `NavigationMenu`
+overflow menu, a view switcher, a set of display toggles. It's action-oriented: items are
+`role="menuitem"` (or `menuitemcheckbox` / `menuitemradio`, below) and run a handler, they don't
+navigate. If every item should actually change the URL, use `NavigationMenu`
 or plain links instead — a `role="menuitem"` on a link tells assistive tech the wrong thing
 about what activating it does.
 
+## Checkbox and radio items
+
+`DropdownMenuCheckboxItem` turns a setting on or off (`role="menuitemcheckbox"`).
+`DropdownMenuRadioItem` picks one value from a `DropdownMenuRadioGroup` (`role="menuitemradio"`).
+Both report their state in `aria-checked` and draw a mark in a leading slot that is always
+there, so a label does not move when its mark appears.
+
+<DemoBlock file="dropdown-menu/Checkable.tsx">
+  <Checkable />
+</DemoBlock>
+
+Both are **controlled only**: pass `checked` and `onCheckedChange`, or a group's `value` and
+`onValueChange`. The menu unmounts its items when it closes, so an item that kept its own state
+would reset to its default every time the menu opened again.
+
+Enter chooses an item and closes the menu. Space chooses it and keeps the menu open, so a user
+can set several in a row. `closeOnSelect={false}` keeps the menu open on a click and on Enter
+too. Choosing the radio item that is already checked is not a change, so `onValueChange` does
+not fire.
+
 ## Aligning items with inset
 
-`inset` on `DropdownMenuLabel`/`DropdownMenuItem` adds left padding so plain text lines up with
-sibling items that have a leading marker — a checkmark on the current selection, in this case.
+`inset` on `DropdownMenuLabel`/`DropdownMenuItem` adds left padding the width of the
+checkable items' leading slot, so plain text lines up with their labels.
 
 <DemoBlock file="dropdown-menu/Alignment.tsx">
   <Alignment />
@@ -64,20 +86,31 @@ when the submission does not need the form to survive the click.
 ## Accessibility
 
 - `DropdownMenuContent` renders `role="menu"`, portaled to `document.body`; each
-  `DropdownMenuItem` is `role="menuitem"`. The trigger carries `aria-haspopup="menu"`,
+  `DropdownMenuItem` is `role="menuitem"`, each checkbox item `menuitemcheckbox` and each radio
+  item `menuitemradio`, inside a `role="group"`. The trigger carries `aria-haspopup="menu"`,
   `aria-expanded`, and `aria-controls`.
 - `Escape` closes the menu from anywhere on the page — a document-level listener, active only
   while the menu is open. Clicking anywhere outside the trigger or the menu content also closes
   it.
-- Opening the menu does **not** move focus into it — clicking or activating the trigger leaves
-  DOM focus on the trigger button itself. Arrow-key/Home/End navigation only takes over once a
-  menu item already has focus (for example, after tabbing to one).
-- **Keyboard, once a menu item has focus:** `ArrowDown`/`ArrowUp` move focus between items and
-  wrap around at both ends (`ArrowDown` past the last item goes to the first, and vice versa —
-  unlike Combobox/CommandPalette's clamped, non-wrapping model, since this menu moves real DOM
-  focus rather than tracking an `aria-activedescendant`). `Home`/`End` jump to the first/last
-  item. `Tab` closes the menu and lets focus continue to whatever's next in the page, rather
-  than trapping it.
+- Opening the menu moves focus to the first item that can be chosen, as the WAI-ARIA menu button
+  pattern has it. `ArrowDown` on the trigger opens it the same way; `ArrowUp` opens it on the
+  last item. A menu that starts open (`defaultOpen`, or `open` on first render) does not take
+  focus.
+- **Keyboard, inside the menu:** `ArrowDown`/`ArrowUp` move focus between items and wrap around
+  at both ends (`ArrowDown` past the last item goes to the first, and vice versa — unlike
+  Combobox/CommandPalette's clamped, non-wrapping model, since this menu moves real DOM focus
+  rather than tracking an `aria-activedescendant`). `Home`/`End` jump to the first/last item.
+  Disabled items are skipped.
+- Focus returns to the trigger when an item is chosen, on `Escape`, and on `Tab`. `Tab` then
+  carries on from the trigger, to the next control in the page (or the previous one with
+  `Shift`), rather than trapping focus. A click outside leaves focus where the click put it.
+- A held `Enter` or `Space` does not repeat into the menu or back onto the trigger: opening
+  the menu with it does not choose the first item, and choosing an item does not reopen it.
+- A disabled item — `disabled` or `aria-disabled="true"` — takes the disabled text colour,
+  `cursor: not-allowed` and no hover fill, and choosing it does nothing, `onClick` included.
+- Keep `DropdownMenuContent` rendered rather than mounting it only while open. It renders
+  nothing while closed already, and content that mounts on the same render as the open misses
+  the move of focus into the menu.
 - `DropdownMenuSeparator` renders `role="separator"` with `aria-orientation="horizontal"`.
 - Content is positioned with fixed coordinates computed from the trigger's bounding rect,
   recalculated on scroll and resize while the menu is open, so the menu follows its trigger.
@@ -100,13 +133,13 @@ when the submission does not need the form to survive the click.
     'Group related items under a DropdownMenuLabel and separate groups with DropdownMenuSeparator.',
     'Keep item labels as short verb phrases — the menu is for actions, not longform text.',
     'Give the trigger real content (icon and/or label) — aria-haspopup and aria-expanded are already wired.',
-    'Test with Tab specifically — since initial focus stays on the trigger, keyboard flows depend on Tab order reaching an item.',
+    'Use checkbox items for independent toggles and a radio group when exactly one option applies.',
   ]}
   dont={[
     'Put a link where an action belongs — items are buttons that run a handler, not anchors that navigate.',
     'Rely on hover to open it — activation is click/keyboard only, with no hover-intent timer.',
     'Put a destructive action next to routine ones without a separator.',
-    'Assume the first item gets focus automatically on open — it doesn’t.',
+    'Type a ✓ into an item label to mark the current choice — use DropdownMenuRadioItem, which reports it to assistive tech.',
   ]}
 />
 

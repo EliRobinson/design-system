@@ -15,7 +15,7 @@ import { useMergedRef } from '../../../lib/useMergedRef.js';
  *
  * Both are a button that toggles a portalled panel anchored under it, dismissed
  * by Escape or a click outside the pair. What differs is the panel's role and
- * class names, and DropdownMenu's roving `activeIndex` — those stay in the
+ * class names, and DropdownMenu's focus handling — those stay in the
  * components. */
 
 export type AnchoredOverlayContextValue = {
@@ -86,7 +86,12 @@ export const AnchoredOverlayTrigger = forwardRef<HTMLButtonElement, AnchoredOver
 );
 
 export type AnchoredOverlayContentProps = HTMLAttributes<HTMLDivElement> &
-  Pick<AnchoredPositionOptions, 'side' | 'align'> & {
+  Pick<AnchoredPositionOptions, 'align'> & {
+    /* Beside-the-trigger is a Tooltip placement, so it is not offered here. The
+       JSDoc below is word for word the hook's old one, so the docs props table
+       for Popover and DropdownMenu reads as it always did. */
+    /** Which edge of the trigger the panel hangs from. Default `'bottom'`. */
+    side?: Exclude<AnchoredPositionOptions['side'], 'left' | 'right'>;
     overlay: AnchoredOverlayContextValue;
   };
 
