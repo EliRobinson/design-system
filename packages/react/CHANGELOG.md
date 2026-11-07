@@ -1,5 +1,11 @@
 # @elirobinson/react
 
+## 3.9.0
+
+### Minor Changes
+
+- 473b9b9: Add `variant="destructive"` to `Button`, filled from the `--status-danger` tokens, for actions that lose data (Delete, Discard, Leave). `ai-patterns` now says which button in a confirm takes it and which gets first focus.
+
 ## 3.8.0
 
 ### Minor Changes

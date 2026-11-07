@@ -1,5 +1,11 @@
 # @elirobinson/ai-patterns
 
+## 0.30.0
+
+### Minor Changes
+
+- 473b9b9: Add `variant="destructive"` to `Button`, filled from the `--status-danger` tokens, for actions that lose data (Delete, Discard, Leave). `ai-patterns` now says which button in a confirm takes it and which gets first focus.
+
 ## 0.29.2
 
 ### Patch Changes
