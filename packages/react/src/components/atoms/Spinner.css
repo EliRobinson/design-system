@@ -31,3 +31,30 @@
     transform: rotate(360deg);
   }
 }
+
+/* Reduced motion swaps the spin for a slow opacity pulse — no rotation (#332).
+   The global clamp in tokens.css cannot settle an infinite loop: it squeezes
+   each turn into 0.01ms, so the ring looks frozen with jumps and "loading"
+   reads as "stuck". A Spinner has no other state to fall back on, so it keeps
+   moving, but only in opacity, which carries no sense of travel.
+
+   `!important` because the clamp sets the duration with `!important`; at class
+   specificity this beats the clamp's `*` and nothing else. It is the one place
+   a component needs it. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-spinner {
+    animation: ds-spinner-pulse calc(var(--dur-slow) * 4) var(--ease-in-out) infinite !important;
+  }
+}
+
+/* Starts and ends at full opacity, so the first frame (what a visual baseline
+   captures) is the plain ring. Never below 0.5, so the ring is always there. */
+@keyframes ds-spinner-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
