@@ -14,9 +14,8 @@
 }
 
 .ds-command-palette__list {
-  /* A component token: set it on .ds-command-palette__list to resize the list. */
-  --ds-command-palette-list-max-height: 320px;
-  max-height: var(--ds-command-palette-list-max-height);
+  /* A component token. Set --ds-command-palette-list-max-height anywhere above the list. */
+  max-height: var(--ds-command-palette-list-max-height, 320px);
   overflow-y: auto;
 }
 

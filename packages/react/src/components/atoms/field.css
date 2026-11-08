@@ -43,7 +43,7 @@
 
 .ds-input:focus-visible {
   border-color: var(--fg); /* was --ink-1000: black-on-black when focused in dark */
-  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
   outline-offset: 1px;
 }
 

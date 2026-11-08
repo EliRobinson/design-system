@@ -112,6 +112,7 @@
   --ds-radius-lg: var(--radius-lg);
   --ds-radius-xl: var(--radius-xl);
   --ds-radius-pill: var(--radius-pill);
+  --ds-radius-full: var(--radius-full);
 
   --ds-shadow-xs: var(--shadow-xs);
   --ds-shadow-sm: var(--shadow-sm);
@@ -292,7 +293,7 @@
   --radius-md: var(--ds-radius-md);
   --radius-lg: var(--ds-radius-lg);
   --radius-xl: var(--ds-radius-xl);
-  --radius-full: var(--ds-radius-pill);
+  --radius-full: var(--ds-radius-full);
 
   /* --- Shadow ------------------------------------------------------------ */
   --shadow-xs: var(--ds-shadow-xs);

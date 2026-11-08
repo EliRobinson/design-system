@@ -24,7 +24,7 @@
 
 .ds-slider__input::-webkit-slider-runnable-track {
   height: 4px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-full, 9999px);
   background: var(--border-control); /* the track delineates the range */
 }
 
@@ -34,7 +34,7 @@
   margin-top: -8px;
   width: 20px;
   height: 20px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-full, 9999px);
   /* --accent is 2.53:1 on a light page; the thumb is the control itself.
      The 2px --surface ring is what separates thumb from track (9.69:1 thumb
      to ring, 3.64:1 ring to track), so keep it when changing either. */
@@ -45,14 +45,14 @@
 
 .ds-slider__input::-moz-range-track {
   height: 4px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-full, 9999px);
   background: var(--border-control); /* the track delineates the range */
 }
 
 .ds-slider__input::-moz-range-thumb {
   width: 20px;
   height: 20px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-full, 9999px);
   /* --accent is 2.53:1 on a light page; the thumb is the control itself.
      The 2px --surface ring is what separates thumb from track (9.69:1 thumb
      to ring, 3.64:1 ring to track), so keep it when changing either. */
@@ -63,6 +63,6 @@
 }
 
 .ds-slider__input:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset, 2px);
 }

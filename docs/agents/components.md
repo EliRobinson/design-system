@@ -75,6 +75,12 @@ all in cascade order — keep that order stable when adding a file. Consumers
 import either the aggregate (`@elirobinson/react/styles.css`) or a single
 component's sheet (`@elirobinson/react/styles/<tier>/<Name>.css`).
 
+Component CSS uses tokens, and `pnpm lint` checks it with `@elirobinson/eslint-config/css`. A value kept raw on purpose gets an `eslint-disable-next-line` comment with its reason.
+
+When component CSS starts reading a token that is new in this release, give the reference its value as a fallback: `var(--focus-ring-width, 2px)`. An app that loads one component's stylesheet beside its own `tokens.css` may still be on the previous tokens release, and without the fallback the declaration is dropped.
+
+A size a consumer may want to change is a component token, `--ds-<component>-<property>`. Read it with its default and never declare it in the component's own CSS: `max-width: var(--ds-popover-max-width, 320px)`. Then a consumer can set it on any ancestor, from any cascade layer.
+
 ## Shared interaction hooks
 
 Prefer these over re-implementing keyboard behaviour in a component:

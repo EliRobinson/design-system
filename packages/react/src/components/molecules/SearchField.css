@@ -27,7 +27,7 @@
 }
 
 .ds-search-field__input:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -44,7 +44,7 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-full, 9999px);
   border: none;
   background: transparent;
   color: var(--fg-3);
@@ -68,6 +68,6 @@
 }
 
 .ds-search-field__clear:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
   outline-offset: 1px;
 }

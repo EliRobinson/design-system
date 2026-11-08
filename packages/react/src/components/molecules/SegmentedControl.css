@@ -36,7 +36,7 @@
 }
 
 .ds-segmented-control__item:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
   outline-offset: 1px;
 }
 

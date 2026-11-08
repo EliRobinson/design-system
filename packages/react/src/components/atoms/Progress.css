@@ -7,7 +7,7 @@
    3.64:1 light, 3.94:1 dark — and the bar stays 5.77:1 against it. */
 .ds-progress {
   background: var(--border-control);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-full, 9999px);
   height: 8px;
   overflow: hidden;
   width: 100%;
@@ -15,7 +15,7 @@
 
 .ds-progress__bar {
   background: var(--fg); /* was --ink-1000: a black bar on a black page */
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-full, 9999px);
   height: 100%;
   transition: width var(--dur-normal) var(--ease-out);
 }

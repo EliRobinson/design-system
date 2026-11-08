@@ -32,6 +32,7 @@
  * one-line change here rather than a silent omission.
  */
 
+import { isFocusRingGeometry } from './contrast.mjs';
 import { effectiveTokens, parseTokensCss } from './parse-tokens-css.mjs';
 
 /** `--accent-hover` -> `accentHover`, `--container-2xl` -> `container2xl`. */
@@ -100,7 +101,7 @@ const GROUPS = [
   /* The focus ring's geometry. Ahead of the sweep below, which would otherwise
      file these two as colours by their --focus-ring prefix. Layout, beside
      --target, for the same reason: they are lengths a component reads. */
-  { match: /^--focus-ring-(width|offset)$/, path: (name) => ['layout', camel(name)] },
+  { match: { test: isFocusRingGeometry }, path: (name) => ['layout', camel(name)] },
   /* --scrim joins the sweep rather than getting its own rule: it is a semantic
      colour like the rest, it just has no family to be a member of. */
   {

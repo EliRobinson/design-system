@@ -39,6 +39,20 @@ export const COMBINATIONS = PALETTES.flatMap((palette) =>
 export const DEFAULT_PALETTE = PALETTES[0];
 
 /**
+ * The focus ring's geometry: --focus-ring-width and --focus-ring-offset. They
+ * share the colour token's prefix and are not colours, so every name-based
+ * sorter checks this before its colour rule. Exact names, so a later
+ * --focus-ring-* colour is still sorted, and measured, as a colour. Takes the
+ * name with or without its leading `--`.
+ *
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function isFocusRingGeometry(name) {
+  return /^(--)?focus-ring-(width|offset)$/.test(name);
+}
+
+/**
  * Every top-level rule of a stylesheet, as `{selector, body, order}`.
  *
  * Hand-scanned on brace depth rather than regexed: tokens.css contains a

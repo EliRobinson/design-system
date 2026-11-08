@@ -19,8 +19,8 @@
 }
 
 .ds-popover__trigger:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 .ds-popover__content {
@@ -28,8 +28,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  /* A component token: set it on .ds-popover__content to resize the panel. */
-  --ds-popover-max-width: 320px;
-  max-width: var(--ds-popover-max-width);
+  /* A component token. Set --ds-popover-max-width anywhere above the panel. */
+  max-width: var(--ds-popover-max-width, 320px);
   padding: var(--space-4);
 }

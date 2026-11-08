@@ -32,7 +32,7 @@ const SCRIPT_FILES = ['**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'];
  * no `files`, so they would also run on the stylesheets linted below, and a JS
  * rule crashes on a CSS source.
  */
-const offVendoredElements = (config) => ({
+const scriptsOffVendored = (config) => ({
   ...config,
   files: config.files ?? SCRIPT_FILES,
   ignores: [...(config.ignores ?? []), ...VENDORED_ELEMENTS],
@@ -56,8 +56,8 @@ export default tseslint.config(
       '.nx/**',
     ],
   },
-  offVendoredElements(js.configs.recommended),
-  ...tseslint.configs.recommended.map(offVendoredElements),
+  scriptsOffVendored(js.configs.recommended),
+  ...tseslint.configs.recommended.map(scriptsOffVendored),
   {
     files: SCRIPT_FILES,
     ignores: VENDORED_ELEMENTS,

@@ -16,9 +16,8 @@
 }
 
 .ds-table__filter {
-  /* A component token: set it on .ds-table__filter to resize the field. */
-  --ds-table-filter-max-width: 320px;
-  max-width: var(--ds-table-filter-max-width);
+  /* A component token. Set --ds-table-filter-max-width anywhere above the field. */
+  max-width: var(--ds-table-filter-max-width, 320px);
 }
 
 /* -- Sort control, shared by both table modes ----------------------------- */
@@ -47,8 +46,8 @@
 }
 
 .ds-table__sort:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 .ds-table__sort-icon {

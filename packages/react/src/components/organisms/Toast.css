@@ -98,8 +98,8 @@
 }
 
 .ds-toast__close:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 /* The action is a control; the toast's own edge and its status stripe stay

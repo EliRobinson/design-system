@@ -30,6 +30,7 @@ export type Measurement = {
   ratio: number | null;
 };
 
+export declare function isFocusRingGeometry(name: string): boolean;
 export declare const PALETTES: string[];
 export declare const THEMES: string[];
 export declare const COMBINATIONS: Combination[];
