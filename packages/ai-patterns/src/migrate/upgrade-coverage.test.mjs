@@ -6,7 +6,8 @@
  * - Nothing missing. Every changeset under `### Major Changes`, and every 0.x minor
  *   changeset that calls itself breaking (on 0.x, minor is the breaking lane), is covered
  *   by an entry or sits in NOT_BREAKING with a reason. Every entry in
- *   `@elirobinson/tokens/migrations` is covered by exactly one entry.
+ *   `@elirobinson/tokens/migrations` is covered by exactly one entry, except a silent one
+ *   (`report: "none"`), which may have one.
  * - Nothing invented. Every entry's changeset is in that package's changelog, under that
  *   version, and every token migration it names exists, with the same `since`.
  */
@@ -94,6 +95,23 @@ function upgradeEntries() {
     }));
 }
 
+/* Which token migrations need a section. A silent one (`report: "none"`) renders the same
+   and `ds-resync migrate` says nothing about it, so it breaks nothing a consumer wrote and
+   needs no section; one may still have a section. Every other migration needs exactly one.
+   Silent migrations are exempt for a second reason: a section names a released changeset
+   hash, which a PR adding a migration cannot have yet (#334). */
+function migrationCoverage(sections, migrations) {
+  const named = sections.map((entry) => entry.migration).filter(Boolean);
+  const ids = new Set(migrations.map((m) => m.id));
+  return {
+    missing: migrations
+      .filter((m) => m.report !== 'none' && !named.includes(m.id))
+      .map((m) => m.id),
+    unknown: named.filter((id) => !ids.has(id)),
+    duplicated: named.filter((id, i) => named.indexOf(id) !== i),
+  };
+}
+
 const all = changesets();
 const entries = upgradeEntries();
 const tokenMigrations = JSON.parse(
@@ -146,15 +164,46 @@ describe('upgrade.md', () => {
     expect(invented).toEqual([]);
   });
 
-  it('covers every token migration exactly once, at the version it ships in', () => {
-    const named = entries.filter((entry) => entry.migration);
-    expect(named.map((entry) => entry.migration).sort()).toEqual(
-      tokenMigrations.migrations.map((m) => m.id).sort(),
-    );
-    for (const entry of named) {
+  it('covers every token migration that is not silent, and names none twice', () => {
+    expect(migrationCoverage(entries, tokenMigrations.migrations)).toEqual({
+      missing: [],
+      unknown: [],
+      duplicated: [],
+    });
+    for (const entry of entries.filter((e) => e.migration)) {
       const migration = tokenMigrations.migrations.find((m) => m.id === entry.migration);
       expect(entry.pkg, entry.id).toBe(tokenMigrations.package);
       expect(entry.version, entry.id).toBe(migration.since);
     }
+  });
+});
+
+describe('migrationCoverage', () => {
+  const silent = { id: 'silent', report: 'none' };
+  const loud = { id: 'loud', report: 'occurrence' };
+
+  it('lets a silent migration go without a section', () => {
+    expect(migrationCoverage([], [silent]).missing).toEqual([]);
+  });
+
+  it('still allows a section for a silent migration', () => {
+    expect(migrationCoverage([{ migration: 'silent' }], [silent])).toEqual({
+      missing: [],
+      unknown: [],
+      duplicated: [],
+    });
+  });
+
+  it('fails a migration that reports something and has no section', () => {
+    expect(migrationCoverage([], [silent, loud]).missing).toEqual(['loud']);
+  });
+
+  it('fails a section for a migration that does not exist, or one named twice', () => {
+    const result = migrationCoverage(
+      [{ migration: 'loud' }, { migration: 'loud' }, { migration: 'gone' }],
+      [loud],
+    );
+    expect(result.unknown).toEqual(['gone']);
+    expect(result.duplicated).toEqual(['loud']);
   });
 });
