@@ -61,16 +61,30 @@ function runtimeLeaf(leaves) {
   return leaves.find((leaf) => leaf.conditions.every((c) => RUNTIME.has(c))) ?? leaves[0];
 }
 
+/* How a consumer reaches a subpath at run time: `import` when some leaf sits
+   only under conditions an ESM import matches, `require` when some leaf sits
+   under `require`. A subpath reachable by neither (types only, or behind a
+   `style` or `browser` condition) is one no Node consumer can load. */
+const IMPORT_CONDITIONS = new Set([...RUNTIME].filter((condition) => condition !== 'require'));
+
+function reach(leaves) {
+  return {
+    viaImport: leaves.some((leaf) => leaf.conditions.every((c) => IMPORT_CONDITIONS.has(c))),
+    viaRequire: leaves.some((leaf) => leaf.conditions.includes('require')),
+  };
+}
+
 /**
  * The concrete subpaths a package exports.
  *
  * @param {unknown} exportsField the `exports` field of the packed package.json
  * @param {string[]} files every file in the package, as `./`-prefixed paths
- * @returns {{ key: string, subpath: string, passthrough: boolean, leaves: { conditions: string[], file: string }[] }[]}
+ * @returns {{ key: string, subpath: string, passthrough: boolean, viaImport: boolean, viaRequire: boolean, leaves: { conditions: string[], file: string }[] }[]}
  *   `key` is the map key it came from (a pattern for an expanded one), and each
  *   leaf's `file` has the pattern substituted. `passthrough` marks a pattern
  *   whose target ends in the star (`./artifacts/*` → `./dist/artifacts/*`): it
  *   hands out whatever file is there, for reading or copying, not modules.
+ *   `viaImport` and `viaRequire` say which loaders reach it.
  */
 export function expandExports(exportsField, files) {
   const expanded = [];
@@ -79,7 +93,7 @@ export function expandExports(exportsField, files) {
     if (leaves.length === 0) continue;
 
     if (!key.includes('*')) {
-      expanded.push({ key, subpath: key, passthrough: false, leaves });
+      expanded.push({ key, subpath: key, passthrough: false, ...reach(leaves), leaves });
       continue;
     }
 
@@ -94,6 +108,7 @@ export function expandExports(exportsField, files) {
         key,
         subpath: key.replace('*', star),
         passthrough,
+        ...reach(leaves),
         leaves: leaves.map((leaf) => ({ ...leaf, file: leaf.file.replaceAll('*', star) })),
       });
     }
