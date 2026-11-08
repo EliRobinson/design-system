@@ -207,7 +207,7 @@ function layeredImport(context) {
 
 /* ------------------------------------------------------- Tailwind sizes */
 
-/** Tailwind v4's own values for the five names tokens.css re-declares. */
+/** Tailwind v4's own values for the five names tokens.css declared before 1.0.0. */
 const TAILWIND_CONTAINER = { sm: '24rem', md: '28rem', lg: '32rem', xl: '36rem', '2xl': '42rem' };
 
 const CONTAINER_UTILITY =
@@ -245,17 +245,19 @@ function containerWidths(context) {
       ],
       fix: [
         `Upgrade ${TOKENS_PKG} to 1.0.0 or later. It renames these --shell-sm ... --shell-2xl,`,
-        "so Tailwind's utilities get Tailwind's sizes back. Then rename the app's own",
-        'uses of the old names. This finds the version, updates package.json and rewrites them:',
+        "and Tailwind's utilities get Tailwind's sizes back.",
+        '',
+        'First, go through the utilities above. This check stops listing them after the upgrade.',
+        "  Meant the design system's width: write max-w-(--shell-md) instead.",
+        `  Meant Tailwind's size: leave it. After the upgrade, ${Object.entries(TAILWIND_CONTAINER)
+          .map(([size, value]) => `${size} is ${value}`)
+          .join(', ')}.`,
+        '',
+        'Then upgrade. The first command updates the version. The second renames',
+        "the app's own uses of the old names:",
         '',
         `  ${DLX} ds-resync --write --only ${TOKENS_PKG}`,
         `  ${DLX} ds-resync migrate --write`,
-        '',
-        `Each utility above then changes size. Where it meant the design system's width,`,
-        "write max-w-(--shell-md). Where it meant Tailwind's, it is right after the upgrade:",
-        `  ${Object.entries(TAILWIND_CONTAINER)
-          .map(([size, value]) => `max-w-${size} = ${value}`)
-          .join(', ')}`,
       ],
     },
   ];

@@ -104,7 +104,7 @@ export const BRAND_DESCRIPTIONS = {
   'palettes.css':
     'The brand ramps and every semantic built on them, on a `data-palette` dial. colors_and_type.css @imports it by this exact name — rename it and the whole system renders greyscale.',
   'mobile.css':
-    'Radii, the small end of the type ramp, gutter and containers retuned under `data-platform="mobile"`. Declares no token of its own and changes no colour.',
+    'Radii, the small end of the type ramp, gutter and shell widths retuned under `data-platform="mobile"`. Declares no token of its own and changes no colour.',
   'fonts.css':
     'Self-hosted @font-face for Geist and JetBrains Mono — colors_and_type.css @imports it, so keep them siblings.',
   'fonts/': 'The woff2 files fonts.css loads, with their SIL OFL licenses.',

@@ -249,7 +249,7 @@ export function tokenPattern(names) {
  * @param {Iterable<string>} names the token names to look for
  * @returns {Array<{file: string, token: string, offset: number, end: number,
  *   line: number, column: number, property: string | null,
- *   inCustomProperty: boolean,
+ *   inCustomProperty: boolean, declared: boolean,
  *   blockDeclarations: Array<{token: string, property: string | null}>,
  *   text: string}>}
  */
@@ -282,6 +282,9 @@ export function scanSource(source, file, names) {
       // invisible from here, so the property this ends up painting is unknown
       // no matter how readable this line is.
       inCustomProperty: property !== null && property.startsWith('--'),
+      // The name being declared (`--x: 1px`, `'--x': '1px'`), not read. The
+      // file sets its own value under the old name.
+      declared: /^['"]?\s*:/.test(searchable.slice(offset + match[1].length)),
       blockDeclarations: blockDeclarations(searchable, block),
       text: source.slice(lineStart, lineEnd === -1 ? source.length : lineEnd).trim(),
     });

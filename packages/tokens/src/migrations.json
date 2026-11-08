@@ -156,7 +156,7 @@
       "when": {},
       "report": "occurrence",
       "reason": "--container-sm shared its name with Tailwind v4's own --container-sm, so tokens.css silently resized Tailwind's max-w-sm and friends (#250). The design system's page widths are now --shell-*, and Tailwind's names are Tailwind's again. The value is the same.",
-      "guidance": "A straight rename. var(--container-sm) already resolved to the design system's width, so var(--shell-sm) renders the same."
+      "guidance": "A straight rename. var(--container-sm) already resolved to the design system's width, so var(--shell-sm) renders the same. A declaration of --container-sm itself, such as one in a Tailwind @theme block, is Tailwind's name and is left for you."
     },
     {
       "id": "container-md-is-shell-md",
@@ -167,7 +167,7 @@
       "when": {},
       "report": "occurrence",
       "reason": "--container-md shared its name with Tailwind v4's own --container-md, so tokens.css silently resized Tailwind's max-w-md and friends (#250). The design system's page widths are now --shell-*, and Tailwind's names are Tailwind's again. The value is the same.",
-      "guidance": "A straight rename. var(--container-md) already resolved to the design system's width, so var(--shell-md) renders the same."
+      "guidance": "A straight rename. var(--container-md) already resolved to the design system's width, so var(--shell-md) renders the same. A declaration of --container-md itself, such as one in a Tailwind @theme block, is Tailwind's name and is left for you."
     },
     {
       "id": "container-lg-is-shell-lg",
@@ -178,7 +178,7 @@
       "when": {},
       "report": "occurrence",
       "reason": "--container-lg shared its name with Tailwind v4's own --container-lg, so tokens.css silently resized Tailwind's max-w-lg and friends (#250). The design system's page widths are now --shell-*, and Tailwind's names are Tailwind's again. The value is the same.",
-      "guidance": "A straight rename. var(--container-lg) already resolved to the design system's width, so var(--shell-lg) renders the same."
+      "guidance": "A straight rename. var(--container-lg) already resolved to the design system's width, so var(--shell-lg) renders the same. A declaration of --container-lg itself, such as one in a Tailwind @theme block, is Tailwind's name and is left for you."
     },
     {
       "id": "container-xl-is-shell-xl",
@@ -189,7 +189,7 @@
       "when": {},
       "report": "occurrence",
       "reason": "--container-xl shared its name with Tailwind v4's own --container-xl, so tokens.css silently resized Tailwind's max-w-xl and friends (#250). The design system's page widths are now --shell-*, and Tailwind's names are Tailwind's again. The value is the same.",
-      "guidance": "A straight rename. var(--container-xl) already resolved to the design system's width, so var(--shell-xl) renders the same."
+      "guidance": "A straight rename. var(--container-xl) already resolved to the design system's width, so var(--shell-xl) renders the same. A declaration of --container-xl itself, such as one in a Tailwind @theme block, is Tailwind's name and is left for you."
     },
     {
       "id": "container-2xl-is-shell-2xl",
@@ -200,7 +200,7 @@
       "when": {},
       "report": "occurrence",
       "reason": "--container-2xl shared its name with Tailwind v4's own --container-2xl, so tokens.css silently resized Tailwind's max-w-2xl and friends (#250). The design system's page widths are now --shell-*, and Tailwind's names are Tailwind's again. The value is the same.",
-      "guidance": "A straight rename. var(--container-2xl) already resolved to the design system's width, so var(--shell-2xl) renders the same."
+      "guidance": "A straight rename. var(--container-2xl) already resolved to the design system's width, so var(--shell-2xl) renders the same. A declaration of --container-2xl itself, such as one in a Tailwind @theme block, is Tailwind's name and is left for you."
     }
   ]
 }
