@@ -22,6 +22,7 @@ export const SPEC_FILE_BY_PROJECT = {
   'storybook-narrow': 'storybook/storybook.spec.ts',
   'docs-wide': 'docs/docs.spec.ts',
   'docs-narrow': 'docs/docs.spec.ts',
+  'preflight-wide': 'preflight/preflight.spec.ts',
 };
 
 const TEST_DIR = 'tests/visual';

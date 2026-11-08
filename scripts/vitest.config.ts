@@ -4,7 +4,12 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: false,
-    include: ['*.test.mjs', 'agent-hooks/*.test.ts', 'git-hooks/*.test.mjs'],
+    include: [
+      '*.test.mjs',
+      'agent-hooks/*.test.ts',
+      'git-hooks/*.test.mjs',
+      'tarball-consumer/*.test.mjs',
+    ],
     // The agent-hooks end-to-end tests spawn real git and node subprocesses
     // several times per test. The default 5s timeout is tight enough that it
     // can trip under `nx run-many -t test`'s parallelism, where sibling

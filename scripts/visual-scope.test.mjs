@@ -1089,3 +1089,72 @@ describe.skipIf(!buildsPresent())('the emitted pattern, applied by Playwright it
     ).toThrow(/no route '\/components\/button'/);
   }, 120_000);
 });
+
+describe('preflight-host shots (#329)', () => {
+  const withPreflight = [
+    ...shots,
+    { project: 'preflight-wide', storyId: null, route: '/preflight/dialog' },
+    { project: 'preflight-wide', storyId: null, route: '/preflight/link-colour' },
+  ];
+  const preflightPatterns = ['/preflight/dialog · ', '/preflight/link-colour · '];
+
+  it('runs every preflight shot when nx reports only the host affected', () => {
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'apps/preflight-host/src/app.css' }],
+      affectedProjects: ['preflight-host'],
+      shots: withPreflight,
+    });
+    expect(result.run).toBe(true);
+    for (const pattern of preflightPatterns) {
+      expect(result.grep).toContain(pattern);
+    }
+    expect(result.grep).not.toContain('/components/');
+    expect(result.grep).not.toContain('components-button--');
+  });
+
+  it('runs every preflight shot alongside a narrowed component change', () => {
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'packages/react/src/components/atoms/Button.css' }],
+      affectedProjects: ['react', 'docs', 'storybook', 'preflight-host'],
+      shots: withPreflight,
+    });
+    expect(result.grep).toContain('components-button--');
+    expect(result.grep).toContain('/components/button · ');
+    for (const pattern of preflightPatterns) {
+      expect(result.grep).toContain(pattern);
+    }
+  });
+
+  it('runs no preflight shot when the host is not affected', () => {
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'apps/docs/src/app/(docs)/components/button/page.mdx' }],
+      affectedProjects: ['docs'],
+      shots: withPreflight,
+    });
+    expect(result.grep).toContain('/components/button · ');
+    expect(result.grep).not.toContain('/preflight/');
+  });
+
+  it('keeps preflight shots out of a docs-wide widening', () => {
+    /* The docs side widens to "every docs route" on a sidebar change. A
+       preflight subject is route-shaped, and must not ride along with it. */
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'apps/docs/src/lib/site-map.ts' }],
+      affectedProjects: ['docs'],
+      shots: withPreflight,
+    });
+    expect(result.grep).toContain('/patterns/forms · ');
+    expect(result.grep).not.toContain('/preflight/');
+  });
+
+  it('runs every preflight shot for a suite-config change nx cannot see', () => {
+    const result = scopeFor({
+      changes: [{ status: 'M', path: 'tests/visual/preflight/preflight.spec.ts' }],
+      affectedProjects: [],
+      shots: withPreflight,
+    });
+    for (const pattern of preflightPatterns) {
+      expect(result.grep).toContain(pattern);
+    }
+  });
+});

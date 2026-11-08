@@ -42,12 +42,12 @@ export const SHARDS = {
 };
 
 /* Projects small enough that a job of their own would be almost entirely
-   prologue, run together in one. `smoke` is 9 tests in 2s and `docs-narrow` is
-   14 in 11s, against ~80s of container start, install and download before
-   either takes a pixel — two jobs here would cost a machine-minute to save
-   nine seconds. Grouping them is the only reason this file knows any project
+   prologue, run together in one. `smoke` is 9 tests in 2s, `docs-narrow` 14
+   in 11s and `preflight-wide` a dozen in about 20s, against ~80s of container
+   start, install and download before any of them takes a pixel. A job each
+   would cost two machine-minutes to save half a minute. Grouping them is the only reason this file knows any project
    name at all; everything else it learns from the enumeration. */
-export const GROUPS = [['smoke', 'docs-narrow']];
+export const GROUPS = [['smoke', 'docs-narrow', 'preflight-wide']];
 
 /* A pull request's scoped run asks the same question of a smaller suite: the
    shots its change could have altered. Below this many, one job runs them all.

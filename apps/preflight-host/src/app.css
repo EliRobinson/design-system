@@ -1,0 +1,26 @@
+/* The CSS entry of a Tailwind v4 consumer, written the way the installation
+   page tells one to write it: Tailwind first, which brings the full Preflight
+   reset into `@layer base`; then our component stylesheet, which opens with
+   tokens.css; then the bridge that maps Tailwind's theme onto the tokens.
+
+   Nothing here is scoped and nothing is left out. That is the whole point of
+   this app. The docs site scopes Preflight to its demo stage (#228), so it
+   cannot show what a consumer sees, and Storybook loads no Preflight at all. */
+@import 'tailwindcss';
+@import '@elirobinson/react/styles.css';
+@import '@elirobinson/tokens/tailwind.css';
+
+/* #34's case. A next/font app exposes the family it loaded through a CSS
+   variable on <html>, never under its real name, and points the override hook
+   at that variable from a plain unlayered `:root` block — the one place the
+   installation page says an override can win. JetBrains Mono stands in for
+   the framework's font because tokens.css already self-hosts it, so the shot
+   renders the same everywhere, and it looks nothing like Geist.
+
+   `:has()` keeps the override on this one case. It has to sit on the root:
+   --font-sans resolves where it is declared, on :root, so an override set on
+   a subtree would never reach it. */
+:root:has(main[data-case='font-override']) {
+  --font-framework-sans: 'JetBrains Mono';
+  --ds-font-sans-override: var(--font-framework-sans);
+}

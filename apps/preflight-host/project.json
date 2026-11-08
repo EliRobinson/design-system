@@ -1,0 +1,20 @@
+{
+  "name": "preflight-host",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/preflight-host/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "command": "pnpm run build",
+      "options": {
+        "cwd": "apps/preflight-host"
+      }
+    },
+    "lint": {
+      "command": "echo 'Linted by the root eslint run'"
+    },
+    "test": {
+      "command": "echo 'Tested by the visual suite: tests/visual/preflight/'"
+    }
+  }
+}

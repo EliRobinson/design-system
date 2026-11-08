@@ -241,7 +241,7 @@ jobs:
       # it. 416K across 55 files against a 9MB artifact; the size argument that
       # justifies the exclude above does not apply here.
       - name: Pack the build outputs
-        run: tar -czf build-outputs.tar.gz --exclude='.next/cache' apps/storybook/storybook-static apps/docs/.next apps/docs/public/brand
+        run: tar -czf build-outputs.tar.gz --exclude='.next/cache' apps/storybook/storybook-static apps/docs/.next apps/docs/public/brand apps/preflight-host/dist
       - uses: actions/upload-artifact@v7
         with:
           name: visual-build
@@ -362,7 +362,8 @@ jobs:
           for path in \
             apps/storybook/storybook-static/index.json \
             apps/docs/.next/prerender-manifest.json \
-            apps/docs/public/brand
+            apps/docs/public/brand \
+            apps/preflight-host/dist/index.html
           do
             if [ ! -e "$path" ]; then
               echo "::error::$path is missing from the build tarball. The specs enumerate from the first two, and /brand/* routes are served off disk from the third — a sweep without it renders those routes empty and fails them against baselines that are correct."
