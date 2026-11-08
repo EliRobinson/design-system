@@ -40,10 +40,11 @@ function gamma(channel) {
 }
 
 const OKLCH_PATTERN = /oklch\(\s*([\d.]+)%\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%?))?\s*\)/;
-const HEX_PATTERN = /#[0-9a-f]{6}\b/i;
+const HEX_PATTERN = /#([0-9a-f]{6})\b/i;
+const WHOLE_HEX = new RegExp(`^${HEX_PATTERN.source}$`, 'i');
 
 /* Every colour `parseColor` can read, anywhere in a value. Built from the
-   same two patterns, so a value with more than one colour in it (a layered
+   two patterns `parseColor` reads with, so a value with more than one colour in it (a layered
    box-shadow) is split by the grammar that measures it, not a second copy. */
 const ANY_COLOR = new RegExp(`${OKLCH_PATTERN.source}|${HEX_PATTERN.source}`, 'gi');
 
@@ -67,7 +68,7 @@ export function colorsIn(value) {
  * @returns {Rgb | null}
  */
 export function parseColor(value) {
-  const hex = value.match(/^#([0-9a-f]{6})$/i);
+  const hex = value.match(WHOLE_HEX);
   if (hex) {
     return {
       r: parseInt(hex[1].slice(0, 2), 16) / 255,
