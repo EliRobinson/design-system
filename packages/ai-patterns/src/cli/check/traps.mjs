@@ -6,52 +6,95 @@
 // A check returns findings, never throws, and stays quiet when it cannot tell.
 // A warning a consumer learns to ignore is worse than no warning.
 //
+// Checks about how the app USES the design system (fonts, container widths)
+// run only when a stylesheet or script imports it. Checks about what is IN the
+// repo (a layered token, a copied stylesheet, a stale record, an old install)
+// run regardless: those files are wrong whoever imports what.
+//
 // Adding a trap: add an entry to TRAPS, and a fixture under __fixtures__/ that
 // trips it and nothing else. check.test.mjs fails until both exist.
 
 import { join } from 'node:path';
 
 import { DLX } from '../../artifacts/llms.mjs';
-import { checkRecordDrift } from '../../resync/artifacts.mjs';
+import { checkRecordDrift, RECORD_PATH, REGENERATE_ARTIFACTS } from '../../resync/artifacts.mjs';
 import { positionAt } from '../../resync/scan.mjs';
+import { compareVersions, parseVersion } from '../../resync/semver.mjs';
 import { cssVariables, REACT_PKG, readFile, TOKENS_PKG } from '../discovery.mjs';
-import { cssImports, DS_STYLESHEETS, enclosingBlocks } from './scan.mjs';
+import { declarations, DS_STYLESHEETS } from './scan.mjs';
+
+/**
+ * @typedef {import('./scan.mjs').ScannedFile} ScannedFile
+ *
+ * @typedef {object} CheckContext
+ * @property {string} root consumer repo root
+ * @property {object} env what `loadEnvironment` found installed for that root
+ * @property {ScannedFile[]} css the repo's stylesheets
+ * @property {ScannedFile[]} source the repo's scripts
+ * @property {object} record `.claude/ds-artifacts.json`, or `{ files: {} }`
+ * @property {boolean} usesDesignSystem a stylesheet or script imports DS_STYLESHEETS
+ * @property {boolean} usesTailwind a stylesheet imports `tailwindcss` (v4)
+ * @property {string | undefined} entryStylesheet the stylesheet that imports the design system
+ *
+ * @typedef {object} Finding
+ * @property {string[]} where one line per place
+ * @property {string[]} what what goes wrong, in plain words
+ * @property {string[]} fix the exact change; indented lines are code
+ * @property {number[]} [issues] replaces the trap's own `issues` for this finding
+ *
+ * @typedef {{ id: string, issues: number[], run: (context: CheckContext) => Finding[] }} Trap
+ */
 
 /** Where-lists longer than this are cut, with a count of the rest. */
 const MAX_WHERE = 8;
 
 function capped(lines) {
   if (lines.length <= MAX_WHERE) return lines;
-  return [...lines.slice(0, MAX_WHERE), `…and ${lines.length - MAX_WHERE} more`];
-}
-
-/** The consumer stylesheet that imports the design system: where a fix goes. */
-function entryStylesheet(context) {
-  return context.css.find((file) =>
-    cssImports(file).some((entry) => DS_STYLESHEETS.includes(entry.specifier)),
-  )?.path;
+  return [...lines.slice(0, MAX_WHERE), `...and ${lines.length - MAX_WHERE} more`];
 }
 
 /* ---------------------------------------------------------------- fonts */
 
 const NEXT_FONT = /from\s+['"](next\/font\/(?:google|local)|geist\/font(?:\/[\w-]+)?)['"]/;
 
-/** #34. `next/font` loads the family under a hashed name, so tokens.css's literal 'Geist' matches nothing. */
+/** Sets the hook, in a stylesheet or a style object. Reading it with var() does not count. */
+const SETS_SANS_OVERRIDE = /--ds-font-sans-override['"]?\s*:/;
+
+/**
+ * The `--ds-font-*-override` lines to suggest, from the `variable:` names the
+ * app gave next/font. A placeholder when no name says which family it is.
+ */
+function overrideLines(fontFiles) {
+  const variables = fontFiles.flatMap((file) =>
+    [...file.masked.matchAll(/variable:\s*['"](--[\w-]+)['"]/g)].map((match) => match[1]),
+  );
+  const geistPackage = fontFiles.some((file) => /from\s+['"]geist\/font/.test(file.masked));
+  const pick = (pattern) => variables.find((name) => pattern.test(name));
+
+  const mono = pick(/mono/) ?? (geistPackage ? '--font-geist-mono' : undefined);
+  const display = pick(/display|serif|heading/);
+  const sans =
+    pick(/sans/) ??
+    variables.find((name) => name !== mono && name !== display) ??
+    (geistPackage ? '--font-geist-sans' : '--your-font-variable');
+
+  return [
+    `    --ds-font-sans-override: var(${sans});`,
+    ...(display ? [`    --ds-font-display-override: var(${display});`] : []),
+    ...(mono ? [`    --ds-font-mono-override: var(${mono});`] : []),
+  ];
+}
+
+/** #34. `next/font` gives the family a generated name, so tokens.css's literal 'Geist' never reaches it. */
 function fontOverride(context) {
   if (!context.usesDesignSystem) return [];
   const fontFiles = context.source.filter((file) => NEXT_FONT.test(file.masked));
   if (fontFiles.length === 0) return [];
 
   const setsOverride = [...context.css, ...context.source].some((file) =>
-    file.masked.includes('--ds-font-sans-override'),
+    SETS_SANS_OVERRIDE.test(file.masked),
   );
   if (setsOverride) return [];
-
-  const variables = fontFiles.flatMap((file) =>
-    [...file.masked.matchAll(/variable:\s*['"](--[\w-]+)['"]/g)].map((match) => match[1]),
-  );
-  const mono = variables.find((name) => name.includes('mono'));
-  const sans = variables.find((name) => name !== mono) ?? '--font-geist-sans';
 
   return [
     {
@@ -60,24 +103,43 @@ function fontOverride(context) {
           `${file.path} loads a font with next/font, and no file sets --ds-font-sans-override`,
       ),
       what: [
-        'next/font gives the font a generated name. tokens.css asks for it by its real',
-        'name, finds nothing, and the page renders in the system font. Nothing errors.',
+        'next/font gives the font a generated name. tokens.css asks for "Geist" by',
+        'its real name, so the font next/font loaded is never used. Text renders in',
+        "the design system's own Geist files, or in the system font before",
+        `${TOKENS_PKG} 0.7.1. A different typeface never shows. Nothing errors.`,
       ],
       fix: [
-        `Add this to ${entryStylesheet(context) ?? 'your entry stylesheet'}, outside any @layer:`,
+        `Add this to ${context.entryStylesheet ?? 'your entry stylesheet'}, outside any @layer:`,
         '',
         '  :root {',
-        `    --ds-font-sans-override: var(${sans});`,
-        ...(mono ? [`    --ds-font-mono-override: var(${mono});`] : []),
+        ...overrideLines(fontFiles),
         '  }',
         '',
-        "Put the font's `variable` class on <html>, so the variable exists at :root.",
+        "Put each font's `variable` class on <html>, so the variable exists at :root.",
       ],
     },
   ];
 }
 
-/* ------------------------------------------------------ layer and order */
+/* ------------------------------------------------------ layers */
+
+/** Selectors tokens.css and palettes.css set tokens on. An override anywhere else has nothing to lose to. */
+const TOKEN_SCOPE = /^(?::root|html|:host)\b|^\.dark\b|^\[data-(?:theme|palette)\b/;
+
+/**
+ * The layer that hides a declaration from the page, or undefined. `@theme`
+ * always writes to :root; `@layer` only loses where tokens.css also declares.
+ */
+function hidingLayer(blocks) {
+  const theme = blocks.find((prelude) => /^@theme\b/.test(prelude));
+  if (theme) return theme;
+
+  const layer = blocks.find((prelude) => /^@layer\b/.test(prelude));
+  const selector = blocks.findLast((prelude) => !prelude.startsWith('@'));
+  if (!layer || !selector) return undefined;
+  const onTokenScope = selector.split(',').some((part) => TOKEN_SCOPE.test(part.trim()));
+  return onTokenScope ? layer : undefined;
+}
 
 /** #34's second cause. A token re-declared inside a cascade layer loses to the unlayered tokens.css. */
 function layeredTokenOverride(context) {
@@ -87,14 +149,12 @@ function layeredTokenOverride(context) {
 
   const where = [];
   for (const file of context.css) {
-    for (const match of file.masked.matchAll(/(--[\w-]+)\s*:/g)) {
-      if (!tokens.has(match[1])) continue;
-      const layer = enclosingBlocks(file.masked, match.index).find((prelude) =>
-        /^@(?:layer|theme)\b/.test(prelude),
-      );
+    for (const { name, index, blocks } of declarations(file.masked)) {
+      if (!tokens.has(name)) continue;
+      const layer = hidingLayer(blocks);
       if (!layer) continue;
-      const { line } = positionAt(file.text, match.index);
-      where.push(`${file.path}:${line} sets ${match[1]} inside ${layer.split(/\s+/)[0]}`);
+      const { line } = positionAt(file.text, index);
+      where.push(`${file.path}:${line} sets ${name} inside ${layer}`);
     }
   }
   if (where.length === 0) return [];
@@ -108,7 +168,7 @@ function layeredTokenOverride(context) {
         '@theme compiles into @layer theme, so it loses the same way.',
       ],
       fix: [
-        'Move each one into a plain `:root { … }` rule, outside any @layer or @theme,',
+        'Move each one into a plain `:root { ... }` rule, outside any @layer or @theme,',
         'after the design system import. For a font family, set',
         '--ds-font-sans-override (or -mono-, -display-) instead of --font-sans.',
       ],
@@ -119,25 +179,28 @@ function layeredTokenOverride(context) {
 /** The design system imported into a cascade layer, which puts Preflight or utilities on the wrong side of it. */
 function layeredImport(context) {
   const layered = context.css.flatMap((file) =>
-    cssImports(file)
+    file.imports
       .filter((entry) => DS_STYLESHEETS.includes(entry.specifier) && /\blayer\b/.test(entry.tail))
       .map((entry) => ({ file, entry })),
   );
   if (layered.length === 0) return [];
-  const where = layered.map(
-    ({ file, entry }) => `${file.path}:${entry.line} imports ${entry.specifier} ${entry.tail}`,
-  );
 
   return [
     {
-      where,
+      where: layered.map(
+        ({ file, entry }) => `${file.path}:${entry.line} imports ${entry.specifier} ${entry.tail}`,
+      ),
       what: [
         'The design system is built to sit outside every cascade layer. Inside one,',
         "layer order wins over selectors: a layer before Tailwind's base lets",
         "Preflight reset every component's margin, padding and border, and a layer",
         'after utilities makes Tailwind utilities stop working on components.',
       ],
-      fix: ['Remove `layer(…)` from the import:', '', `  @import '${layered[0].entry.specifier}';`],
+      fix: [
+        'Remove `layer(...)` from the import:',
+        '',
+        `  @import '${layered[0].entry.specifier}';`,
+      ],
     },
   ];
 }
@@ -150,10 +213,13 @@ const TAILWIND_CONTAINER = { sm: '24rem', md: '28rem', lg: '32rem', xl: '36rem',
 const CONTAINER_UTILITY =
   /(?<![\w-])(?:[\w-]+:)*(max-w|min-w|w|basis|inline|columns)-(sm|md|lg|xl|2xl)(?![\w-])/g;
 
-/** #250. tokens.css's unlayered `--container-*` replaces Tailwind's, so `max-w-md` is 768px, not 448px. */
+/** #250. tokens.css's unlayered `--container-*` replaces Tailwind's, so `max-w-md` is not 448px. */
 function containerWidths(context) {
-  const declares = context.env.tokenStylesheets?.some((sheet) => /--container-md\s*:/.test(sheet));
-  if (!declares || !context.usesDesignSystem || !context.usesTailwind) return [];
+  if (!context.usesDesignSystem || !context.usesTailwind) return [];
+  const ours = cssVariables(context.env.tokenStylesheets ?? []).find(
+    ({ name }) => name === '--container-md',
+  );
+  if (!ours) return [];
 
   const where = [];
   for (const file of [...context.source, ...context.css]) {
@@ -169,14 +235,14 @@ function containerWidths(context) {
     {
       where: capped(where),
       what: [
-        'tokens.css declares --container-sm … --container-2xl outside any layer, and',
+        'tokens.css declares --container-sm ... --container-2xl outside any layer, and',
         "Tailwind sizes these utilities from the same variables. The design system's",
-        'values win: max-w-md is 768px, not 448px. Nothing warns.',
+        `values win: max-w-md is ${ours.value}, not ${TAILWIND_CONTAINER.md}. Nothing warns.`,
       ],
       fix: [
         "Write the width you mean. For Tailwind's size, use its value:",
         `  ${Object.entries(TAILWIND_CONTAINER)
-          .map(([size, value]) => `max-w-${size} → max-w-[${value}]`)
+          .map(([size, value]) => `max-w-${size} -> max-w-[${value}]`)
           .join(', ')}`,
         "For the design system's page width, say so: max-w-(--container-md).",
       ],
@@ -218,29 +284,24 @@ export const FIXED_IN = [
   },
 ];
 
-/** `[major, minor, patch]`, or null for anything that is not a plain release. */
-function parseVersion(version) {
-  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version ?? '');
-  return match ? match.slice(1).map(Number) : null;
-}
-
+/** True when `version` is a release before `than`. A prerelease or an unreadable version is never "older". */
 export function isOlder(version, than) {
-  const [a, b] = [parseVersion(version), parseVersion(than)];
-  if (!a || !b) return false;
-  for (let index = 0; index < 3; index += 1) {
-    if (a[index] !== b[index]) return a[index] < b[index];
-  }
-  return false;
+  const parsed = parseVersion(version);
+  return Boolean(parsed && parsed.prerelease.length === 0 && compareVersions(version, than) < 0);
 }
 
-/** #78, #103, #112, #251, #126. Fixed in our packages; still live in an older install. */
+/** Fixed in our packages; still live in an older install. */
 function oldInstall(context) {
   return FIXED_IN.filter((row) => isOlder(context.env.versions[row.pkg], row.version)).map(
     (row) => ({
       issues: row.issues,
       where: [`${row.pkg}@${context.env.versions[row.pkg]} is installed`],
       what: [row.what, `Fixed in ${row.pkg}@${row.version}.`],
-      fix: [`  pnpm add ${row.pkg}@latest`],
+      fix: [
+        `Upgrade ${row.pkg} to ${row.version} or later. This finds the version and updates package.json:`,
+        '',
+        `  ${DLX} ds-resync --write --only ${row.pkg}`,
+      ],
     }),
   );
 }
@@ -263,35 +324,46 @@ function staleArtifacts(context) {
     {
       where: packages.map(
         (entry) =>
-          `.claude/ds-artifacts.json: ${entry.name} written for ${entry.written}, ${entry.now} installed`,
+          `${RECORD_PATH}: ${entry.name} written for ${entry.written}, ${entry.now} installed`,
       ),
       what: [
         'The agent skills in .claude/skills/ describe other versions than the ones',
         'installed. An agent reading them uses props and tokens that may not exist.',
       ],
-      fix: [`  ${DLX} ds-resync artifacts --write`],
+      fix: [`  ${REGENERATE_ARTIFACTS}`],
     },
   ];
 }
 
-const TOKENS_HEADER = 'Miltinson Design System — Design Tokens';
+/** The stylesheets a consumer might copy out of @elirobinson/tokens. They share one header. */
+const COPYABLE = ['tokens.css', 'palettes.css', 'mobile.css'];
 
-/** A hand copy of tokens.css in the repo that no longer matches the installed one. */
+const normalise = (text) => text.replace(/\r\n/g, '\n');
+
+/** A hand copy of a tokens stylesheet that no longer matches any installed one. */
 function tokenCopy(context) {
   if (!context.env.tokens) return [];
-  const installed = readFile(join(context.env.tokens, 'src', 'tokens.css'));
-  if (!installed) return [];
+  const installed = COPYABLE.map((name) => readFile(join(context.env.tokens, 'src', name)))
+    .filter(Boolean)
+    .map(normalise);
+  /* The header line the installed stylesheets open with, read rather than
+     written down, so a reworded header cannot silence this check. */
+  const header = installed[0]?.split('\n')[1]?.trim();
+  if (!header) return [];
 
-  const copies = context.css.filter(
-    (file) => file.text.includes(TOKENS_HEADER) && file.text !== installed,
-  );
+  const copies = context.css.filter((file) => {
+    const text = normalise(file.text);
+    return text.includes(header) && !installed.includes(text);
+  });
   if (copies.length === 0) return [];
 
   const version = context.env.versions[TOKENS_PKG];
+  const entry = context.env.react ? DS_STYLESHEETS[0] : DS_STYLESHEETS[1];
   return [
     {
       where: copies.map(
-        (file) => `${file.path} is a copy of tokens.css that differs from ${TOKENS_PKG}@${version}`,
+        (file) =>
+          `${file.path} is a copy of a ${TOKENS_PKG} stylesheet that differs from ${version}`,
       ),
       what: [
         'A copied stylesheet keeps the values of the release it was copied from.',
@@ -300,7 +372,7 @@ function tokenCopy(context) {
       fix: [
         'Delete the copy and import the package from your entry stylesheet:',
         '',
-        `  @import '${DS_STYLESHEETS[0]}';`,
+        `  @import '${entry}';`,
       ],
     },
   ];
@@ -311,13 +383,19 @@ function tokenCopy(context) {
 /**
  * Every check `ds check` runs, in report order.
  * `issues` are the consumer reports each one comes from.
+ *
+ * @type {Trap[]}
  */
 export const TRAPS = [
   { id: 'font-override', issues: [34], run: fontOverride },
   { id: 'layered-token-override', issues: [34], run: layeredTokenOverride },
   { id: 'layered-import', issues: [34], run: layeredImport },
   { id: 'container-widths', issues: [250], run: containerWidths },
-  { id: 'old-install', issues: [78, 103, 112, 251, 126], run: oldInstall },
+  {
+    id: 'old-install',
+    issues: [...new Set(FIXED_IN.flatMap((row) => row.issues))],
+    run: oldInstall,
+  },
   { id: 'stale-artifacts', issues: [257, 270], run: staleArtifacts },
   { id: 'token-copy', issues: [257], run: tokenCopy },
 ];

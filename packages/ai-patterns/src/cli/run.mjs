@@ -1,7 +1,7 @@
 // Argument routing. Pure: takes argv, returns { text, exitCode, warning? }. The
 // bin does the writing and exiting — `text` to stdout, `warning` to stderr.
 
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { installCommand } from '../resync/apply.mjs';
 import { detect, findDrift } from '../resync/detect.mjs';
@@ -79,9 +79,17 @@ export function installWarning(cwd) {
    no-op. */
 export async function run(argv, options = {}) {
   const result = await dispatch(argv, options);
-  const warning = installWarning(options.cwd ?? process.cwd());
+  const warning = installWarning(checkRoot(argv, options.cwd ?? process.cwd()));
 
   return warning ? { ...result, warning } : result;
+}
+
+/** The folder `ds check` reads: `--dir`, resolved against `cwd`, or `cwd` itself.
+ *  Every other command is about `cwd`, which this returns unchanged for them. */
+function checkRoot(argv, cwd) {
+  const command = argv.find((argument) => !argument.startsWith('-'));
+  const dir = command === 'check' ? valueOf(argv, '--dir') : undefined;
+  return dir ? resolve(cwd, dir) : cwd;
 }
 
 function dispatch(argv, { origins, cwd = process.cwd(), selfDir } = {}) {
@@ -104,10 +112,12 @@ function dispatch(argv, { origins, cwd = process.cwd(), selfDir } = {}) {
      on @elirobinson/react being present. */
   if (command === 'voice') return commands.voice({ cwd });
 
-  /* The consumer's own install only: no fallback to this module's location,
-     which would find ai-patterns' private copies and check those instead. */
+  /* Origins are the consumer's folder only. The default origins add this
+     module's own location, which would find ai-patterns' private copies of
+     react and tokens and check those instead. `selfDir` only resolves
+     ai-patterns itself, which `check` never reads. */
   if (command === 'check') {
-    const root = valueOf(argv, '--dir') ?? cwd;
+    const root = checkRoot(argv, cwd);
     const { text, exitCode } = runCheck({
       root,
       env: loadEnvironment(origins ?? [root], selfDir),

@@ -19,20 +19,25 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { findPackageDir, versionOf } from '../discovery.mjs';
+import {
+  findPackageDir,
+  REACT_PKG,
+  TOKEN_STYLESHEETS,
+  TOKENS_PKG,
+  versionOf,
+} from '../discovery.mjs';
 import { run } from '../run.mjs';
-import { enclosingBlocks } from './scan.mjs';
+import { declarations } from './scan.mjs';
 import { FIXED_IN, isOlder, TRAPS } from './traps.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, '__fixtures__');
 
 /** The workspace packages: what `{{react}}` and `{{tokens}}` in a fixture mean. */
-const reactDir = findPackageDir('@elirobinson/react', [here]);
-const tokensDir = findPackageDir('@elirobinson/tokens', [here]);
+const tokensDir = findPackageDir(TOKENS_PKG, [here]);
 const current = {
-  '@elirobinson/react': versionOf(reactDir),
-  '@elirobinson/tokens': versionOf(tokensDir),
+  [REACT_PKG]: versionOf(findPackageDir(REACT_PKG, [here])),
+  [TOKENS_PKG]: versionOf(tokensDir),
 };
 
 const roots = [];
@@ -42,8 +47,8 @@ afterEach(() => {
 
 function substitute(text) {
   return text
-    .replaceAll('{{react}}', current['@elirobinson/react'])
-    .replaceAll('{{tokens}}', current['@elirobinson/tokens']);
+    .replaceAll('{{react}}', current[REACT_PKG])
+    .replaceAll('{{tokens}}', current[TOKENS_PKG]);
 }
 
 function walkFiles(dir) {
@@ -69,8 +74,8 @@ function materialise(name) {
     const dir = join(root, 'node_modules', ...pkg.split('/'));
     mkdirSync(join(dir, 'src'), { recursive: true });
     writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: pkg, version }));
-    if (pkg === '@elirobinson/tokens') {
-      for (const sheet of ['palettes.css', 'tokens.css']) {
+    if (pkg === TOKENS_PKG) {
+      for (const sheet of [...TOKEN_STYLESHEETS, 'mobile.css']) {
         cpSync(join(tokensDir, 'src', sheet), join(dir, 'src', sheet));
       }
     }
@@ -137,7 +142,89 @@ describe('ds check', () => {
   it('tells the Tailwind size apart from the design system width', async () => {
     const { text } = await check(materialise('container-widths'));
     expect(text).toContain('app/page.tsx:2 uses max-w-md');
-    expect(text).toContain('max-w-md → max-w-[28rem]');
+    expect(text).toContain('max-w-md -> max-w-[28rem]');
+  });
+
+  it('says nothing was checked when neither package is installed', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ds-check-empty-'));
+    roots.push(root);
+    const { text, exitCode } = await check(root);
+    expect(text).toContain('nothing could be checked');
+    expect(text).not.toContain('no known traps');
+    expect(exitCode).toBe(0);
+    expect((await check(root, '--strict')).exitCode).toBe(1);
+  });
+
+  it('fails on a --dir that is not a directory', async () => {
+    const { text, exitCode } = await run(['check', '--dir', 'no-such-dir'], { cwd: tmpdir() });
+    expect(text).toContain('is not a directory');
+    expect(exitCode).toBe(1);
+  });
+
+  it('resolves a relative --dir against the working directory', async () => {
+    const root = materialise('font-override');
+    const { text } = await run(['check', '--dir', '.'], { cwd: root });
+    expect(trapsIn(text)).toEqual(['font-override']);
+  });
+
+  it('leaves a layered override alone where tokens.css sets nothing', async () => {
+    const root = materialise('clean');
+    writeFileSync(
+      join(root, 'src', 'promo.css'),
+      '@layer components { .promo { --accent: red; } .btn--accent:hover { color: red; } }\n',
+    );
+    expect(trapsIn((await check(root)).text)).toEqual([]);
+  });
+
+  it('flags a token set in @theme', async () => {
+    const root = materialise('clean');
+    writeFileSync(join(root, 'src', 'theme.css'), '@theme inline { --font-sans: serif; }\n');
+    const { text } = await check(root);
+    expect(trapsIn(text)).toEqual(['layered-token-override']);
+    expect(text).toContain('src/theme.css:1 sets --font-sans inside @theme inline');
+  });
+
+  it('still flags next/font when the hook is only read, never set', async () => {
+    const root = materialise('clean');
+    const app = join(root, 'src', 'app.css');
+    writeFileSync(
+      app,
+      readFileSync(app, 'utf8').replace('--ds-font-sans-override:', '--unrelated:') +
+        '.x { font-family: var(--ds-font-sans-override); }\n',
+    );
+    expect(trapsIn((await check(root)).text)).toEqual(['font-override']);
+  });
+
+  it('maps a display face to the display hook, not the sans one', async () => {
+    const root = materialise('font-override');
+    writeFileSync(
+      join(root, 'app', 'layout.tsx'),
+      [
+        "import { Fraunces, Inter } from 'next/font/google';",
+        "const display = Fraunces({ variable: '--font-display-serif' });",
+        "const body = Inter({ variable: '--font-inter' });",
+      ].join('\n'),
+    );
+    const { text } = await check(root);
+    expect(text).toContain('--ds-font-sans-override: var(--font-inter);');
+    expect(text).toContain('--ds-font-display-override: var(--font-display-serif);');
+  });
+
+  it('does not call an exact copy stale, whatever its line endings', async () => {
+    const root = materialise('clean');
+    for (const sheet of ['tokens.css', 'palettes.css']) {
+      const text = readFileSync(join(tokensDir, 'src', sheet), 'utf8');
+      writeFileSync(join(root, 'src', `copy-${sheet}`), text.replace(/\n/g, '\r\n'));
+    }
+    expect(trapsIn((await check(root)).text)).toEqual([]);
+  });
+
+  it('reads the container width from the installed tokens.css', async () => {
+    const { text } = await check(materialise('container-widths'));
+    const declared = readFileSync(join(tokensDir, 'src', 'tokens.css'), 'utf8').match(
+      /--container-md:\s*([^;]+);/,
+    )[1];
+    expect(text).toContain(`max-w-md is ${declared}, not 28rem`);
   });
 
   it('stays quiet about container widths once tokens.css stops declaring them', async () => {
@@ -164,10 +251,16 @@ describe('FIXED_IN', () => {
   });
 });
 
-describe('enclosingBlocks', () => {
-  it('lists the blocks around an offset, outermost first', () => {
+describe('declarations', () => {
+  it('lists each declaration with the blocks around it, outermost first', () => {
     const css = '@layer base { :root { --accent: red; } } :root { --fg: blue; }';
-    expect(enclosingBlocks(css, css.indexOf('--accent'))).toEqual(['@layer base', ':root']);
-    expect(enclosingBlocks(css, css.indexOf('--fg'))).toEqual([':root']);
+    expect(declarations(css).map(({ name, blocks }) => [name, blocks])).toEqual([
+      ['--accent', ['@layer base', ':root']],
+      ['--fg', [':root']],
+    ]);
+  });
+
+  it('does not read a BEM modifier in a selector as a declaration', () => {
+    expect(declarations('@layer components { .btn--accent:hover { color: red; } }')).toEqual([]);
   });
 });
