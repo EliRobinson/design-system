@@ -4,9 +4,17 @@
 
 .ds-stepper {
   display: flex;
+  /* Lets the steps stack one per line in the narrow layout below. */
+  flex-wrap: wrap;
   list-style: none;
   margin: 0;
   padding: 0;
+  /* A container, so the steps can stack when the row is narrow (#345).
+     Inline-size containment drops the list's own content width, so it takes
+     the width of its parent instead: without this it would be 0 wide in a
+     flex row. */
+  container: ds-stepper / inline-size;
+  inline-size: 100%;
 }
 
 .ds-stepper__step {
@@ -59,6 +67,25 @@
   border-color: var(--status-success);
   background: var(--status-success);
   color: var(--status-success-on); /* 5.17:1 on the fill, both themes */
+}
+
+/* Narrow: one step per line, with the connector as a short vertical line
+   under each marker (#345). 30rem fits four short labels in a row; below it
+   they are cut off or squeezed. */
+@container ds-stepper (width < 30rem) {
+  .ds-stepper__step {
+    flex: 0 0 100%;
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 0 var(--space-2);
+  }
+
+  .ds-stepper__step:not(:last-child)::after {
+    justify-self: center;
+    width: 1px;
+    height: var(--space-4);
+    margin: var(--space-1) 0;
+  }
 }
 
 /* Forced colors (Windows High Contrast) drops background, so the current

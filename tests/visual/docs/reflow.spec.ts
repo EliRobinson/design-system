@@ -17,30 +17,7 @@ import { DOCS_URL, docsRoutes, isReflowRoute, reflowTitle } from './routes';
    page's own shots, and an added component — which widens the scope to every
    docs route — runs all of them. */
 
-/* Pages known to overflow because the component itself is too wide, not the
-   docs site: Pagination (421px), Stepper (421px) and Tabs (325px) at 320px.
-   Fixing them is a packages/react change — #345.
-
-   An exact list, so a fourth page that starts to overflow still fails. These
-   pages are asserted to STILL overflow rather than skipped, and only that one
-   assertion flips: once #345 fixes a component, its page fits, the run goes
-   red, and the entry has to come out of this list. The Copy-button check stays
-   strict on them. (`test.fail` would mark the whole test, so it would also
-   have hidden a Copy-button regression on these three pages.) */
-const KNOWN_OVERFLOW = new Set([
-  '/components/pagination', // #345: collapse to fewer buttons
-  '/components/stepper', // #345: vertical on narrow screens
-  '/components/tabs', // #345: the tab list scrolls sideways
-]);
-
 const reflowRoutes = docsRoutes().filter(isReflowRoute);
-
-/* A stale or misspelt entry would mark nothing and say nothing. */
-for (const route of KNOWN_OVERFLOW) {
-  if (!reflowRoutes.includes(route)) {
-    throw new Error(`KNOWN_OVERFLOW names '${route}', which is not a component page. Remove it.`);
-  }
-}
 
 /* The three functions below run in the page (`page.evaluate`), so each is
    self-contained: no closure over this module. */
@@ -133,17 +110,10 @@ for (const route of reflowRoutes) {
     await page.evaluate(() => document.fonts.ready);
 
     const { scrollWidth, innerWidth, culprits } = await page.evaluate(measureOverflow);
-    if (KNOWN_OVERFLOW.has(route)) {
-      expect(
-        scrollWidth,
-        `${route} fits at ${innerWidth}px now. #345 fixed it: remove it from KNOWN_OVERFLOW.`,
-      ).toBeGreaterThan(innerWidth);
-    } else {
-      expect(
-        scrollWidth,
-        `${route} is ${scrollWidth}px wide at a ${innerWidth}px viewport. Widest content:\n${culprits.join('\n')}`,
-      ).toBeLessThanOrEqual(innerWidth);
-    }
+    expect(
+      scrollWidth,
+      `${route} is ${scrollWidth}px wide at a ${innerWidth}px viewport. Widest content:\n${culprits.join('\n')}`,
+    ).toBeLessThanOrEqual(innerWidth);
 
     expect(
       await page.evaluate(snippetMissing),

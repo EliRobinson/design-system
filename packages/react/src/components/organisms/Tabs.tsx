@@ -129,6 +129,27 @@ export function TabsList({ className, onKeyDown, ...props }: TabsListProps) {
     setTabStopValue(owner?.dataset.value ?? null);
   });
 
+  // The list scrolls sideways when the tabs do not fit (Tabs.css), so keep the
+  // active tab in view: on first paint, and when it changes by click, by
+  // keyboard or from a controlled `value`. Only the list scrolls. The page
+  // stays put, which `scrollIntoView` would not promise.
+  const { activeTab } = useTabsContext();
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const active = list?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    if (!list || !active) {
+      return;
+    }
+
+    const listBox = list.getBoundingClientRect();
+    const tabBox = active.getBoundingClientRect();
+    if (tabBox.left < listBox.left) {
+      list.scrollLeft -= listBox.left - tabBox.left;
+    } else if (tabBox.right > listBox.right) {
+      list.scrollLeft += tabBox.right - listBox.right;
+    }
+  }, [activeTab]);
+
   const getItems = useCallback(
     () => Array.from(listRef.current?.querySelectorAll<HTMLElement>(TRIGGER_SELECTOR) ?? []),
     [],

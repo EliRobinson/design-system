@@ -6,6 +6,12 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* A container, so the row can tell when it does not fit (#345). Inline-size
+     containment drops the nav's own content width, so it takes the width of
+     its parent instead: without this a pager in a flex row would be 0 wide.
+     To push it to one side, set justify-content on it, as Table does. */
+  container: ds-pagination / inline-size;
+  inline-size: 100%;
 }
 
 .ds-pagination__list {
@@ -31,6 +37,26 @@
   font-size: var(--fs-sm);
 }
 
+/* Same box as a page button, so each slot in the row is one target wide and
+   the widths in the container rules below hold. */
+.ds-pagination__gap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--target);
+  min-height: var(--target);
+  color: var(--fg-2);
+  font-size: var(--fs-sm);
+}
+
+/* "Page 3 of 6". Shown only when the row of numbers does not fit. */
+.ds-pagination__summary {
+  display: none;
+  color: var(--fg);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
 /* Only the nav buttons paint a mark; .ds-pagination__item above shares their
    box but carries a real page number, so its type stays its own concern (#167).
    --mark-size from the same ramp step the shared rule sets font-size to, so the
@@ -54,6 +80,85 @@
 .ds-pagination__item:focus-visible {
   outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
   outline-offset: 1px;
+}
+
+/* When the row of numbers does not fit, it gives way to Previous, "Page 3 of
+   6" and Next (#345). Previous and Next stay 44px targets.
+
+   The width a row needs is (slots + 2) x 44px targets, plus 4px between
+   slots and 8px either side of the list. Pagination.tsx sets data-slots and
+   never shows more than 7, so there is one rule per count. Container queries
+   cannot read var(), so the widths are in px from --target, --space-1 and
+   --space-2. */
+
+@container ds-pagination (width < 148px) {
+  .ds-pagination[data-slots='1'] > .ds-pagination__list {
+    display: none;
+  }
+
+  .ds-pagination[data-slots='1'] > .ds-pagination__summary {
+    display: inline;
+  }
+}
+
+@container ds-pagination (width < 196px) {
+  .ds-pagination[data-slots='2'] > .ds-pagination__list {
+    display: none;
+  }
+
+  .ds-pagination[data-slots='2'] > .ds-pagination__summary {
+    display: inline;
+  }
+}
+
+@container ds-pagination (width < 244px) {
+  .ds-pagination[data-slots='3'] > .ds-pagination__list {
+    display: none;
+  }
+
+  .ds-pagination[data-slots='3'] > .ds-pagination__summary {
+    display: inline;
+  }
+}
+
+@container ds-pagination (width < 292px) {
+  .ds-pagination[data-slots='4'] > .ds-pagination__list {
+    display: none;
+  }
+
+  .ds-pagination[data-slots='4'] > .ds-pagination__summary {
+    display: inline;
+  }
+}
+
+@container ds-pagination (width < 340px) {
+  .ds-pagination[data-slots='5'] > .ds-pagination__list {
+    display: none;
+  }
+
+  .ds-pagination[data-slots='5'] > .ds-pagination__summary {
+    display: inline;
+  }
+}
+
+@container ds-pagination (width < 388px) {
+  .ds-pagination[data-slots='6'] > .ds-pagination__list {
+    display: none;
+  }
+
+  .ds-pagination[data-slots='6'] > .ds-pagination__summary {
+    display: inline;
+  }
+}
+
+@container ds-pagination (width < 436px) {
+  .ds-pagination[data-slots='7'] > .ds-pagination__list {
+    display: none;
+  }
+
+  .ds-pagination[data-slots='7'] > .ds-pagination__summary {
+    display: inline;
+  }
 }
 
 /* Forced colors (Windows High Contrast) drops background, so the active page

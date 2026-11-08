@@ -36,3 +36,29 @@ export const Default: Story = {
     </Tabs>
   ),
 };
+
+/** When the tabs do not fit, the list scrolls sideways inside itself and the
+ *  active tab is scrolled into view. */
+export const Narrow: Story = {
+  args: { defaultValue: 'reviews', children: null },
+  render: () => (
+    <div style={{ width: 240 }}>
+      <Tabs defaultValue="reviews">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
+          <TabsTrigger value="reviews">Reviews</TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview">
+          <p className="t-body">Eight sessions of ball control and small-sided games.</p>
+        </TabsContent>
+        <TabsContent value="curriculum">
+          <p className="t-body">Session plans, warm-up drills and printable cards.</p>
+        </TabsContent>
+        <TabsContent value="reviews">
+          <p className="t-body">The under-10s picked up the passing drills in one session.</p>
+        </TabsContent>
+      </Tabs>
+    </div>
+  ),
+};

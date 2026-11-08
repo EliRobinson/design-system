@@ -17,10 +17,13 @@ export const metadata = { title: 'Pagination' };
 ## When to use it
 
 Use `Pagination` for a page-by-page list or table where jumping straight to page 7
-matters — a store catalog, a search results page. It renders one button per page with no
-windowing, which is fine through the range most lists actually use; past a hundred or so
-pages the button row gets long, so pull in `Table`'s own built-in pagination or a
-windowed `VirtualTable`/`VirtualList` instead of raw `Pagination` at that scale.
+matters — a store catalog, a search results page. Up to seven pages it shows a button for
+each. Past seven it keeps the first page, the last page and the current page with its
+neighbours, and draws a gap for the rest, so the row is never more than nine buttons wide.
+
+When even that row does not fit its container, it shows Previous, "Page 3 of 6" and Next
+instead. The nav is a size container, so it fills its parent's width; set
+`justify-content` on it to push the buttons to one side, as `Table` does.
 
 ## Boundary states
 
