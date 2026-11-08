@@ -156,7 +156,11 @@ tokens is a guess at what the command already knows.
 
 **The manifest is tokens and nothing else.** Component API changes, renamed
 props, new required props, changed import paths, removed components — those are
-still yours, and the entries from step 2 are the only description of them.
+still yours. `.claude/skills/ds-migrate/upgrade.md` has one section per breaking
+change in every `@elirobinson/*` package, each with the version it broke in, what
+to search for, and before and after code. Read the sections inside the range you
+crossed and apply them. (If that file is missing, step 5 has not run yet; the
+same file ships at `@elirobinson/ai-patterns/migrate/upgrade.md`.)
 
 What the command declines to rewrite it prints under `left for you — not
 rewritten, on purpose`, each with a `why not:` line and, where a replacement
@@ -199,7 +203,8 @@ pnpm --package=@elirobinson/ai-patterns dlx ds-resync artifacts --write
 ```
 
 This rewrites the brand skill, the version-stamped component reference
-(`llms.txt` / `llms-full.txt`), and this file. Any of them you have edited
+(`llms.txt` / `llms-full.txt`), the migration patterns (`ds-migrate`), and this
+file. Any of them you have edited
 locally are left alone and named in the output — reconcile those by hand, or
 re-run with `--force` to take the shipped copy.
 
