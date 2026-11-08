@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { createRef } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Pagination } from './Pagination.js';
 
@@ -54,13 +55,11 @@ describe('Pagination', () => {
   it('shows every page up to seven', () => {
     render(<Pagination page={4} pageCount={7} onPageChange={vi.fn()} />);
     expect(pageLabels()).toEqual(['1', '2', '3', '4', '5', '6', '7']);
-    expect(screen.getByRole('navigation')).toHaveAttribute('data-slots', '7');
   });
 
   it('keeps the first five pages and the last near the start of a long range', () => {
     render(<Pagination page={2} pageCount={20} onPageChange={vi.fn()} />);
     expect(pageLabels()).toEqual(['1', '2', '3', '4', '5', '20']);
-    expect(screen.getByRole('navigation')).toHaveAttribute('data-slots', '7');
   });
 
   it('keeps the current page and its neighbours in the middle of a long range', () => {
@@ -78,10 +77,38 @@ describe('Pagination', () => {
     render(<Pagination page={50} pageCount={20} onPageChange={vi.fn()} />);
     expect(pageLabels()).toEqual(['1', '16', '17', '18', '19', '20']);
     expect(screen.getByText('Page 20 of 20')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Page 20' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('renders the "Page X of Y" summary the narrow layout shows', () => {
-    render(<Pagination page={3} pageCount={6} onPageChange={vi.fn()} />);
-    expect(screen.getByText('Page 3 of 6')).toHaveClass('ds-pagination__summary');
+  describe('when the row of numbers does not fit', () => {
+    // jsdom has no layout. Every button is one 44px target, and the nav is
+    // `navWidth` wide. Six pages need (6 + 2) x 44 = 352px with no gaps.
+    let navWidth = 0;
+    beforeEach(() => {
+      vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(44);
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(() => navWidth);
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('shows "Page X of Y" in place of the numbers', () => {
+      navWidth = 300;
+      render(<Pagination page={3} pageCount={6} onPageChange={vi.fn()} />);
+      expect(screen.getByRole('navigation')).toHaveClass('ds-pagination--compact');
+      expect(screen.getByText('Page 3 of 6')).toHaveClass('ds-pagination__summary');
+    });
+
+    it('keeps the numbers when they fit', () => {
+      navWidth = 352;
+      render(<Pagination page={3} pageCount={6} onPageChange={vi.fn()} />);
+      expect(screen.getByRole('navigation')).not.toHaveClass('ds-pagination--compact');
+    });
+  });
+
+  it('forwards its ref to the nav', () => {
+    const ref = createRef<HTMLElement>();
+    render(<Pagination ref={ref} page={1} pageCount={3} onPageChange={vi.fn()} />);
+    expect(ref.current).toBe(screen.getByRole('navigation'));
   });
 });

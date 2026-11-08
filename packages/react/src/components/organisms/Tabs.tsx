@@ -94,6 +94,7 @@ export type TabsListProps = Omit<HTMLAttributes<HTMLDivElement>, 'role'>;
  * two tablists on one page independent.
  */
 const TRIGGER_SELECTOR = '[role="tab"]:not(:disabled)';
+const ACTIVE_TRIGGER_SELECTOR = '[role="tab"][aria-selected="true"]';
 
 export function TabsList({ className, onKeyDown, ...props }: TabsListProps) {
   const listRef = useRef<HTMLDivElement>(null);
@@ -118,9 +119,7 @@ export function TabsList({ className, onKeyDown, ...props }: TabsListProps) {
       return;
     }
 
-    const activeTrigger = list.querySelector<HTMLButtonElement>(
-      '[role="tab"][aria-selected="true"]',
-    );
+    const activeTrigger = list.querySelector<HTMLButtonElement>(ACTIVE_TRIGGER_SELECTOR);
     const owner =
       activeTrigger && !activeTrigger.disabled
         ? activeTrigger
@@ -136,7 +135,7 @@ export function TabsList({ className, onKeyDown, ...props }: TabsListProps) {
   const { activeTab } = useTabsContext();
   useLayoutEffect(() => {
     const list = listRef.current;
-    const active = list?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    const active = list?.querySelector<HTMLElement>(ACTIVE_TRIGGER_SELECTOR);
     if (!list || !active) {
       return;
     }
