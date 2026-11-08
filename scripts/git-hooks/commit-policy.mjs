@@ -40,14 +40,16 @@ export function checkBranch(branch, env) {
   return 'Do not commit on main. Cut a branch from origin/main in its own worktree.';
 }
 
-/** Returns why this commit message is rejected, or null. */
-export function checkCommitMessage(text) {
+/** Returns why this commit message is rejected, or null.
+ *  `raw` is for a stored commit: git has already stripped its comments, so a
+ *  `#` line left in it is content and counts. */
+export function checkCommitMessage(text, { raw = false } = {}) {
   const lines = [];
   for (const line of text.split('\n')) {
-    if (SCISSORS.test(line)) break;
+    if (!raw && SCISSORS.test(line)) break;
     // Known gap: git keeps `#` lines for `-m` and `-F`, and some people set
-    // another core.commentChar. Both are rare; `range` in CI is the backstop.
-    if (line.startsWith('#')) continue;
+    // another core.commentChar. Both are rare; `range` in CI catches them.
+    if (!raw && line.startsWith('#')) continue;
     lines.push(line.trimEnd());
   }
   const filled = lines.filter((line) => line !== '');
@@ -68,16 +70,15 @@ export function checkCommitMessage(text) {
 /** Returns one line per commit that breaks the rule: `<sha> <subject>: <why>`. */
 export function checkCommits(commits) {
   return commits.flatMap(({ sha, message }) => {
-    const problem = checkCommitMessage(message);
+    const problem = checkCommitMessage(message, { raw: true });
     if (!problem) return [];
-    const [subject] = message.split('\n');
+    const subject = message.split('\n').find((line) => line.trim() !== '') ?? '';
     return [`${sha} ${subject}: ${problem}`];
   });
 }
 
-/* Merge commits are skipped: main takes rebase-merges only, so none lands
-   there, and GitHub's own `Merge <sha> into <sha>` is not ours to word.
-   `%B` is the raw message, so `#` lines count, as they do on main. Git exits
+/* Merge commits are skipped (ADR 0002): main takes rebase-merges only, and
+   GitHub's own `Merge <sha> into <sha>` is not ours to word. Git exits
    non-zero on a bad range, and execFileSync throws, so a typo never passes. */
 function commitsIn(range) {
   const log = execFileSync('git', ['log', '--no-merges', '--format=%h%x00%B%x1e', range], {
@@ -103,21 +104,41 @@ function currentBranch() {
   }
 }
 
-function main([mode, arg]) {
-  let problem;
-  if (mode === 'branch') problem = checkBranch(currentBranch(), process.env);
-  else if (mode === 'commit-msg') problem = checkCommitMessage(readFileSync(arg, 'utf8'));
-  else if (mode === 'range') {
-    if (!arg) problem = 'Give a range, for example origin/main..HEAD.';
-    else {
-      const problems = checkCommits(commitsIn(arg));
-      if (problems.length)
-        problem = `these commits break the one-line rule:\n${problems.join('\n')}\nReword them with \`git rebase -i\`.`;
-    }
-  } else problem = `Unknown mode: ${mode}. Use "branch", "commit-msg <file>" or "range <a>..<b>".`;
+function checkRange(range) {
+  if (!range) return 'Give a range, for example origin/main..HEAD.';
+  const problems = checkCommits(commitsIn(range));
+  if (problems.length === 0) return null;
+  return [
+    'these commits break the one-line rule:',
+    ...problems,
+    'Reword them with `git rebase -i`.',
+  ].join('\n');
+}
 
+const MODES = {
+  branch: {
+    usage: 'branch',
+    prefix: 'commit blocked',
+    run: () => checkBranch(currentBranch(), process.env),
+  },
+  'commit-msg': {
+    usage: 'commit-msg <file>',
+    prefix: 'commit blocked',
+    run: (file) => checkCommitMessage(readFileSync(file, 'utf8')),
+  },
+  range: { usage: 'range <a>..<b>', prefix: 'commit policy', run: checkRange },
+};
+
+function main([mode, arg]) {
+  const entry = Object.hasOwn(MODES, mode) ? MODES[mode] : null;
+  const usage = Object.values(MODES)
+    .map((m) => `"${m.usage}"`)
+    .join(', ');
+  const problem = entry ? entry.run(arg) : `Unknown mode: ${mode}. Use ${usage}.`;
   if (problem) {
-    process.stderr.write(`commit blocked: ${problem}\nSee docs/agents/git-workflow.md.\n`);
+    process.stderr.write(
+      `${entry?.prefix ?? 'commit policy'}: ${problem}\nSee docs/agents/git-workflow.md.\n`,
+    );
     process.exit(1);
   }
 }

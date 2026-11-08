@@ -7,6 +7,6 @@ The `commit-msg` hook (`scripts/git-hooks/commit-policy.mjs`) enforces the rule.
 ## Consequences
 
 - Git writes merge and `fixup!` subjects itself, so they pass.
-- Git's sequencer (`git revert`, `rebase -i` squash, and `git cherry-pick` without an editor) skips the hooks. So the `quality` job checks every commit a pull request adds, with the same rule (#278). Git's own `Revert "..."` subject fails there. Write `revert: <subject>`.
+- Git's sequencer (`git revert`, `rebase -i` squash, and `git cherry-pick` without an editor) skips the hooks. So the `quality` job checks every commit a pull request adds, with the same rule (#278). Git's own `Revert "..."` subject fails there. Write `revert: <subject>`. CI also counts `#` lines, which the hook skips.
 - Merge commits are not checked in CI. Main takes rebase-merges only, so none lands there.
 - CI bot commits use one `-m` only. A test in `scripts/git-hooks/commit-policy.test.mjs` reads every `git commit` in `.github/workflows/` and checks its message.

@@ -25,13 +25,11 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
-      # The one-line rule (ADR 0002) for every commit this pull request adds.
-      # The commit-msg hook cannot be the only check: git's sequencer (revert,
-      # cherry-pick, rebase -i squash) skips it. The range ends at the PR head,
-      # not HEAD, because HEAD here is GitHub's test merge commit. Merge
-      # commits are skipped; see commitsIn() in the script. fetch-depth: 0
-      # above gives the whole range. Values go through env, never `${{ }}` in
-      # the run text: a branch name is attacker-controlled.
+      # The one-line rule for every commit this pull request adds. ADR 0002
+      # says why the hook alone is not enough. The range ends at the PR head,
+      # not HEAD, because HEAD here is GitHub's test merge commit. It fails
+      # closed, unlike the affected-base step below, which fails open. Values
+      # go through env for the reason that step gives.
       - name: Commits are one line (if red, reword them with `git rebase -i`)
         if: github.event_name == 'pull_request'
         env:
