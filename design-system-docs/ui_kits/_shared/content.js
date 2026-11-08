@@ -37,7 +37,8 @@ const KIT_CONTENT = {
       { label: 'Dark', value: 'dark' },
     ],
     palette: 'Palette',
-    /* The palette with no data-palette attribute. The others are read from the stylesheets. */
+    /* The palette with no data-palette attribute. The kit reads the others from their
+       [data-palette] selectors; the default has no selector to read, so it is named here. */
     defaultPalette: 'Ember',
   },
 
@@ -129,7 +130,7 @@ const KIT_CONTENT = {
       body: 'One email when a new guide or app ships. Nothing else.',
       label: 'Email',
       placeholder: 'you@example.com',
-      cta: 'Get in touch',
+      cta: 'Send me the next guide',
     },
     footer: {
       tagline: 'Builder · Consultant · Founder',

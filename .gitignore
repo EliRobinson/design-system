@@ -43,3 +43,8 @@ all-blob-reports/
 # job and unpacked in every job that sweeps. It lands in the repo root of a
 # checkout that also commits baselines from that same working tree.
 build-outputs.tar.gz
+
+# The UI kits' component bundle. scripts/kit-bundle.mjs writes it next to each
+# served copy of the kits; written into design-system-docs, it would also break
+# the brand manifest, which claims every file there.
+design-system-docs/ui_kits/_shared/ds-bundle.*

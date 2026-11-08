@@ -34,10 +34,15 @@ was written on the page:
 ## The UI kits
 
 The four kits in `design-system-docs/ui_kits/` are the repo's. The build copies them to
-`ui_kits/` with two changes, made in `scripts/design-system-artifact/kits.mjs`: each page's
-`../../colors_and_type.css` link becomes `../../tokens.css`, and its `../_shared/ds-bundle.css`
-link becomes `../../components/bundle.css`. It adds `ui_kits/_shared/ds-bundle.js`, the real
-components on `window.DesignSystem`, which is the name the kits read. The artifact's other
+`ui_kits/` and points each page at the artifact's own files, in
+`scripts/design-system-artifact/kits.mjs`:
+
+- `../../colors_and_type.css` becomes `../../tokens.css`.
+- `../_shared/ds-bundle.css` becomes `../../components/bundle.css`.
+- `../_shared/ds-bundle.js` becomes `../../components/bundle.js`, plus one line that copies
+  the artifact's global to `window.DesignSystem`, the name the kits read.
+
+No second bundle is built. The artifact's other
 kit folders (`auth/`, `billing/`, and so on) stay the artifact's.
 
 ## Themes

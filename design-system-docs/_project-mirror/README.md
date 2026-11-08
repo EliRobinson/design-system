@@ -20,7 +20,7 @@ Two runtimes are in play, and this is the wrong one.
 
 | | Runtime | Where it lives |
 | --- | --- | --- |
-| `ui_kits/` (the four originals) | `_shared/Primitives.jsx` — hand-written, inline-styled primitives on `window` | in this repo, self-contained |
+| `ui_kits/` (the four originals) | `window.DesignSystem`, from `_shared/ds-bundle.js`: the real `@elirobinson/react` components, built next to each copy of the kits | in this repo; the bundle is built, not committed |
 | `_project-mirror/ui_kits/` (these nine) | `window.MiltinsonDesignSystem_e160cb`, from the project's `_ds_bundle.js` | **not copied** |
 
 `_ds_bundle.js` is ~290KB of generated bundle built from the project's
@@ -59,7 +59,7 @@ don't edit, don't review, re-copy from the project if it needs updating:
 
 ## If you want these for real
 
-Port them onto `_shared/Primitives.jsx`, the way the original four kits work,
+Port them onto the real components in `_shared/ds-bundle.js`, the way the original four kits work,
 and move them up into `ui_kits/` so they render standalone and can ship. Pull
 from the project at that point rather than from this mirror, which starts
 going stale the moment the project changes — nothing regenerates it.

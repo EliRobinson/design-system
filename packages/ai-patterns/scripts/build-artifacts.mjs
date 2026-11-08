@@ -24,14 +24,12 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,8 +48,10 @@ import {
   REFERENCE_INPUTS,
   SOURCE_KINDS,
 } from '../src/artifacts/reference.mjs';
+import { listFiles } from '../src/artifacts/list-files.mjs';
 import { migrateSkillFiles, SKILL_DIRS } from '../src/artifacts/skills.mjs';
 import { writeKitBundle } from './kit-bundle.mjs';
+import { reactManifest } from './react-manifest.mjs';
 
 const packageDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(packageDir, '..', '..');
@@ -67,16 +67,7 @@ function readJson(path) {
    build output of that package: `pnpm build` orders it first because
    package.json declares the dependency. */
 function componentManifest() {
-  const resolve = createRequire(import.meta.url).resolve;
-  try {
-    return readJson(resolve('@elirobinson/react/manifest'));
-  } catch (error) {
-    throw new Error(
-      'Cannot resolve @elirobinson/react/manifest. Build that package first: ' +
-        'pnpm nx build react.',
-      { cause: error },
-    );
-  }
+  return reactManifest().manifest;
 }
 
 function version(packageName) {
@@ -90,15 +81,7 @@ function write(relativePath, contents) {
 }
 
 /** Every file under `dir`, as repo-independent forward-slash relative paths. */
-function walk(dir, base = dir) {
-  const found = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) found.push(...walk(path, base));
-    else found.push(relative(base, path).split(sep).join('/'));
-  }
-  return found.sort();
-}
+const walk = listFiles;
 
 /**
  * Where a staged brand-skill file comes from in an installed package, or null.

@@ -13,10 +13,17 @@ components:
 **Files**
 
 - `Shell.jsx` — `AppShell` (sidebar, hash routing, the command palette) and `PageHeader`
-- `Screens.jsx` — the six screens
+- `Screens.jsx` — dashboard, projects, invoices, assistant and onboarding
+- `Settings.jsx` — the settings screen and its three tabs
 
 The components come from `../_shared/ds-bundle.js`; nothing here draws its own copy of
 one. Every string comes from `../_shared/content.js`.
 
 Open `index.html`. The bar at the top sets the theme and the palette; so does the query
 string, as in `index.html?theme=dark&palette=steady#/invoices`.
+
+**Running it in this repo.** The page needs `../_shared/ds-bundle.js` and `ds-bundle.css`,
+which are built, not committed, so `index.html` opened from this folder is blank. Run the
+docs site instead: `pnpm --filter docs dev`, then open `/brand/ui-kits/webapp`. It
+builds the bundle next to its copy of the kits. The packed brand skill ships with the
+bundle in place.

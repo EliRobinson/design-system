@@ -1,4 +1,4 @@
-/* global window, React, KIT_CONTENT -- a browser script: it reads the real components
+/* global window, column, cluster, React, KIT_CONTENT -- a browser script: it reads the real components
    from window.DesignSystem (ds-bundle.js) and its strings from _shared/content.js, and
    publishes onto window for the inline script in index.html. */
 /*
@@ -28,8 +28,6 @@ const {
 const { Fragment } = React;
 const phone = KIT_CONTENT.mobile;
 
-const column = (gap) => ({ display: 'flex', flexDirection: 'column', gap: `var(--space-${gap})` });
-const cluster = (gap) => ({ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: `var(--space-${gap})` });
 
 function PhoneFrame({ label, children }) {
   return (

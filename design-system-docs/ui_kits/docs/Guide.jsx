@@ -1,11 +1,11 @@
 /* eslint-disable react/jsx-no-undef --
-   Wordmark is defined by _shared/Kit.jsx. These kits are loaded as classic
+   Wordmark and Icon are defined by _shared/Kit.jsx. These kits are loaded as classic
    <script type="text/babel"> tags (see the index.html beside this file), in dependency
    order, sharing one global scope — so there is nothing to import and no module boundary
    to import it across. The directive is here because ds-resync writes this file into a
    consuming repo's .claude/skills/, a directory most projects lint. Scoped to the one
    rule so everything else about these samples is still linted. #119 */
-/* global window, React, KIT_CONTENT -- a browser script: it reads the real components
+/* global window, column, cluster, Icon, ICONS, React, KIT_CONTENT -- a browser script: it reads the real components
    from window.DesignSystem (ds-bundle.js) and its strings from _shared/content.js, and
    publishes onto window for the inline script in index.html. */
 /*
@@ -44,8 +44,6 @@ const {
 const guide = KIT_CONTENT.docs;
 const article = guide.article;
 
-const column = (gap) => ({ display: 'flex', flexDirection: 'column', gap: `var(--space-${gap})` });
-const cluster = (gap) => ({ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: `var(--space-${gap})` });
 const prose = { margin: 0, color: 'var(--fg)' };
 
 function GuideHeader() {
@@ -106,9 +104,7 @@ function SamplePlan() {
             <Tooltip labelOnly side="left">
               <TooltipTrigger>
                 <Button variant="ghost" size="sm" aria-label={label} onClick={copy}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M9 9h10v11H9zM5 15H4V4h11v1" />
-                  </svg>
+                  <Icon d={ICONS.copy} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>{label}</TooltipContent>

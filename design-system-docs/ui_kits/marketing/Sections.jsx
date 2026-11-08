@@ -1,4 +1,10 @@
-/* global window, React, KIT_CONTENT -- a browser script: it reads the real components
+/* eslint-disable react/jsx-no-undef --
+   Icon is defined by _shared/Kit.jsx. These kits are loaded as classic
+   <script type="text/babel"> tags (see the index.html beside this file), in dependency
+   order, sharing one global scope, so there is nothing to import. The directive is here
+   because ds-resync writes this file into a consuming repo's .claude/skills/, a directory
+   most projects lint. Scoped to the one rule so everything else is still linted. #119 */
+/* global window, column, cluster, grid, Icon, ICONS, React, KIT_CONTENT -- a browser script: it reads the real components
    from window.DesignSystem (ds-bundle.js) and its strings from _shared/content.js, and
    publishes onto window for the inline script in index.html. */
 /*
@@ -32,16 +38,7 @@ const section = (extra) => ({
   boxSizing: 'border-box',
   ...extra,
 });
-const cluster = (gap) => ({ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: `var(--space-${gap})` });
-const column = (gap) => ({ display: 'flex', flexDirection: 'column', gap: `var(--space-${gap})` });
 
-function Check() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5 12.5l4.5 4.5L19 7.5" />
-    </svg>
-  );
-}
 
 function Hero() {
   const copy = page.hero;
@@ -76,7 +73,7 @@ function FeaturedApps() {
         </h2>
         <RuleLink href="#">{copy.viewAll}</RuleLink>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: 'var(--space-6)' }}>
+      <div style={grid(420, 6)}>
         {copy.apps.map((app) => (
           <Card key={app.title}>
             <div
@@ -126,7 +123,7 @@ function FeatureBand() {
   const copy = page.feature;
   return (
     <div style={{ background: 'var(--bg-inverse)', color: 'var(--fg-inverse)' }}>
-      <section style={section({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 'var(--space-9)', alignItems: 'center' })}>
+      <section style={section({ ...grid(340, 9), alignItems: 'center' })}>
         <div style={column(5)}>
           <Eyebrow style={{ color: 'var(--accent-ink-inverse)' }}>{copy.eyebrow}</Eyebrow>
           <h2 className="t-h1" style={{ margin: 0, color: 'var(--fg-inverse)' }}>
@@ -166,7 +163,7 @@ function ServicesBand() {
       <h2 className="t-h2" style={{ margin: 0 }}>
         {copy.heading}
       </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 'var(--space-6)' }}>
+      <div style={grid(360, 6)}>
         {copy.items.map((service) => (
           <Card key={service.eb}>
             <CardHeader>
@@ -187,7 +184,7 @@ function ServicesBand() {
                 {service.points.map((point) => (
                   <li key={point} className="t-body-sm" style={cluster(2)}>
                     <span style={{ color: 'var(--accent-ink)', display: 'inline-flex' }}>
-                      <Check />
+                      <Icon d={ICONS.check} />
                     </span>
                     {point}
                   </li>
@@ -232,7 +229,7 @@ function SignUp() {
         <CardContent>
           <form
             onSubmit={(event) => event.preventDefault()}
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 'var(--space-6)', alignItems: 'end' }}
+            style={{ ...grid(320, 6), alignItems: 'end' }}
           >
             <div style={column(2)}>
               <h2 className="t-h3" style={{ margin: 0 }}>

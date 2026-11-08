@@ -150,20 +150,17 @@ describe('ui kits', () => {
   it('derives what a kit actually defines instead of trusting prose', () => {
     /* The old hand-kept index claimed the webapp kit covered "auth" — the
        auth kit lives in _project-mirror and does not ship. The list is read from
-       the kit's sources: its six screens and the shell around them (#321). */
-    const components = byId('ui_kits/webapp').components;
-    expect(components).toEqual(
-      expect.arrayContaining([
-        'AppShell',
-        'DashboardScreen',
-        'ProjectsScreen',
-        'InvoicesScreen',
-        'AssistantScreen',
-        'SettingsScreen',
-        'OnboardingScreen',
-      ]),
-    );
-    expect(components).not.toContain('StatCard');
+       the names the kit's sources publish: its six screens and the shell (#321). */
+    expect([...byId('ui_kits/webapp').components].sort()).toEqual([
+      'AppShell',
+      'AssistantScreen',
+      'DashboardScreen',
+      'InvoicesScreen',
+      'OnboardingScreen',
+      'PageHeader',
+      'ProjectsScreen',
+      'SettingsScreen',
+    ]);
   });
 
   it('ships the shared primitives the kits load', () => {
