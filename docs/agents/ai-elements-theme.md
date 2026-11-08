@@ -6,15 +6,15 @@ anywhere in this repo**, and nothing here edits `packages/ai-elements/src/`.
 
 ## Where it lives
 
-| Path                                            | What it is                                                          |
-| ----------------------------------------------- | ------------------------------------------------------------------- |
-| `apps/docs/src/app/ai-theme/ai-bridge.css`      | The token bridge — shadcn, xyflow and Streamdown variables          |
-| `apps/docs/src/app/ai-theme/ai-core.css`        | Conversation, Message, PromptInput, Response, Code, Actions         |
-| `apps/docs/src/app/ai-theme/ai-agent.css`       | Reasoning, Tool, Sources, Task, Context, Artifact, Confirm          |
-| `apps/docs/src/app/ai-theme/ai-media.css`       | Web Preview, Image, Attachments, Dropzone, Open In                  |
-| `apps/docs/src/app/ai-theme/ai-canvas.css`      | Canvas, Node, Edge, Toolbar, Controls, Panel                        |
-| `apps/docs/src/app/ai-theme/ai-shell.css`       | Assistant shell, threads, greeting, model picker, notices           |
-| `apps/docs/src/app/ai-theme-bundler-fixups.css` | Two deviations — "The port-size defect", and the model list's floor |
+| Path                                            | What it is                                                                                    |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `apps/docs/src/app/ai-theme/ai-bridge.css`      | The token bridge — shadcn, xyflow and Streamdown variables                                    |
+| `apps/docs/src/app/ai-theme/ai-core.css`        | Conversation, Message, PromptInput, Response, Code, Actions                                   |
+| `apps/docs/src/app/ai-theme/ai-agent.css`       | Reasoning, Tool, Sources, Task, Context, Artifact, Confirm                                    |
+| `apps/docs/src/app/ai-theme/ai-media.css`       | Web Preview, Image, Attachments, Dropzone, Open In                                            |
+| `apps/docs/src/app/ai-theme/ai-canvas.css`      | Canvas, Node, Edge, Toolbar, Controls, Panel                                                  |
+| `apps/docs/src/app/ai-theme/ai-shell.css`       | Assistant shell, threads, greeting, model picker, notices                                     |
+| `apps/docs/src/app/ai-theme-bundler-fixups.css` | Three deviations — "The port-size defect", the model list's floor, and the shell width (#250) |
 
 `app/ai-theme/` is **verbatim** and is in `.prettierignore` for the same reason
 `packages/ai-elements/src` is: these six files are authored in the design handoff and
@@ -136,6 +136,12 @@ existing doubles, and do not add more.
 
 Apart from the model list's 180px floor, the fixups file introduces no value of its own. Every declaration is copied from the rule in
 `ai-canvas.css` it re-asserts; if those values move, these are wrong and must move with them.
+
+The handoff still reads `--container-md`, which `@elirobinson/tokens` 1.0.0 renamed `--shell-md`
+(#250). Here Tailwind still declares `--container-md`, as its own 28rem, so the three rules that
+read it are re-asserted in the fixups file with `--shell-md`. `ai-theme-tokens.test.ts` lists
+the old name in `RENAMED` and checks the fixups file carries the new one. Remove the row and the
+fixups when a drop carries the rename.
 
 ## Colours
 
