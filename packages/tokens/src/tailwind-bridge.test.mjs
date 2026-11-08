@@ -72,7 +72,8 @@ const themeAliases = declarations(block(/@theme\s+inline\b/));
 /* The `--ds-*` indirection layer, plus `--radius`, which shadcn components read
    directly rather than through a utility class. Declared by this file, so an
    alias may legitimately point at one. */
-const bridgeLocals = declarations(block(/^:root\b/m));
+const ALIAS_BLOCK = /^:root\b/m;
+const bridgeLocals = declarations(block(ALIAS_BLOCK));
 
 const declaredTokens = new Set([
   ...parseTokensCss(readTokenStylesheets()).map((token) => token.name),
@@ -146,8 +147,9 @@ describe('tailwind.css: dark: follows the theme dial, not the operating system',
    The alias block is re-declared wherever a theme can be set, so it re-reads
    the token there. */
 describe('tailwind.css: the --ds-* aliases re-resolve inside a themed subtree', () => {
+  const start = code.search(ALIAS_BLOCK);
   const head = code
-    .match(/^(:root\b[^{]*)\{/m)?.[1]
+    .slice(start, code.indexOf('{', start))
     .split(',')
     .map((part) => part.trim());
 

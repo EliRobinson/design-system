@@ -57,13 +57,18 @@ function layers(value) {
 
 /* One layer as its colour and its geometry, the geometry being what is left. */
 function parseLayer(layer) {
-  const [colour] = colorsIn(layer);
-  if (colour === undefined) throw new Error(`no colour this can read in "${layer}"`);
+  const colours = colorsIn(layer);
+  if (colours.length !== 1) throw new Error(`expected one colour this can read in "${layer}"`);
+  const [colour] = colours;
   return { colour, geometry: layer.replace(colour, '').replace(/\s+/g, ' ').trim() };
 }
 
 /* A layer with every length at zero draws nothing, whatever its colour. */
-const hasSize = (geometry) => /(^|\s)-?(?!0(px)?(\s|$))\d/.test(geometry.replace('inset', ''));
+const hasSize = (geometry) =>
+  geometry
+    .split(' ')
+    .filter((part) => part !== 'inset')
+    .some((part) => parseFloat(part) !== 0);
 
 describe.each(PALETTES)('shadow tokens in dark mode: %s', (palette) => {
   const light = combinationValues(sources, { palette, theme: 'light' });
