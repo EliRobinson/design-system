@@ -505,9 +505,12 @@ jobs:
             echo "::error::The comparison wrote no report, so no shot was judged. Nothing here can be accepted."
             exit 1
           fi
-          FAILED=$(node scripts/visual-failures.mjs leg-report.json)
+          # Only shots with baselines: a check with none (`smoke`,
+          # `docs-reflow`) fails its rerun too and would end this step.
+          # `scoped` refuses to accept while one of those is red anyway.
+          FAILED=$(node scripts/visual-failures.mjs --baselined-only leg-report.json)
           if [ -z "$FAILED" ]; then
-            echo "::error::The comparison failed but no shot is listed as failing — a crash or a timeout, not a baseline."
+            echo "::error::The comparison failed but no shot with a baseline is listed as failing — a crash, a timeout, or only checks with no baseline. Nothing here can be accepted."
             exit 1
           fi
           ARGS=(--workers=1 --reporter=list --update-snapshots=changed --grep "$FAILED")
@@ -778,6 +781,20 @@ jobs:
             ACCEPT_INSTRUCTION="These changes were not auto-accepted, even though \`visual-accept\` is already on this pull request — the label accepts once, on the run where it is applied, not on every later push. If they are intended, remove and re-add the \`visual-accept\` label to accept this run's failures; that re-add starts a new run on its own."
           else
             ACCEPT_INSTRUCTION="If these changes are intended, add the \`visual-accept\` label — that starts a new run on its own; there is no need to re-run this one."
+          fi
+          # A check with no baseline (`smoke`, `docs-reflow`) cannot be
+          # accepted: the accept step refuses while one is red. Say so first.
+          if ! node scripts/visual-failures.mjs --baselines test-results/report.json > /dev/null 2> unbaselined.txt; then
+            {
+              echo "### Checks with no baseline failed"
+              echo
+              echo "These take no screenshot, so \`visual-accept\` will refuse while they are red. Fix the page first. See \`docs/agents/visual-regression.md\`."
+              echo
+              echo '````'
+              tail -n +2 unbaselined.txt
+              echo '````'
+              echo
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
           {
             echo "### Visual regression"

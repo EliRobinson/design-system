@@ -714,12 +714,13 @@ jobs:
               echo "These take no screenshot, so no baseline can fix them. Fix the page. See \`docs/agents/visual-regression.md\`."
               echo
               echo '````'
-              cat unbaselined.txt
+              # Skip the CLI's own heading; the lines above say it.
+              tail -n +2 unbaselined.txt
               echo '````'
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-          FAILED=$(node scripts/visual-failures.mjs --baselined test-results/report.json)
+          FAILED=$(node scripts/visual-failures.mjs --baselined-only test-results/report.json)
           if [ -z "$FAILED" ]; then
             echo "The sweep failed with no failing shot listed — a crash, a build break, or only checks with no baseline (see the summary). Nothing to regenerate."
             echo "recovered=false" >> "$GITHUB_OUTPUT"
@@ -730,7 +731,7 @@ jobs:
           # `recover` to read back, and what the tracking issue lists. Kept
           # separate from $FAILED (the --grep pattern below), which is
           # regex-escaped and not meant for a human to read.
-          node scripts/visual-failures.mjs --plain --baselined test-results/report.json > failing-shots.txt
+          node scripts/visual-failures.mjs --plain --baselined-only test-results/report.json > failing-shots.txt
 
           pnpm exec playwright test --update-snapshots=changed --workers=1 --grep "$FAILED"
 

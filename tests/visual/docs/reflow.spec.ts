@@ -16,6 +16,7 @@ import { DOCS_URL, docsRoutes, isReflowRoute, reflowTitle } from './routes';
    request's scoped run selects it with the same pattern that selects the
    page's own shots, and an added component — which widens the scope to every
    docs route — runs all of them. */
+
 /* Pages known to overflow because the component itself is too wide, not the
    docs site: Pagination (421px), Stepper (421px) and Tabs (325px) at 320px.
    Fixing them is a packages/react change — #345.
@@ -41,86 +42,97 @@ for (const route of KNOWN_OVERFLOW) {
   }
 }
 
+/* The three functions below run in the page (`page.evaluate`), so each is
+   self-contained: no closure over this module. */
+
+/** The page's width, and the deepest elements past the viewport's right edge,
+ *  so a failure names the thing to fix. Content inside a scroll container (a
+ *  code block) can be wider than the viewport without widening the page, so it
+ *  is not counted. */
+function measureOverflow() {
+  const viewport = window.innerWidth;
+  const inScroller = (el: Element) => {
+    for (let up = el.parentElement; up && up !== document.body; up = up.parentElement) {
+      if (getComputedStyle(up).overflowX !== 'visible') {
+        return true;
+      }
+    }
+    return false;
+  };
+  const wide = [...document.querySelectorAll('body *')].filter(
+    (el) => el.getBoundingClientRect().right > viewport + 0.5 && !inScroller(el),
+  );
+  const leaves = wide.filter((el) => !wide.some((other) => other !== el && el.contains(other)));
+  return {
+    scrollWidth: document.documentElement.scrollWidth,
+    innerWidth: viewport,
+    culprits: leaves.slice(0, 5).map((el) => {
+      const right = Math.round(el.getBoundingClientRect().right);
+      const text = (el.textContent ?? '').trim().slice(0, 60);
+      return `<${el.tagName.toLowerCase()} class="${el.getAttribute('class') ?? ''}"> ends at ${right}px: ${text}`;
+    }),
+  };
+}
+
+/** Whether a page with a component header is missing its import snippet, Copy
+ *  button or <pre>. Without this, a renamed class would leave nothing to
+ *  measure, and the Copy check would pass having checked nothing. */
+function snippetMissing() {
+  const header = document.querySelector('.component-header');
+  const snippet = header?.querySelector('.code-block');
+  return (
+    Boolean(header) &&
+    !(snippet?.querySelector('.code-block__copy') && snippet.querySelector('pre'))
+  );
+}
+
+/** Import-line text that sits under the Copy button, with each label. The
+ *  button reads "Copied" for two seconds after a click, and that label is the
+ *  wider one. Restores the label it found. */
+function textUnderCopyButton() {
+  const snippet = document.querySelector('.component-header .code-block');
+  const copy = snippet?.querySelector<HTMLElement>('.code-block__copy');
+  const code = snippet?.querySelector('pre');
+  if (!copy || !code) {
+    return [];
+  }
+
+  const original = copy.textContent;
+  const found: string[] = [];
+  for (const label of ['Copy', 'Copied']) {
+    copy.textContent = label;
+    const button = copy.getBoundingClientRect();
+    const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = node.textContent?.trim();
+      if (!text) {
+        continue;
+      }
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const hit = [...range.getClientRects()].some(
+        (box) =>
+          box.right > button.left &&
+          box.left < button.right &&
+          box.bottom > button.top &&
+          box.top < button.bottom,
+      );
+      if (hit) {
+        found.push(`${label}: ${text}`);
+      }
+    }
+  }
+  copy.textContent = original;
+  return found;
+}
+
 for (const route of reflowRoutes) {
   test(reflowTitle(route), async ({ page }) => {
     await page.goto(`${DOCS_URL}${route}`, { waitUntil: 'networkidle' });
     /* Widths depend on the web fonts, so measure the final layout. */
     await page.evaluate(() => document.fonts.ready);
 
-    const { scrollWidth, innerWidth, culprits, covered, markupMissing } = await page.evaluate(
-      () => {
-        const viewport = window.innerWidth;
-
-        /* Content inside a scroll container (a code block) can be wider than
-         the viewport without widening the page, so it is not a culprit. */
-        const inScroller = (el: Element) => {
-          for (let up = el.parentElement; up && up !== document.body; up = up.parentElement) {
-            if (getComputedStyle(up).overflowX !== 'visible') {
-              return true;
-            }
-          }
-          return false;
-        };
-        const wide = [...document.querySelectorAll('body *')].filter(
-          (el) => el.getBoundingClientRect().right > viewport + 0.5 && !inScroller(el),
-        );
-        /* The deepest ones, so a failure names the thing to fix. */
-        const leaves = wide.filter(
-          (el) => !wide.some((other) => other !== el && el.contains(other)),
-        );
-
-        /* A page with a component header must have the import snippet, its Copy
-         button and its <pre>. Otherwise a renamed class would leave nothing
-         to measure, and the check would pass having checked nothing. */
-        const header = document.querySelector('.component-header');
-        const snippet = header?.querySelector('.code-block');
-        const buttonEl = snippet?.querySelector<HTMLElement>('.code-block__copy');
-        const pre = snippet?.querySelector('pre');
-        const markupMissing = Boolean(header) && !(buttonEl && pre);
-
-        /* Both labels: the button reads "Copied" for two seconds after a click,
-         and that label is the wider one. */
-        const coveredText: string[] = [];
-        for (const label of buttonEl && pre ? ['Copy', 'Copied'] : []) {
-          if (!buttonEl || !pre) {
-            continue; // narrows for TypeScript; the ternary above already ruled this out
-          }
-          buttonEl.textContent = label;
-          const button = buttonEl.getBoundingClientRect();
-          const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
-          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-            if (!node.textContent?.trim()) {
-              continue;
-            }
-            const range = document.createRange();
-            range.selectNodeContents(node);
-            const hit = [...range.getClientRects()].some(
-              (box) =>
-                box.right > button.left &&
-                box.left < button.right &&
-                box.bottom > button.top &&
-                box.top < button.bottom,
-            );
-            if (hit) {
-              coveredText.push(`${label}: ${node.textContent.trim()}`);
-            }
-          }
-        }
-
-        return {
-          scrollWidth: document.documentElement.scrollWidth,
-          innerWidth: viewport,
-          culprits: leaves.slice(0, 5).map((el) => {
-            const right = Math.round(el.getBoundingClientRect().right);
-            const text = (el.textContent ?? '').trim().slice(0, 60);
-            return `<${el.tagName.toLowerCase()} class="${el.getAttribute('class') ?? ''}"> ends at ${right}px: ${text}`;
-          }),
-          covered: coveredText,
-          markupMissing,
-        };
-      },
-    );
-
+    const { scrollWidth, innerWidth, culprits } = await page.evaluate(measureOverflow);
     if (KNOWN_OVERFLOW.has(route)) {
       expect(
         scrollWidth,
@@ -133,7 +145,14 @@ for (const route of reflowRoutes) {
       ).toBeLessThanOrEqual(innerWidth);
     }
 
-    expect(markupMissing, `${route} has a component header without its import snippet`).toBe(false);
-    expect(covered, `the Copy button covers import-line text on ${route}`).toEqual([]);
+    expect(
+      await page.evaluate(snippetMissing),
+      `${route} has a component header without its import snippet`,
+    ).toBe(false);
+
+    expect(
+      await page.evaluate(textUnderCopyButton),
+      `the Copy button covers import-line text on ${route}`,
+    ).toEqual([]);
   });
 }

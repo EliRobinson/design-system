@@ -20,6 +20,12 @@ function collectSpecs(node, out = []) {
   return out;
 }
 
+/* A failed test that a baseline could fix: it failed, and its project takes
+   screenshots. Shared by failedTitles and failedBaselines so the two agree. */
+function failedWithBaseline(test) {
+  return test.status === 'unexpected' && !NO_BASELINE_PROJECTS.has(test.projectName);
+}
+
 /**
  * Titles of every spec that did not pass. De-duplicated across projects.
  *
@@ -35,12 +41,7 @@ export function failedTitles(report, { baselinedOnly = false } = {}) {
     if (spec.ok !== false) {
       continue;
     }
-    const counts =
-      !baselinedOnly ||
-      (spec.tests ?? []).some(
-        (test) => test.status === 'unexpected' && !NO_BASELINE_PROJECTS.has(test.projectName),
-      );
-    if (counts) {
+    if (!baselinedOnly || (spec.tests ?? []).some(failedWithBaseline)) {
       failed.add(spec.title);
     }
   }
@@ -57,8 +58,8 @@ export function failedTitles(report, { baselinedOnly = false } = {}) {
  * test's own `status`.
  *
  * `unbaselined` is the failures that no baseline can fix — a test in a
- * NO_BASELINE_PROJECTS project takes no screenshot at all. A caller must refuse to accept while it is non-empty:
- * committing the other baselines would turn a red run green with one of its
+ * NO_BASELINE_PROJECTS project takes no screenshot at all. A caller must
+ * refuse to accept while it is non-empty: committing the other baselines would turn a red run green with one of its
  * failures still standing.
  */
 export function failedBaselines(report) {
@@ -70,11 +71,11 @@ export function failedBaselines(report) {
       if (test.status !== 'unexpected') {
         continue;
       }
-      if (NO_BASELINE_PROJECTS.has(test.projectName)) {
+      if (failedWithBaseline(test)) {
+        failing.push({ title: spec.title, tests: [test] });
+      } else {
         unbaselined.push(`${test.projectName}: ${spec.title}`);
-        continue;
       }
-      failing.push({ title: spec.title, tests: [test] });
     }
   }
 
@@ -128,13 +129,14 @@ export function failuresByProject(report) {
     .sort((a, b) => b.shots - a.shots || a.project.localeCompare(b.project));
 }
 
-/* CLI: these modes.
+/* CLI modes:
      node visual-failures.mjs <report.json>              a --grep pattern
      node visual-failures.mjs --plain <report.json>       plain titles, one per line
-       add --baselined to either: only titles that failed in a project with baselines
      node visual-failures.mjs --by-project <report.json>  "<project>\t<count>" rows
      node visual-failures.mjs --baselines <report.json>   failing shots' baseline paths, one per line;
                                                           exits 1 naming any failure no baseline can fix
+   Add --baselined-only to the first two modes to keep only titles that failed in a
+   project with baselines.
    Every one of them prints nothing at all when nothing failed, so a workflow
    step can test the output for emptiness rather than parsing it.
 
@@ -178,7 +180,7 @@ if (isEntrypoint) {
     process.exit(0);
   }
 
-  const titles = failedTitles(report, { baselinedOnly: args.includes('--baselined') });
+  const titles = failedTitles(report, { baselinedOnly: args.includes('--baselined-only') });
 
   if (plain) {
     const output = formatPlain(titles);
