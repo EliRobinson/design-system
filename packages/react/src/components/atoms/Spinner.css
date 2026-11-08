@@ -39,8 +39,10 @@
    moving, but only in opacity, which carries no sense of travel.
 
    `!important` because the clamp sets the duration with `!important`; at class
-   specificity this beats the clamp's `*` and nothing else. It is the one place
-   a component needs it. */
+   specificity this beats the clamp's `*` and nothing else. That holds with
+   tokens.css imported unlayered, as documented. A consumer who wraps tokens.css
+   in a cascade layer flips it: layered `!important` beats unlayered, so the
+   clamp wins again and the pulse is squeezed to 0.01ms. */
 @media (prefers-reduced-motion: reduce) {
   .ds-spinner {
     animation: ds-spinner-pulse calc(var(--dur-slow) * 4) var(--ease-in-out) infinite !important;

@@ -17,7 +17,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 /* Reached through the exports map, for the reason component-css.test.mjs gives. */
 import { TOKENS_SRC_DIR } from '@elirobinson/tokens/token-stylesheets';
@@ -150,16 +150,24 @@ async function sample(reducedMotion) {
 /** Seconds, from a computed `animation-duration` like `1.68s` or `1e-05s`. */
 const seconds = (duration) => Number.parseFloat(duration);
 
+/* One sample per preference, shared by the cases below. Each sample loads a
+   page and reads for two seconds, which does not fit Vitest's 5s per-test
+   default on a loaded runner, so it runs in a hook with the browser budget. */
 describeBrowser('the Spinner under prefers-reduced-motion: reduce', () => {
-  it('does not rotate', async () => {
-    const { readings } = await sample('reduce');
+  let reduced;
+  beforeAll(async () => {
+    reduced = await sample('reduce');
+  }, BROWSER_BUDGET);
 
+  it('does not rotate', () => {
     // Every sample, not most of them. The bug was 1 jump in 8 frozen frames.
-    expect(readings.map((reading) => reading.transform)).toEqual(readings.map(() => 'none'));
+    expect(reduced.readings.map((reading) => reading.transform)).toEqual(
+      reduced.readings.map(() => 'none'),
+    );
   });
 
-  it('is not frozen: it pulses slowly enough to read as "still working"', async () => {
-    const { spinner, readings } = await sample('reduce');
+  it('is not frozen: it pulses slowly enough to read as "still working"', () => {
+    const { spinner, readings } = reduced;
 
     // The pulse runs at a calm pace, not at the global 0.01ms clamp.
     expect(spinner.iterations).toBe('infinite');
@@ -173,21 +181,24 @@ describeBrowser('the Spinner under prefers-reduced-motion: reduce', () => {
     expect(Math.max(...opacities)).toBeGreaterThan(0.9);
   });
 
-  it('leaves the global clamp in force for everything else', async () => {
-    const { skeleton, probe } = await sample('reduce');
+  it('leaves the global clamp in force for everything else', () => {
+    const { skeleton, probe } = reduced;
 
     expect(seconds(probe.duration)).toBeLessThan(0.001);
     expect(seconds(probe.transition)).toBeLessThan(0.001);
-    // Skeleton is a placeholder; freezing it is the accepted outcome (#332).
+    // Skeleton stays under the clamp; #332 accepts that for a placeholder.
     expect(seconds(skeleton.duration)).toBeLessThan(0.001);
   });
 });
 
 describeBrowser('the Spinner with no motion preference', () => {
-  it('still spins, so the reduced-motion block has not leaked out', async () => {
-    const { spinner, readings } = await sample('no-preference');
+  let normal;
+  beforeAll(async () => {
+    normal = await sample('no-preference');
+  }, BROWSER_BUDGET);
 
-    expect(spinner.name).toBe('ds-spin');
-    expect(new Set(readings.map((reading) => reading.transform)).size).toBeGreaterThan(10);
+  it('still spins, so the reduced-motion block has not leaked out', () => {
+    expect(normal.spinner.name).toBe('ds-spin');
+    expect(new Set(normal.readings.map((reading) => reading.transform)).size).toBeGreaterThan(10);
   });
 });
