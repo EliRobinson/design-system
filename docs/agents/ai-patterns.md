@@ -258,17 +258,31 @@ These files restate names the other packages own, so two suites keep them honest
   linted with `@elirobinson/eslint-config`. Table columns headed `Miltinson` or
   `HTML classes` are checked the same way, and a `Source px` column must map to the
   nearest token on that scale. An unlabelled block fails.
-- `upgrade-coverage.test.mjs` ties `upgrade.md` to the changelogs and to
-  `@elirobinson/tokens/migrations`, reading them with `src/resync/changelog.mjs`. Every
-  `### Major Changes` changeset, and every 0.x minor changeset whose text calls itself
-  breaking, needs a section for each package it ships in, or a per-package entry in
-  `NOT_BREAKING` with a reason. Every token migration needs exactly one section, except a
+- `upgrade-coverage.test.mjs` ties `upgrade.md` to the released changelogs, to the pending
+  `.changeset/*.md` files and to `@elirobinson/tokens/migrations`. The shared rules live in
+  `scripts/upgrade-coverage.mjs`. Every `major` changeset, and every 0.x `minor` changeset
+  whose text starts with `**Breaking:**`, needs a section for each package it bumps. The
+  word "breaking" anywhere else does not count. If one changeset breaks only some of the
+  packages it bumps, split it. Every token migration needs exactly one section, except a
   silent one (`report: "none"`): it renders the same and breaks nothing, so a section is
-  allowed but not required. A section naming a changeset that is not in that package's
-  changelog under that version fails.
-  Pending `.changeset/*.md` files are not read yet (#334).
+  allowed but not required. A section naming a change that is not there fails.
 
-So adding a breaking change means adding its section to `upgrade.md`, and the test says so.
+So adding a breaking change means adding its section to `upgrade.md` in the same PR, and
+the test says so. The change has no version or hash yet, so the section says:
+
+```md
+- Package: `@elirobinson/tokens`
+- Version: `pending`
+- Changeset: `brave-foxes-jump`
+```
+
+`brave-foxes-jump` is the changeset file name without `.md`. The root `changeset:version`
+script runs `scripts/stamp-upgrade.mjs` right after `changeset version`, and that swaps the
+pair for the released version and the changelog hash (the first 7 characters of the commit
+that added the changeset file, as Changesets writes it). So the release commit lands with
+every section released, and `main` stays green. A pending section with a `Token migration`
+line is checked against the version the release will give it. `scripts/upgrade-coverage.test.mjs`
+runs the whole path, from PR to release, in a scratch repo with the real `changeset version`.
 
 ## Agent templates
 
