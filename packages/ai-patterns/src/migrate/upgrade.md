@@ -410,3 +410,82 @@ import '@elirobinson/react/styles/molecules/DecisionCard.css';
 ```
 
 If you import `@elirobinson/react/styles.css`, only the component import changes.
+
+## tokens-1-container-sm-is-shell-sm
+
+- Package: `@elirobinson/tokens`
+- Version: `pending`
+- Changeset: `shell-widths-rename`
+- Token migration: `container-sm-is-shell-sm`
+- Find: `--container-sm`, and Tailwind `max-w-sm` (or `w-`, `min-w-`, `basis-`, `inline-`, `columns-`)
+
+`ds-resync migrate` rewrites the token for you. The page widths `--container-sm` …
+`--container-2xl` are now `--shell-sm` … `--shell-2xl`, with the same values. The old
+names were Tailwind v4's own, and `tokens.css` declared them outside any layer, so they
+replaced Tailwind's: `max-w-md` was 768px, not 448px. This section and the four after it
+are the same change, one per size.
+
+`var(--container-*)` always meant the design system's width, so the rename renders the
+same. The part the command cannot do is the Tailwind utilities. After the upgrade,
+`max-w-sm` … `max-w-2xl` get Tailwind's sizes back (24rem, 28rem, 32rem, 36rem, 42rem).
+Where one meant the design system's width, name the shell. `pnpm ds check` on the old
+install lists every such utility.
+
+```jsx before
+<main className="mx-auto max-w-md">
+  <section style={{ maxWidth: 'var(--container-xl)' }}>Pricing</section>
+</main>
+```
+
+```jsx after
+<main className="mx-auto max-w-(--shell-md)">
+  <section style={{ maxWidth: 'var(--shell-xl)' }}>Pricing</section>
+</main>
+```
+
+`@elirobinson/tokens/tokens.json` renames the same five keys: `containerSm` …
+`container2xl` are now `shellSm` … `shell2xl`.
+
+## tokens-1-container-md-is-shell-md
+
+- Package: `@elirobinson/tokens`
+- Version: `pending`
+- Changeset: `shell-widths-rename`
+- Token migration: `container-md-is-shell-md`
+- Find: `--container-md`, and Tailwind `max-w-md` (or `w-`, `min-w-`, `basis-`, `inline-`, `columns-`)
+
+The `tokens-1-container-sm-is-shell-sm` change, for `--container-md`: it is now
+`--shell-md`, and Tailwind's `max-w-md` is Tailwind's size again.
+
+## tokens-1-container-lg-is-shell-lg
+
+- Package: `@elirobinson/tokens`
+- Version: `pending`
+- Changeset: `shell-widths-rename`
+- Token migration: `container-lg-is-shell-lg`
+- Find: `--container-lg`, and Tailwind `max-w-lg` (or `w-`, `min-w-`, `basis-`, `inline-`, `columns-`)
+
+The `tokens-1-container-sm-is-shell-sm` change, for `--container-lg`: it is now
+`--shell-lg`, and Tailwind's `max-w-lg` is Tailwind's size again.
+
+## tokens-1-container-xl-is-shell-xl
+
+- Package: `@elirobinson/tokens`
+- Version: `pending`
+- Changeset: `shell-widths-rename`
+- Token migration: `container-xl-is-shell-xl`
+- Find: `--container-xl`, and Tailwind `max-w-xl` (or `w-`, `min-w-`, `basis-`, `inline-`, `columns-`)
+
+The `tokens-1-container-sm-is-shell-sm` change, for `--container-xl`: it is now
+`--shell-xl`, and Tailwind's `max-w-xl` is Tailwind's size again.
+
+## tokens-1-container-2xl-is-shell-2xl
+
+- Package: `@elirobinson/tokens`
+- Version: `pending`
+- Changeset: `shell-widths-rename`
+- Token migration: `container-2xl-is-shell-2xl`
+- Find: `--container-2xl`, and Tailwind `max-w-2xl` (or `w-`, `min-w-`, `basis-`, `inline-`, `columns-`)
+
+The `tokens-1-container-sm-is-shell-sm` change, for `--container-2xl`: it is now
+`--shell-2xl`, and Tailwind's `max-w-2xl` is Tailwind's size again.

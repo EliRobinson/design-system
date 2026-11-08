@@ -1,0 +1,10 @@
+/* The shell widths as @elirobinson/tokens declared them before 1.0.0 (#250):
+   unlayered, under Tailwind v4's own --container-* names. ds check still
+   flags an app on an install like this one. */
+:root {
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1440px;
+}

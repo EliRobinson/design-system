@@ -112,8 +112,8 @@ so `p-4`, `gap-6` and friends stay. The lint rule allows them. Fix these:
 
 - An arbitrary value (`p-[13px]`, `mt-[22px]`). Snap it to the nearest step in the table
   below (23px is `p-6`).
-- An arbitrary width cap (`max-w-[720px]`). Use the nearest `--container-*` token:
-  `max-w-(--container-md)`.
+- An arbitrary width cap (`max-w-[720px]`). Use the nearest `--shell-*` token:
+  `max-w-(--shell-md)`.
 - Spacing in your own CSS. Use the `--space-*` token there.
 
 | Tailwind (before) | Source px | Miltinson    |

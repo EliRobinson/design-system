@@ -205,7 +205,7 @@ synergy, leverage, unlock, empower, robust, cutting-edge, revolutionary, world-c
 
 ### Layout rules
 
-- **Max content width:** 1280px (`--container-xl`). Editorial body copy clamps tighter at 720px (`--container-md`) for readability.
+- **Max content width:** 1280px (`--shell-xl`). Editorial body copy clamps tighter at 720px (`--shell-md`) for readability.
 - **Sticky header** (h: 64px). Stays visible.
 - **Footer** is pure ink (`--ink-1000`), white type, mono micro-copy.
 - **Asymmetric grids** are encouraged. 7–5, 8–4 splits beat 6–6.

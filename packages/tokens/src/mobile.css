@@ -27,7 +27,7 @@
    regardless of source order.
 
    Only the tokens listed below are redeclared. --radius-none, --radius-pill
-   and --container-lg upward are deliberately absent: they inherit from
+   and --shell-lg upward are deliberately absent: they inherit from
    tokens.css, and a value repeated here is a value that has to be kept in step
    with two files.
    ------------------------------------------------------------------------- */
@@ -64,13 +64,13 @@
      viewport can afford. */
   --gutter: 16px;
 
-  /* Fluid shells at the small end. --container-sm and --container-md are fixed
+  /* Fluid shells at the small end. --shell-sm and --shell-md are fixed
      640px and 768px, both wider than a 390px viewport, so a shell built on
      either overflows and the page scrolls sideways. At 100% they are the
-     gutter's job to inset. --container-lg and up are untouched: nothing that
+     gutter's job to inset. --shell-lg and up are untouched: nothing that
      asks for a 1024px shell is being laid out for a phone. */
-  --container-sm: 100%;
-  --container-md: 100%;
+  --shell-sm: 100%;
+  --shell-md: 100%;
 }
 
 /* --- Breakpoint fallback -------------------------------------------------
@@ -107,7 +107,7 @@
 
     --gutter: 16px;
 
-    --container-sm: 100%;
-    --container-md: 100%;
+    --shell-sm: 100%;
+    --shell-md: 100%;
   }
 }

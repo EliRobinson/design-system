@@ -63,7 +63,7 @@ const TYPE_GROUPS = [
    First match wins. These are the artifact type's sections, not the published
    tokens.json groups, so they are not shared with tokens-json.mjs. */
 const FAMILY_RULES = [
-  ['spacing', /^(container-|target|tr-|space-|anchored-)/],
+  ['spacing', /^(shell-|target|tr-|space-|anchored-)/],
   ['spacing', { test: isFocusRingGeometry }],
   ['radius', /^radius-/],
   ['shadow', /^shadow-/],

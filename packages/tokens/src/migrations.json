@@ -146,6 +146,61 @@
       "report": "none",
       "reason": "--shadow-focus is built from the new --focus-ring-offset and --focus-ring-width tokens instead of literal 2px and 4px. Both are 2px, so the ring is the same 2px --bg gap and 2px --focus-ring band it was.",
       "guidance": "No action, and nothing is reported. To change the ring, set --focus-ring-width or --focus-ring-offset on :root."
+    },
+    {
+      "id": "container-sm-is-shell-sm",
+      "since": "1.0.0",
+      "kind": "rename",
+      "from": ["--container-sm"],
+      "to": "--shell-sm",
+      "when": {},
+      "report": "occurrence",
+      "reason": "--container-sm shared its name with Tailwind v4's own --container-sm, so tokens.css silently resized Tailwind's max-w-sm and friends (#250). The design system's page widths are now --shell-*, and Tailwind's names are Tailwind's again. The value is the same.",
+      "guidance": "A straight rename. var(--container-sm) already resolved to the design system's width, so var(--shell-sm) renders the same."
+    },
+    {
+      "id": "container-md-is-shell-md",
+      "since": "1.0.0",
+      "kind": "rename",
+      "from": ["--container-md"],
+      "to": "--shell-md",
+      "when": {},
+      "report": "occurrence",
+      "reason": "--container-md shared its name with Tailwind v4's own --container-md, so tokens.css silently resized Tailwind's max-w-md and friends (#250). The design system's page widths are now --shell-*, and Tailwind's names are Tailwind's again. The value is the same.",
+      "guidance": "A straight rename. var(--container-md) already resolved to the design system's width, so var(--shell-md) renders the same."
+    },
+    {
+      "id": "container-lg-is-shell-lg",
+      "since": "1.0.0",
+      "kind": "rename",
+      "from": ["--container-lg"],
+      "to": "--shell-lg",
+      "when": {},
+      "report": "occurrence",
+      "reason": "--container-lg shared its name with Tailwind v4's own --container-lg, so tokens.css silently resized Tailwind's max-w-lg and friends (#250). The design system's page widths are now --shell-*, and Tailwind's names are Tailwind's again. The value is the same.",
+      "guidance": "A straight rename. var(--container-lg) already resolved to the design system's width, so var(--shell-lg) renders the same."
+    },
+    {
+      "id": "container-xl-is-shell-xl",
+      "since": "1.0.0",
+      "kind": "rename",
+      "from": ["--container-xl"],
+      "to": "--shell-xl",
+      "when": {},
+      "report": "occurrence",
+      "reason": "--container-xl shared its name with Tailwind v4's own --container-xl, so tokens.css silently resized Tailwind's max-w-xl and friends (#250). The design system's page widths are now --shell-*, and Tailwind's names are Tailwind's again. The value is the same.",
+      "guidance": "A straight rename. var(--container-xl) already resolved to the design system's width, so var(--shell-xl) renders the same."
+    },
+    {
+      "id": "container-2xl-is-shell-2xl",
+      "since": "1.0.0",
+      "kind": "rename",
+      "from": ["--container-2xl"],
+      "to": "--shell-2xl",
+      "when": {},
+      "report": "occurrence",
+      "reason": "--container-2xl shared its name with Tailwind v4's own --container-2xl, so tokens.css silently resized Tailwind's max-w-2xl and friends (#250). The design system's page widths are now --shell-*, and Tailwind's names are Tailwind's again. The value is the same.",
+      "guidance": "A straight rename. var(--container-2xl) already resolved to the design system's width, so var(--shell-2xl) renders the same."
     }
   ]
 }

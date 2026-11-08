@@ -151,7 +151,7 @@ describe('shape', () => {
     expect(json.color.chart.grid).toBe('var(--border-strong)');
   });
 
-  it('files hit areas and safe-area insets as layout, next to the containers', () => {
+  it('files hit areas and safe-area insets as layout, next to the shell widths', () => {
     // They name controls but they are lengths a component reads for min-height
     // and padding, exactly as --gutter is.
     expect(json.layout.target).toBe('44px');

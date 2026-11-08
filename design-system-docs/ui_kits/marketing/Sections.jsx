@@ -32,7 +32,7 @@ const {
 const page = KIT_CONTENT.marketing;
 
 const section = (extra) => ({
-  maxWidth: 'var(--container-xl)',
+  maxWidth: 'var(--shell-xl)',
   margin: '0 auto',
   padding: 'var(--space-12) var(--space-7)',
   boxSizing: 'border-box',
@@ -204,7 +204,7 @@ function ServicesBand() {
 function Questions() {
   const copy = page.faq;
   return (
-    <section style={section({ ...column(6), maxWidth: 'var(--container-md)', paddingTop: 0 })}>
+    <section style={section({ ...column(6), maxWidth: 'var(--shell-md)', paddingTop: 0 })}>
       <h2 className="t-h2" style={{ margin: 0 }}>
         {copy.heading}
       </h2>

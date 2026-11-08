@@ -47,13 +47,13 @@
 }
 
 /* Editorial measure, not full-bleed. Assistant answers are prose, and prose
-   over 1280px is unreadable — --container-md is the same 768px clamp the docs
+   over 1280px is unreadable — --shell-md is the same 768px clamp the docs
    reader and the marketing body copy use. */
 .ds-ai-conversation__content {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
-  max-width: var(--container-md);
+  max-width: var(--shell-md);
   margin-inline: auto;
   padding: var(--space-7) var(--gutter) var(--space-9);
   width: 100%;

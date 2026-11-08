@@ -42,6 +42,9 @@ export const PREFLIGHT_CASES = [
      app.css names this id in a `:root:has()` selector, because the override
      must be an unlayered :root rule. Rename it there too. */
   { id: 'font-override', issues: [34] },
+  /* #250: tokens.css declared its shell widths unlayered as --container-*,
+     Tailwind v4's own names, so `max-w-md` was 768px instead of 448px. */
+  { id: 'shell-widths', issues: [250] },
 ] as const satisfies readonly PreflightCase[];
 
 export type PreflightCaseId = (typeof PREFLIGHT_CASES)[number]['id'];

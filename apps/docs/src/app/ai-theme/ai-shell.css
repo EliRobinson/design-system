@@ -49,7 +49,7 @@
 
 .ds-ai-shell__composer > * {
   margin-inline: auto;
-  max-inline-size: var(--container-md);
+  max-inline-size: var(--shell-md);
 }
 
 /* ==========================================================================
@@ -421,7 +421,7 @@
   flex-direction: column;
   gap: var(--space-5);
   margin-inline: auto;
-  max-inline-size: var(--container-md);
+  max-inline-size: var(--shell-md);
   padding: var(--space-10) var(--gutter) var(--space-7);
   width: 100%;
 }

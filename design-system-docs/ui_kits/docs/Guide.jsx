@@ -10,7 +10,7 @@
    publishes onto window for the inline script in index.html. */
 /*
  * A long-form guide page: a sticky table of contents beside a reading column held to
- * --container-md. The callout, tabs, questions and pager are @elirobinson/react
+ * --shell-md. The callout, tabs, questions and pager are @elirobinson/react
  * components; the prose is plain elements on the type classes.
  */
 
@@ -126,7 +126,7 @@ function SamplePlan() {
 function Article() {
   const [page, setPage] = React.useState(article.page);
   return (
-    <article style={{ ...column(7), maxWidth: 'var(--container-md)', minWidth: 0 }}>
+    <article style={{ ...column(7), maxWidth: 'var(--shell-md)', minWidth: 0 }}>
       <div style={column(4)}>
         <Eyebrow>{article.eyebrow}</Eyebrow>
         <h1 className="t-display-2" style={prose}>
@@ -246,7 +246,7 @@ function GuidePage() {
       <GuideHeader />
       <div
         style={{
-          maxWidth: 'var(--container-xl)',
+          maxWidth: 'var(--shell-xl)',
           margin: '0 auto',
           padding: 'var(--space-9) var(--space-7)',
           display: 'grid',

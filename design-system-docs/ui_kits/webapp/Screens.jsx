@@ -362,7 +362,7 @@ function AssistantScreen() {
         <SearchField placeholder={copy.searchChats} aria-label={copy.searchChats} />
         <NavigationMenu aria-label={copy.threadsLabel} items={copy.threads} currentPath="#/assistant" />
       </div>
-      <div style={{ ...column(4), flex: '1 1 480px', minWidth: 0, maxWidth: 'var(--container-md)' }}>
+      <div style={{ ...column(4), flex: '1 1 480px', minWidth: 0, maxWidth: 'var(--shell-md)' }}>
         <div style={{ ...cluster(3), justifyContent: 'space-between' }}>
           <h1 className="t-h4" style={{ margin: 0 }}>
             {copy.heading}

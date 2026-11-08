@@ -35,7 +35,7 @@
 import { isFocusRingGeometry } from './contrast.mjs';
 import { effectiveTokens, parseTokensCss } from './parse-tokens-css.mjs';
 
-/** `--accent-hover` -> `accentHover`, `--container-2xl` -> `container2xl`. */
+/** `--accent-hover` -> `accentHover`, `--shell-2xl` -> `shell2xl`. */
 function camel(name) {
   return name
     .replace(/^--/, '')
@@ -137,7 +137,7 @@ const GROUPS = [
      length a component reads for min-height, exactly as --gutter is one it
      reads for padding. */
   {
-    match: /^--(container-|gutter$|target$|target-|safe-)/,
+    match: /^--(shell-|gutter$|target$|target-|safe-)/,
     path: (name) => ['layout', camel(name)],
   },
 ];
