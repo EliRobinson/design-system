@@ -81,3 +81,31 @@
 .ds-ai-model-list {
   --anchored-min-width: 180px;
 }
+
+/* ==========================================================================
+   The shell width the handoff names --container-md (#250)
+   --------------------------------------------------------------------------
+   WHAT IS WRONG WITHOUT THIS
+
+   Three rules in `app/ai-theme/` clamp to `var(--container-md)`, the 768px
+   editorial measure. @elirobinson/tokens 1.0.0 renamed that token
+   `--shell-md`, because `--container-md` is Tailwind v4's own name. This app
+   loads Tailwind, so the old name still resolves, to Tailwind's 28rem: the
+   conversation, the composer and the greeting would shrink to 448px with no
+   warning.
+
+   Each rule below is the handoff's, with the new name. The handoff still says
+   --container-md, so this stays until a drop carries the rename.
+   ========================================================================== */
+
+.ds-ai-conversation__content {
+  max-width: var(--shell-md);
+}
+
+.ds-ai-shell__composer > * {
+  max-inline-size: var(--shell-md);
+}
+
+.ds-ai-greeting {
+  max-inline-size: var(--shell-md);
+}

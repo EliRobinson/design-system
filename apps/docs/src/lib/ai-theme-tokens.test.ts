@@ -33,12 +33,27 @@ for (const css of [
   for (const m of css.matchAll(/(--[\w-]+)\s*:/g)) declared.add(m[1]);
 }
 
+/* Names the handoff still reads that tokens renamed. Each rule that reads one
+   is re-asserted with the new name in the fixups file; the test below checks
+   the fixups file really carries the new name. Remove a row when a drop
+   carries the rename. */
+const RENAMED: Record<string, string> = {
+  '--container-md': '--shell-md', // #250, tokens 1.0.0
+};
+
 describe('ai-theme custom properties', () => {
+  it.each(Object.entries(RENAMED))('%s is re-asserted as %s in the fixups', (_old, now) => {
+    expect(read(FIXUPS)).toContain(`var(${now})`);
+    expect(declared.has(now)).toBe(true);
+  });
+
   it.each(themeFiles)('%s reads only declared tokens', (file) => {
     const css = read(join(THEME_DIR, file));
     /* `var(--x, fallback)` is safe by construction: it names its own floor. */
     const unguarded = [...css.matchAll(/var\(\s*(--[\w-]+)\s*\)/g)].map((m) => m[1]);
-    const missing = [...new Set(unguarded)].filter((name) => !declared.has(name));
+    const missing = [...new Set(unguarded)].filter(
+      (name) => !declared.has(name) && !(name in RENAMED),
+    );
     expect(missing).toEqual([]);
   });
 });
