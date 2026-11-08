@@ -62,7 +62,7 @@ const TYPE_GROUPS = [
    First match wins. These are the artifact type's sections, not the published
    tokens.json groups, so they are not shared with tokens-json.mjs. */
 const FAMILY_RULES = [
-  ['spacing', /^(container-|target|tr-|space-|anchored-)/],
+  ['spacing', /^(container-|target|tr-|space-|anchored-|focus-ring-(width|offset)$)/],
   ['radius', /^radius-/],
   ['shadow', /^shadow-/],
   ['motion', /^(ease-|dur-)/],
@@ -71,8 +71,9 @@ const FAMILY_RULES = [
   ['lineHeight', /^lh-/],
   ['fontWeight', /^fw-/],
 ];
+/* The lookahead keeps the focus ring's two lengths out: same prefix, not colours. */
 const COLOUR_NAME =
-  /^(signal|anchor|accent|focus|link|status|chart|ink|bg|surface|border|fg|scrim)/;
+  /^(?!focus-ring-(width|offset)$)(signal|anchor|accent|focus|link|status|chart|ink|bg|surface|border|fg|scrim)/;
 const FONT_KEYS = ['sans', 'display', 'mono'];
 /* tokens.json has no grammar for these values, so bundle.css declares them. */
 const NOT_IN_JSON = [
