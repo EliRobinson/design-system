@@ -21,7 +21,7 @@ Miltinson Design System monorepo — publishes `@elirobinson/tokens`, `@elirobin
 ## Do not
 
 - Do not open a PR before the review gate runs. Use the `review-gate` skill (`.agents/skills/review-gate/SKILL.md`). A hook enforces it.
-- Do not commit on `main`.
+- Do not commit on `main`, and do not edit files in the main checkout. Every change, even a one-line doc fix, goes in its own worktree on a feature branch cut from `origin/main`. See [Parallel agents](docs/agents/parallel-agents.md).
 - Do not bypass hooks (`--no-verify`).
 - Do not use Fable for any agent. Use Opus, Sonnet or Haiku, and always pass `model`.
 - Do not edit files another agent owns.
