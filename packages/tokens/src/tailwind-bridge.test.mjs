@@ -138,3 +138,26 @@ describe('tailwind.css: dark: follows the theme dial, not the operating system',
     },
   );
 });
+
+/* `var()` in a custom property resolves on the element that declares it, and
+   descendants inherit the result. Declared on :root alone, `--ds-shadow-sm`
+   is fixed to <html>'s theme, so a `data-theme="dark"` subtree on a light page
+   kept light Tailwind shadows: black on black, the #255 bug through the bridge.
+   The alias block is re-declared wherever a theme can be set, so it re-reads
+   the token there. */
+describe('tailwind.css: the --ds-* aliases re-resolve inside a themed subtree', () => {
+  const head = code
+    .match(/^(:root\b[^{]*)\{/m)?.[1]
+    .split(',')
+    .map((part) => part.trim());
+
+  it.each([':root', '[data-theme]', '.dark'])('the alias block is declared on %s', (selector) => {
+    expect(head).toContain(selector);
+  });
+
+  it('declares the shadow aliases in that block', () => {
+    expect(bridgeLocals.map((local) => local.name)).toEqual(
+      expect.arrayContaining(['--ds-shadow-xs', '--ds-shadow-sm', '--ds-shadow-xl']),
+    );
+  });
+});

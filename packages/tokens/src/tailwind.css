@@ -96,7 +96,14 @@
    descendant. */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *, .dark, .dark *));
 
-:root {
+/* Declared on every element that can set a theme, not on :root alone. A
+   `var()` here resolves where it is declared and is inherited as a value, so
+   on :root alone `--ds-shadow-*` kept <html>'s theme inside a
+   `data-theme="dark"` subtree (#255). The other aliases resolve the same in
+   every theme, so re-declaring them is harmless. */
+:root,
+[data-theme],
+.dark {
   /* Cycle-breaking aliases. See note 2 above. */
   --ds-radius-none: var(--radius-none);
   --ds-radius-xs: var(--radius-xs);

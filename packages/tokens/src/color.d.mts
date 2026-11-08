@@ -11,6 +11,8 @@ export type AaVerdict = 'AA' | 'AA large only' | 'fails AA';
 
 export declare function parseColor(value: string): Rgb | null;
 
+export declare function colorsIn(value: string): string[];
+
 export declare function toHex(value: string): string | null;
 
 export declare function contrastRatio(foreground: string, background: string): number | null;
