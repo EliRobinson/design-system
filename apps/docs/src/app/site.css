@@ -359,12 +359,17 @@
 
 /* --- Code blocks --------------------------------------------------------- */
 
-.code-block {
-  /* Where the Copy button sits, and the room it needs. The component header's
-     import line reserves a column from these two, so they live in one place.
-     The reserve holds the wider label: "Copied" measures ~66px. */
+/* Where every Copy button sits, and the room it needs. On :root, not
+   .code-block, because the button is also used outside a code block (the
+   prompt template's bar). The component header's import line reserves a
+   column from these two, so they live in one place. The reserve holds the
+   wider label: "Copied" measures ~66px. */
+:root {
   --code-block-copy-inset: var(--space-2);
   --code-block-copy-reserve: calc(var(--space-10) + var(--space-2));
+}
+
+.code-block {
   position: relative;
   margin: 0 0 var(--space-5);
 }
