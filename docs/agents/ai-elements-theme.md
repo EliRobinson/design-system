@@ -150,9 +150,6 @@ against `--bg` in both themes and every palette and record it — do not invent 
   internally and exposes no `className` for it, so the badge keeps its `secondary` variant
   (`--bg-muted` / `--fg`, 19.5:1). It already renders all three channels, so this is a
   styling gap and not an accessibility one.
-- **`.ds-ai-model-list` uses `--anchored-min-width`,** which in the handoff's source project
-  was a global token. Here it is declared locally on `.ds-dropdown__content` in
-  `packages/react`, so that one `min-inline-size` resolves to nothing.
 - **The vendored `Canvas` paints `bgColor="var(--sidebar)"`** — the bare name, which neither
   bridge declares (the handoff's bare-names list omits sidebar on purpose). It resolves to
   nothing; `.ds-ai-canvas` paints its own background, so the visible result is correct.
