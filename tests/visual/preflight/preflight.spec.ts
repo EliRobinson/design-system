@@ -70,7 +70,8 @@ async function expectCentredModal(page: Page) {
     throw new Error('The modal has no box, or the page has no viewport.');
   }
 
-  /* Under the bug both offsets are 0: the box is pinned to the top-left. */
+  /* Under the bug the box is pinned to the top-left, so each offset is half
+     the free space: 400px across at the 1280px viewport. */
   expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThanOrEqual(1);
   expect(Math.abs(box.y + box.height / 2 - viewport.height / 2)).toBeLessThanOrEqual(1);
 }
