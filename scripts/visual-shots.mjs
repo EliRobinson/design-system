@@ -16,7 +16,7 @@ import { execFileSync } from 'node:child_process';
    test, but both sweeps register their tests from inside visual-sweep.mjs, so
    the JSON listing attributes them to that file instead. The project name is
    what actually distinguishes them, and the mapping is fixed by
-   playwright.config.ts. `smoke` is absent deliberately: it takes no baselines. */
+   playwright.config.ts. The NO_BASELINE_PROJECTS are absent deliberately. */
 export const SPEC_FILE_BY_PROJECT = {
   'storybook-wide': 'storybook/storybook.spec.ts',
   'storybook-narrow': 'storybook/storybook.spec.ts',
@@ -24,6 +24,13 @@ export const SPEC_FILE_BY_PROJECT = {
   'docs-narrow': 'docs/docs.spec.ts',
   'preflight-wide': 'preflight/preflight.spec.ts',
 };
+
+/* Projects that take no screenshot, so have nothing to select, mint or
+   regenerate: `smoke` checks the determinism settings, and `docs-reflow`
+   measures each component page's width at 320px (#331). A failure in one of
+   them is a failure no baseline can fix — see failedBaselines in
+   visual-failures.mjs. */
+export const NO_BASELINE_PROJECTS = new Set(['smoke', 'docs-reflow']);
 
 const TEST_DIR = 'tests/visual';
 const TITLE_SEPARATOR = ' · ';
@@ -59,7 +66,7 @@ export function parseShots(listJson) {
       const project = test.projectName;
 
       /* Takes no baselines, so it has nothing to select or regenerate. */
-      if (project === 'smoke') {
+      if (NO_BASELINE_PROJECTS.has(project)) {
         continue;
       }
 

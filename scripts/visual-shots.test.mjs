@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { SPEC_FILE_BY_PROJECT, parseShots } from './visual-shots.mjs';
+import { NO_BASELINE_PROJECTS, SPEC_FILE_BY_PROJECT, parseShots } from './visual-shots.mjs';
 
 /* The shape Playwright emits: top-level suites carry `specs`, each spec has
    `tests` carrying `projectName`. Nested suites are possible, so parseShots
@@ -18,6 +18,13 @@ const listJson = {
       file: 'config.smoke.spec.ts',
       specs: [
         { title: 'refuses to update outside the container', tests: [{ projectName: 'smoke' }] },
+      ],
+    },
+    {
+      title: 'docs/reflow.spec.ts',
+      file: 'docs/reflow.spec.ts',
+      specs: [
+        { title: '/components/date-picker · reflow', tests: [{ projectName: 'docs-reflow' }] },
       ],
     },
     {
@@ -39,8 +46,15 @@ const listJson = {
 describe('parseShots', () => {
   const shots = parseShots(listJson);
 
-  it('drops the smoke project, which takes no baselines', () => {
-    expect(shots.some((shot) => shot.project === 'smoke')).toBe(false);
+  it('drops the projects that take no baselines', () => {
+    expect(shots.some((shot) => NO_BASELINE_PROJECTS.has(shot.project))).toBe(false);
+    expect(NO_BASELINE_PROJECTS).toEqual(new Set(['smoke', 'docs-reflow']));
+  });
+
+  it('does not read a reflow check as a shot of its route', () => {
+    /* Its title leads with the route so the scoper's route pattern selects it,
+       which makes it look like a page shot with the theme `reflow`. */
+    expect(shots.filter((shot) => shot.route === '/components/date-picker')).toHaveLength(1);
   });
 
   it('emits one shot per project per spec', () => {

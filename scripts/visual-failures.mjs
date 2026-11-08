@@ -8,7 +8,7 @@
 import { readFileSync, realpathSync } from 'node:fs';
 
 import { grepFor } from './visual-missing.mjs';
-import { parseShots } from './visual-shots.mjs';
+import { NO_BASELINE_PROJECTS, parseShots } from './visual-shots.mjs';
 
 function collectSpecs(node, out = []) {
   for (const spec of node.specs ?? []) {
@@ -41,8 +41,8 @@ export function failedTitles(report) {
  * writes exactly the baselines that failed, so the list is built from each
  * test's own `status`.
  *
- * `unbaselined` is the failures that no baseline can fix — a `smoke` test takes
- * no screenshot at all. A caller must refuse to accept while it is non-empty:
+ * `unbaselined` is the failures that no baseline can fix — a `smoke` or
+ * `docs-reflow` test takes no screenshot at all. A caller must refuse to accept while it is non-empty:
  * committing the other baselines would turn a red run green with one of its
  * failures still standing.
  */
@@ -55,7 +55,7 @@ export function failedBaselines(report) {
       if (test.status !== 'unexpected') {
         continue;
       }
-      if (test.projectName === 'smoke') {
+      if (NO_BASELINE_PROJECTS.has(test.projectName)) {
         unbaselined.push(`${test.projectName}: ${spec.title}`);
         continue;
       }

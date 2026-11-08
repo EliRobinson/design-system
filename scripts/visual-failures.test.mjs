@@ -199,6 +199,25 @@ describe('failedBaselines', () => {
     });
   });
 
+  it('reports a reflow check as a failure no baseline can fix', () => {
+    /* Its title is route-shaped. Read as a shot, it would map to a
+       `…-reflow.png` baseline that nothing writes, and accept would go green
+       with the page still too wide. */
+    const reflow = {
+      specs: [
+        {
+          title: '/components/pagination · reflow',
+          ok: false,
+          tests: [{ projectName: 'docs-reflow', status: 'unexpected' }],
+        },
+      ],
+    };
+    expect(failedBaselines(reflow)).toEqual({
+      paths: [],
+      unbaselined: ['docs-reflow: /components/pagination · reflow'],
+    });
+  });
+
   it('ignores a flaky test, which passed on its last attempt', () => {
     const flaky = {
       specs: [

@@ -115,3 +115,21 @@ export function isResponsiveChrome(name: string): boolean {
 export function isResponsiveRoute(route: string): boolean {
   return route.startsWith('/patterns/');
 }
+
+/** The width WCAG 1.4.10 Reflow names: 320 CSS px, the 1280px desktop at 400%
+ *  zoom. The `docs-reflow` project runs at it (#331). */
+export const REFLOW_VIEWPORT = Object.freeze({ width: 320, height: 640 });
+
+/** Pages the reflow check runs on: the components index and every component
+ *  page, read from the same route enumeration the shots use, so a new
+ *  component is checked without an edit here. */
+export function isReflowRoute(route: string): boolean {
+  return route === '/components' || route.startsWith('/components/');
+}
+
+/** `<route> · reflow`. The route and the shot separator lead, so the pull
+ *  request scoper's per-route pattern (`<route> · `) selects this check along
+ *  with the page's own shots. */
+export function reflowTitle(route: string): string {
+  return `${route} · reflow`;
+}

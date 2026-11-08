@@ -6,7 +6,7 @@ import {
   defineVisualConfig,
 } from '@elirobinson/ai-patterns/testing/visual-config';
 
-import { DOCS_APP_DIR, DOCS_PORT, DOCS_URL } from './tests/visual/docs/routes';
+import { DOCS_APP_DIR, DOCS_PORT, DOCS_URL, REFLOW_VIEWPORT } from './tests/visual/docs/routes';
 import {
   PREFLIGHT_HOST_DIR,
   PREFLIGHT_HOST_PORT,
@@ -118,6 +118,14 @@ export default defineConfig(
         name: 'preflight-wide',
         testMatch: /preflight\.spec\.ts$/,
         use: { viewport: WIDE_VIEWPORT },
+      },
+      /* WCAG 1.4.10 Reflow on every component page at 320px (#331). Measures
+         scrollWidth and takes no screenshot, so like `smoke` it has no
+         baselines — see NO_BASELINE_PROJECTS in scripts/visual-shots.mjs. */
+      {
+        name: 'docs-reflow',
+        testMatch: /reflow\.spec\.ts$/,
+        use: { viewport: REFLOW_VIEWPORT },
       },
     ],
   }),
