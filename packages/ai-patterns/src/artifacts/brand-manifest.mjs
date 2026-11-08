@@ -268,15 +268,18 @@ function shipsFor(path) {
   return { ships: false, shipReason: `BRAND_SOURCES does not list "${top}"` };
 }
 
-/** Top-level components a kit defines: `const PascalCase =` / `function PascalCase`. */
+/** The PascalCase names a kit publishes in its `Object.assign(window, { ... })`. */
 function kitComponents(root, sourcePaths) {
   const names = [];
   for (const path of sourcePaths) {
     const source = readFileSync(join(root, path), 'utf8');
-    for (const match of source.matchAll(
-      /^(?:export )?(?:function|const) ([A-Z][A-Za-z0-9]*)\s*[=(]/gm,
-    )) {
-      names.push(match[1]);
+    for (const [, list] of source.matchAll(/Object\.assign\(window, \{([^}]*)\}\)/g)) {
+      names.push(
+        ...list
+          .split(',')
+          .map((name) => name.trim())
+          .filter((name) => /^[A-Z][A-Za-z0-9]*$/.test(name)),
+      );
     }
   }
   return names;

@@ -12,20 +12,26 @@
  * which the kits load first. ds-bundle.css is react's component stylesheets,
  * inlined; the kits load the tokens themselves, before it.
  *
- * Nothing commits these two files. Every place the kits are served writes them
- * next to the kits it copies: the brand skill (build-artifacts.mjs), the docs
- * site (apps/docs/scripts/stage-brand.mjs) and the Design System artifact
- * (build-design-system-artifact.mjs). They come from react's dist/, so react
- * must be built first.
+ * Nothing commits these two files. The brand skill (build-artifacts.mjs) and the
+ * docs site (apps/docs/scripts/stage-brand.mjs) write them next to the kits they
+ * copy. The Design System artifact needs neither: its kit pages load the
+ * artifact's own components/bundle.* (design-system-artifact/kits.mjs). They come
+ * from react's dist/, so react must be built first.
+ *
+ * The kits run React 18 from unpkg, and react's components target React 19. In
+ * React 18's dev build a few of them log "Unexpected return value from a callback
+ * ref": a callback ref that returns a cleanup is a React 19 feature. React 18 calls
+ * the ref with null instead, so the kits still work. The artifact's bundle.js
+ * ships the same way.
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { buildBundleJs } from './design-system-artifact/bundle.mjs';
+import { buildBundleJs, publishedComponents } from './design-system-artifact/bundle.mjs';
 import { reactComponentCss } from './design-system-artifact/stylesheet.mjs';
+import { reactManifest } from './react-manifest.mjs';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -36,28 +42,26 @@ export const KIT_GLOBAL = 'DesignSystem';
 
 export const KIT_BUNDLE_FILES = { js: 'ds-bundle.js', css: 'ds-bundle.css' };
 
-function reactManifest() {
-  const require = createRequire(import.meta.url);
-  let path;
-  try {
-    path = require.resolve('@elirobinson/react/manifest');
-  } catch {
-    throw new Error(
-      'kit-bundle: @elirobinson/react has no dist/manifest.json. Run `pnpm nx run react:build` first.',
-    );
-  }
-  return { manifest: JSON.parse(readFileSync(path, 'utf8')), reactDist: dirname(path) };
+/** ds-bundle.js: the published components only, on window.DesignSystem. */
+export async function buildKitBundleJs({ manifest, reactDist } = reactManifest()) {
+  const components = publishedComponents({ manifest, reactDist });
+  const { js } = await buildBundleJs({ manifest, reactDist, components, namespace: KIT_GLOBAL });
+  return js;
+}
+
+/** ds-bundle.css: react's component stylesheets. The page loads the tokens first. */
+export function buildKitBundleCss({ manifest } = reactManifest()) {
+  return (
+    `/* @elirobinson/react ${manifest.version} component stylesheets for the UI kits. ` +
+    'Load the tokens (colors_and_type.css) before this file. */\n\n' +
+    `${reactComponentCss(repoRoot)}\n`
+  );
 }
 
 /** The two files, as text. */
 export async function buildKitBundle() {
-  const { manifest, reactDist } = reactManifest();
-  const { js } = await buildBundleJs({ manifest, reactDist, namespace: KIT_GLOBAL });
-  const css =
-    `/* @elirobinson/react ${manifest.version} component stylesheets for the UI kits. ` +
-    'Load the tokens (colors_and_type.css) before this file. */\n\n' +
-    `${reactComponentCss(repoRoot)}\n`;
-  return { js, css };
+  const react = reactManifest();
+  return { js: await buildKitBundleJs(react), css: buildKitBundleCss(react) };
 }
 
 /** Writes both files into `dir` and returns their paths. */

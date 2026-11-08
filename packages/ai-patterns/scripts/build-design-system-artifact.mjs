@@ -34,13 +34,13 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { createRequire } from 'node:module';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { ARTIFACT_ONLY } from './design-system-artifact/artifact-only.mjs';
 import { artifactKitFiles } from './design-system-artifact/kits.mjs';
+import { reactManifest } from './react-manifest.mjs';
 import { buildBundleJs } from './design-system-artifact/bundle.mjs';
 import { checkLimits } from './design-system-artifact/limits.mjs';
 import { buildBundleCss } from './design-system-artifact/stylesheet.mjs';
@@ -141,15 +141,7 @@ async function main() {
      replays it from cache when nothing changed. */
   execFileSync('pnpm', ['nx', 'run', 'react:build'], { cwd: repoRoot, stdio: 'inherit' });
 
-  const require = createRequire(import.meta.url);
-  let manifestPath;
-  try {
-    manifestPath = require.resolve('@elirobinson/react/manifest');
-  } catch {
-    throw new Error('react:build finished but @elirobinson/react has no dist/manifest.json.');
-  }
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  const reactDist = dirname(manifestPath);
+  const { manifest, reactDist } = reactManifest();
   const git = (...args) => execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' }).trim();
   const sha = git('rev-parse', '--short', 'HEAD');
   /* A detached HEAD has no branch name to stamp. */
@@ -188,7 +180,7 @@ async function main() {
     ['components/index.d.ts', types.index],
   ]);
   for (const [name, text] of types.perComponent) files.set(`components/${name}/${name}.d.ts`, text);
-  for (const [path, text] of await artifactKitFiles(repoRoot)) files.set(path, text);
+  for (const [path, text] of artifactKitFiles(repoRoot)) files.set(path, text);
   const fonts = new Map(
     latinFonts(tokensSrc).map((font) => [
       `fonts/${font.file}`,

@@ -60,7 +60,7 @@ const reactGlobals = {
   },
 };
 
-/** The published components, each with its exports and its source file. */
+/** One published component, with its exports and its source file. */
 function published(reactDist) {
   return (component) => ({
     name: component.name,
@@ -70,21 +70,26 @@ function published(reactDist) {
   });
 }
 
-/**
- * The bundle's components in order, each with its exports and its source file.
- * With no `previousDir` the bundle holds only what @elirobinson/react publishes:
- * the artifact-only components live in the artifact and nowhere else.
- */
+/** What @elirobinson/react publishes, in manifest order. The UI kits' bundle holds these. */
+export function publishedComponents({ manifest, reactDist }) {
+  return checked(manifest.components.map(published(reactDist)));
+}
+
+/** The artifact's components: the published ones with the artifact-only ones in place. */
 export function bundleComponents({ manifest, reactDist, previousDir }) {
-  const components = !previousDir
-    ? manifest.components.map(published(reactDist))
-    : inArtifactOrder(manifest.components, published(reactDist), (name) => ({
-        name,
-        exports: [name],
-        file: join(previousDir, ARTIFACT_ONLY.source(name)),
-        /* The header names a source relative to components/src/, as the published ones do. */
-        sourcePath: ARTIFACT_ONLY.source(name).replace(/^components\/src\//, ''),
-      }));
+  return checked(
+    inArtifactOrder(manifest.components, published(reactDist), (name) => ({
+      name,
+      exports: [name],
+      file: join(previousDir, ARTIFACT_ONLY.source(name)),
+      /* The header names a source relative to components/src/, as the published ones do. */
+      sourcePath: ARTIFACT_ONLY.source(name).replace(/^components\/src\//, ''),
+    })),
+  );
+}
+
+/** Throws if a component's file is missing or two components export one name. */
+function checked(components) {
   const seen = new Set();
   for (const component of components) {
     if (!existsSync(component.file)) throw new Error(`bundle.js: missing ${component.file}`);
@@ -111,11 +116,17 @@ export function readBundleHeader(js) {
 }
 
 /**
- * `namespace` is the global the bundle assigns. The artifact's bundle keeps
- * NAMESPACE; the UI kits' own copy (scripts/kit-bundle.mjs) names another.
+ * The artifact's bundle, from `bundleComponents`, unless `components` names others.
+ * `namespace` is the global it assigns: the artifact's keeps NAMESPACE, and the UI
+ * kits' bundle (scripts/kit-bundle.mjs) passes the published components and its own.
  */
-export async function buildBundleJs({ manifest, reactDist, previousDir, namespace = NAMESPACE }) {
-  const components = bundleComponents({ manifest, reactDist, previousDir });
+export async function buildBundleJs({
+  manifest,
+  reactDist,
+  previousDir,
+  components = bundleComponents({ manifest, reactDist, previousDir }),
+  namespace = NAMESPACE,
+}) {
   const entry = components
     .map(({ exports, file }) => `export { ${exports.join(', ')} } from ${JSON.stringify(file)};\n`)
     .join('');

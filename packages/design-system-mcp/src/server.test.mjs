@@ -280,7 +280,7 @@ describe('get_brand_guidance', () => {
     const text = textOf(result);
     expect(text).toContain('Miltinson Technologies');
     expect(text).toContain('ui_kits/webapp/index.html');
-    expect(text).toContain('Sidebar');
+    expect(text).toContain('AppShell');
     expect(text).not.toContain('ui_kits/marketing');
   });
 

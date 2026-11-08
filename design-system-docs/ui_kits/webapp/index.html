@@ -10,7 +10,7 @@
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-<!-- The real @elirobinson/react components, on window.DesignSystem. Built next to the kits wherever they are served. -->
+<!-- The real @elirobinson/react components, on window.DesignSystem. Built for each place the kits are served. -->
 <script src="../_shared/ds-bundle.js"></script>
 </head>
 <body>
@@ -19,26 +19,29 @@
 <script type="text/babel" src="../_shared/Kit.jsx"></script>
 <script type="text/babel" src="./Shell.jsx"></script>
 <script type="text/babel" src="./Screens.jsx"></script>
+<script type="text/babel" src="./Settings.jsx"></script>
 <script type="text/babel">
+/* Each route's screen, and how the shell shows it. A path like /assistant/kit opens
+   the screen of its first part. */
 const SCREENS = {
-  '/': DashboardScreen,
-  '/projects': ProjectsScreen,
-  '/invoices': InvoicesScreen,
-  '/assistant': AssistantScreen,
-  '/settings': SettingsScreen,
-  '/onboarding': OnboardingScreen,
+  '/': { Screen: DashboardScreen },
+  '/projects': { Screen: ProjectsScreen, commandsOpen: true },
+  '/invoices': { Screen: InvoicesScreen },
+  '/assistant': { Screen: AssistantScreen },
+  '/settings': { Screen: SettingsScreen },
+  '/onboarding': { Screen: OnboardingScreen, bare: true },
 };
 
 const App = () => {
   const route = useRoute();
-  const [commandsOpen, setCommandsOpen] = React.useState(false);
-  /* The projects screen opens with the command palette over it. */
-  React.useEffect(() => setCommandsOpen(route === '/projects'), [route]);
-  const Screen = SCREENS[route] || DashboardScreen;
+  const { Screen, bare = false, commandsOpen: opensWithCommands = false } =
+    SCREENS[`/${route.split('/')[1]}`] || SCREENS['/'];
+  const [commandsOpen, setCommandsOpen] = React.useState(opensWithCommands);
+  React.useEffect(() => setCommandsOpen(opensWithCommands), [route, opensWithCommands]);
   return (
     <>
       <KitBar title={KIT_CONTENT.webapp.title} />
-      <AppShell route={route} bare={route === '/onboarding'} commandsOpen={commandsOpen} onCommandsOpenChange={setCommandsOpen}>
+      <AppShell route={route} bare={bare} commandsOpen={commandsOpen} onCommandsOpenChange={setCommandsOpen}>
         <Screen onSearch={() => setCommandsOpen(true)} />
       </AppShell>
     </>

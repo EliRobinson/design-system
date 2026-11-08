@@ -19,3 +19,9 @@ Open `index.html`. The bar at the top sets the theme and the palette.
 - Featured-work thumbnails are placeholders, keyed off each entry's `mark` field. Swap them
   for real screenshots.
 - `FeatureBand` shows three guide Cards in place of cover art.
+
+**Running it in this repo.** The page needs `../_shared/ds-bundle.js` and `ds-bundle.css`,
+which are built, not committed, so `index.html` opened from this folder is blank. Run the
+docs site instead: `pnpm --filter docs dev`, then open `/brand/ui-kits/marketing`. It
+builds the bundle next to its copy of the kits. The packed brand skill ships with the
+bundle in place.

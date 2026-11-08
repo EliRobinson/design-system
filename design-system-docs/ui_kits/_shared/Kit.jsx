@@ -3,7 +3,8 @@
    _shared/content.js, and publishes the kit chrome onto window for the kit files loaded
    after it. See any kit's index.html. */
 /*
- * What every kit shares: the bar that sets the theme and the palette, and the wordmark.
+ * What every kit shares: the bar that sets the theme and the palette, the wordmark,
+ * the line icon and the layout helpers.
  * Everything else a kit draws is a real @elirobinson/react component from the bundle.
  *
  * The theme and palette live on <html>, so overlays that portal to <body> (menus,
@@ -39,6 +40,31 @@ function readRules(sheet) {
   }
 }
 
+/* Layout helpers every kit uses. Spacing comes from the tokens, never a number. */
+const column = (gap) => ({ display: 'flex', flexDirection: 'column', gap: `var(--space-${gap})` });
+const cluster = (gap) => ({ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: `var(--space-${gap})` });
+const grid = (min, gap = 4) => ({
+  display: 'grid',
+  gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${min}px), 1fr))`,
+  gap: `var(--space-${gap})`,
+});
+
+/* A 16px line icon. `d` is the path, one of ICONS. */
+const ICONS = {
+  calendar: 'M8 3v4M16 3v4M4 10h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
+  copy: 'M9 9h10v11H9zM5 15H4V4h11v1',
+  download: 'M12 4v11m0 0l-4-4m4 4l4-4M5 20h14',
+};
+
+function Icon({ d }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+}
+
 const DEFAULT_PALETTE = '';
 const capitalise = (word) => word.charAt(0).toUpperCase() + word.slice(1);
 
@@ -65,6 +91,9 @@ function useKitSettings() {
 
 function KitBar({ title }) {
   const { theme, setTheme, palette, setPalette } = useKitSettings();
+  React.useEffect(() => {
+    document.title = title;
+  }, [title]);
   const [palettes, setPalettes] = React.useState([]);
   React.useEffect(() => setPalettes(palettesInStylesheets()), []);
   const paletteOptions = [
@@ -118,4 +147,4 @@ function Wordmark({ className = 't-h5' }) {
   );
 }
 
-Object.assign(window, { KitBar, Wordmark });
+Object.assign(window, { KitBar, Wordmark, Icon, ICONS, column, cluster, grid });

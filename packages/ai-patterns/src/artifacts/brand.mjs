@@ -115,7 +115,7 @@ export const BRAND_DESCRIPTIONS = {
   'ui_kits/mobile/': 'Mobile screen kit.',
   'ui_kits/docs/': 'Docs / long-form reading kit.',
   'ui_kits/_shared/':
-    'What every kit loads from `../_shared/`: ds-bundle.js and ds-bundle.css (the real @elirobinson/react components), Kit.jsx (the theme and palette bar), and content.js (every string). A kit copied without this folder renders nothing.',
+    'What every kit loads from `../_shared/`: ds-bundle.js and ds-bundle.css (the real @elirobinson/react components), Kit.jsx (the theme and palette bar, the wordmark, the line icons and the layout helpers), and content.js (every string). A kit copied without this folder renders nothing.',
   'miltinson.voice.json':
     "The default voice pack — the brand's prose values as data, the way palettes.css holds its colour. The voice rules in README.md are rendered from it; swap the whole pack rather than editing the prose.",
   'README.md': 'Brand voice, color, type, and layout rules. Read this first.',
