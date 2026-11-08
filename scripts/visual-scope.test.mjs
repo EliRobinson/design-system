@@ -1035,7 +1035,7 @@ describe('parseNxProjectList', () => {
    ours, and a version bump could change them silently. Renovate bumps
    Playwright in this repo. */
 describe.skipIf(!buildsPresent())('the emitted pattern, applied by Playwright itself', () => {
-  it('selects exactly the 42 tests a modified Button.tsx could have changed', () => {
+  it('selects exactly the 43 tests a modified Button.tsx could have changed', () => {
     const plan = scopeFor({
       changes: [{ status: 'M', path: 'packages/react/src/components/atoms/Button.tsx' }],
       affectedProjects: ['docs', 'storybook', 'react'],
@@ -1060,8 +1060,10 @@ describe.skipIf(!buildsPresent())('the emitted pattern, applied by Playwright it
        project was off, which is the point of asserting an exact number. #272
        added three stories (Destructive, DestructiveDisabled,
        DestructiveSizes), and 3 stories x 2 themes x 2 projects (wide and
-       narrow) is the 12 that took it from 30 to 42. */
-    expect(Number(total[1])).toBe(42);
+       narrow) is the 12 that took it from 30 to 42. #331 added the
+       `/components/button · reflow` width check, which the route pattern
+       selects on purpose: 43. */
+    expect(Number(total[1])).toBe(43);
   }, 120_000);
 
   /* #101 relaxed the `/components/*` drift guard while `docs-wide` was off,
