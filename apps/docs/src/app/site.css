@@ -184,6 +184,23 @@
   }
 }
 
+/* At phone width the header row ran to 422px — wordmark, search, theme toggle
+   and GitHub side by side — and pushed every page into sideways scroll
+   (WCAG 1.4.10, #331). Drop what a phone does not need there: the wordmark's
+   suffix, the ⌘K hint (no keyboard), and the GitHub link, which the footer
+   carries too. */
+@media (max-width: 480px) {
+  .site-header__inner {
+    gap: var(--space-3);
+  }
+
+  .site-wordmark__suffix,
+  .site-search-button .ds-kbd,
+  .site-header__actions > .site-header__link {
+    display: none;
+  }
+}
+
 /* --- Prose (MDX content) ------------------------------------------------ */
 
 .docs-main {
@@ -271,6 +288,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
   padding: 0.1em 0.35em;
+  /* A long path or name breaks rather than push the page sideways (#331).
+     `break-word`, not `anywhere`: it breaks only a word that cannot fit a line
+     on its own, and leaves min-content alone, so short code in a table cell
+     or a flex row stays whole. */
+  overflow-wrap: break-word;
 }
 
 .prose pre code {
@@ -390,6 +412,17 @@
   top: var(--space-2);
   right: var(--space-2);
   z-index: var(--z-raised);
+}
+
+/* The import line in a component header is one long line, and the Copy button
+   sat on top of it (#331). It wraps instead of scrolling, and its right
+   padding keeps a column clear for the button, so no text runs under the
+   button at any width. The column is the button's inset, a width that holds
+   either label ("Copy", "Copied"), and a gap. */
+.component-header .code-block__body pre {
+  padding-right: calc(var(--space-2) + var(--space-10) + var(--space-2));
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 
 /* --- Prompt templates ----------------------------------------------------- */
@@ -514,6 +547,15 @@
 [data-theme='dark'] .demo-block__stage,
 .dark .demo-block__stage {
   --demo-stage-dot: oklch(100% 0 0 / 0.08);
+}
+
+/* At phone width the stage's 24px side padding is a tenth of the room a demo
+   gets, and it alone pushed the Tabs and DatePicker demos past the viewport
+   (#331). */
+@media (max-width: 480px) {
+  .demo-block__stage {
+    padding-inline: var(--space-3);
+  }
 }
 
 .demo-block__source {

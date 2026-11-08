@@ -108,6 +108,16 @@ To add a case: add its id to `apps/preflight-host/src/cases.ts`, its component t
 
 The scoper never narrows these shots. When Nx reports `preflight-host` affected (it depends on react and tokens), every preflight shot runs. Their subjects start with `/preflight/`, which keeps them out of the docs route list and out of a docs pattern's `--grep`.
 
+### `docs-reflow`: a width check, not a shot
+
+`tests/visual/docs/reflow.spec.ts` opens every component page at 320px and fails if the page scrolls sideways (WCAG 1.4.10 Reflow, #331), or if the Copy button covers the header's import line. It takes no screenshot, so `docs-reflow` sits in `NO_BASELINE_PROJECTS` in `scripts/visual-shots.mjs` beside `smoke`.
+
+- It lives here because the visual container is the one place CI has a browser.
+- Its titles are `<route> · reflow`. The scoper's route pattern is `<route> · `, so a pull request that touches a page runs that page's check too. An added component widens the scope to every docs route, so it runs every check.
+- A red one cannot be accepted. `visual-failures.mjs --baselines` lists it as a failure with no baseline and exits 1. Fix the page.
+- It runs in the `smoke+docs-narrow+preflight-wide+docs-reflow` job (`GROUPS` in `scripts/visual-matrix.mjs`). It takes about 50 seconds.
+- The failure message names the widest elements, so start there.
+
 ## The baseline bot, and why the pushes need it
 
 Every workflow here that commits baselines — `visual-pr.yml`'s mint (in `plan`) and accept (in `scoped`) steps, `recover`'s
