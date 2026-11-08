@@ -44,8 +44,8 @@ ${versionStamp(versions)}
 
 ## Read the CLI first, this snapshot second
 
-These files were generated when \`@elirobinson/ai-patterns\` was published. The installed
-packages are the authority:
+\`ds-resync artifacts --write\` generates these files from the installed packages, so they
+match the versions above. The installed packages are still the authority:
 
 \`\`\`bash
 pnpm ds                  # components, exports, variants, hooks, typography, token groups
@@ -57,8 +57,7 @@ pnpm ds contracts        # the machine-checkable rules, and what verifies each
 \`pnpm exec elirobinson-ds\` works before the \`ds\` script exists. Use this snapshot when
 you want to read the system in bulk, and \`pnpm ds props\` before you write an import.
 
-If \`.claude/ds-artifacts.json\` reports a \`reactVersion\` other than the one installed here,
-these files describe a different release. Refresh them:
+After you upgrade \`@elirobinson/react\` or \`@elirobinson/tokens\`, refresh them:
 
 \`\`\`bash
 ${RESYNC_COMMAND}

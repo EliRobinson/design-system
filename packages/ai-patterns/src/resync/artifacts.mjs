@@ -10,14 +10,18 @@
  *    named in the report. An untracked file that happens to exist is treated as
  *    edited, because the conservative reading is the only safe one.
  *
- * 2. **Never let a stale snapshot pass for current.** The artifacts carry the
- *    `@elirobinson/react` version they were generated against. If the repo has
- *    a different one installed, the prop tables in the snapshot describe code
- *    that is not here, and an agent reading them is confidently wrong. That is
- *    reported loudly, on every run, whether or not anything is written.
+ * 2. **Describe what is installed.** The reference skill and the token
+ *    stylesheets are generated from the `@elirobinson/react` and
+ *    `@elirobinson/tokens` this repo has installed, not copied from the
+ *    snapshot staged when ai-patterns was packed (#257). So "Already current"
+ *    means "matches what is installed". Only when either package is missing or
+ *    unreadable does the bundled snapshot stand in, and the report says so; if
+ *    that snapshot names a different react than the installed one, it is
+ *    reported loudly as STALE SNAPSHOT, whether or not anything is written.
  *
  * The planning half is pure so both guarantees are testable without a
- * filesystem; `readArtifactSet`/`applyPlan` are the only parts that touch disk.
+ * filesystem; `readArtifactSet`, `fromInstalled` and `applyPlan` are the parts
+ * that touch disk.
  */
 
 import { createHash } from 'node:crypto';
@@ -26,12 +30,18 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { DLX } from '../artifacts/llms.mjs';
-import { readInstalledVersion } from './detect.mjs';
+import {
+  buildReferenceSkill,
+  REFERENCE_GENERATOR,
+  REFERENCE_INPUTS,
+} from '../artifacts/reference.mjs';
+import { SKILL_DIRS } from '../artifacts/skills.mjs';
+import { findInstalledPackage, REACT_PACKAGE, readInstalledSources } from './installed.mjs';
+
+export { REACT_PACKAGE };
 
 /** Where the record of what we wrote lives, relative to the consuming repo root. */
 export const RECORD_PATH = '.claude/ds-artifacts.json';
-
-export const REACT_PACKAGE = '@elirobinson/react';
 
 export function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
@@ -63,10 +73,61 @@ export function readArtifactSet(dir = artifactsDir()) {
     stamp,
     targetRoot: stamp.targetRoot ?? '.claude/skills',
     files: stamp.files.map((entry) => ({
-      path: entry.path,
-      hash: entry.hash,
+      ...entry,
       contents: readFileSync(join(dir, 'skills', entry.path)),
     })),
+  };
+}
+
+const CONTRACTS_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'contracts.json');
+
+/**
+ * The staged set with every installed-sourced file replaced by what the
+ * consumer's packages produce: the reference skill rebuilt from the installed
+ * react manifest and tokens, and each `from` file copied out of the installed
+ * package. The stamp's versions become the installed ones, because that is now
+ * what the files describe.
+ *
+ * @param {ReturnType<typeof readArtifactSet>} set
+ * @param {Extract<Awaited<ReturnType<typeof readInstalledSources>>, {ok: true}>} installed
+ * @param {string} dir the staged tree, for `reference-inputs.json`
+ */
+export function fromInstalled(set, installed, dir) {
+  const versions = {
+    aiPatterns: set.stamp.aiPatternsVersion,
+    react: installed.react.version,
+    tokens: installed.tokens.version,
+  };
+  const staged = JSON.parse(readFileSync(join(dir, REFERENCE_INPUTS), 'utf8'));
+  const readme = set.files.find((file) => file.path === `${SKILL_DIRS.brand}/README.md`);
+  if (!readme) throw new Error(`The staged artifacts have no ${SKILL_DIRS.brand}/README.md.`);
+  const brand = { ...staged.brand, readme: readme.contents.toString('utf8') };
+  const reference = buildReferenceSkill({
+    manifest: installed.react.manifest,
+    contracts: JSON.parse(readFileSync(CONTRACTS_PATH, 'utf8')),
+    tokens: installed.tokens.tokens,
+    versions,
+    brand,
+  });
+
+  const keptBundled = [];
+  const files = set.files.map((file) => {
+    let contents = null;
+    if (file.generated === REFERENCE_GENERATOR) {
+      contents = Buffer.from(reference[file.path]);
+    } else if (file.from) {
+      const source = join(installed.roots[file.from.package], ...file.from.path.split('/'));
+      if (existsSync(source)) contents = readFileSync(source);
+      else keptBundled.push(`${file.path} (${file.from.package} has no ${file.from.path})`);
+    }
+    return contents === null ? file : { ...file, contents, hash: sha256(contents) };
+  });
+
+  return {
+    ...set,
+    stamp: { ...set.stamp, reactVersion: versions.react, tokensVersion: versions.tokens },
+    files,
+    keptBundled,
   };
 }
 
@@ -157,9 +218,9 @@ export function formatDriftWarning(drift) {
     `!!  ${drift.installed} installed. Component and prop tables in llms-full.txt may name`,
     '!!  props that do not exist at the installed version, and omit ones that do.',
     '!!',
-    '!!  Fix it by bringing the two into line:',
-    `!!    ${DLX} ds-resync                     # move the packages`,
-    `!!    ${DLX} ds-resync artifacts --write   # or refresh these`,
+    '!!  These came from the bundled snapshot because the installed packages could not be',
+    '!!  read (see below). Install @elirobinson/react and @elirobinson/tokens, then:',
+    `!!    ${DLX} ds-resync artifacts --write   # regenerate from what is installed`,
     '!!  Until then, trust `pnpm ds props <Name>` over anything in the snapshot.',
   ].join('\n');
 }
@@ -175,12 +236,25 @@ export function formatArtifactsReport(result) {
   const unchanged = byStatus('unchanged');
   const modified = byStatus('modified');
 
+  const versions =
+    `${REACT_PACKAGE}@${result.stamp.reactVersion} and ` +
+    `@elirobinson/tokens@${result.stamp.tokensVersion}`;
   lines.push(
-    `Design system artifacts from @elirobinson/ai-patterns@${result.stamp.aiPatternsVersion} ` +
-      `(generated against ${REACT_PACKAGE}@${result.stamp.reactVersion}, ` +
-      `@elirobinson/tokens@${result.stamp.tokensVersion})`,
-    '',
+    `Design system artifacts from @elirobinson/ai-patterns@${result.stamp.aiPatternsVersion},`,
   );
+  if (result.source === 'installed') {
+    lines.push(`generated from the installed ${versions}.`, '');
+  } else {
+    lines.push(
+      `copied from the bundled snapshot of ${versions},`,
+      `because ${result.fallbackReason}.`,
+      'Install both packages and re-run to generate from what is installed.',
+      '',
+    );
+  }
+  if (result.keptBundled?.length) {
+    lines.push('Kept the bundled copy of:', ...result.keptBundled.map((entry) => `  ${entry}`), '');
+  }
 
   const verb = result.wrote ? ['Created', 'Updated'] : ['Would create', 'Would update'];
 
@@ -240,8 +314,10 @@ function applyPlan(cwd, set, plan) {
  * @param {boolean} [options.force] overwrite locally-edited files
  * @param {string} [options.dir] staged artifact tree, for tests
  */
-export function runArtifacts({ cwd, write = false, force = false, dir }) {
-  const set = readArtifactSet(dir);
+export async function runArtifacts({ cwd, write = false, force = false, dir = artifactsDir() }) {
+  const staged = readArtifactSet(dir);
+  const installed = await readInstalledSources(cwd);
+  const set = installed.ok ? fromInstalled(staged, installed, dir) : staged;
   const record = readRecord(cwd);
 
   const onDisk = {};
@@ -260,7 +336,7 @@ export function runArtifacts({ cwd, write = false, force = false, dir }) {
 
   const drift = checkDrift({
     stamp: set.stamp,
-    installed: readInstalledVersion(cwd, REACT_PACKAGE),
+    installed: findInstalledPackage(cwd, REACT_PACKAGE)?.version ?? null,
   });
 
   if (write) {
@@ -284,5 +360,14 @@ export function runArtifacts({ cwd, write = false, force = false, dir }) {
     );
   }
 
-  return { stamp: set.stamp, plan, drift, wrote: write, recordPath: RECORD_PATH };
+  return {
+    stamp: set.stamp,
+    source: installed.ok ? 'installed' : 'bundled',
+    fallbackReason: installed.ok ? null : installed.reason,
+    keptBundled: set.keptBundled ?? [],
+    plan,
+    drift,
+    wrote: write,
+    recordPath: RECORD_PATH,
+  };
 }

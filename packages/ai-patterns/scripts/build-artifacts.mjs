@@ -21,10 +21,12 @@
 import { createHash } from 'node:crypto';
 import {
   cpSync,
+  existsSync,
   lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -43,25 +45,17 @@ import {
   renderRepoIndexTable,
 } from '../src/artifacts/brand-manifest.mjs';
 import { copyTree } from '../src/artifacts/copy-tree.mjs';
-import { llmsFull, llmsIndex } from '../src/artifacts/llms.mjs';
-import { referenceSkillDoc, SKILL_DIRS } from '../src/artifacts/skills.mjs';
+import {
+  buildReferenceSkill,
+  REFERENCE_GENERATOR,
+  REFERENCE_INPUTS,
+} from '../src/artifacts/reference.mjs';
+import { SKILL_DIRS } from '../src/artifacts/skills.mjs';
 
 const packageDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(packageDir, '..', '..');
 const outDir = join(packageDir, 'dist', 'artifacts');
 const skillsDir = join(outDir, 'skills');
-
-/* Where a reader of the packed llms.txt goes next. The docs site answers the
-   same question with URLs; a consumer holding this tarball has files and a
-   CLI, so this is one of the few things the two corpora cannot share. */
-const SNAPSHOT_CONTENTS = {
-  heading: 'The rest of this snapshot',
-  entries: [
-    '- `llms-full.txt` — every token, every constraint, and every component with its prop table',
-    '- `pnpm ds` / `pnpm ds props <Name>` — the same information read live from the installed',
-    '  package. Always authoritative; this file is a convenience for reading in bulk.',
-  ],
-};
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
@@ -195,44 +189,34 @@ function main() {
   write(join(SKILL_DIRS.brand, 'SKILL.md'), skill);
 
   /* 2. Component reference — generated from the published manifest by the same
-        builder apps/docs serves /llms.txt from. Passing `versions` is what
-        makes this output a snapshot rather than a live corpus; there is no
-        prose to interleave here, so none is passed. */
-  write(
-    join(SKILL_DIRS.reference, 'llms.txt'),
-    llmsIndex({ manifest, versions, alsoAvailable: SNAPSHOT_CONTENTS }),
+        builder `ds-resync artifacts` runs in a consuming repo against what that
+        repo has installed (#257). What is staged here is the fallback for a
+        repo without react or tokens installed. The brand block is ai-patterns'
+        own, so it is staged as an input for that second run. */
+  const stagedBrand = {
+    /* The pack this build packs, read from the source it copies into the brand
+       skill above — deliberately not `resolveVoicePack`. This is the system's own
+       tarball, and a `voice.json` sitting in whatever directory the build happened
+       to run from must not decide what a consumer receives. */
+    packId: JSON.parse(readFileSync(join(brandSource, 'miltinson.voice.json'), 'utf8')).id,
+    note:
+      'The full brand skill — tokens, assets, UI kits — ships alongside this one at ' +
+      `.claude/skills/${SKILL_DIRS.brand}/.`,
+    /* Only ships:true artifacts — this file travels in the tarball, and
+       advertising repo-only material to a consumer is a broken pointer. */
+    artifacts: brandManifest.artifacts.filter((artifact) => artifact.ships),
+  };
+  writeFileSync(
+    join(outDir, REFERENCE_INPUTS),
+    `${JSON.stringify({ brand: stagedBrand }, null, 2)}\n`,
   );
-  write(
-    join(SKILL_DIRS.reference, 'llms-full.txt'),
-    llmsFull({
-      manifest,
-      contracts,
-      tokens,
-      versions,
-      /* Only ships:true artifacts — this file travels in the tarball, and
-         advertising repo-only material to a consumer is a broken pointer. */
-      brand: {
-        readme: regenerated,
-        /* The pack this build packs, read from the source it copies into the brand
-           skill above — deliberately not `resolveVoicePack`. This is the system's own
-           tarball, and a `voice.json` sitting in whatever directory the build happened
-           to run from must not decide what a consumer receives. */
-        packId: JSON.parse(readFileSync(join(brandSource, 'miltinson.voice.json'), 'utf8')).id,
-        note:
-          'The full brand skill — tokens, assets, UI kits — ships alongside this one at ' +
-          `.claude/skills/${SKILL_DIRS.brand}/.`,
-        artifacts: brandManifest.artifacts.filter((artifact) => artifact.ships),
-      },
-    }),
-  );
-  write(
-    join(SKILL_DIRS.reference, 'SKILL.md'),
-    referenceSkillDoc({
-      versions,
-      componentCount: manifest.components.length,
-      hookCount: manifest.hooks.length,
-    }),
-  );
+  /* The voice comes from the README this tarball ships in the brand skill, not
+     the repo's own: the resync reads it from that shipped copy, and both must
+     cut the same CONTENT FUNDAMENTALS section for the same inputs to give the
+     same bytes. */
+  const brand = { ...stagedBrand, readme };
+  const reference = buildReferenceSkill({ manifest, contracts, tokens, versions, brand });
+  for (const [path, contents] of Object.entries(reference)) write(path, contents);
 
   /* 3. The resync skill itself, so a repo that has the artifacts also has the
         instructions for refreshing them. */
@@ -240,6 +224,24 @@ function main() {
     join(SKILL_DIRS.resync, 'SKILL.md'),
     readFileSync(join(packageDir, 'src/resync/SKILL.md'), 'utf8'),
   );
+
+  /* A brand-skill file copied from a symlink into a workspace package (the
+     token stylesheets and fonts) names that package and path, so `ds-resync
+     artifacts` can copy the consumer's installed copy instead of this one. */
+  const brandPrefix = `${SKILL_DIRS.brand}/`;
+  const packagesDir = join(repoRoot, 'packages');
+  function installedSource(path) {
+    if (!path.startsWith(brandPrefix)) return null;
+    const source = join(brandSource, path.slice(brandPrefix.length));
+    if (!existsSync(source)) return null;
+    const real = relative(packagesDir, realpathSync(source));
+    if (real.startsWith('..')) return null;
+    const [dir, ...rest] = real.split(sep);
+    return {
+      package: readJson(join(packagesDir, dir, 'package.json')).name,
+      path: rest.join('/'),
+    };
+  }
 
   /* 4. The stamp. `reactVersion` is what `ds-resync artifacts` compares against
         the consuming repo's install to decide whether to warn. */
@@ -260,7 +262,11 @@ function main() {
           'src/artifacts/copy-tree.mjs.',
       );
     }
-    return { path, hash: sha256(readFileSync(staged)) };
+    const entry = { path, hash: sha256(readFileSync(staged)) };
+    if (path in reference) entry.generated = REFERENCE_GENERATOR;
+    const from = installedSource(path);
+    if (from) entry.from = from;
+    return entry;
   });
 
   writeFileSync(

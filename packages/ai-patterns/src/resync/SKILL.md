@@ -203,10 +203,15 @@ This rewrites the brand skill, the version-stamped component reference
 locally are left alone and named in the output — reconcile those by hand, or
 re-run with `--force` to take the shipped copy.
 
-Read the output. If it prints a **STALE SNAPSHOT** warning, the artifacts and the
-installed `@elirobinson/react` disagree; the most likely cause is that
-`@elirobinson/ai-patterns` itself is behind, so run the default `ds-resync` first
-and then repeat this step.
+The component reference and the token stylesheets are generated from the
+`@elirobinson/react` and `@elirobinson/tokens` installed here, so they match the
+upgrade you just made. The output names the versions it read.
+
+If the output says it used the **bundled snapshot**, one of those packages is
+missing or too old to read; it names which. If it also prints a **STALE
+SNAPSHOT** warning, that snapshot describes a different `@elirobinson/react`
+than the installed one. Install or upgrade the named package and repeat this
+step.
 
 ## 6. Verify
 
