@@ -236,8 +236,10 @@ commands' options.
 const EXPECTED_ARTIFACTS_USAGE = `ds-resync artifacts — sync the design system's agent skills into this repo
 
 Writes the brand skill, a version-stamped component reference (llms.txt /
-llms-full.txt), and the re-sync instructions into .claude/skills/. Files you have
-edited since they were written are left alone and listed in the report.
+llms-full.txt), and the re-sync instructions into .claude/skills/. The reference
+and the token stylesheets are generated from the @elirobinson/react and
+@elirobinson/tokens installed here. Files you have edited since they were written
+are left alone and listed in the report.
 
 Usage: ds-resync artifacts [options]
 

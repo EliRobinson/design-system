@@ -72,7 +72,7 @@ async function artifactsCommand(argv) {
 
   let result;
   try {
-    result = runArtifacts({ cwd: args.cwd, write: args.write, force: args.force });
+    result = await runArtifacts({ cwd: args.cwd, write: args.write, force: args.force });
   } catch (error) {
     process.stderr.write(`ds-resync artifacts: ${error.message}\n`);
     return 1;

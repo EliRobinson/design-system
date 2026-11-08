@@ -88,12 +88,30 @@ and `prepack`, so a tarball cannot be produced without it. It stages `dist/artif
 | `skills/miltinson-design/`        | A subset of `design-system-docs/`                                                     |
 | `skills/design-system-reference/` | `@elirobinson/react/manifest`, `packages/tokens/src/tokens.css`, `src/contracts.json` |
 | `skills/ds-resync/SKILL.md`       | `src/resync/SKILL.md`                                                                 |
+| `reference-inputs.json`           | Voice pack id, note and brand artifact list (the voice itself is read from README.md) |
 | `artifacts.json`                  | The version stamp and a sha256 per staged file                                        |
 
-`ds-resync artifacts` copies `skills/**` into a consuming repo's `.claude/skills/`. The
-tree in `dist` is laid out exactly as it lands there, so the writer copies a directory and
-holds no opinion about its contents — adding or removing a skill is a change to
-`build-artifacts.mjs` alone.
+`ds-resync artifacts` writes `skills/**` into a consuming repo's `.claude/skills/`. The
+tree in `dist` is laid out exactly as it lands there. Adding or removing a skill is a change
+to `build-artifacts.mjs` alone.
+
+**What a consumer gets is generated from what it has installed (#257).** A react or tokens
+release does not release ai-patterns, so a packed snapshot is one release behind the moment
+a consumer upgrades. So `ds-resync artifacts` does not copy every staged file. It resolves
+`@elirobinson/react` and `@elirobinson/tokens` from the `node_modules` folders at and above the consumer's cwd, where its own imports look
+(`src/resync/installed.mjs`) and then:
+
+- rebuilds the three `design-system-reference/` files (marked `"generated": "reference"`
+  in `artifacts.json`) with `src/artifacts/reference.mjs`, the same builder the pack step
+  runs, from the installed manifest and the installed tokens' own parser;
+- copies each file marked `"from": { "package", "path" }` (the token stylesheets and fonts
+  in `miltinson-design/`, which are symlinks into `packages/tokens` here) out of the
+  installed package.
+
+The record and the report then carry the installed versions, so "Already current" means
+"matches what is installed". If either package is missing, or too old to export
+`./manifest`, `./parse-tokens-css` and `./token-stylesheets`, the staged snapshot is written
+instead and the report says why.
 
 Five things are load-bearing:
 
@@ -114,9 +132,10 @@ Five things are load-bearing:
   `slides/` or `templates/`, which produce Miltinson marketing collateral a consuming
   product repo has no use for. `BRAND_SOURCES` in the build script is the list.
 - **Every artifact carries the `@elirobinson/react` version it was generated against.**
-  `ds-resync artifacts` compares that stamp to the consuming repo's install and prints a
-  loud STALE SNAPSHOT warning on a mismatch. A snapshot that silently describes a different
-  release is exactly how an agent produces confidently wrong prop tables.
+  Normally that is the installed one. When `ds-resync artifacts` has to fall back to the
+  staged snapshot, it compares the snapshot's stamp to the consuming repo's install and
+  prints a loud STALE SNAPSHOT warning on a mismatch. A snapshot that silently describes a
+  different release is exactly how an agent produces confidently wrong prop tables.
 - **Two passages in the brand docs are generated, not copied.** The README's INDEX table and
   the SKILL.md pointer at the component reference differ between this repo and a consumer,
   so they live between `<!-- ds-artifacts:managed:begin -->` markers and are rewritten at

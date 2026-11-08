@@ -230,23 +230,23 @@ describe('readArtifactSet', () => {
   });
 });
 
-describe('runArtifacts end to end', () => {
-  it('reports without writing anything by default', () => {
+describe('runArtifacts end to end', async () => {
+  it('reports without writing anything by default', async () => {
     const artifacts = makeArtifacts({ 'brand/SKILL.md': 'v1' });
     const repo = makeRepo();
 
-    const result = runArtifacts({ cwd: repo, dir: artifacts });
+    const result = await runArtifacts({ cwd: repo, dir: artifacts });
 
     expect(result.plan.map((entry) => entry.status)).toEqual(['created']);
     expect(existsSync(join(repo, '.claude/skills/brand/SKILL.md'))).toBe(false);
     expect(existsSync(join(repo, RECORD_PATH))).toBe(false);
   });
 
-  it('writes the tree and records what it wrote', () => {
+  it('writes the tree and records what it wrote', async () => {
     const artifacts = makeArtifacts({ 'brand/SKILL.md': 'v1', 'ref/llms.txt': 'index' });
     const repo = makeRepo();
 
-    runArtifacts({ cwd: repo, dir: artifacts, write: true });
+    await runArtifacts({ cwd: repo, dir: artifacts, write: true });
 
     expect(read(repo, '.claude/skills/brand/SKILL.md')).toBe('v1');
     expect(read(repo, '.claude/skills/ref/llms.txt')).toBe('index');
@@ -256,9 +256,9 @@ describe('runArtifacts end to end', () => {
     expect(record.files['.claude/skills/brand/SKILL.md']).toBe(sha256(Buffer.from('v1')));
   });
 
-  it('updates an untouched file on the next release, and skips one the user edited', () => {
+  it('updates an untouched file on the next release, and skips one the user edited', async () => {
     const repo = makeRepo();
-    runArtifacts({
+    await runArtifacts({
       cwd: repo,
       dir: makeArtifacts({ 'brand/SKILL.md': 'v1', 'ref/llms.txt': 'index v1' }),
       write: true,
@@ -267,7 +267,7 @@ describe('runArtifacts end to end', () => {
     // The user edits one of the two files, then a new version ships.
     writeFileSync(join(repo, '.claude/skills/brand/SKILL.md'), 'v1 plus my own notes');
 
-    const result = runArtifacts({
+    const result = await runArtifacts({
       cwd: repo,
       dir: makeArtifacts({ 'brand/SKILL.md': 'v2', 'ref/llms.txt': 'index v2' }),
       write: true,
@@ -282,22 +282,22 @@ describe('runArtifacts end to end', () => {
     expect(formatArtifactsReport(result)).toContain('.claude/skills/brand/SKILL.md');
   });
 
-  it('leaves the record for a skipped file pointing at what it last wrote', () => {
+  it('leaves the record for a skipped file pointing at what it last wrote', async () => {
     const repo = makeRepo();
-    runArtifacts({ cwd: repo, dir: makeArtifacts({ 'brand/SKILL.md': 'v1' }), write: true });
+    await runArtifacts({ cwd: repo, dir: makeArtifacts({ 'brand/SKILL.md': 'v1' }), write: true });
     writeFileSync(join(repo, '.claude/skills/brand/SKILL.md'), 'my edit');
-    runArtifacts({ cwd: repo, dir: makeArtifacts({ 'brand/SKILL.md': 'v2' }), write: true });
+    await runArtifacts({ cwd: repo, dir: makeArtifacts({ 'brand/SKILL.md': 'v2' }), write: true });
 
     // Still v1's hash: the next run must be able to tell this file is edited.
     expect(readRecord(repo).files['.claude/skills/brand/SKILL.md']).toBe(sha256(Buffer.from('v1')));
   });
 
-  it('takes the shipped copy when --force is passed', () => {
+  it('takes the shipped copy when --force is passed', async () => {
     const repo = makeRepo();
-    runArtifacts({ cwd: repo, dir: makeArtifacts({ 'brand/SKILL.md': 'v1' }), write: true });
+    await runArtifacts({ cwd: repo, dir: makeArtifacts({ 'brand/SKILL.md': 'v1' }), write: true });
     writeFileSync(join(repo, '.claude/skills/brand/SKILL.md'), 'my edit');
 
-    runArtifacts({
+    await runArtifacts({
       cwd: repo,
       dir: makeArtifacts({ 'brand/SKILL.md': 'v2' }),
       write: true,
@@ -307,19 +307,19 @@ describe('runArtifacts end to end', () => {
     expect(read(repo, '.claude/skills/brand/SKILL.md')).toBe('v2');
   });
 
-  it('is idempotent — a second identical run changes nothing', () => {
+  it('is idempotent — a second identical run changes nothing', async () => {
     const artifacts = makeArtifacts({ 'brand/SKILL.md': 'v1' });
     const repo = makeRepo();
 
-    runArtifacts({ cwd: repo, dir: artifacts, write: true });
-    const second = runArtifacts({ cwd: repo, dir: artifacts, write: true });
+    await runArtifacts({ cwd: repo, dir: artifacts, write: true });
+    const second = await runArtifacts({ cwd: repo, dir: artifacts, write: true });
 
     expect(second.plan.map((entry) => entry.status)).toEqual(['unchanged']);
     expect(formatArtifactsReport(second)).toContain('Everything was already current.');
   });
 
-  it('warns when the installed react is not the one the snapshot describes', () => {
-    const result = runArtifacts({
+  it('warns when the installed react is not the one the snapshot describes', async () => {
+    const result = await runArtifacts({
       cwd: makeRepo({ react: '1.4.0' }),
       dir: makeArtifacts({ 'brand/SKILL.md': 'v1' }),
     });
@@ -328,8 +328,8 @@ describe('runArtifacts end to end', () => {
     expect(formatArtifactsReport(result)).toContain('STALE SNAPSHOT');
   });
 
-  it('does not warn when the installed react matches the stamp', () => {
-    const result = runArtifacts({
+  it('does not warn when the installed react matches the stamp', async () => {
+    const result = await runArtifacts({
       cwd: makeRepo({ react: '1.2.0' }),
       dir: makeArtifacts({ 'brand/SKILL.md': 'v1' }),
     });
@@ -338,12 +338,14 @@ describe('runArtifacts end to end', () => {
     expect(formatArtifactsReport(result)).not.toContain('STALE SNAPSHOT');
   });
 
-  it('treats a corrupt record as "nothing written yet" rather than throwing', () => {
+  it('treats a corrupt record as "nothing written yet" rather than throwing', async () => {
     const repo = makeRepo();
     mkdirSync(join(repo, '.claude'), { recursive: true });
     writeFileSync(join(repo, RECORD_PATH), 'not json {');
 
     expect(readRecord(repo).files).toEqual({});
-    expect(() => runArtifacts({ cwd: repo, dir: makeArtifacts({ 'a.md': 'x' }) })).not.toThrow();
+    await expect(
+      runArtifacts({ cwd: repo, dir: makeArtifacts({ 'a.md': 'x' }) }),
+    ).resolves.toBeDefined();
   });
 });
