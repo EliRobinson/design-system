@@ -414,8 +414,8 @@ If you import `@elirobinson/react/styles.css`, only the component import changes
 ## tokens-1-container-sm-is-shell-sm
 
 - Package: `@elirobinson/tokens`
-- Version: `pending`
-- Changeset: `shell-widths-rename`
+- Version: `1.0.0`
+- Changeset: `f3df86e`
 - Token migration: `container-sm-is-shell-sm`
 - Find: `--container-sm`, and Tailwind `max-w-sm` (or `w-`, `min-w-`, `basis-`, `inline-`, `columns-`)
 
@@ -452,8 +452,8 @@ upgrade: it lists every such utility, and it stops listing them after the upgrad
 ## tokens-1-container-md-is-shell-md
 
 - Package: `@elirobinson/tokens`
-- Version: `pending`
-- Changeset: `shell-widths-rename`
+- Version: `1.0.0`
+- Changeset: `f3df86e`
 - Token migration: `container-md-is-shell-md`
 - Find: `--container-md`, and Tailwind `max-w-md` (or `w-`, `min-w-`, `basis-`, `inline-`, `columns-`)
 
@@ -463,8 +463,8 @@ The `tokens-1-container-sm-is-shell-sm` change, for `--container-md`: it is now
 ## tokens-1-container-lg-is-shell-lg
 
 - Package: `@elirobinson/tokens`
-- Version: `pending`
-- Changeset: `shell-widths-rename`
+- Version: `1.0.0`
+- Changeset: `f3df86e`
 - Token migration: `container-lg-is-shell-lg`
 - Find: `--container-lg`, and Tailwind `max-w-lg` (or `w-`, `min-w-`, `basis-`, `inline-`, `columns-`)
 
@@ -474,8 +474,8 @@ The `tokens-1-container-sm-is-shell-sm` change, for `--container-lg`: it is now
 ## tokens-1-container-xl-is-shell-xl
 
 - Package: `@elirobinson/tokens`
-- Version: `pending`
-- Changeset: `shell-widths-rename`
+- Version: `1.0.0`
+- Changeset: `f3df86e`
 - Token migration: `container-xl-is-shell-xl`
 - Find: `--container-xl`, and Tailwind `max-w-xl` (or `w-`, `min-w-`, `basis-`, `inline-`, `columns-`)
 
@@ -485,8 +485,8 @@ The `tokens-1-container-sm-is-shell-sm` change, for `--container-xl`: it is now
 ## tokens-1-container-2xl-is-shell-2xl
 
 - Package: `@elirobinson/tokens`
-- Version: `pending`
-- Changeset: `shell-widths-rename`
+- Version: `1.0.0`
+- Changeset: `f3df86e`
 - Token migration: `container-2xl-is-shell-2xl`
 - Find: `--container-2xl`, and Tailwind `max-w-2xl` (or `w-`, `min-w-`, `basis-`, `inline-`, `columns-`)
 

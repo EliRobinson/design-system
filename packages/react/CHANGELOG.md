@@ -1,5 +1,12 @@
 # @elirobinson/react
 
+## 3.9.6
+
+### Patch Changes
+
+- Updated dependencies [f3df86e]
+  - @elirobinson/tokens@1.0.0
+
 ## 3.9.5
 
 ### Patch Changes

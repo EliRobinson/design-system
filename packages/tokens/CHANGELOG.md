@@ -1,5 +1,14 @@
 # @elirobinson/tokens
 
+## 1.0.0
+
+### Major Changes
+
+- f3df86e: Breaking: the page widths `--container-sm` … `--container-2xl` are now `--shell-sm` … `--shell-2xl` (#250). The values are the same. The old names were Tailwind v4's own, and `tokens.css` declares them outside any layer, so with the design system installed Tailwind's `max-w-md` was 768px, not 448px, with no warning.
+  - CSS and TSX: `var(--container-md)` becomes `var(--shell-md)`, and `max-w-(--container-md)` becomes `max-w-(--shell-md)`. `ds-resync migrate --write` rewrites these from `@elirobinson/tokens/migrations`. It leaves a declaration of the old name for you: in a Tailwind `@theme` block, `--container-md` is Tailwind's own.
+  - `@elirobinson/tokens/tokens.json`: the keys `containerSm` … `container2xl` are now `shellSm` … `shell2xl`.
+  - Tailwind's `max-w-sm` … `max-w-2xl` have Tailwind's sizes again. One that meant the design system's width (`max-w-md` for 768px) shrinks. Write `max-w-(--shell-md)` instead. Run `pnpm ds check` before you upgrade: it lists each one.
+
 ## 0.21.0
 
 ### Minor Changes
