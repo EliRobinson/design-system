@@ -1,5 +1,14 @@
 # @elirobinson/react
 
+## 3.9.3
+
+### Patch Changes
+
+- 537fe21: `.ds-input` (Input, Select, Textarea) and `.ds-tabs__trigger` now declare `line-height: normal`. Under Tailwind's Preflight they inherited the page's line-height, so inputs, selects and tab triggers grew from 44px to 49px and textareas from 64px to 72px (#126). Without a reset nothing changes: `normal` is the browser default they had before.
+- 7a1c28e: Spinner: under `prefers-reduced-motion: reduce`, the ring stops spinning and pulses its opacity slowly instead. Before, the global reduced-motion clamp squeezed each turn into 0.01ms, so the ring looked frozen with jumps and loading read as stuck (#332).
+- Updated dependencies [ea4d2f9]
+  - @elirobinson/tokens@0.20.2
+
 ## 3.9.2
 
 ### Patch Changes
