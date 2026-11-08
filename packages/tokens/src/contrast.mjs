@@ -335,8 +335,10 @@ export const CONTRAST_RULES = [
     label: 'non-text',
     threshold: 3,
     criterion: 'SC 1.4.11',
+    /* `focus-ring$`, not a prefix: --focus-ring-width and --focus-ring-offset
+       are the ring's geometry, not a colour. */
     match:
-      /^--(border-control|status-(success|warning|danger|info)$|status-warning-border$|focus-ring|chart-)/,
+      /^--(border-control|status-(success|warning|danger|info)$|status-warning-border$|focus-ring$|chart-)/,
     except: {
       /* The documented exception, and the only one in the status family.
          Yellow cannot reach 3:1 on white and still read as yellow — pushed

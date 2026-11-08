@@ -364,6 +364,7 @@
   --radius-lg: 10px; /* modals */
   --radius-xl: 16px; /* heroes */
   --radius-pill: 999px; /* tags only */
+  --radius-full: 9999px; /* always fully round: circles and capsules (thumbs, dots, spinners) */
 
   /* ======================================================================
      SHADOWS — restrained. Borders do most of the work.
@@ -377,8 +378,16 @@
   /* Inner shadow for inset wells */
   --shadow-inset: inset 0 1px 0 0 oklch(0% 0 0 / 0.04);
 
-  /* Focus ring — uniform across the system */
-  --shadow-focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--focus-ring);
+  /* Focus ring — uniform across the system. The colour is --focus-ring
+     (palettes.css); the geometry is these two, and it is fixed on purpose: a
+     focus ring must not get thinner under any brand. Every `outline` focus
+     ring and --shadow-focus are built from them. An inset ring is
+     `outline-offset: calc(var(--focus-ring-width) * -1)`. */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --shadow-focus:
+    0 0 0 var(--focus-ring-offset) var(--bg),
+    0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) var(--focus-ring);
 
   /* ======================================================================
      MOTION
@@ -798,8 +807,8 @@ a.ds-pagination__item:hover {
 }
 
 :focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
   border-radius: var(--radius-xs);
 }
 

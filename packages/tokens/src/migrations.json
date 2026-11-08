@@ -134,6 +134,18 @@
       "report": "none",
       "reason": "The neutral ramp is mixed from two palette-owned dials now — oklch(<L>% calc(<C> * var(--n-mult)) var(--n-h)) — rather than from literal hue and chroma. Lightness is untouched, and lightness is what carries contrast: across every neutral foreground on every neutral surface in both themes the largest disagreement between the two shipped palettes is 0.003:1. The declared values moved; the rendered colours did not.",
       "guidance": "No action, and nothing is reported. The entry exists so that this claim is on the record and so a later, genuinely visible repoint of one of these tokens cannot hide among them."
+    },
+    {
+      "id": "shadow-focus-from-ring-geometry",
+      "since": "0.21.0",
+      "kind": "repoint",
+      "from": ["--shadow-focus"],
+      "to": null,
+      "rendered": "unchanged",
+      "when": {},
+      "report": "none",
+      "reason": "--shadow-focus is built from the new --focus-ring-offset and --focus-ring-width tokens instead of literal 2px and 4px. Both are 2px, so the ring is the same 2px --bg gap and 2px --focus-ring band it was.",
+      "guidance": "No action, and nothing is reported. To change every focus ring at once, set --focus-ring-width or --focus-ring-offset."
     }
   ]
 }
