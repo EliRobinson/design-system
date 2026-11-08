@@ -72,7 +72,7 @@ Implements the WAI-ARIA tabs pattern: `role="tablist"` on `TabsList`, `role="tab
   do={[
     'Match TabsTrigger and TabsContent value props exactly — that pairing wires aria-controls and aria-labelledby together.',
     'Use value and onValueChange when something outside the tablist needs to read or drive the active tab.',
-    'Keep trigger labels to a word or two — TabsList wraps once labels get long.',
+    'Keep trigger labels to a word or two — when they do not fit, TabsList scrolls sideways and only the active tab is sure to be in view.',
     'Give a disabled tab a reason in its own label ("Basketball (sold out)") since arrow navigation will silently skip past it.',
   ]}
   dont={[
