@@ -3,7 +3,13 @@ import { createRoot } from 'react-dom/client';
 
 import './app.css';
 import { PREFLIGHT_CASES, type PreflightCaseId, caseQuery } from './cases';
-import { FontOverrideCase, FormControlsCase, LinkColourCase, TypeColourCase } from './cases/inline';
+import {
+  FontOverrideCase,
+  FormControlsCase,
+  LinkColourCase,
+  ShellWidthsCase,
+  TypeColourCase,
+} from './cases/inline';
 import { CommandPaletteCase, DialogCase } from './cases/overlays';
 
 /* A Record, so a case added to cases.ts without a component here is a type
@@ -15,6 +21,7 @@ const COMPONENTS: Record<PreflightCaseId, ComponentType> = {
   'link-colour': LinkColourCase,
   'type-colour': TypeColourCase,
   'font-override': FontOverrideCase,
+  'shell-widths': ShellWidthsCase,
 };
 
 /* One case per page load, chosen by `?case=`. One at a time because a modal

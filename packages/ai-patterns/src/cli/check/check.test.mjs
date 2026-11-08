@@ -5,6 +5,7 @@
 
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -61,7 +62,8 @@ function walkFiles(dir) {
 /**
  * Copies a fixture to a temp dir and installs what its installed.json names.
  * The tokens install carries the real stylesheets, so the checks read the
- * same tokens.css a consumer would.
+ * same tokens.css a consumer would. A fixture's `installed/` folder is laid
+ * over node_modules last, for a trap that only an older install has.
  */
 function materialise(name) {
   const root = mkdtempSync(join(tmpdir(), `ds-check-${name}-`));
@@ -79,6 +81,11 @@ function materialise(name) {
         cpSync(join(tokensDir, 'src', sheet), join(dir, 'src', sheet));
       }
     }
+  }
+  const overlay = join(root, 'installed');
+  if (existsSync(overlay)) {
+    cpSync(overlay, join(root, 'node_modules'), { recursive: true });
+    rmSync(overlay, { recursive: true });
   }
   return root;
 }
@@ -142,7 +149,7 @@ describe('ds check', () => {
   it('tells the Tailwind size apart from the design system width', async () => {
     const { text } = await check(materialise('container-widths'));
     expect(text).toContain('app/page.tsx:2 uses max-w-md');
-    expect(text).toContain('max-w-md -> max-w-[28rem]');
+    expect(text).toContain('max-w-md = 28rem');
   });
 
   it('says nothing was checked when neither package is installed', async () => {
@@ -220,17 +227,21 @@ describe('ds check', () => {
   });
 
   it('reads the container width from the installed tokens.css', async () => {
-    const { text } = await check(materialise('container-widths'));
-    const declared = readFileSync(join(tokensDir, 'src', 'tokens.css'), 'utf8').match(
-      /--container-md:\s*([^;]+);/,
-    )[1];
-    expect(text).toContain(`max-w-md is ${declared}, not 28rem`);
-  });
-
-  it('stays quiet about container widths once tokens.css stops declaring them', async () => {
     const root = materialise('container-widths');
     const sheet = join(root, 'node_modules', '@elirobinson', 'tokens', 'src', 'tokens.css');
-    writeFileSync(sheet, readFileSync(sheet, 'utf8').replace(/--container-/g, '--shell-'));
+    writeFileSync(
+      sheet,
+      readFileSync(sheet, 'utf8').replace('--container-md: 768px', '--container-md: 50rem'),
+    );
+    expect((await check(root)).text).toContain('max-w-md is 50rem, not 28rem');
+  });
+
+  it('stays quiet about container widths on the current tokens.css', async () => {
+    const root = materialise('container-widths');
+    cpSync(
+      join(tokensDir, 'src', 'tokens.css'),
+      join(root, 'node_modules', '@elirobinson', 'tokens', 'src', 'tokens.css'),
+    );
     expect(trapsIn((await check(root)).text)).toEqual([]);
   });
 });

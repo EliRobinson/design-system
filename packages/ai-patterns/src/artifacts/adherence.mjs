@@ -73,7 +73,7 @@ const KIND_BY_PREFIX = [
   ['--tr-', 'font'],
   ['--space-', 'spacing'],
   ['--fs-', 'spacing'],
-  ['--container-', 'spacing'],
+  ['--shell-', 'spacing'],
 ];
 
 const COLOR_VALUE = /^(#|oklch\(|rgb|hsl|color\()/i;

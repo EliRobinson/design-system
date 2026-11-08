@@ -153,7 +153,7 @@ Snap `padding`, `margin` and `gap` to the nearest step.
 | `64px` | 64        | `--space-10` |
 | `80px` | 80        | `--space-11` |
 
-Page width: `max-width` becomes a `--container-*` token. Layer order: `z-index` becomes a
+Page width: `max-width` becomes a `--shell-*` token. Layer order: `z-index` becomes a
 `--z-*` token (`--z-sticky`, `--z-modal`, `--z-toast`).
 
 ```css before
@@ -171,7 +171,7 @@ Page width: `max-width` becomes a `--container-*` token. Layer order: `z-index` 
   display: flex;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-5);
-  max-width: var(--container-xl);
+  max-width: var(--shell-xl);
   z-index: var(--z-sticky);
 }
 ```

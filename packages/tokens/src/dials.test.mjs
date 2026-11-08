@@ -112,7 +112,7 @@ describe('platformOverrides', () => {
 
     expect(byName.get('--radius-sm')).toBe('8px');
     expect(byName.get('--gutter')).toBe('16px');
-    expect(byName.get('--container-sm')).toBe('100%');
+    expect(byName.get('--shell-sm')).toBe('100%');
   });
 
   it('declares no colour — the invariant every measured ratio depends on', () => {

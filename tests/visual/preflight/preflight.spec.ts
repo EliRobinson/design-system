@@ -27,10 +27,7 @@ import { PREFLIGHT_HOST_URL, PREFLIGHT_PREFIX } from './host';
       reverting the case's fix fails it. It runs BEFORE the screenshot, because
       CI mints a baseline for any shot that has none, and a check that ran
       after would let a first shot record a broken state as truth.
-   2. A screenshot of the viewport, compared like every other shot.
-
-   #250 (`--container-*` changes `max-w-*`) has no case: it is still open, so
-   there is no fix to revert. Add one with its fix. */
+   2. A screenshot of the viewport, compared like every other shot. */
 
 type LayoutCheck = (page: Page) => Promise<void>;
 
@@ -91,6 +88,12 @@ async function expectCentredModal(page: Page) {
   expect(Math.abs(box.y + box.height / 2 - viewport.height / 2)).toBeLessThanOrEqual(1);
 }
 
+/** Asserts the `[data-probe]` element is exactly `width` px wide. */
+async function expectProbeWidth(page: Page, probe: string, width: number) {
+  const box = await page.locator(`[data-probe="${probe}"]`).boundingBox();
+  expect(box?.width, `${probe} width`).toBeCloseTo(width, 1);
+}
+
 /** Asserts `selector` matches one element of exactly `height` px. */
 async function expectHeight(page: Page, selector: string, height: number) {
   const target = page.locator(selector);
@@ -135,6 +138,13 @@ const CHECKS: Record<PreflightCaseId, LayoutCheck> = {
       'caption-destructive': '--status-danger-fg',
       'body-accent': '--accent-ink',
     }),
+
+  /* #250. With the shell widths named --container-*, tokens.css replaced
+     Tailwind's own, and max-w-md was 768px. */
+  'shell-widths': async (page) => {
+    await expectProbeWidth(page, 'tailwind-md', 448);
+    await expectProbeWidth(page, 'shell-md', 768);
+  },
 
   /* #34. The host's CSS sets --ds-font-sans-override on :root. If tokens.css
      stops reading it, every family below falls back to Geist. */

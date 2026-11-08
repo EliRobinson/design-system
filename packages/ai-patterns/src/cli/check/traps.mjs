@@ -213,7 +213,11 @@ const TAILWIND_CONTAINER = { sm: '24rem', md: '28rem', lg: '32rem', xl: '36rem',
 const CONTAINER_UTILITY =
   /(?<![\w-])(?:[\w-]+:)*(max-w|min-w|w|basis|inline|columns)-(sm|md|lg|xl|2xl)(?![\w-])/g;
 
-/** #250. tokens.css's unlayered `--container-*` replaces Tailwind's, so `max-w-md` is not 448px. */
+/**
+ * #250. Before @elirobinson/tokens 1.0.0, tokens.css declared the shell widths
+ * unlayered as `--container-*`, which replaces Tailwind's, so `max-w-md` is not
+ * 448px. 1.0.0 renamed them `--shell-*`, so only an older install trips this.
+ */
 function containerWidths(context) {
   if (!context.usesDesignSystem || !context.usesTailwind) return [];
   const ours = cssVariables(context.env.tokenStylesheets ?? []).find(
@@ -240,11 +244,18 @@ function containerWidths(context) {
         `values win: max-w-md is ${ours.value}, not ${TAILWIND_CONTAINER.md}. Nothing warns.`,
       ],
       fix: [
-        "Write the width you mean. For Tailwind's size, use its value:",
+        `Upgrade ${TOKENS_PKG} to 1.0.0 or later. It renames these --shell-sm ... --shell-2xl,`,
+        "so Tailwind's utilities get Tailwind's sizes back. Then rename the app's own",
+        'uses of the old names. This finds the version, updates package.json and rewrites them:',
+        '',
+        `  ${DLX} ds-resync --write --only ${TOKENS_PKG}`,
+        `  ${DLX} ds-resync migrate --write`,
+        '',
+        `Each utility above then changes size. Where it meant the design system's width,`,
+        "write max-w-(--shell-md). Where it meant Tailwind's, it is right after the upgrade:",
         `  ${Object.entries(TAILWIND_CONTAINER)
-          .map(([size, value]) => `max-w-${size} -> max-w-[${value}]`)
+          .map(([size, value]) => `max-w-${size} = ${value}`)
           .join(', ')}`,
-        "For the design system's page width, say so: max-w-(--container-md).",
       ],
     },
   ];

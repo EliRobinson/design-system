@@ -86,7 +86,7 @@ color scale (`--ink-*`, `--signal-*`), semantic color (`--bg`, `--fg`, `--surfac
 `--border`, `--accent-*`, `--anchor-*`, `--status-*`, `--link*`, `--focus-ring`),
 type (`--font-*`, `--fs-*`, `--fw-*`, `--lh-*`, `--tr-*`), spacing (`--space-*`, 4px base),
 radii (`--radius-*`, sharp by default), shadow (`--shadow-*`, restrained), motion
-(`--dur-*`, `--ease-*`), and layout (`--container-*`, `--gutter`, `--z-*`).
+(`--dur-*`, `--ease-*`), and layout (`--shell-*`, `--gutter`, `--z-*`).
 
 Two wrinkles worth knowing: the base-color comment block in `tokens.css` still says
 "electric lime" from an earlier palette, but the signal color is **Miltinson Amber** — the

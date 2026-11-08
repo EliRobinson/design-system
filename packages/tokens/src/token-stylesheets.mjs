@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url';
  *
  * mobile.css is deliberately absent. It declares no name that tokens.css does
  * not already declare — it re-points radii, the small end of the type ramp,
- * the gutter and two containers — and every one of its declarations sits
+ * the gutter and two shell widths — and every one of its declarations sits
  * behind `[data-platform='mobile']` or a media query rather than in a `:root`
  * that is true by default. It contributes nothing to the roster and reading it
  * here would report platform overrides as if they were defaults.

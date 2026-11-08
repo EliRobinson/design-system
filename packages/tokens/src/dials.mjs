@@ -111,7 +111,7 @@ export const DIALS = [
     attribute: 'data-platform',
     values: PLATFORMS,
     default: DEFAULT_PLATFORM,
-    owns: 'geometry only — radii, the small end of the type ramp, --gutter, the narrow containers. No colour.',
+    owns: 'geometry only — radii, the small end of the type ramp, --gutter, the narrow shells (--shell-sm, --shell-md). No colour.',
   },
 ];
 

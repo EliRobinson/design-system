@@ -10,8 +10,7 @@ import {
 } from '@elirobinson/react/components/organisms/Tabs';
 
 /* Layout is Tailwind utilities on purpose: this is a Tailwind consumer, and
-   the utilities are part of what meets our CSS here. Arbitrary widths rather
-   than `max-w-sm`..`2xl`, which tokens.css currently redefines (#250). */
+   the utilities are part of what meets our CSS here. */
 
 /* #126. Each control on its own row, so the check can read its height alone. */
 export function FormControlsCase() {
@@ -78,6 +77,21 @@ export function TypeColourCase() {
       <p className="t-body text-accent-ink" data-probe="body-accent">
         Body text in the accent ink
       </p>
+    </div>
+  );
+}
+
+/* #250. Tailwind's own size and the design system's shell width, side by
+   side. Each bar fills its cap, so the cap is the bar's width. */
+export function ShellWidthsCase() {
+  return (
+    <div className="grid w-[960px] gap-6">
+      <div className="w-full max-w-md bg-muted p-4" data-probe="tailwind-md">
+        <p className="t-body">Tailwind max-w-md</p>
+      </div>
+      <div className="w-full max-w-(--shell-md) bg-muted p-4" data-probe="shell-md">
+        <p className="t-body">max-w-(--shell-md)</p>
+      </div>
     </div>
   );
 }

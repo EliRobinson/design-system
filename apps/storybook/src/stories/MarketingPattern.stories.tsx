@@ -34,7 +34,7 @@ export const HeroSection: Story = {
       style={{
         padding: 'var(--space-12) var(--gutter)',
         borderBottom: '1px solid var(--border)',
-        maxWidth: 'var(--container-xl)',
+        maxWidth: 'var(--shell-xl)',
         margin: '0 auto',
       }}
     >

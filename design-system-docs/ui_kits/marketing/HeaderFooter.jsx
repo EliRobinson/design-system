@@ -66,7 +66,7 @@ function Header({ active = site.nav[0] }) {
 function Footer() {
   return (
     <footer style={{ background: 'var(--bg-inverse)', color: 'var(--fg-inverse)', padding: 'var(--space-10) var(--space-7) var(--space-7)' }}>
-      <div style={{ maxWidth: 'var(--container-xl)', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-7)' }}>
+      <div style={{ maxWidth: 'var(--shell-xl)', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-7)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-6)', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             <Wordmark className="t-h4" />
