@@ -1,29 +1,42 @@
-/* Selected and active states in forced-colors mode (Windows High Contrast), #291.
+/* Selected and active states in forced-colors mode (Windows High Contrast),
+ * #253 (SegmentedControl) and #291 (the rest).
  *
  * Forced colors drops background and box-shadow, so a state drawn only with a
  * fill looks like every other item. Each state below opts out with
- * `forced-color-adjust: none` and paints itself in system colours, the same
- * shape as SegmentedControl (#253). jsdom cannot emulate `forced-colors`, so
- * this reads the shipped stylesheets.
+ * `forced-color-adjust: none` and paints itself in system colours. jsdom
+ * cannot emulate `forced-colors`, and this package has no browser test path,
+ * so this reads the shipped stylesheets.
  *
- * Where a base `:hover` rule outranks the state rule, the hover selector is in
- * the list too: once the item opts out, that hover rule would repaint it with
- * its normal-mode fill.
+ * Where a base `:hover` rule ties with the state rule, the hover selector is
+ * in the list too: once the item opts out, that hover rule would repaint it
+ * with its normal-mode fill. The opt-out is inherited, so a child that sets
+ * its own colours is handed back to the system or repainted.
  */
 
 import { describe, expect, it } from 'vitest';
 
-import { forcedColorsRules, sheet } from './component-tokens.mjs';
+import {
+  FORCED_COLORS_QUERY,
+  forcedColorsDeclarations as declarations,
+  sheet,
+} from './component-tokens.mjs';
 
-/* The declarations of the forced-colors rule whose selector list names `selector`. */
-function declarations(path, selector) {
-  const rule = forcedColorsRules(sheet(path)).find((entry) =>
-    entry.selector.split(',').some((part) => part.trim() === selector),
-  );
-  return rule?.body ?? '';
+/* True when the sheet's forced-colors block closes at the end of the sheet,
+   so it follows every base rule it has to tie with or outrank. */
+function forcedBlockIsLast(css) {
+  const source = css.replace(/\/\*[\s\S]*?\*\//g, '').trimEnd();
+  const start = source.indexOf(FORCED_COLORS_QUERY);
+  if (start === -1) return false;
+  let depth = 0;
+  for (let i = source.indexOf('{', start); i < source.length; i++) {
+    if (source[i] === '{') depth++;
+    if (source[i] === '}' && --depth === 0) return i === source.length - 1;
+  }
+  return false;
 }
 
 const HIGHLIGHTED = [
+  ['SegmentedControl', 'molecules/SegmentedControl.css', ['.ds-segmented-control__item--active']],
   ['Pagination', 'molecules/Pagination.css', ['.ds-pagination__item--active']],
   [
     'DatePicker',
@@ -45,12 +58,10 @@ const HIGHLIGHTED = [
 ];
 
 describe.each(HIGHLIGHTED)('%s', (_name, path, selectors) => {
-  const css = sheet(path);
-
-  it('puts the forced-colors block after the base rules', () => {
-    /* component-tokens.mjs reads the first rule for a selector. */
-    const block = css.indexOf('@media (forced-colors: active)');
-    expect(block).toBeGreaterThan(css.indexOf(`${selectors[0]} {`));
+  it('ends the sheet with the forced-colors block', () => {
+    /* Equal-specificity hover rules lose only to a later rule, and
+       component-tokens.mjs reads the first rule for a selector. */
+    expect(forcedBlockIsLast(sheet(path))).toBe(true);
   });
 
   it.each(selectors)('paints %s with Highlight and HighlightText', (selector) => {
@@ -62,20 +73,18 @@ describe.each(HIGHLIGHTED)('%s', (_name, path, selectors) => {
 });
 
 describe('edges that would keep a normal-mode colour after opting out', () => {
-  it('Pagination: the active border matches the fill', () => {
-    expect(declarations('molecules/Pagination.css', '.ds-pagination__item--active')).toMatch(
-      /border-color:\s*Highlight\b/,
-    );
+  it.each([
+    ['molecules/Pagination.css', '.ds-pagination__item--active'],
+    ['molecules/Stepper.css', '.ds-stepper__step--active .ds-stepper__indicator'],
+  ])('%s: the border joins the fill', (path, selector) => {
+    expect(declarations(path, selector)).toMatch(/border-color:\s*Highlight\b/);
   });
 
-  it('Stepper: the active ring matches the fill', () => {
-    expect(
-      declarations('molecules/Stepper.css', '.ds-stepper__step--active .ds-stepper__indicator'),
-    ).toMatch(/border-color:\s*Highlight\b/);
-  });
-
-  it('CommandPalette: the active row keeps an inset ring, not a border', () => {
-    const body = declarations('organisms/CommandPalette.css', '.ds-command-palette__item--active');
+  it.each([
+    ['molecules/SegmentedControl.css', '.ds-segmented-control__item--active'],
+    ['organisms/CommandPalette.css', '.ds-command-palette__item--active'],
+  ])('%s: keeps an inset ring, not a border that would resize it', (path, selector) => {
+    const body = declarations(path, selector);
     expect(body).toMatch(/box-shadow:\s*inset 0 0 0 1px CanvasText\b/);
     expect(body).not.toMatch(/\bborder\b/);
   });
@@ -87,6 +96,13 @@ describe('edges that would keep a normal-mode colour after opting out', () => {
     expect(declarations('organisms/CommandPalette.css', selector)).toMatch(
       /color:\s*HighlightText\b/,
     );
+  });
+
+  it('CommandPalette: the shortcut key caps go back to system colours', () => {
+    /* Kbd sets its own fill, colour, border and shadow. */
+    expect(
+      declarations('organisms/CommandPalette.css', '.ds-command-palette__item--active .ds-kbd'),
+    ).toMatch(/forced-color-adjust:\s*auto/);
   });
 });
 
@@ -106,6 +122,11 @@ describe('states that sit beside a Highlight state', () => {
 
 /* An opted-out item keeps its outline on var(--focus-ring). */
 describe.each([
+  [
+    'SegmentedControl',
+    'molecules/SegmentedControl.css',
+    '.ds-segmented-control__item:focus-visible',
+  ],
   ['Pagination', 'molecules/Pagination.css', '.ds-pagination__item:focus-visible'],
   ['DatePicker', 'organisms/DatePicker.css', '.ds-date-picker__day:focus-visible'],
   ['NavigationMenu', 'organisms/NavigationMenu.css', '.ds-navigation-menu__link:focus-visible'],
@@ -113,4 +134,12 @@ describe.each([
   it('keeps focus visible with a system colour', () => {
     expect(declarations(path, selector)).toMatch(/outline-color:\s*CanvasText\b/);
   });
+});
+
+it('NavigationMenu: the inset focus ring on the active link reads HighlightText', () => {
+  /* The ring sits inside the Highlight fill, and only HighlightText is
+     promised to contrast with it. */
+  expect(
+    declarations('organisms/NavigationMenu.css', '.ds-navigation-menu__link--active:focus-visible'),
+  ).toMatch(/outline-color:\s*HighlightText\b/);
 });
