@@ -317,6 +317,12 @@ importers:
         specifier: '>=1.40.0'
         version: 1.62.1
     devDependencies:
+      '@changesets/cli':
+        specifier: ^2.31.0
+        version: 2.31.0(@types/node@25.6.0)
+      '@changesets/get-release-plan':
+        specifier: ^4.0.16
+        version: 4.0.16
       '@elirobinson/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config

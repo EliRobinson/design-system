@@ -282,6 +282,16 @@ jobs:
       - name: 'Voice surfaces match the pack (if red: run `node packages/ai-patterns/scripts/sync-voice.mjs` and commit the result)'
         run: node packages/ai-patterns/scripts/sync-voice.mjs --check
 
+      # #334: upgrade.md must cover every breaking changeset, pending ones
+      # included. `.changeset/*.md` is outside the project graph, so a pull
+      # request that only adds or edits a changeset selects no project, and a
+      # breaking change to a package ai-patterns does not depend on (such as
+      # design-system-mcp) does not select ai-patterns either. Either way
+      # `nx affected` would never run this suite. So it runs here on every
+      # run, uncached. It takes seconds.
+      - name: 'upgrade.md covers every breaking changeset (if red: add or fix its section in packages/ai-patterns/src/migrate/upgrade.md)'
+        run: pnpm --filter @elirobinson/ai-patterns exec vitest run src/migrate/upgrade-coverage.test.mjs
+
       - name: Require a changeset for package changes
         if: github.event_name == 'pull_request'
         run: pnpm changeset status --since=origin/${{ github.event.pull_request.base.ref }}

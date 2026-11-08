@@ -1,6 +1,7 @@
-/* The upgrade.md coverage rule from a PR to its release (#334), run in a scratch git repo
- * with the real `changeset version`, so the hash the stamp writes is the one Changesets
- * writes. */
+/* The upgrade.md coverage rules (upgrade-coverage.mjs) from a PR to its release (#334),
+ * run in a scratch git repo with the real `changeset version`, so the hash the stamp
+ * writes is the one Changesets writes. Plus unit tests of each rule. The suite that runs
+ * the rules on this repo's own upgrade.md is src/migrate/upgrade-coverage.test.mjs. */
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -13,8 +14,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   coverage,
+  gitResolver,
+  migrationCoverage,
   needsSection,
-  parseChangesetFile,
   readCoverageInputs,
   stampPending,
   UPGRADE_MD,
@@ -57,7 +59,8 @@ const commit = (message) => {
   git('add', '-A');
   git('commit', '-q', '-m', message);
 };
-const check = () => coverage(readCoverageInputs(root));
+const check = async () => coverage(await readCoverageInputs(root));
+const CLEAN = { missing: [], invented: [], nearMarker: [] };
 
 describe('from a PR to its release', () => {
   beforeEach(() => {
@@ -86,32 +89,52 @@ describe('from a PR to its release', () => {
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
   describe('a PR that adds a breaking changeset', () => {
-    it('fails until upgrade.md has a section for it', () => {
+    it('fails until upgrade.md has a section for it', async () => {
       write('.changeset/brave-fox.md', BREAKING);
-      expect(check().missing).toEqual([
+      expect((await check()).missing).toEqual([
         '@elirobinson/foo brave-fox (pending): **Breaking:** `Foo` is now `Bar`.',
       ]);
     });
 
-    it('passes once a pending section names the changeset', () => {
+    it('passes once a pending section names the changeset', async () => {
       write('.changeset/brave-fox.md', BREAKING);
       write(UPGRADE_MD, `# Upgrade\n${SECTION('pending', 'brave-fox')}`);
-      expect(check()).toEqual({ missing: [], invented: [] });
+      expect(await check()).toEqual(CLEAN);
     });
 
-    it('fails a pending section whose changeset does not exist', () => {
+    it('fails a pending section whose changeset does not exist', async () => {
       write(UPGRADE_MD, `# Upgrade\n${SECTION('pending', 'brave-fox')}`);
-      expect(check().invented).toEqual([
+      expect((await check()).invented).toEqual([
         'foo-0.4-bar: @elirobinson/foo@pending has no changeset brave-fox',
       ]);
     });
 
-    it('passes a 0.x minor that says "breaking change" without the marker', () => {
+    it('passes a 0.x minor that says "breaking change" without the marker', async () => {
       write(
         '.changeset/calm-owl.md',
         "---\n'@elirobinson/foo': minor\n---\n\nAdds a check that finds a breaking change.\n",
       );
-      expect(check()).toEqual({ missing: [], invented: [] });
+      expect(await check()).toEqual(CLEAN);
+    });
+
+    it('fails a 0.x minor that starts like the marker but is not it', async () => {
+      write(
+        '.changeset/calm-owl.md',
+        "---\n'@elirobinson/foo': minor\n---\n\nBreaking: renames Foo.\n",
+      );
+      expect((await check()).nearMarker).toEqual([
+        '@elirobinson/foo calm-owl (pending): Breaking: renames Foo.',
+      ]);
+    });
+
+    it('reads a changeset the way Changesets does, YAML comment and all', async () => {
+      write(
+        '.changeset/brave-fox.md',
+        "---\n'@elirobinson/foo': major # renames Foo\n---\n\nRenames Foo.\n",
+      );
+      expect((await check()).missing).toEqual([
+        '@elirobinson/foo brave-fox (pending): Renames Foo.',
+      ]);
     });
   });
 
@@ -123,13 +146,13 @@ describe('from a PR to its release', () => {
       execFileSync('node', [changesetBin, 'version'], { cwd: root, stdio: 'pipe' });
     });
 
-    it('would turn main red without the stamp', () => {
-      const result = check();
+    it('would turn main red without the stamp', async () => {
+      const result = await check();
       expect(result.missing).toHaveLength(1);
       expect(result.invented).toHaveLength(1);
     });
 
-    it('keeps main green once the stamp fills in the version and hash', () => {
+    it('keeps main green once the stamp fills in the version and hash', async () => {
       execFileSync('node', [stampScript, root], { stdio: 'pipe' });
       const hash = git(
         'log',
@@ -142,7 +165,22 @@ describe('from a PR to its release', () => {
       expect(readFileSync(join(root, UPGRADE_MD), 'utf8')).toBe(
         `# Upgrade\n${SECTION('0.4.0', hash)}`,
       );
-      expect(check()).toEqual({ missing: [], invented: [] });
+      expect(await check()).toEqual(CLEAN);
+    });
+
+    it('fails the release when a section cannot be stamped', () => {
+      write(
+        UPGRADE_MD,
+        `# Upgrade\n${SECTION('pending', 'brave-fox')}`.replace('`pending`', '`pending` (soon)'),
+      );
+      expect(() => execFileSync('node', [stampScript, root], { stdio: 'pipe' })).toThrow(
+        /does not match the release/,
+      );
+    });
+
+    it('fails the release when no commit added a pending changeset', () => {
+      const markdown = `# Upgrade\n${SECTION('pending', 'ghost')}`;
+      expect(() => stampPending(markdown, gitResolver(root))).toThrow(/no commit added/);
     });
   });
 });
@@ -158,6 +196,7 @@ describe('needsSection', () => {
   it('counts a 0.x minor only when it starts with the marker', () => {
     expect(change('minor', '0.3.0', '**Breaking:** Renames a prop.')).toBe(true);
     expect(change('minor', '0.3.0', 'Adds a test for any breaking change.')).toBe(false);
+    expect(change('minor', '0.3.0', 'Breaking: no bold, so not the marker.')).toBe(false);
     expect(change('minor', '0.3.0', 'Renames a prop. **Breaking:** later in the text.')).toBe(
       false,
     );
@@ -166,21 +205,6 @@ describe('needsSection', () => {
   it('does not count the marker on a 1.x minor or on a patch', () => {
     expect(change('minor', '1.3.0', '**Breaking:** Renames a prop.')).toBe(false);
     expect(change('patch', '0.3.0', '**Breaking:** Renames a prop.')).toBe(false);
-  });
-});
-
-describe('parseChangesetFile', () => {
-  it('reads quoted and unquoted package names, and the text', () => {
-    expect(
-      parseChangesetFile(`---\n'@a/x': major\n"@a/y": minor\n@a/z: patch\n---\n\nText.\n`),
-    ).toEqual({
-      releases: [
-        { pkg: '@a/x', bump: 'major' },
-        { pkg: '@a/y', bump: 'minor' },
-        { pkg: '@a/z', bump: 'patch' },
-      ],
-      text: 'Text.',
-    });
   });
 });
 
@@ -193,5 +217,43 @@ describe('stampPending', () => {
   it('leaves released sections alone', () => {
     const markdown = `# Upgrade\n${SECTION('0.4.0', 'abcdef1')}`;
     expect(stampPending(markdown, () => ({ version: '9.9.9', hash: '0000000' }))).toBe(markdown);
+  });
+
+  it('stamps a section with CRLF line endings', () => {
+    const crlf = (text) => text.replaceAll('\n', '\r\n');
+    const markdown = crlf(`# Upgrade\n${SECTION('pending', 'brave-fox')}`);
+    expect(stampPending(markdown, () => ({ version: '0.4.0', hash: 'abcdef1' }))).toBe(
+      crlf(`# Upgrade\n${SECTION('0.4.0', 'abcdef1')}`),
+    );
+  });
+});
+
+describe('migrationCoverage', () => {
+  const silent = { id: 'silent', report: 'none' };
+  const loud = { id: 'loud', report: 'occurrence' };
+
+  it('lets a silent migration go without a section', () => {
+    expect(migrationCoverage([], [silent]).missing).toEqual([]);
+  });
+
+  it('still allows a section for a silent migration', () => {
+    expect(migrationCoverage([{ migration: 'silent' }], [silent])).toEqual({
+      missing: [],
+      unknown: [],
+      duplicated: [],
+    });
+  });
+
+  it('fails a migration that reports something and has no section', () => {
+    expect(migrationCoverage([], [silent, loud]).missing).toEqual(['loud']);
+  });
+
+  it('fails a section for a migration that does not exist, or one named twice', () => {
+    const result = migrationCoverage(
+      [{ migration: 'loud' }, { migration: 'loud' }, { migration: 'gone' }],
+      [loud],
+    );
+    expect(result.unknown).toEqual(['gone']);
+    expect(result.duplicated).toEqual(['loud']);
   });
 });

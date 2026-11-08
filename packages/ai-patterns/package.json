@@ -126,6 +126,8 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
+    "@changesets/get-release-plan": "^4.0.16",
     "@elirobinson/eslint-config": "workspace:*",
     "@elirobinson/react": "workspace:*",
     "@elirobinson/tokens": "workspace:*",
