@@ -89,10 +89,11 @@ describe('parseShots', () => {
     expect(() => parseShots(rogue)).toThrow(/tablet/);
   });
 
-  it('knows the four baseline-taking projects', () => {
+  it('knows the five baseline-taking projects', () => {
     expect(Object.keys(SPEC_FILE_BY_PROJECT).sort()).toEqual([
       'docs-narrow',
       'docs-wide',
+      'preflight-wide',
       'storybook-narrow',
       'storybook-wide',
     ]);

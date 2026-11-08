@@ -341,7 +341,7 @@ jobs:
       # pattern this job decided.
       - name: Pack the build outputs
         if: steps.scope.outputs.run == 'true'
-        run: tar -czf build-outputs.tar.gz --exclude='.next/cache' apps/storybook/storybook-static apps/docs/.next apps/docs/public/brand scope-grep.txt
+        run: tar -czf build-outputs.tar.gz --exclude='.next/cache' apps/storybook/storybook-static apps/docs/.next apps/docs/public/brand apps/preflight-host/dist scope-grep.txt
       - if: steps.scope.outputs.run == 'true'
         uses: actions/upload-artifact@v7
         with:

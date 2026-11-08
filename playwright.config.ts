@@ -7,6 +7,11 @@ import {
 } from '@elirobinson/ai-patterns/testing/visual-config';
 
 import { DOCS_APP_DIR, DOCS_PORT, DOCS_URL } from './tests/visual/docs/routes';
+import {
+  PREFLIGHT_HOST_DIR,
+  PREFLIGHT_HOST_PORT,
+  PREFLIGHT_HOST_URL,
+} from './tests/visual/preflight/host';
 import { STORYBOOK_DIR, STORYBOOK_PORT, STORYBOOK_URL } from './tests/visual/storybook/stories';
 
 /* Visual regression config. See issue #65 for the decisions encoded here.
@@ -48,6 +53,13 @@ export default defineConfig(
         command: `pnpm exec next start -p ${DOCS_PORT}`,
         cwd: DOCS_APP_DIR,
         url: DOCS_URL,
+        reuseExistingServer: !process.env.CI,
+      },
+      /* A Tailwind v4 consumer with full Preflight, built by Vite. Static, so
+         the same file server as Storybook. */
+      {
+        command: `node scripts/serve-static.mjs ${PREFLIGHT_HOST_DIR} ${PREFLIGHT_HOST_PORT}`,
+        url: PREFLIGHT_HOST_URL,
         reuseExistingServer: !process.env.CI,
       },
     ],
@@ -96,6 +108,16 @@ export default defineConfig(
         testMatch: /docs\.spec\.ts$/,
         grep: /@responsive/,
         use: { viewport: NARROW_VIEWPORT },
+      },
+      /* @elirobinson/react inside a Tailwind v4 consumer with full Preflight
+         (#329). Each test runs a layout check before its shot, so a fix to a
+         past consumer issue that gets reverted fails here even with no
+         baseline yet. Wide only: every case is about the cascade, not about
+         responsive layout. */
+      {
+        name: 'preflight-wide',
+        testMatch: /preflight\.spec\.ts$/,
+        use: { viewport: WIDE_VIEWPORT },
       },
     ],
   }),
