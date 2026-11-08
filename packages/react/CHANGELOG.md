@@ -1,5 +1,11 @@
 # @elirobinson/react
 
+## 3.9.1
+
+### Patch Changes
+
+- 1c567c0: Pagination, DatePicker, NavigationMenu, CommandPalette, Combobox and Stepper now show their selected or active state in forced-colors mode (Windows High Contrast). Each state is painted with Highlight and HighlightText, and DatePicker's today ring and Combobox's chosen option use a CanvasText outline.
+
 ## 3.9.0
 
 ### Minor Changes
