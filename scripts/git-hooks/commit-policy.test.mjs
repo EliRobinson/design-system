@@ -94,6 +94,12 @@ describe('checkCommits', () => {
     expect(problems[0]).toMatch(/^b2 fix: one line: .*one line/);
     expect(problems[1]).toMatch(/^c3 Revert "fix: x": .*Conventional/);
   });
+
+  it('counts `#` lines, which git has already cleaned up in a stored commit', () => {
+    expect(checkCommits([{ sha: 'd4', message: 'fix: x\n\n#278 a body line\n' }])).toEqual([
+      'd4 fix: x: Write one line only. No body. No trailers.',
+    ]);
+  });
 });
 
 /* Every bot commit in CI. The hooks do not run for the ones that set HUSKY: 0,
@@ -105,7 +111,7 @@ describe('the workflow bot commits', () => {
   const files = readdirSync(dir).filter((file) => /\.ya?ml$/.test(file));
   const commits = files.flatMap((file) => {
     const text = readFileSync(join(dir, file), 'utf8');
-    return [...text.matchAll(/git commit\b(?:[^\n]*\\\n)*[^\n]*/g)].map(([command]) => ({
+    return [...text.matchAll(/^\s*git commit\b(?:[^\n]*\\\n)*[^\n]*/gm)].map(([command]) => ({
       file,
       command,
     }));
@@ -125,7 +131,7 @@ describe('the workflow bot commits', () => {
     const messages = [...command.matchAll(/-m "([^"]+)"/g)].map(([, message]) => message);
     expect(messages).toHaveLength(1);
     // A shell expansion here is a count or a step output, so stand a number in.
-    const message = messages[0].replace(/\$\{[^}]+\}|\$\{\{[^}]+\}\}/g, '3');
+    const message = messages[0].replace(/\$\{\{[^}]+\}\}|\$\{[^}]+\}/g, '3');
     expect(checkCommitMessage(`${message}\n`)).toBeNull();
   });
 });
@@ -149,7 +155,7 @@ describe('the CLI', () => {
 
   it('blocks a commit on main in a real repo', () => {
     const dir = mkdtempSync(join(tmpdir(), 'commit-policy-repo-'));
-    execFileSync('git', ['init', '-q', '-b', 'main', dir]);
+    git(dir, 'init', '-q', '-b', 'main');
     const env = { ...process.env, CI: '' };
     const run = spawnSync('node', [cli, 'branch'], { cwd: dir, encoding: 'utf8', env });
     expect(run.status).toBe(1);
@@ -176,8 +182,11 @@ describe('the CLI range mode', () => {
   }
   const commit = (dir, ...messages) =>
     git(dir, 'commit', '-q', '--allow-empty', ...messages.flatMap((m) => ['-m', m]));
-  const range = (dir) =>
-    spawnSync('node', [cli, 'range', 'main..HEAD'], { cwd: dir, encoding: 'utf8' });
+  const range = (dir, ...args) =>
+    spawnSync('node', [cli, 'range', ...(args.length ? args : ['main..HEAD'])], {
+      cwd: dir,
+      encoding: 'utf8',
+    });
 
   it('passes one-line commits', () => {
     const dir = repo();
@@ -191,6 +200,15 @@ describe('the CLI range mode', () => {
   it('fails a commit with a body', () => {
     const dir = repo();
     commit(dir, 'fix: one line', 'A body git revert or a squash would write.');
+    const run = range(dir);
+    expect(run.status).toBe(1);
+    expect(run.stderr).toMatch(/^commit policy: /);
+    expect(run.stderr).toMatch(/fix: one line: Write one line only/);
+  });
+
+  it('fails a body of `#` lines, which the commit-msg hook skips', () => {
+    const dir = repo();
+    commit(dir, 'fix: one line', '#278 a body line');
     const run = range(dir);
     expect(run.status).toBe(1);
     expect(run.stderr).toMatch(/fix: one line: Write one line only/);
@@ -216,8 +234,7 @@ describe('the CLI range mode', () => {
 
   it('fails when git cannot read the range, rather than passing on nothing', () => {
     const dir = repo();
-    const run = spawnSync('node', [cli, 'range', 'nope..HEAD'], { cwd: dir, encoding: 'utf8' });
-    expect(run.status).not.toBe(0);
+    expect(range(dir, 'nope..HEAD').status).not.toBe(0);
   });
 
   it('fails with no range given', () => {
