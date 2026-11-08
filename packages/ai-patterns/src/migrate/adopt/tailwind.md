@@ -108,10 +108,10 @@ export const Hero = () => (
 ## Spacing
 
 Tailwind's spacing steps are 4px apart and the system's scale is built on the same steps,
-so `p-4`, `gap-6` and friends stay. The lint rule allows them. Fix two things:
+so `p-4`, `gap-6` and friends stay. The lint rule allows them. Fix these:
 
 - An arbitrary value (`p-[13px]`, `mt-[22px]`). Snap it to the nearest step in the table
-  below (22px is `p-6`, not `p-5`).
+  below (23px is `p-6`).
 - An arbitrary width cap (`max-w-[720px]`). Use the nearest `--container-*` token:
   `max-w-(--container-md)`.
 - Spacing in your own CSS. Use the `--space-*` token there.

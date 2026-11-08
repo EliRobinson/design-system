@@ -9,6 +9,9 @@
  * would make two features fight over one file.
  */
 
+import { join, relative, sep } from 'node:path';
+
+import { walk } from '../cli/discovery.mjs';
 import { RESYNC_COMMAND, versionStamp } from './llms.mjs';
 
 export const SKILL_DIRS = {
@@ -77,4 +80,24 @@ ${RESYNC_COMMAND}
   (\`--ink-500\`) in app code.
 - Never restyle a system component with overrides that fight the tokens. Report the gap.
 `;
+}
+
+/**
+ * Every file the `ds-migrate` skill ships (#322), as a skill-relative `path` and an
+ * absolute `source`. The build stages exactly these and the migrate tests check exactly
+ * these, so a file cannot ship unchecked. The adopt prompt travels with the skill: its
+ * Step 0 is what an app with nothing installed does first.
+ *
+ * @param {string} packageDir this package's root
+ * @returns {{ path: string, source: string }[]}
+ */
+export function migrateSkillFiles(packageDir) {
+  const root = join(packageDir, 'src/migrate');
+  return [
+    ...walk(root, '.md').map((source) => ({
+      path: relative(root, source).split(sep).join('/'),
+      source,
+    })),
+    { path: 'adopt-system.md', source: join(packageDir, 'src/prompts/adopt-system.md') },
+  ].sort((a, b) => a.path.localeCompare(b.path));
 }

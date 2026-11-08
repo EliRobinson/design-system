@@ -50,7 +50,7 @@ import {
   REFERENCE_INPUTS,
   SOURCE_KINDS,
 } from '../src/artifacts/reference.mjs';
-import { SKILL_DIRS } from '../src/artifacts/skills.mjs';
+import { migrateSkillFiles, SKILL_DIRS } from '../src/artifacts/skills.mjs';
 
 const packageDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(packageDir, '..', '..');
@@ -263,14 +263,9 @@ function main() {
   /* 3b. The migration patterns (#322): the skill, one adopt file per source system,
          and the upgrade file, copied as written. The adopt prompt they start from
          travels with them, so an app with nothing installed yet still has it. */
-  const migrateSource = join(packageDir, 'src/migrate');
-  for (const path of walk(migrateSource).filter((file) => file.endsWith('.md'))) {
-    write(join(SKILL_DIRS.migrate, path), readFileSync(join(migrateSource, path), 'utf8'));
+  for (const { path, source } of migrateSkillFiles(packageDir)) {
+    write(join(SKILL_DIRS.migrate, path), readFileSync(source, 'utf8'));
   }
-  write(
-    join(SKILL_DIRS.migrate, 'adopt-system.md'),
-    readFileSync(join(packageDir, 'src/prompts/adopt-system.md'), 'utf8'),
-  );
 
   /* 4. The stamp. `reactVersion` is what `ds-resync artifacts` compares against
         the consuming repo's install to decide whether to warn. */

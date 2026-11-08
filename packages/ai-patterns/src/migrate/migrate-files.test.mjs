@@ -7,7 +7,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { dirname, relative } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -17,21 +17,23 @@ import {
   checkAfterBlock,
   checkJsx,
   checkMappingSpan,
+  checkCss,
   checkUtilities,
   EXEMPT_LANGUAGES,
   fencedBlocks,
   loadVocabulary,
-  migrateFiles,
   nearestOnScale,
   SIDES,
   tables,
 } from './snippets.test-helper.mjs';
+import { migrateSkillFiles, SKILL_DIRS } from '../artifacts/skills.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const files = migrateFiles(here);
+const files = migrateSkillFiles(join(here, '..', '..'));
 const ADOPT_SOURCES = ['bootstrap', 'mui', 'plain-css', 'shadcn', 'tailwind'];
-/* Table columns whose backticked spans are ours, so are checked. */
-const CHECKED_COLUMNS = ['Miltinson', 'HTML classes'];
+/* Table columns whose backticked spans are ours, so are checked. A prefix, so a header
+   like "Miltinson (after)" is still checked rather than quietly skipped. */
+const isCheckedColumn = (name) => name.startsWith('Miltinson') || name === 'HTML classes';
 
 let vocab;
 beforeAll(() => {
@@ -41,9 +43,9 @@ beforeAll(() => {
 describe('the file set', () => {
   it('has one adopt pattern per source the issue names', () => {
     const adopt = files
-      .map((file) => relative(here, file))
-      .filter((file) => file.startsWith('adopt/'))
-      .map((file) => file.slice('adopt/'.length, -'.md'.length));
+      .map((file) => file.path)
+      .filter((path) => path.startsWith('adopt/'))
+      .map((path) => path.slice('adopt/'.length, -'.md'.length));
     expect(adopt.sort()).toEqual(ADOPT_SOURCES);
   });
 
@@ -56,9 +58,15 @@ describe('the file set', () => {
     expect(sides).toContain('before');
     expect(sides).toContain('after');
   });
+
+  it('names each shipped SKILL.md after the folder it installs into', () => {
+    const name = (path) => readFileSync(path, 'utf8').match(/^name: (.+)$/m)?.[1];
+    expect(name(join(here, 'SKILL.md'))).toBe(SKILL_DIRS.migrate);
+    expect(name(join(here, '..', 'resync', 'SKILL.md'))).toBe(SKILL_DIRS.resync);
+  });
 });
 
-describe.each(files.map((file) => [relative(here, file), file]))('%s', (_name, file) => {
+describe.each(files.map((file) => [file.path, file.source]))('%s', (_name, file) => {
   const text = readFileSync(file, 'utf8');
   const blocks = fencedBlocks(text);
 
@@ -80,11 +88,35 @@ describe.each(files.map((file) => [relative(here, file), file]))('%s', (_name, f
     const problems = [];
     for (const table of tables(text)) {
       const columns = table.header
-        .map((name, index) => (CHECKED_COLUMNS.includes(name) ? index : -1))
+        .map((name, index) => (isCheckedColumn(name) ? index : -1))
         .filter((index) => index !== -1);
       for (const row of table.rows) {
         for (const span of columns.flatMap((column) => backticked(row.cells[column] ?? ''))) {
           problems.push(...checkMappingSpan(span, vocab).map((p) => `line ${row.line}: ${p}`));
+        }
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it('maps a source variable to what the Tailwind bridge aliases it to', () => {
+    /* shadcn's variable names are Tailwind colour keys, so the bridge already says what
+       each one means here. `accent` is the one name whose meaning differs on purpose. */
+    const problems = [];
+    for (const table of tables(text).filter((t) => t.header[0] === 'shadcn variable')) {
+      const ours = table.header.indexOf('Miltinson');
+      for (const row of table.rows) {
+        const targets = backticked(row.cells[ours]);
+        const variables = backticked(row.cells[0]);
+        for (const [index, variable] of variables.entries()) {
+          /* `--a`, `--b` → `--x`, or the same count on both sides, paired in order. */
+          const token = targets.length === variables.length ? targets[index] : targets[0];
+          const alias = vocab.tailwind.colorAlias.get(variable.replace(/^--/, ''));
+          if (!alias || variable === '--accent') continue;
+          if (alias !== token)
+            problems.push(
+              `line ${row.line}: the bridge maps ${variable} to ${alias}, not ${token}`,
+            );
         }
       }
     }
@@ -177,5 +209,44 @@ describe('the checker catches drift', () => {
   it('fails a scale row that is no longer the nearest token', () => {
     expect(nearestOnScale('--space-4', 16, vocab)).toEqual(['--space-4']);
     expect(nearestOnScale('--space-4', 24, vocab)).not.toContain('--space-4');
+  });
+
+  it('reads values written in braces, not only quoted ones', () => {
+    expect(
+      jsx(`${BUTTON}export const a = <Button variant={"outline"}>Go</Button>;`).join('\n'),
+    ).toMatch(/not one of/);
+    expect(jsx('export const a = <p className={`bg-brandz`}>x</p>;').join('\n')).toMatch(
+      /no colour "brandz"/,
+    );
+  });
+
+  it('resolves every @elirobinson import, including import-only subpaths', () => {
+    expect(jsx("import '@elirobinson/tokens/tokenz.css';\nexport const a = 1;").join('\n')).toMatch(
+      /does not resolve/,
+    );
+    expect(
+      jsx(
+        "import { useRovingFocus } from '@elirobinson/react/hooks/useRovingFocus';\nexport const a = useRovingFocus;",
+      ),
+    ).toEqual([]);
+  });
+
+  it('fails a font family the bridge does not map, but not a weight', () => {
+    expect(checkUtilities('font-semibold font-sans', vocab)).toEqual([]);
+    expect(checkUtilities('font-serif', vocab).join('\n')).toMatch(/no font family "serif"/);
+  });
+
+  it('fails CSS that redefines a system token or names a class nothing ships', () => {
+    expect(checkCss(':root { --accent: red; }', vocab).join('\n')).toMatch(
+      /redefines a system token/,
+    );
+    expect(checkCss(':root { --ds-font-sans-override: var(--font-geist-sans); }', vocab)).toEqual(
+      [],
+    );
+    expect(checkCss('.ds-buton { color: var(--fg); }', vocab).join('\n')).toMatch(/\.ds-buton/);
+  });
+
+  it('fails a table cell it cannot classify', () => {
+    expect(checkMappingSpan('theme.spacing(2)', vocab).join('\n')).toMatch(/not a shape/);
   });
 });

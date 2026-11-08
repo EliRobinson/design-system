@@ -42,6 +42,26 @@ export function sliceChangelog(markdown, fromVersion, toVersion) {
   );
 }
 
+/**
+ * The changesets inside one version's body, each with the `###` section it sits under.
+ * Changesets writes every entry as `- <7-char hash>: <text>`, so the hash is the id.
+ *
+ * @param {string} body one entry's `body` from parseChangelog
+ * @returns {{ section: string, hash: string, text: string }[]}
+ */
+export function parseChangesetEntries(body) {
+  return body
+    .split(/^###\s+/m)
+    .slice(1)
+    .flatMap((block) => {
+      const section = block.split('\n')[0].trim();
+      return block
+        .split(/^- (?=[0-9a-f]{7}:)/m)
+        .slice(1)
+        .map((entry) => ({ section, hash: entry.slice(0, 7), text: entry.slice(9).trim() }));
+    });
+}
+
 export function isBreaking(entry) {
   return /^###\s+Major Changes\s*$/m.test(entry.body);
 }

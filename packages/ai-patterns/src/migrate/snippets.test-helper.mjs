@@ -18,9 +18,10 @@
  *   table instead of quietly making it wrong.
  */
 
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { designSystem } from '@elirobinson/eslint-config';
 import { designSystemCss } from '@elirobinson/eslint-config/css';
@@ -28,15 +29,42 @@ import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
 import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { Linter } from 'eslint';
 
-const require = createRequire(import.meta.url);
+import { findPackageDir } from '../cli/discovery.mjs';
 
+const require = createRequire(import.meta.url);
+const here = dirname(fileURLToPath(import.meta.url));
+
+/* Resolved through the package's exports map with the `import` condition, the way a
+   consumer's bundler resolves it. CommonJS `require.resolve` cannot see react's
+   `./components/*` and `./hooks/*`, which have only an `import` condition, and
+   `import.meta.resolve` is not available inside Vitest. */
 function resolves(specifier) {
-  try {
-    require.resolve(specifier);
-    return true;
-  } catch {
-    return false;
+  const [scope, name, ...rest] = specifier.split('/');
+  const dir = findPackageDir(`${scope}/${name}`, [here]);
+  if (!dir) return false;
+  const { exports = {} } = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  const subpath = rest.length ? `./${rest.join('/')}` : '.';
+  for (const [pattern, target] of Object.entries(exports)) {
+    const [head, tail = null] = pattern.split('*');
+    let star = null;
+    if (tail === null) {
+      if (pattern !== subpath) continue;
+    } else if (
+      subpath.startsWith(head) &&
+      subpath.endsWith(tail) &&
+      subpath.length >= head.length + tail.length
+    ) {
+      star = subpath.slice(head.length, subpath.length - tail.length);
+    } else continue;
+    const file = typeof target === 'string' ? target : (target.import ?? target.default);
+    if (
+      typeof file === 'string' &&
+      existsSync(join(dir, star === null ? file : file.replaceAll('*', star)))
+    ) {
+      return true;
+    }
   }
+  return false;
 }
 
 /* ------------------------------------------------------------------ */
@@ -51,13 +79,20 @@ export function loadVocabulary() {
   }
 
   /* The Tailwind bridge is the only source of `bg-*` names that mean anything. */
-  const bridge = readFileSync(require.resolve('@elirobinson/tokens/tailwind.css'), 'utf8');
+  /* Comments blanked first: the file's prose quotes `--color-*` names it does not declare. */
+  const bridge = readFileSync(require.resolve('@elirobinson/tokens/tailwind.css'), 'utf8').replace(
+    /\/\*[\s\S]*?\*\//g,
+    '',
+  );
   const tailwind = { color: new Set(), radius: new Set(), shadow: new Set(), font: new Set() };
-  for (const [, namespace, key] of bridge.matchAll(
-    /^\s*--(color|radius|shadow|font)-([\w-]+):/gm,
+  const colorAlias = new Map(); // `background` → `--bg`
+  for (const [, namespace, key, value] of bridge.matchAll(
+    /^\s*--(color|radius|shadow|font)-([\w-]+):\s*([^;]+);/gm,
   )) {
     tailwind[namespace].add(key);
+    if (namespace === 'color') colorAlias.set(key, value.match(/^var\((--[\w-]+)\)$/)?.[1]);
   }
+  tailwind.colorAlias = colorAlias;
 
   /* Exported names → the component record (or sub-component) that owns their props. */
   const components = new Map();
@@ -93,7 +128,8 @@ export function loadVocabulary() {
 /* ------------------------------------------------------------------ */
 /* Markdown → blocks and table cells. */
 
-const FENCE = /^```([^\n]*)\n([\s\S]*?)^```$/gm;
+/* Indented fences count: a code block inside a numbered step is still copied. */
+const FENCE = /^( *)```([^\n]*)\n([\s\S]*?)^\1```$/gm;
 const SIDES = new Set(['before', 'after']);
 const EXEMPT_LANGUAGES = new Set(['bash', 'sh', 'shell', 'text']);
 
@@ -101,9 +137,11 @@ const EXEMPT_LANGUAGES = new Set(['bash', 'sh', 'shell', 'text']);
 export function fencedBlocks(markdown) {
   const blocks = [];
   for (const match of markdown.matchAll(FENCE)) {
-    const [lang = '', side = null, ...rest] = match[1].trim().split(/\s+/);
+    const [, indent, info, body] = match;
+    const [lang = '', side = null] = info.trim().split(/\s+/);
     const line = markdown.slice(0, match.index).split('\n').length;
-    blocks.push({ lang, side, extra: rest, code: match[2], line });
+    const code = body.replace(new RegExp(`^${indent}`, 'gm'), '');
+    blocks.push({ lang, side, code, line });
   }
   return blocks;
 }
@@ -148,12 +186,19 @@ export function backticked(text) {
 
 const TOKEN_REF = /(?<![\w-])--[a-z][a-z0-9-]*/g;
 
+/* The value of an override hook is the consumer's own variable (`next/font` hands over
+   `--font-geist-sans`), so it is the one place a name we do not ship is correct. */
+const OVERRIDE_VALUE = /(--ds-[\w-]+-override\s*:)[^;]*/g;
+
 /** Every custom property named in `code` is shipped, or declared in `code` itself. */
-export function checkTokens(code, vocab) {
+export function checkTokens(source, vocab) {
+  const code = source.replace(OVERRIDE_VALUE, '$1');
   const declared = new Set(
     [...code.matchAll(/(?<![\w-])(--[a-z][a-z0-9-]*)\s*:/g)].map((m) => m[1]),
   );
-  const problems = [];
+  const problems = [...declared]
+    .filter((name) => vocab.tokens.has(name) && !/^--ds-[\w-]+-override$/.test(name))
+    .map((name) => `${name} redefines a system token; use an override hook or a --product-* token`);
   for (const [name] of code.matchAll(TOKEN_REF)) {
     if (vocab.tokens.has(name) || declared.has(name)) continue;
     problems.push(`token ${name} is not declared by @elirobinson/tokens`);
@@ -161,11 +206,36 @@ export function checkTokens(code, vocab) {
   return problems;
 }
 
-/* Words after `text-` / `border-` that are not colours in Tailwind. */
-const TEXT_NON_COLOR =
-  /^(?:xs|sm|base|lg|[2-9]?xl|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|ellipsis|clip)$/;
+/* Words after a colour prefix that are something else in Tailwind (`text-sm`, `border-2`). */
 const BORDER_NON_COLOR =
   /^(?:\d+|[trblxyse]|[trblxyse]-\d+|solid|dashed|dotted|double|hidden|none|collapse|separate)$/;
+const NON_COLOR_BY_PREFIX = {
+  text: /^(?:xs|sm|base|lg|[2-9]?xl|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|ellipsis|clip)$/,
+  border: BORDER_NON_COLOR,
+  divide: BORDER_NON_COLOR,
+  ring: /^(?:\d+|offset-\d+|inset)$/,
+  'inset-ring': /^\d+$/,
+  outline: /^(?:\d+|offset-\d+|none|hidden|dashed|dotted|double|solid)$/,
+  bg: /^(?:none|cover|contain|auto|center|top|bottom|left|right|fixed|local|scroll|repeat|no-repeat|repeat-[xy]|clip-[\w-]+|origin-[\w-]+|linear-[\w-]+|radial|conic|gradient-[\w-]+)$/,
+  decoration: /^(?:\d+|auto|from-font|solid|double|dotted|dashed|wavy)$/,
+  stroke: /^\d+$/,
+  accent: /^auto$/,
+  caret: /^auto$/,
+  fill: /^none$/,
+  from: /^\d+%$/,
+  via: /^\d+%$/,
+  to: /^\d+%$/,
+};
+/* `font-*` that sets weight, stretch or smoothing rather than a family. */
+const FONT_NON_FAMILY =
+  /^(?:thin|extralight|light|normal|medium|semibold|bold|extrabold|black|stretch-[\w-]+|stretch|features-[\w-]+)$/;
+/* Every utility namespace that takes a colour; the same set the shipped lint rule watches. */
+const COLOR_UTILITY = new RegExp(
+  `^(${Object.keys(NON_COLOR_BY_PREFIX)
+    .concat('placeholder')
+    .sort((a, b) => b.length - a.length)
+    .join('|')})-([a-z][\\w-]*)$`,
+);
 const ROUNDED = /^rounded(?:-(?:[trblse]|tl|tr|bl|br|ss|se|es|ee))?(?:-([\w-]+))?$/;
 
 /** Tailwind utilities that name a design value resolve through the bridge. */
@@ -197,23 +267,17 @@ export function checkUtilities(classList, vocab) {
       }
       continue;
     }
-    const color = utility.match(/^(bg|text|border|ring|outline|fill|stroke|divide)-([a-z][\w-]*)$/);
+    const font = utility.match(/^font-([a-z][\w-]*)$/);
+    if (font) {
+      if (!FONT_NON_FAMILY.test(font[1]) && !vocab.tailwind.font.has(font[1])) {
+        problems.push(`${raw}: the bridge maps no font family "${font[1]}"`);
+      }
+      continue;
+    }
+    const color = utility.match(COLOR_UTILITY);
     if (!color) continue;
     const [, prefix, key] = color;
-    if (prefix === 'text' && TEXT_NON_COLOR.test(key)) continue;
-    if ((prefix === 'border' || prefix === 'divide') && BORDER_NON_COLOR.test(key)) continue;
-    if (
-      (prefix === 'ring' || prefix === 'outline') &&
-      /^(?:\d+|offset-\d+|none|inset|dashed|dotted|solid)$/.test(key)
-    )
-      continue;
-    if (
-      prefix === 'bg' &&
-      /^(?:none|cover|contain|center|fixed|local|scroll|repeat|no-repeat|clip-[\w-]+|origin-[\w-]+|linear-[\w-]+|gradient-[\w-]+)$/.test(
-        key,
-      )
-    )
-      continue;
+    if (NON_COLOR_BY_PREFIX[prefix]?.test(key)) continue;
     if (!vocab.tailwind.color.has(key)) {
       problems.push(`${raw}: @elirobinson/tokens/tailwind.css maps no colour "${key}"`);
     }
@@ -270,6 +334,16 @@ function jsxName(name) {
   return null;
 }
 
+/** `"x"`, `{"x"}` and `` {`x`} `` (no interpolation) as the string; anything else null. */
+function staticString(value) {
+  const node = value?.type === 'JSXExpressionContainer' ? value.expression : value;
+  if (node?.type === 'Literal' && typeof node.value === 'string') return node.value;
+  if (node?.type === 'TemplateLiteral' && node.expressions.length === 0) {
+    return node.quasis[0].value.cooked;
+  }
+  return null;
+}
+
 /** A union of string literals, as a set of members, or null for anything else. */
 function literalUnion(type) {
   if (!type) return null;
@@ -296,7 +370,11 @@ export function checkJsx(code, vocab) {
   walk(ast, (node) => {
     if (node.type !== 'ImportDeclaration') return;
     const specifier = node.source.value;
-    if (!specifier.startsWith('@elirobinson/react')) return;
+    if (!specifier.startsWith('@elirobinson/')) return;
+    if (!specifier.startsWith('@elirobinson/react')) {
+      if (!resolves(specifier)) problems.push(`import ${specifier} does not resolve`);
+      return;
+    }
     if (specifier.endsWith('.css')) {
       if (!vocab.stylesheets.has(specifier))
         problems.push(`stylesheet ${specifier} is not shipped`);
@@ -320,12 +398,9 @@ export function checkJsx(code, vocab) {
   });
 
   walk(ast, (node) => {
-    if (
-      node.type === 'JSXAttribute' &&
-      node.name.name === 'className' &&
-      node.value?.type === 'Literal'
-    ) {
-      problems.push(...checkUtilities(node.value.value, vocab));
+    if (node.type === 'JSXAttribute' && node.name.name === 'className') {
+      const classes = staticString(node.value);
+      if (classes !== null) problems.push(...checkUtilities(classes, vocab));
     }
     if (node.type !== 'JSXOpeningElement') return;
     const tag = jsxName(node.name);
@@ -350,10 +425,9 @@ export function checkJsx(code, vocab) {
         continue;
       }
       const union = literalUnion(prop.type);
-      if (union && attribute.value?.type === 'Literal' && !union.has(attribute.value.value)) {
-        problems.push(
-          `<${tag} ${name}="${attribute.value.value}">: not one of ${[...union].join(', ')}`,
-        );
+      const value = staticString(attribute.value);
+      if (union && value !== null && !union.has(value)) {
+        problems.push(`<${tag} ${name}="${value}">: not one of ${[...union].join(', ')}`);
       }
     }
     if (!node.attributes.some((a) => a.type === 'JSXSpreadAttribute')) {
@@ -375,18 +449,35 @@ export function checkCss(code, vocab) {
   )) {
     if (!resolves(specifier)) problems.push(`@import ${specifier} does not resolve`);
   }
+  for (const [, name] of code.matchAll(/\.(ds-[\w-]+)/g)) {
+    if (!vocab.classes.has(name))
+      problems.push(`selector .${name} is not in any shipped stylesheet`);
+  }
   return [...problems, ...checkTokens(code, vocab)];
 }
 
-const CHECKERS = { jsx: checkJsx, tsx: checkJsx, css: checkCss, html: checkHtml };
+const CHECKERS = { js: checkJsx, jsx: checkJsx, tsx: checkJsx, css: checkCss, html: checkHtml };
 
 /** Check one `after` block by its language. */
 export function checkAfterBlock(block, vocab) {
   const checker = CHECKERS[block.lang];
   if (!checker)
-    return [`\`\`\`${block.lang} after: no checker for this language; use jsx, css or html`];
+    return [`\`\`\`${block.lang} after: no checker for this language; use js, jsx, css or html`];
   return checker(block.code, vocab);
 }
+
+/* What a backticked span in a checked column can be, in the order they are tried. A span
+   that is none of these fails, the same way an unlabelled fence does. */
+const SPAN_KINDS = [
+  [/^--[a-z]/, checkTokens],
+  [/^@elirobinson\//, (span) => (resolves(span) ? [] : [`${span} does not resolve`])],
+  [
+    /^[A-Z]\w*$/,
+    (span, vocab) =>
+      vocab.components.has(span) ? [] : [`${span} is not exported by @elirobinson/react`],
+  ],
+  [/^[a-z][\w-]*(?:\s+[a-z!][\w:/!-]*)*$/, checkUtilities],
+];
 
 /** Check one backticked span from a Miltinson column. */
 export function checkMappingSpan(span, vocab) {
@@ -404,13 +495,12 @@ export function checkMappingSpan(span, vocab) {
       .map((tag) => `<${tag}> is not exported by @elirobinson/react`);
     return [...problems, ...checkJsx(`${imports}\nexport const x = ${element};\n`, vocab)];
   }
-  if (span.startsWith('--')) return checkTokens(span, vocab);
-  if (/^@elirobinson\//.test(span)) return resolves(span) ? [] : [`${span} does not resolve`];
-  if (/^[A-Z]\w*$/.test(span)) {
-    return vocab.components.has(span) ? [] : [`${span} is not exported by @elirobinson/react`];
-  }
-  if (/^[a-z][\w-]*(?:\s+[a-z!][\w:/!-]*)*$/.test(span)) return checkUtilities(span, vocab);
-  return checkTokens(span, vocab);
+  const kind = SPAN_KINDS.find(([shape]) => shape.test(span));
+  if (!kind)
+    return [
+      `\`${span}\`: not a shape this check knows; write a token, a component, a utility or JSX`,
+    ];
+  return kind[1](span, vocab);
 }
 
 /* ------------------------------------------------------------------ */
@@ -426,6 +516,8 @@ function px(value) {
 
 /** The tokens of `token`'s family with a plain px value, nearest first. */
 export function nearestOnScale(token, sourcePx, vocab) {
+  /* The family is the name minus its last step (`--space-4` → `--space-`). `-pill` and
+     `-px` sit outside the stepped scale: nothing should snap to a pill or a hairline. */
   const family = token.replace(/-[\w]+$/, '-');
   const scale = [...vocab.tokens]
     .filter(([name]) => name.startsWith(family) && !/-(?:pill|px)$/.test(name))
@@ -433,15 +525,6 @@ export function nearestOnScale(token, sourcePx, vocab) {
     .filter((entry) => entry.px !== null);
   const best = Math.min(...scale.map((entry) => Math.abs(entry.px - sourcePx)));
   return scale.filter((entry) => Math.abs(entry.px - sourcePx) === best).map((entry) => entry.name);
-}
-
-export function migrateFiles(root) {
-  const found = [];
-  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
-    if (entry.isFile() && entry.name.endsWith('.md'))
-      found.push(join(entry.parentPath, entry.name));
-  }
-  return found.sort();
 }
 
 export { EXEMPT_LANGUAGES, SIDES };

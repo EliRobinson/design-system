@@ -6,7 +6,8 @@ is the same id that leads the entry in that package's `CHANGELOG.md`, which ship
 package, so `node_modules/<package>/CHANGELOG.md` has the full story.
 
 This file is checked against those changelogs and against `@elirobinson/tokens/migrations`
-by this package's tests. A breaking change with no section here fails the build.
+by this package's tests. A changeset released as `major`, or a 0.x `minor` whose own text
+says it breaks, fails the build until it has a section here for each package it ships in.
 
 ## How to use this file
 
@@ -65,6 +66,47 @@ import { Card } from '@elirobinson/react/components/molecules/Card';
 The tier folder (`atoms/`, `molecules/`) arrived in 1.0.0. Take the next section too. To
 get the exact line for any component, run `pnpm ds props <Name>`.
 
+## tokens-0.2-subpath-imports
+
+- Package: `@elirobinson/tokens`
+- Version: `0.2.0`
+- Changeset: `52b1b6d`
+- Find: `from '@elirobinson/tokens'` (a bare package import)
+
+The root export is gone. Token data comes from a subpath. Stylesheets were always subpaths
+and are unaffected.
+
+```jsx before
+import { tokens } from '@elirobinson/tokens';
+```
+
+```jsx after
+import { tokens } from '@elirobinson/tokens/tokens-data';
+
+export const accent = tokens;
+```
+
+## ai-patterns-0.2-subpath-imports
+
+- Package: `@elirobinson/ai-patterns`
+- Version: `0.2.0`
+- Changeset: `52b1b6d`
+- Find: `from '@elirobinson/ai-patterns'` (a bare package import)
+
+The root export is gone. The patterns and the contracts each have their own subpath:
+`@elirobinson/ai-patterns/patterns` (Markdown) and `@elirobinson/ai-patterns/contracts`
+(JSON).
+
+```jsx before
+import { contracts } from '@elirobinson/ai-patterns';
+```
+
+```jsx after
+import contracts from '@elirobinson/ai-patterns/contracts' with { type: 'json' };
+
+export const rules = contracts;
+```
+
 ## react-1-tier-subpaths
 
 - Package: `@elirobinson/react`
@@ -95,7 +137,7 @@ Do not work out tiers by hand. `pnpm ds` lists every component with its tier, an
 - Package: `@elirobinson/tokens`
 - Version: `0.6.0`
 - Changeset: `84aef19`
-- Find: `--ink-`, `--signal-`, `--anchor-` in app code, and `border-input`
+- Find: `--(ink|signal|anchor)-[0-9]` in app code, and `border-input`
 
 Component colours changed to meet WCAG 2.2 AA. Components stopped painting raw scale
 values. New semantic tokens arrived for control edges, disabled text, readable amber and
@@ -251,10 +293,10 @@ its contrast floor. This entry explains a visual diff, nothing more.
 No action. The neutral ramp is now built from palette dials. The declared values changed;
 the rendered colours did not.
 
-## tokens-0.13-dense-touch-targets
+## ai-patterns-0.23-dense-touch-targets
 
-- Package: `@elirobinson/tokens`
-- Version: `0.13.0`
+- Package: `@elirobinson/ai-patterns`
+- Version: `0.23.0`
 - Changeset: `b0d68d7`
 - Find: `data-touch-target="dense"`
 
