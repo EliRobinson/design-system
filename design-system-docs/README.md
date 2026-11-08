@@ -33,7 +33,7 @@ Eli runs many small projects. The point of this system is to keep them **visuall
 | --------------------------- | ----- | --- |
 | `colors_and_type.css`       | ✓ | The neutral ramp, surfaces, type, spacing, radii, shadow and motion — and the entry point that @imports the two layers below. Symlink to `packages/tokens/src/tokens.css`. |
 | `palettes.css`              | ✓ | The palette layer — brand ramps and every semantic derived from them, per `data-palette` and `data-theme`. colors_and_type.css @imports it, so it must keep this filename. Symlink to `packages/tokens/src/palettes.css`. |
-| `mobile.css`                | ✓ | The platform layer — radii, the small end of the type ramp, gutter and containers under `data-platform="mobile"`. Declares no token of its own and changes no colour. Symlink to `packages/tokens/src/mobile.css`. |
+| `mobile.css`                | ✓ | The platform layer — radii, the small end of the type ramp, gutter and shell widths under `data-platform="mobile"`. Declares no token of its own and changes no colour. Symlink to `packages/tokens/src/mobile.css`. |
 | `styles.css`                | — | Generated aggregate the guideline cards link — @imports the real component stylesheets from packages/react. Rebuilt by `pnpm -F @elirobinson/ai-patterns build:design-project`. |
 | `fonts.css`                 | ✓ | @font-face for Geist and JetBrains Mono, self-hosted — colors_and_type.css @imports it. Symlink to `packages/tokens/src/fonts.css`. |
 | `fonts/`                    | ✓ | The woff2 files fonts.css loads, with their SIL OFL licenses. Symlinks into `packages/tokens/src/fonts/`. |

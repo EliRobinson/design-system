@@ -428,8 +428,11 @@ are the same change, one per size.
 `var(--container-*)` always meant the design system's width, so the rename renders the
 same. The part the command cannot do is the Tailwind utilities. After the upgrade,
 `max-w-sm` … `max-w-2xl` get Tailwind's sizes back (24rem, 28rem, 32rem, 36rem, 42rem).
-Where one meant the design system's width, name the shell. `pnpm ds check` on the old
-install lists every such utility.
+Where one meant the design system's width, name the shell. Run `pnpm ds check` before you
+upgrade: it lists every such utility, and it stops listing them after the upgrade.
+
+`ds-resync migrate` leaves a declaration of an old name for you, such as
+`--container-md: 30rem` in a Tailwind `@theme` block. That one is Tailwind's. Keep it.
 
 ```jsx before
 <main className="mx-auto max-w-md">

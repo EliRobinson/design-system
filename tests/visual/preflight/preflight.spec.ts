@@ -90,7 +90,9 @@ async function expectCentredModal(page: Page) {
 
 /** Asserts the `[data-probe]` element is exactly `width` px wide. */
 async function expectProbeWidth(page: Page, probe: string, width: number) {
-  const box = await page.locator(`[data-probe="${probe}"]`).boundingBox();
+  const target = page.locator(`[data-probe="${probe}"]`);
+  await expect(target).toHaveCount(1);
+  const box = await target.boundingBox();
   expect(box?.width, `${probe} width`).toBeCloseTo(width, 1);
 }
 

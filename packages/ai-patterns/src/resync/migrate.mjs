@@ -44,6 +44,8 @@ export const REVIEW_REASONS = {
   valueChanged: 'the name did not change, only the colour it resolves to',
   contextual: 'the replacement depends on which fill this element is actually painted with',
   removed: 'the token was removed with no direct replacement',
+  declared:
+    "this file declares the old name itself. If it set the design system value, rename it; if the name is also another library's (Tailwind's --container-*), it may be that library's and should stay",
 };
 
 /**
@@ -93,6 +95,13 @@ export function verdictFor(migration, occurrence) {
      and a background in another, and this file cannot see either. */
   if (occurrence.inCustomProperty) {
     return { verdict: 'review', reason: REVIEW_REASONS.aliased };
+  }
+
+  /* A declaration of the old name is the file's own value, and a name can be
+     shared: `--container-md` in a Tailwind `@theme` block is Tailwind's, and
+     renaming it would silently drop the app's customisation (#250). */
+  if (occurrence.declared) {
+    return { verdict: 'review', reason: REVIEW_REASONS.declared };
   }
 
   /* No context required — the old name is wrong everywhere, so the rename is

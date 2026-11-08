@@ -149,7 +149,7 @@ describe('ds check', () => {
   it('tells the Tailwind size apart from the design system width', async () => {
     const { text } = await check(materialise('container-widths'));
     expect(text).toContain('app/page.tsx:2 uses max-w-md');
-    expect(text).toContain('max-w-md = 28rem');
+    expect(text).toContain('md is 28rem');
   });
 
   it('says nothing was checked when neither package is installed', async () => {

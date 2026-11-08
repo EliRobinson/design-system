@@ -817,7 +817,7 @@ export function renderRepoIndexTable(manifest) {
       path: 'mobile.css',
       description:
         'The platform layer — radii, the small end of the type ramp, gutter and ' +
-        'containers under `data-platform="mobile"`. Declares no token of its own and ' +
+        'shell widths under `data-platform="mobile"`. Declares no token of its own and ' +
         `changes no colour.${symlinkNote('mobile')}`,
     },
     {

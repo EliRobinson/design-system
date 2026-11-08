@@ -39,6 +39,7 @@ import {
   specificityOf,
   verdictFor,
 } from './migrate.mjs';
+import { scanSource } from './scan.mjs';
 
 /** A rename that is wrong everywhere, so it needs no context to be safe. */
 const PLAIN_RENAME = {
@@ -110,6 +111,20 @@ const occurrence = (overrides = {}) => ({
 });
 
 describe('verdictFor', () => {
+  it('reviews a rename where the file declares the old name itself', () => {
+    /* #250: `--container-md` is also Tailwind's. In `@theme` it is the app's
+       own Tailwind value, and renaming it would drop that value silently. */
+    const css = '@theme {\n  --old: 30rem;\n}\n.a { max-width: var(--old); }\n';
+    const [declared, read] = scanSource(css, 'app.css', ['--old']);
+    expect(verdictFor(PLAIN_RENAME, declared)).toEqual({
+      verdict: 'review',
+      reason: REVIEW_REASONS.declared,
+    });
+    expect(verdictFor(PLAIN_RENAME, read)).toEqual({ verdict: 'rewrite', to: '--new' });
+    const [key] = scanSource("const s = { '--old': '1px' };", 'a.tsx', ['--old']);
+    expect(verdictFor(PLAIN_RENAME, key).verdict).toBe('review');
+  });
+
   it('rewrites an unconstrained rename anywhere', () => {
     expect(verdictFor(PLAIN_RENAME, occurrence({ property: 'background' }))).toEqual({
       verdict: 'rewrite',
