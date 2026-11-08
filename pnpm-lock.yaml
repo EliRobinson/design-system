@@ -317,12 +317,18 @@ importers:
         specifier: '>=1.40.0'
         version: 1.62.1
     devDependencies:
+      '@elirobinson/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@elirobinson/react':
         specifier: workspace:*
         version: link:../react
       '@elirobinson/tokens':
         specifier: workspace:*
         version: link:../tokens
+      '@eslint/css':
+        specifier: ^1.4.0
+        version: 1.4.0
       ai:
         specifier: ^7.0.92
         version: 7.0.92(zod@4.5.4)
@@ -332,6 +338,9 @@ importers:
       esbuild:
         specifier: ^0.27.7
         version: 0.27.7
+      eslint:
+        specifier: ^9.39.4
+        version: 9.39.4(jiti@2.7.0)(supports-color@7.2.0)
       playwright:
         specifier: ^1.56.0
         version: 1.62.1

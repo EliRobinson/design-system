@@ -53,6 +53,7 @@ system in an app**.
 | `ds-resync` CLI                                                                     | `ai-patterns` (`bin`)                  | Noticing by hand that a repo is several releases behind                                                          |
 | `ds-resync artifacts`                                                               | `ai-patterns` (`bin`)                  | A copy of the brand skill and a hand-written component cheatsheet per repo                                       |
 | `ds-resync migrate`                                                                 | `ai-patterns` (`bin`)                  | Deriving the same token find/replace out of changelog prose by hand, in every consuming repo, every release      |
+| `ds-migrate` skill (adopt + upgrade patterns)                                       | `ai-patterns` (`ds-resync artifacts`)  | A hand-written mapping from the old UI library to ours, and per-release upgrade notes copied from changelogs     |
 | `design-system-mcp` server                                                          | `design-system-mcp` (`bin`)            | An agent guessing props from memory instead of querying the installed package                                    |
 | Dial roster (`./dials`)                                                             | `tokens`                               | A copied table of palettes, themes and platforms, wrong on the next palette                                      |
 
