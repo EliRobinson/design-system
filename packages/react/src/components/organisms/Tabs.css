@@ -22,6 +22,8 @@
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
+  /* The UA default for a button, restated so Preflight cannot replace it (#126). */
+  line-height: normal;
   margin-bottom: -1px;
   min-height: 44px;
   padding: var(--space-3) var(--space-4);
