@@ -10,6 +10,7 @@
     "nx": "nx",
     "build": "nx run-many -t build",
     "test": "nx run-many -t test",
+    "test:tarballs": "node scripts/tarball-consumer/run.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "release": "changeset publish",
