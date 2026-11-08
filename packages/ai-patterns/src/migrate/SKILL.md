@@ -49,6 +49,8 @@ adopts the rest.
    section's **Find**, even outside your range: code can lag its declared version. The
    sections with a **Token migration** line are done by `ds-resync migrate`; run it rather
    than editing by hand.
+3. Run `pnpm ds check`. It finds the known traps an upgrade can leave behind with no
+   error, such as skills written for the old version, and prints the fix for each.
 
 ## Rules for both
 

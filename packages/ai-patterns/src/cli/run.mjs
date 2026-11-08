@@ -5,6 +5,7 @@ import { join } from 'node:path';
 
 import { installCommand } from '../resync/apply.mjs';
 import { detect, findDrift } from '../resync/detect.mjs';
+import { runCheck } from './check/check.mjs';
 import * as commands from './commands.mjs';
 import { loadEnvironment, PATTERNS_PKG, REACT_PKG, TOKENS_PKG, versionOf } from './discovery.mjs';
 import { installAgents, installVoice } from './init.mjs';
@@ -102,6 +103,18 @@ function dispatch(argv, { origins, cwd = process.cwd(), selfDir } = {}) {
      in force is a fact about the consumer's own repo, and answering it must not depend
      on @elirobinson/react being present. */
   if (command === 'voice') return commands.voice({ cwd });
+
+  /* The consumer's own install only: no fallback to this module's location,
+     which would find ai-patterns' private copies and check those instead. */
+  if (command === 'check') {
+    const root = valueOf(argv, '--dir') ?? cwd;
+    const { text, exitCode } = runCheck({
+      root,
+      env: loadEnvironment(origins ?? [root], selfDir),
+      strict: flagged(argv, '--strict'),
+    });
+    return { text, exitCode };
+  }
 
   if (command === 'init') {
     if (!flagged(argv, '--agents') && !flagged(argv, '--voice')) {

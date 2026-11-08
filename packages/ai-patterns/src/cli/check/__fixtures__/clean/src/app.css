@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+@import '@elirobinson/react/styles.css';
+@import '@elirobinson/tokens/tailwind.css';
+
+:root {
+  --ds-font-sans-override: var(--font-geist-sans);
+  --accent: oklch(60% 0.15 200);
+}

@@ -78,6 +78,29 @@ It prefers `@elirobinson/react`'s `dist/manifest.json` and falls back to parsing
 a README. Anything listing components, tokens, or props is wrong as of the next release.
 Point at `ds`.
 
+## `ds check`: the traps that fail silently
+
+`ds check` (`src/cli/check/`) reads a consumer repo and its installed packages, and reports
+each known trap that makes an app look wrong with no error: the issue number it came from,
+where it is, and the exact fix. Every check is one entry in `TRAPS` in `traps.mjs`.
+
+- **Warn first (#328).** It exits 0 with warnings. `--strict` exits 1 on any warning, so an
+  app can gate CI on it. Failing by default would break builds that pass today, so it
+  needs a major version.
+- **One fixture per trap.** `src/cli/check/__fixtures__/<trap id>/` is a tiny consumer that
+  trips that trap and nothing else, and `clean/` trips nothing. `check.test.mjs` fails when
+  a trap has no fixture or a fixture has no trap. `installed.json` names the versions the
+  test installs; `{{react}}` and `{{tokens}}` mean the workspace versions.
+- **Quiet when unsure.** A check that cannot tell returns nothing. A warning consumers learn
+  to ignore is worse than none.
+- **A fixed trap leaves two things.** The check that finds it in an app, and a `FIXED_IN`
+  row so an older install still gets told. `container-widths` reads the installed
+  `tokens.css`, so it goes quiet by itself when #250 lands.
+
+The agent templates, `ds init --agents` and the `ds-migrate` patterns all tell an agent to
+run it after setup and after every upgrade, so a consumer learns about a new check by
+upgrading.
+
 ## Packed artifacts
 
 This package has a real build step — `scripts/build-artifacts.mjs`, wired to both `build`

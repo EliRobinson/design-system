@@ -70,6 +70,7 @@ export function usage() {
   patterns          AI product patterns
   prompts [name]    Reusable prompt templates
   voice             The brand voice pack in force, and where it came from
+  check [--strict]  Find known traps in this app that fail without an error
   init --agents     Install the agent-instruction files into this repo
   init --voice      Scaffold a voice.json to declare your own voice pack
 

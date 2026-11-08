@@ -41,6 +41,8 @@ says it breaks, fails the build until it has a section here for each package it 
    control edge). Check the name exists with `pnpm ds tokens <filter>` before you write it.
 7. Run the repo's typecheck, lint, tests and build. Then check the props you touched with
    `pnpm ds props <Name>`. That reads the installed package, so it is the authority.
+8. Run `pnpm ds check`. It finds the known traps that make the app look wrong with no
+   error, and prints the fix for each.
 
 Below `1.0.0`, a minor release can break. Each section names its exact version, so the
 rules above still hold.

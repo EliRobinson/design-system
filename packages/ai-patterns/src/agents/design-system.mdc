@@ -22,6 +22,7 @@ pnpm ds classes [filter] # CSS classes the design system ships
 pnpm ds contracts        # machine-checkable UI rules you must satisfy
 pnpm ds patterns         # working principles, including the definition of done
 pnpm ds prompts [name]   # prompt templates
+pnpm ds check            # known traps that fail with no error; run after setup and every upgrade
 ```
 
 `pnpm exec elirobinson-ds` is the same command if the `ds` script is not wired up. Deeper detail: `node_modules/@elirobinson/react/src/components/`, `node_modules/@elirobinson/tokens/src/tokens.css`, `node_modules/@elirobinson/react/dist/manifest.json`.

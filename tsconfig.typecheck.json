@@ -19,6 +19,9 @@
        `pnpm typecheck` in the build step rather than the sweep step. */
     "./packages/ai-elements/**/*",
     "./templates/**/*",
+    /* Test fixtures are tiny consumer apps (ds check), written against
+       packages like next/font that this repo does not install. */
+    "./packages/**/__fixtures__/**/*",
     "./apps/docs/.next/**/*",
     "./design-system-docs/**/*",
     "./apps/storybook/storybook-static/**/*"
