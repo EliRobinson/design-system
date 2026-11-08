@@ -21,6 +21,7 @@ import { NAMESPACE, readBundleHeader } from './design-system-artifact/bundle.mjs
 import { artifactKitFiles, artifactKitPage } from './design-system-artifact/kits.mjs';
 import {
   KIT_BUNDLE_FILES,
+  KIT_BUNDLE_LINT_OFF,
   KIT_GLOBAL,
   buildKitBundleCss,
   buildKitBundleJs,
@@ -49,7 +50,9 @@ describe('the kit bundle', async () => {
     expect(header.components.map((component) => component.name)).toEqual(
       manifest.components.map((component) => component.name),
     );
-    expect(js.slice(js.indexOf('\n') + 1).startsWith(`window.${KIT_GLOBAL}=`)).toBe(true);
+    const [, lintOff, code] = js.split('\n');
+    expect(lintOff).toBe(KIT_BUNDLE_LINT_OFF);
+    expect(code.startsWith(`window.${KIT_GLOBAL}=`)).toBe(true);
   });
 
   /* The artifact's own bundle carries components that exist only there. The kits are

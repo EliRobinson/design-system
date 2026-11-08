@@ -42,11 +42,17 @@ export const KIT_GLOBAL = 'DesignSystem';
 
 export const KIT_BUNDLE_FILES = { js: 'ds-bundle.js', css: 'ds-bundle.css' };
 
+export const KIT_BUNDLE_LINT_OFF =
+  '/* eslint-disable -- built and minified by scripts/kit-bundle.mjs */';
+
 /** ds-bundle.js: the published components only, on window.DesignSystem. */
 export async function buildKitBundleJs({ manifest, reactDist } = reactManifest()) {
   const components = publishedComponents({ manifest, reactDist });
   const { js } = await buildBundleJs({ manifest, reactDist, components, namespace: KIT_GLOBAL });
-  return js;
+  /* A consumer lints the skills ds-resync writes, this file among them (#119). It is
+     built and minified, so lint has nothing to say about it. Line 1 stays the header. */
+  const header = js.slice(0, js.indexOf('\n') + 1);
+  return `${header}${KIT_BUNDLE_LINT_OFF}\n${js.slice(header.length)}`;
 }
 
 /** ds-bundle.css: react's component stylesheets. The page loads the tokens first. */
