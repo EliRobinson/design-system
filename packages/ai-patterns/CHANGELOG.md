@@ -1,5 +1,11 @@
 # @elirobinson/ai-patterns
 
+## 0.34.1
+
+### Patch Changes
+
+- f34887e: `upgrade.md` now says a breaking 0.x minor is one whose changeset starts with `**Breaking:**`. The coverage test also reads pending changesets, so a breaking change needs its section in the same PR.
+
 ## 0.34.0
 
 ### Minor Changes
