@@ -259,16 +259,20 @@ These files restate names the other packages own, so two suites keep them honest
   `HTML classes` are checked the same way, and a `Source px` column must map to the
   nearest token on that scale. An unlabelled block fails.
 - `upgrade-coverage.test.mjs` ties `upgrade.md` to the released changelogs, to the pending
-  `.changeset/*.md` files and to `@elirobinson/tokens/migrations`. The shared rules live in
-  `scripts/upgrade-coverage.mjs`. Every `major` changeset, and every 0.x `minor` changeset
-  whose text starts with `**Breaking:**`, needs a section for each package it bumps. The
-  word "breaking" anywhere else does not count. If one changeset breaks only some of the
-  packages it bumps, split it. Every token migration needs exactly one section, except a
-  silent one (`report: "none"`): it renders the same and breaks nothing, so a section is
-  allowed but not required. A section naming a change that is not there fails.
+  `.changeset/*.md` files and to `@elirobinson/tokens/migrations`. The rules live in
+  `scripts/upgrade-coverage.mjs`:
+  - Every `major` changeset, and every 0.x `minor` one whose text starts with
+    `**Breaking:**`, needs a section for each package it bumps. The word "breaking"
+    anywhere else does not count. A pending 0.x minor that starts like the marker but is
+    not it (`Breaking:`, `**BREAKING:**`) fails, so a typo cannot hide a break. If one
+    changeset breaks only some of the packages it bumps, split it.
+  - Every token migration needs exactly one section, except a silent one
+    (`report: "none"`): it renders the same and breaks nothing, so a section is allowed
+    but not required.
+  - A section naming a change that is not there fails.
 
-So adding a breaking change means adding its section to `upgrade.md` in the same PR, and
-the test says so. The change has no version or hash yet, so the section says:
+So adding a breaking change means adding its section to `upgrade.md` in the same PR. The
+change has no version or hash yet, so the section says:
 
 ```md
 - Package: `@elirobinson/tokens`
@@ -276,13 +280,21 @@ the test says so. The change has no version or hash yet, so the section says:
 - Changeset: `brave-foxes-jump`
 ```
 
-`brave-foxes-jump` is the changeset file name without `.md`. The root `changeset:version`
-script runs `scripts/stamp-upgrade.mjs` right after `changeset version`, and that swaps the
-pair for the released version and the changelog hash (the first 7 characters of the commit
-that added the changeset file, as Changesets writes it). So the release commit lands with
-every section released, and `main` stays green. A pending section with a `Token migration`
-line is checked against the version the release will give it. `scripts/upgrade-coverage.test.mjs`
-runs the whole path, from PR to release, in a scratch repo with the real `changeset version`.
+`brave-foxes-jump` is the changeset file name without `.md`. Pending changesets, and the
+version each package will get, come from Changesets' own release plan
+(`@changesets/get-release-plan`). A pending section with a `Token migration` line is held
+to that version.
+
+The root `changeset:version` script runs `scripts/stamp-upgrade.mjs` right after
+`changeset version`. It swaps each pending pair for the released version and the changelog
+hash (the first 7 characters of the commit that added the changeset file, as Changesets
+writes it). Then it checks coverage and fails the release if anything is off, because the
+release runs no tests before it pushes. So the release commit keeps `main` green.
+`scripts/upgrade-coverage.release.test.mjs` runs that whole path in a scratch repo with the
+real `changeset version`.
+
+`.changeset/` is outside the project graph, so `nx affected` alone would not run this
+suite for a PR that only adds a changeset. `Quality` runs it on every PR as its own step.
 
 ## Agent templates
 

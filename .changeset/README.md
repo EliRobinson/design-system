@@ -7,8 +7,7 @@ pnpm changeset
 ```
 
 A breaking change also needs a section in `packages/ai-patterns/src/migrate/upgrade.md`.
-On 0.x, start a breaking `minor` changeset's text with `**Breaking:**`. See
-`docs/agents/publishing.md`.
+See `docs/agents/ai-patterns.md` (Migration patterns).
 
 Then version locally:
 
