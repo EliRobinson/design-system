@@ -23,7 +23,7 @@
 }
 
 /* The fill alone cannot mark the selection: in dark, --surface and the
-   track's --bg-subtle are both ink-950, and --shadow-sm is black on black.
+   track's --bg-subtle are both ink-950, and --shadow-sm is only a faint edge.
    The inset ring carries the state (SC 1.4.11); it is measured against the
    fill and the track in scripts/segmented-control-contrast.test.mjs. Inset,
    so the selected segment is the same size as the others. */
