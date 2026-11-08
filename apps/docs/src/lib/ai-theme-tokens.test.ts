@@ -16,6 +16,8 @@ import { stripComments } from './css-source';
 
 const THEME_DIR = join(process.cwd(), 'src/app/ai-theme');
 
+const FIXUPS = join(process.cwd(), 'src/app/ai-theme-bundler-fixups.css');
+
 const read = (path: string) => stripComments(readFileSync(path, 'utf8'));
 const themeFiles = readdirSync(THEME_DIR).filter((f) => f.endsWith('.css'));
 
@@ -25,6 +27,7 @@ const themeFiles = readdirSync(THEME_DIR).filter((f) => f.endsWith('.css'));
 const declared = new Set<string>();
 for (const css of [
   ...themeFiles.map((f) => read(join(THEME_DIR, f))),
+  read(FIXUPS),
   ...readTokenStylesheets().map(stripComments),
 ]) {
   for (const m of css.matchAll(/(--[\w-]+)\s*:/g)) declared.add(m[1]);

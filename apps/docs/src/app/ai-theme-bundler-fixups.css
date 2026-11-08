@@ -1,5 +1,5 @@
 /* ==========================================================================
-   The one deviation from the AI Elements theme handoff
+   Deviations from the AI Elements theme handoff
    --------------------------------------------------------------------------
    A separate file, imported last, so that `app/ai-theme/` stays byte-identical
    to what the handoff shipped and every change made on top of it is in one
@@ -60,4 +60,24 @@
 [data-platform='mobile'] .ds-ai-node .ds-ai-node__port {
   block-size: var(--target-min);
   inline-size: var(--target-min);
+}
+
+/* ==========================================================================
+   The model list's width floor (#352)
+   --------------------------------------------------------------------------
+   WHAT IS WRONG WITHOUT THIS
+
+   `ai-shell.css` gives `.ds-ai-model-list` `min-inline-size:
+   var(--anchored-min-width)`. In the handoff's source project that was a
+   global token. Here it is declared only on DropdownMenu's panel in
+   `packages/react`, the list is not inside one, and `var()` resolves to
+   nothing: the open list has no minimum width, with no warning.
+
+   This declares the same 180px floor on the list itself, as DropdownMenu does.
+   The handoff still has the bug, so this stays until a drop carries the
+   declaration; `ai-theme-tokens.test.ts` reads this file for that reason.
+   ========================================================================== */
+
+.ds-ai-model-list {
+  --anchored-min-width: 180px;
 }

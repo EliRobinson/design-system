@@ -198,11 +198,6 @@
 
 /* The open list. --surface on --shadow-lg, the system's popover pairing. */
 .ds-ai-model-list {
-  /* DropdownMenu declares this on its own panel, so it is not global. The list
-     is not inside one, so it declares the same 180px floor itself (#352). Kept as a
-     property to match the handoff source. */
-  --anchored-min-width: 180px;
-
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
