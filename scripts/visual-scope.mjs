@@ -37,13 +37,13 @@ const STORYBOOK_PROJECT = 'storybook';
    one is a cascade case that any token or component stylesheet can move, and
    which file reaches which case is exactly what the suite exists to find out.
    So when Nx says the host is affected (it depends on react and tokens), every
-   one of its shots runs. Their subjects all start with this prefix, which is
-   also how they are kept out of the docs route list below. */
+   one of its shots runs. Its shots are told apart by their Playwright
+   project, which also keeps their route-shaped subjects out of the docs route
+   list below. */
 const PREFLIGHT_PROJECT = 'preflight-host';
-const PREFLIGHT_SUBJECT_PREFIX = '/preflight/';
 
 function isPreflightShot(shot) {
-  return shot.route?.startsWith(PREFLIGHT_SUBJECT_PREFIX) ?? false;
+  return shot.project.startsWith('preflight-');
 }
 
 const COMPONENT_FILE = /^packages\/react\/src\/components\/[^/]+\/([A-Z][A-Za-z0-9]*)\.(tsx|css)$/;

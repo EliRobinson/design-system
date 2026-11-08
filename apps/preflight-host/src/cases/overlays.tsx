@@ -25,7 +25,7 @@ export function DialogCase() {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <DialogClose className="ds-button ds-button--secondary ds-button--md">Cancel</DialogClose>
+          <DialogClose>Cancel</DialogClose>
           <Button>Archive</Button>
         </DialogFooter>
       </DialogContent>

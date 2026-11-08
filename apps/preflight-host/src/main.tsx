@@ -59,7 +59,12 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root') as HTMLElement).render(
+const root = document.getElementById('root');
+if (!root) {
+  throw new Error('index.html has no #root to render the case into.');
+}
+
+createRoot(root).render(
   <StrictMode>
     <App />
   </StrictMode>,

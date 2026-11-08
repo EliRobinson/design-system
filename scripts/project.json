@@ -49,6 +49,8 @@
      is correct rather than incidental: the docs routes and the storybook
      stories ARE the shot list these suites assert over. quality.yml already
      forces a whole-repo run for `tests/visual/**` and `playwright.config.ts`
-     for the same reason, from the other side. */
-  "implicitDependencies": ["storybook", "docs"]
+     for the same reason, from the other side.
+     `preflight-host` is here for the same reason: its src/cases.ts is the
+     preflight shot list, read by the spec rather than imported by scripts. */
+  "implicitDependencies": ["storybook", "docs", "preflight-host"]
 }

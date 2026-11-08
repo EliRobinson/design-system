@@ -433,6 +433,7 @@ jobs:
             apps/storybook/storybook-static/index.json \
             apps/docs/.next/prerender-manifest.json \
             apps/docs/public/brand \
+            apps/preflight-host/dist/index.html \
             scope-grep.txt
           do
             if [ ! -e "$path" ]; then
