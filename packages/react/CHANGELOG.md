@@ -1,5 +1,13 @@
 # @elirobinson/react
 
+## 3.9.4
+
+### Patch Changes
+
+- 8afd524: Component CSS now reads existing tokens instead of repeating their values: `--target` for 44px hit areas, `--focus-ring-width` and `--focus-ring-offset` for focus rings, `--radius-full` for round shapes (Slider, Switch, Progress, Avatar, Spinner, Stepper, the dropdown dot, the chip remove button and the search clear button). Each new token is read with its value as a fallback, so an app still on tokens 0.20 renders the same. Panel limits are component tokens you can set on any ancestor: `--ds-popover-max-width`, `--ds-sheet-max-width`, `--ds-sheet-max-height`, `--ds-command-palette-list-max-height`, `--ds-table-filter-max-width`. One visible change: the Dialog, Sheet and CommandPalette backdrops use `--scrim`, so they match each other and follow the theme: 0.56 in light and 0.72 in dark, where they were a fixed 0.5 (Dialog, CommandPalette) and 0.45 (Sheet).
+- Updated dependencies [8afd524]
+  - @elirobinson/tokens@0.21.0
+
 ## 3.9.3
 
 ### Patch Changes

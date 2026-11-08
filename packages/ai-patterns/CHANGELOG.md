@@ -1,5 +1,11 @@
 # @elirobinson/ai-patterns
 
+## 0.33.1
+
+### Patch Changes
+
+- 96ffccd: The `focusVisibleRequired` message now points at the focus ring tokens: `outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset)`. The design-system artifact builder files `--focus-ring-width` and `--focus-ring-offset` as spacing, not colour.
+
 ## 0.33.0
 
 ### Minor Changes
