@@ -1,9 +1,9 @@
 /* Reading the token a component rule paints, and measuring it.
  *
  * Shared by the tests that measure a component's own pairings per palette x
- * theme — decision-surfaces-contrast and segmented-control-contrast — so the
- * rule parser, the product-layer guard and the "is it declared" checks exist
- * once.
+ * theme (decision-surfaces-contrast, segmented-control-contrast,
+ * command-palette-contrast) and by forced-colors-states, so the rule parser,
+ * the product-layer guard and the "is it declared" checks exist once.
  *
  * Kept out of a *.test.mjs file on purpose: importing one test file from
  * another registers its suites twice. It uses vitest's `expect` so a missing
@@ -44,21 +44,40 @@ export function rules(css) {
   }));
 }
 
+export const FORCED_COLORS_QUERY = '@media (forced-colors: active)';
+
 /**
- * Rules inside the first `@media (forced-colors: active)` block of a sheet, as
- * {selector, body}. Empty when the sheet has no such block. jsdom cannot
- * emulate forced colours, so the forced-colors tests read the shipped sheet.
+ * Rules inside every `@media (forced-colors: active)` block of a sheet, as
+ * {selector, body}. Empty when the sheet has none. jsdom cannot emulate forced
+ * colours, so the forced-colors tests read the shipped sheet.
  */
 export function forcedColorsRules(css) {
-  const start = css.indexOf('@media (forced-colors: active)');
-  if (start === -1) return [];
-  const open = css.indexOf('{', start);
-  let depth = 0;
-  for (let i = open; i < css.length; i++) {
-    if (css[i] === '{') depth++;
-    if (css[i] === '}' && --depth === 0) return rules(css.slice(open + 1, i));
+  const source = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const found = [];
+  let start = source.indexOf(FORCED_COLORS_QUERY);
+  while (start !== -1) {
+    const open = source.indexOf('{', start);
+    let depth = 0;
+    let close = source.length;
+    for (let i = open; i < source.length; i++) {
+      if (source[i] === '{') depth++;
+      if (source[i] === '}' && --depth === 0) {
+        close = i;
+        break;
+      }
+    }
+    found.push(...rules(source.slice(open + 1, close)));
+    start = source.indexOf(FORCED_COLORS_QUERY, close);
   }
-  return [];
+  return found;
+}
+
+/** The declarations of the forced-colors rule whose selector list names `selector`. */
+export function forcedColorsDeclarations(path, selector) {
+  const rule = forcedColorsRules(sheet(path)).find((entry) =>
+    entry.selector.split(',').some((part) => part.trim() === selector),
+  );
+  return rule?.body ?? '';
 }
 
 /**

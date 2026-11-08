@@ -57,8 +57,9 @@
    marks the current page. The active link opts out and is painted with system
    colours; its :hover is listed too because the base hover rule outranks it.
    Opting out leaves the focus outline on var(--focus-ring), so it is set to
-   CanvasText here. Keep this block after the base rules: component-tokens.mjs
-   reads the first rule. */
+   CanvasText here. The ring is inset, so on the active link it sits on the
+   Highlight fill and uses HighlightText. Keep this block after the base
+   rules: component-tokens.mjs reads the first rule. */
 @media (forced-colors: active) {
   .ds-navigation-menu__link--active,
   .ds-navigation-menu__link--active:hover {
@@ -69,5 +70,9 @@
 
   .ds-navigation-menu__link:focus-visible {
     outline-color: CanvasText;
+  }
+
+  .ds-navigation-menu__link--active:focus-visible {
+    outline-color: HighlightText;
   }
 }

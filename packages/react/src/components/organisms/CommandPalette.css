@@ -98,7 +98,8 @@
    the active row looks like the others. It opts out and is painted with
    system colours, plus an inset CanvasText ring that separates it from the
    list. Its :hover is listed too because the base hover rules outrank it.
-   The detail line inherits the opt-out, so it is set to HighlightText.
+   The children inherit the opt-out: the detail line is set to HighlightText,
+   and the Kbd key caps, which set their own colours, go back to the system.
    Keep this block after the base rules: component-tokens.mjs reads the first
    rule. */
 @media (forced-colors: active) {
@@ -113,5 +114,9 @@
   .ds-command-palette__item--active .ds-command-palette__detail,
   .ds-command-palette__item--active:hover .ds-command-palette__detail {
     color: HighlightText;
+  }
+
+  .ds-command-palette__item--active .ds-kbd {
+    forced-color-adjust: auto;
   }
 }
