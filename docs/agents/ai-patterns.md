@@ -97,21 +97,29 @@ to `build-artifacts.mjs` alone.
 
 **What a consumer gets is generated from what it has installed (#257).** A react or tokens
 release does not release ai-patterns, so a packed snapshot is one release behind the moment
-a consumer upgrades. So `ds-resync artifacts` does not copy every staged file. It resolves
-`@elirobinson/react` and `@elirobinson/tokens` from the `node_modules` folders at and above the consumer's cwd, where its own imports look
-(`src/resync/installed.mjs`) and then:
+a consumer upgrades. So `ds-resync artifacts` does not copy every staged file. It finds
+`@elirobinson/react` and `@elirobinson/tokens` in the `node_modules` folders at and above
+the consumer's cwd, where the consumer's own imports look (`src/resync/installed.mjs`). Each
+staged file's `source` in `artifacts.json` says what happens next:
 
-- rebuilds the three `design-system-reference/` files (marked `"generated": "reference"`
-  in `artifacts.json`) with `src/artifacts/reference.mjs`, the same builder the pack step
-  runs, from the installed manifest and the installed tokens' own parser;
-- copies each file marked `"from": { "package", "path" }` (the token stylesheets and fonts
-  in `miltinson-design/`, which are symlinks into `packages/tokens` here) out of the
-  installed package.
+- `{ "kind": "reference" }`: the three `design-system-reference/` files are rebuilt by
+  `src/artifacts/reference.mjs`, the same builder the pack step runs, from the installed
+  manifest and the installed tokens. The tokens are parsed by the installed package's own
+  `./parse-tokens-css`, imported from it: the consumer's installed code, the same trust as
+  their own build.
+- `{ "kind": "package", "package", "path", "specifier"? }`: the token stylesheets and fonts
+  in `miltinson-design/` (symlinks into `packages/tokens` here) are copied out of the
+  installed package, through its exports map when `specifier` is set. Each copied
+  stylesheet's relative `url()` and `@import` targets are followed, so a font a newer tokens
+  release added is written too. A target the package does not have is reported.
+- No `source`: ai-patterns' own file, written as staged.
 
 The record and the report then carry the installed versions, so "Already current" means
-"matches what is installed". If either package is missing, or too old to export
-`./manifest`, `./parse-tokens-css` and `./token-stylesheets`, the staged snapshot is written
-instead and the report says why.
+"matches what is installed". `--fail-on-drift` exits 2 on a dry run when the record names
+other versions than the installed ones: a react or tokens bump nobody re-ran `--write` for.
+If either package is missing, unreadable, or too old to export `./manifest`,
+`./parse-tokens-css` and `./token-stylesheets`, the staged snapshot is written instead and
+the report says why.
 
 Five things are load-bearing:
 

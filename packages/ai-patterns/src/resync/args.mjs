@@ -65,7 +65,8 @@ const FLAGS = {
     names: ['--fail-on-drift'],
     key: 'failOnDrift',
     type: 'boolean',
-    description: 'Exit 2 when the snapshot and the installed\n@elirobinson/react disagree (for CI)',
+    description:
+      'Exit 2 when the artifacts here were written for other\nversions than the installed ones (for CI)',
   },
   failOnOutdated: {
     names: ['--fail-on-outdated'],

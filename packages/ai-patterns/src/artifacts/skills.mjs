@@ -42,7 +42,7 @@ ${versionStamp(versions)}
 - \`llms-full.txt\` — the full corpus: design tokens with values, the machine-checkable
   constraints, and a prop table for every component and sub-component.
 
-## Read the CLI first, this snapshot second
+## Read the CLI first, these files second
 
 \`ds-resync artifacts --write\` generates these files from the installed packages, so they
 match the versions above. The installed packages are still the authority:
@@ -54,7 +54,7 @@ pnpm ds tokens [filter]  # tokens and values
 pnpm ds contracts        # the machine-checkable rules, and what verifies each
 \`\`\`
 
-\`pnpm exec elirobinson-ds\` works before the \`ds\` script exists. Use this snapshot when
+\`pnpm exec elirobinson-ds\` works before the \`ds\` script exists. Use these files when
 you want to read the system in bulk, and \`pnpm ds props\` before you write an import.
 
 After you upgrade \`@elirobinson/react\` or \`@elirobinson/tokens\`, refresh them:

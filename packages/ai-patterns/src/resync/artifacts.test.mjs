@@ -154,6 +154,7 @@ describe('checkDrift', () => {
 
   it('reports a mismatch between the snapshot and the installed react', () => {
     expect(checkDrift({ stamp, installed: '1.4.0' })).toEqual({
+      kind: 'snapshot',
       expected: '1.2.0',
       installed: '1.4.0',
     });
@@ -169,7 +170,7 @@ describe('checkDrift', () => {
 });
 
 describe('formatDriftWarning', () => {
-  const text = formatDriftWarning({ expected: '1.2.0', installed: '1.4.0' });
+  const text = formatDriftWarning({ kind: 'snapshot', expected: '1.2.0', installed: '1.4.0' });
 
   it('names both versions and both remedies', () => {
     expect(text).toContain('STALE SNAPSHOT');
@@ -185,8 +186,9 @@ describe('formatArtifactsReport', () => {
   it('leads with the drift warning when there is one', () => {
     const text = formatArtifactsReport({
       stamp,
+      keptBundled: [],
       wrote: false,
-      drift: { expected: '1.2.0', installed: '1.4.0' },
+      drift: { kind: 'snapshot', expected: '1.2.0', installed: '1.4.0' },
       plan: [],
     });
     expect(text.startsWith('!!  STALE SNAPSHOT')).toBe(true);
@@ -195,6 +197,7 @@ describe('formatArtifactsReport', () => {
   it('names every skipped file so the user can reconcile it', () => {
     const text = formatArtifactsReport({
       stamp,
+      keptBundled: [],
       wrote: true,
       drift: null,
       plan: [
@@ -213,6 +216,7 @@ describe('formatArtifactsReport', () => {
   it('offers --write on a read-only run that would change something', () => {
     const text = formatArtifactsReport({
       stamp,
+      keptBundled: [],
       wrote: false,
       drift: null,
       plan: [{ target: 'a', status: 'created' }],
@@ -230,7 +234,7 @@ describe('readArtifactSet', () => {
   });
 });
 
-describe('runArtifacts end to end', async () => {
+describe('runArtifacts end to end', () => {
   it('reports without writing anything by default', async () => {
     const artifacts = makeArtifacts({ 'brand/SKILL.md': 'v1' });
     const repo = makeRepo();
@@ -324,7 +328,7 @@ describe('runArtifacts end to end', async () => {
       dir: makeArtifacts({ 'brand/SKILL.md': 'v1' }),
     });
 
-    expect(result.drift).toEqual({ expected: '1.2.0', installed: '1.4.0' });
+    expect(result.drift).toEqual({ kind: 'snapshot', expected: '1.2.0', installed: '1.4.0' });
     expect(formatArtifactsReport(result)).toContain('STALE SNAPSHOT');
   });
 

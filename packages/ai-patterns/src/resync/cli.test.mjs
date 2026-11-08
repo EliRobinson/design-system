@@ -248,8 +248,8 @@ Options:
   --force               Overwrite files you have edited locally
   --json                Emit the plan as JSON
   --cwd <dir>           Target a directory other than the current one
-  --fail-on-drift       Exit 2 when the snapshot and the installed
-                        @elirobinson/react disagree (for CI)
+  --fail-on-drift       Exit 2 when the artifacts here were written for other
+                        versions than the installed ones (for CI)
   -h, --help            Show this message
 `;
 

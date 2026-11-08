@@ -47,8 +47,8 @@ import {
 import { copyTree } from '../src/artifacts/copy-tree.mjs';
 import {
   buildReferenceSkill,
-  REFERENCE_GENERATOR,
   REFERENCE_INPUTS,
+  SOURCE_KINDS,
 } from '../src/artifacts/reference.mjs';
 import { SKILL_DIRS } from '../src/artifacts/skills.mjs';
 
@@ -99,6 +99,39 @@ function walk(dir, base = dir) {
   return found.sort();
 }
 
+/**
+ * Where a staged brand-skill file comes from in an installed package, or null.
+ *
+ * The token stylesheets and fonts in `design-system-docs/` are symlinks into
+ * `packages/tokens/src`. Naming that package and path lets `ds-resync
+ * artifacts` copy the consumer's installed copy instead of this one (#257). An
+ * exported file also names its specifier, so a move inside the package that
+ * keeps the export still resolves.
+ *
+ * @param {string} path skills-relative staged path
+ * @param {{ brandSource: string, packagesDir: string }} roots
+ */
+function packageSourceOf(path, { brandSource, packagesDir }) {
+  const brandPrefix = `${SKILL_DIRS.brand}/`;
+  if (!path.startsWith(brandPrefix)) return null;
+  const source = join(brandSource, path.slice(brandPrefix.length));
+  if (!existsSync(source)) return null;
+  const real = relative(packagesDir, realpathSync(source));
+  if (real.startsWith('..')) return null;
+  const [dir, ...rest] = real.split(sep);
+  const manifest = readJson(join(packagesDir, dir, 'package.json'));
+  const inPackage = rest.join('/');
+  const exported = Object.entries(manifest.exports ?? {}).find(
+    ([, target]) => target === `./${inPackage}`,
+  );
+  return {
+    kind: SOURCE_KINDS.package,
+    package: manifest.name,
+    path: inPackage,
+    ...(exported && { specifier: `${manifest.name}/${exported[0].slice(2)}` }),
+  };
+}
+
 function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
 }
@@ -121,6 +154,8 @@ function main() {
   const tokenSrcDir = join(repoRoot, 'packages/tokens/src');
   const tokens = parseTokensCss(readTokenStylesheets(tokenSrcDir));
 
+  /* Also checked by buildReferenceSkill, which guards the consumer side. Here
+     it has to fail before anything below rewrites dist or the repo README. */
   if (!manifest.components?.length) {
     throw new Error('@elirobinson/react/manifest describes no components.');
   }
@@ -225,24 +260,6 @@ function main() {
     readFileSync(join(packageDir, 'src/resync/SKILL.md'), 'utf8'),
   );
 
-  /* A brand-skill file copied from a symlink into a workspace package (the
-     token stylesheets and fonts) names that package and path, so `ds-resync
-     artifacts` can copy the consumer's installed copy instead of this one. */
-  const brandPrefix = `${SKILL_DIRS.brand}/`;
-  const packagesDir = join(repoRoot, 'packages');
-  function installedSource(path) {
-    if (!path.startsWith(brandPrefix)) return null;
-    const source = join(brandSource, path.slice(brandPrefix.length));
-    if (!existsSync(source)) return null;
-    const real = relative(packagesDir, realpathSync(source));
-    if (real.startsWith('..')) return null;
-    const [dir, ...rest] = real.split(sep);
-    return {
-      package: readJson(join(packagesDir, dir, 'package.json')).name,
-      path: rest.join('/'),
-    };
-  }
-
   /* 4. The stamp. `reactVersion` is what `ds-resync artifacts` compares against
         the consuming repo's install to decide whether to warn. */
   const files = walk(skillsDir).map((path) => {
@@ -262,11 +279,11 @@ function main() {
           'src/artifacts/copy-tree.mjs.',
       );
     }
-    const entry = { path, hash: sha256(readFileSync(staged)) };
-    if (path in reference) entry.generated = REFERENCE_GENERATOR;
-    const from = installedSource(path);
-    if (from) entry.from = from;
-    return entry;
+    const source =
+      path in reference
+        ? { kind: SOURCE_KINDS.reference }
+        : packageSourceOf(path, { brandSource, packagesDir: join(repoRoot, 'packages') });
+    return { path, hash: sha256(readFileSync(staged)), ...(source && { source }) };
   });
 
   writeFileSync(

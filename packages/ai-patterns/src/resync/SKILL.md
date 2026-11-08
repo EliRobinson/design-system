@@ -76,7 +76,7 @@ local accident.
 In CI, `--fail-on-out-of-sync` exits 2 on this condition. It is separate from
 `--fail-on-outdated`, which exits 2 when something is behind: different causes,
 different fixes. (Both are distinct from `ds-resync artifacts --fail-on-drift`,
-which is about the generated snapshot, not about `node_modules`.)
+which is about the artifacts in `.claude/skills/`, not about `node_modules`.)
 
 ## 2. Read the changelog entries before upgrading
 
