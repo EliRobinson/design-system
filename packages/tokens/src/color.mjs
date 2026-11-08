@@ -40,6 +40,22 @@ function gamma(channel) {
 }
 
 const OKLCH_PATTERN = /oklch\(\s*([\d.]+)%\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%?))?\s*\)/;
+const HEX_PATTERN = /#[0-9a-f]{6}\b/i;
+
+/* Every colour `parseColor` can read, anywhere in a value. Built from the
+   same two patterns, so a value with more than one colour in it (a layered
+   box-shadow) is split by the grammar that measures it, not a second copy. */
+const ANY_COLOR = new RegExp(`${OKLCH_PATTERN.source}|${HEX_PATTERN.source}`, 'gi');
+
+/**
+ * The colours in a value, in source order: one per layer of a box-shadow.
+ *
+ * @param {string} value
+ * @returns {string[]}
+ */
+export function colorsIn(value) {
+  return value.match(ANY_COLOR) ?? [];
+}
 
 /**
  * Parse an `oklch(...)` or `#rrggbb` token value into gamma-encoded sRGB (0–1)
