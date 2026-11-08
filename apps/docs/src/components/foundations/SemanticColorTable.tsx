@@ -16,7 +16,7 @@ const GROUPS: { title: string; match: (name: string) => boolean }[] = [
   { title: 'Borders', match: (n) => /^--border(-|$)/.test(n) },
   { title: 'Accent — the palette’s signal color', match: (n) => /^--accent(-|$)/.test(n) },
   { title: 'Anchor — the palette’s second color', match: (n) => /^--anchor(-[a-z]+|$)/.test(n) },
-  { title: 'Links and focus', match: (n) => /^--(link|focus-ring)(-|$)/.test(n) },
+  { title: 'Links and focus', match: (n) => /^--(link(-|$)|focus-ring$)/.test(n) },
   { title: 'Status', match: (n) => /^--status-/.test(n) },
   { title: 'Charts — categorical, palette-independent', match: (n) => /^--chart-/.test(n) },
   { title: 'Overlays', match: (n) => /^--scrim(-|$)/.test(n) },

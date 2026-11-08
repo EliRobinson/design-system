@@ -18,19 +18,19 @@
   /* The off state is the whole control: at --ink-200 the track was 1.24:1
      against the page and effectively invisible. 3.64:1 — SC 1.4.11. */
   background: var(--border-control);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-full, 9999px);
   cursor: pointer;
   height: 24px;
   position: relative;
   transition: background-color var(--dur-fast) var(--ease-out);
-  width: 44px;
+  width: 44px; /* the track's drawn width, not a hit area: the row's min-height is */
 }
 
 /* The knob is --bg, not a fixed white: on a dark theme a white knob sat on a
    white-ish off track at 1.00:1 and vanished. 3.64:1 off, 21:1 on. */
 .ds-switch__input::before {
   background: var(--bg);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-full, 9999px);
   content: '';
   height: 18px;
   left: 3px;
@@ -53,13 +53,13 @@
 /* The invalid edge, in Input's error border token. The focus rule below wins
    while focused; the error text still marks the control. */
 .ds-switch--error .ds-switch__input {
-  outline: var(--focus-ring-width) solid var(--status-danger);
-  outline-offset: var(--focus-ring-offset);
+  outline: var(--focus-ring-width, 2px) solid var(--status-danger);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 .ds-switch__input:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 .ds-switch__label {

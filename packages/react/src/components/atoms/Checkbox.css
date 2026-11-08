@@ -28,13 +28,13 @@
 /* The invalid edge, in Input's error border token. The focus rule below wins
    while focused; the error text still marks the control. */
 .ds-checkbox--error .ds-checkbox__input {
-  outline: var(--focus-ring-width) solid var(--status-danger);
-  outline-offset: var(--focus-ring-offset);
+  outline: var(--focus-ring-width, 2px) solid var(--status-danger);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 .ds-checkbox__input:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 .ds-checkbox__label {

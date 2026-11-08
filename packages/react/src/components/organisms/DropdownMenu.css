@@ -21,8 +21,8 @@
 }
 
 .ds-dropdown__trigger:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 /* --anchored-min-width is this panel's floor, and useAnchoredPosition reads it
@@ -72,8 +72,8 @@
 }
 
 .ds-dropdown__item:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(var(--focus-ring-width) * -1);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
+  outline-offset: calc(var(--focus-ring-width, 2px) * -1);
 }
 
 /* A disabled item reads as inactive and takes no hover fill. Both kinds of
@@ -114,7 +114,7 @@
    the two kinds of item do not rely on colour to be told apart. */
 .ds-dropdown__dot {
   background: currentColor;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-full, 9999px);
   height: var(--space-2);
   width: var(--space-2);
 }

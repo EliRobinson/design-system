@@ -49,8 +49,8 @@
 }
 
 .ds-navigation-menu__link:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(var(--focus-ring-width) * -1);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
+  outline-offset: calc(var(--focus-ring-width, 2px) * -1);
 }
 
 /* Forced colors (Windows High Contrast) drops background, so only the weight

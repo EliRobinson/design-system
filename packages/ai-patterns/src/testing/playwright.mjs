@@ -142,7 +142,7 @@ export const DENSE_AFFORDANCE_SELECTOR = [
 ].join(', ');
 
 const FOCUS_MESSAGE =
-  'focusVisibleRequired: focusing this control changes nothing visible. Restore the token focus ring — outline: 2px solid var(--focus-ring) — and delete any `outline: none`.';
+  'focusVisibleRequired: focusing this control changes nothing visible. Restore the token focus ring — outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset) — and delete any `outline: none`.';
 
 const OVERLAP_MESSAGE =
   "hit-area-no-overlap: this control's hit area covers the centre of a sibling. Bound the overlay — stretch it to the container's height rather than using a symmetric negative inset.";

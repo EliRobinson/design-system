@@ -52,7 +52,7 @@
 
 .ds-pagination__nav:focus-visible,
 .ds-pagination__item:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
   outline-offset: 1px;
 }
 

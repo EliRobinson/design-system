@@ -145,7 +145,7 @@
       "when": {},
       "report": "none",
       "reason": "--shadow-focus is built from the new --focus-ring-offset and --focus-ring-width tokens instead of literal 2px and 4px. Both are 2px, so the ring is the same 2px --bg gap and 2px --focus-ring band it was.",
-      "guidance": "No action, and nothing is reported. To change every focus ring at once, set --focus-ring-width or --focus-ring-offset."
+      "guidance": "No action, and nothing is reported. To change the ring, set --focus-ring-width or --focus-ring-offset on :root."
     }
   ]
 }

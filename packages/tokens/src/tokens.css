@@ -379,9 +379,12 @@
   --shadow-inset: inset 0 1px 0 0 oklch(0% 0 0 / 0.04);
 
   /* Focus ring — uniform across the system. The colour is --focus-ring
-     (palettes.css); the geometry is these two, and it is fixed on purpose: a
-     focus ring must not get thinner under any brand. Every `outline` focus
-     ring and --shadow-focus are built from them. An inset ring is
+     (palettes.css); the geometry is these two. They are the same under every
+     palette and theme, so a brand cannot thin the ring; an app may set them
+     on :root, where --shadow-focus reads them. Every `outline` focus
+     ring takes its width from --focus-ring-width; the standard ring and
+     --shadow-focus take their gap from --focus-ring-offset. Dense controls
+     keep a tight 1px offset of their own. An inset ring is
      `outline-offset: calc(var(--focus-ring-width) * -1)`. */
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;

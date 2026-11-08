@@ -18,6 +18,7 @@ import {
   combinationDeclarations,
   combinationValues,
   flattenCalc,
+  isFocusRingGeometry,
   tokenBlocks,
   unreadableSelectors,
 } from '@elirobinson/tokens/contrast';
@@ -62,7 +63,8 @@ const TYPE_GROUPS = [
    First match wins. These are the artifact type's sections, not the published
    tokens.json groups, so they are not shared with tokens-json.mjs. */
 const FAMILY_RULES = [
-  ['spacing', /^(container-|target|tr-|space-|anchored-|focus-ring-(width|offset)$)/],
+  ['spacing', /^(container-|target|tr-|space-|anchored-)/],
+  ['spacing', { test: isFocusRingGeometry }],
   ['radius', /^radius-/],
   ['shadow', /^shadow-/],
   ['motion', /^(ease-|dur-)/],
@@ -71,9 +73,8 @@ const FAMILY_RULES = [
   ['lineHeight', /^lh-/],
   ['fontWeight', /^fw-/],
 ];
-/* The lookahead keeps the focus ring's two lengths out: same prefix, not colours. */
 const COLOUR_NAME =
-  /^(?!focus-ring-(width|offset)$)(signal|anchor|accent|focus|link|status|chart|ink|bg|surface|border|fg|scrim)/;
+  /^(signal|anchor|accent|focus|link|status|chart|ink|bg|surface|border|fg|scrim)/;
 const FONT_KEYS = ['sans', 'display', 'mono'];
 /* tokens.json has no grammar for these values, so bundle.css declares them. */
 const NOT_IN_JSON = [
@@ -183,7 +184,7 @@ function colourTokens({ declared, order, prev, usage, report }) {
     const previousFamily = prev.get(name)?.family;
     if (previousFamily && previousFamily !== 'color') return false;
     if (NOT_IN_JSON.includes(name)) return false;
-    if (!previousFamily && !COLOUR_NAME.test(name)) return false;
+    if (!previousFamily && (!COLOUR_NAME.test(name) || isFocusRingGeometry(name))) return false;
     claimed.add(name);
     /* A colour some theme lacks, or one with no literal or alias value, has no tokens.json row. */
     if (ARTIFACT_THEMES.some((theme) => colourValue(name, theme) === null)) {

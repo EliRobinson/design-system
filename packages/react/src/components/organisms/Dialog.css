@@ -21,7 +21,7 @@
 }
 
 .ds-dialog::backdrop {
-  background: var(--scrim);
+  background: var(--scrim, oklch(0% 0 0 / 0.56));
 }
 
 .ds-dialog__inner {

@@ -4,7 +4,7 @@
 
 .ds-spinner {
   display: inline-block;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-full, 9999px);
   border: 2px solid var(--border);
   border-top-color: var(--accent);
   /* eslint-disable-next-line @elirobinson-css/no-hardcoded-design-values -- one turn of an ambient loop, not a UI transition; the --dur-* ramp stops at 420ms */
