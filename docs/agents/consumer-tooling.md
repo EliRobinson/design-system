@@ -32,7 +32,8 @@ export default [...designSystem()];
 Then `pnpm ds init --agents` for the agent instruction files,
 `pnpm exec ds-resync artifacts --write` for the skills, and
 `expectDesignSystemContracts` from `@elirobinson/ai-patterns/testing/playwright` in the E2E
-suite. `pnpm exec ds-resync` keeps the versions current afterwards, and
+suite. `pnpm ds check` finds the known silent traps; run it after setup and after every
+upgrade. `pnpm exec ds-resync` keeps the versions current afterwards, and
 `ds-resync artifacts` re-run keeps the skills in step with them.
 
 The step-by-step version of all this lives in the repo README, under **Adopt the design
@@ -40,22 +41,23 @@ system in an app**.
 
 ## The pieces, and why each is here
 
-| Piece                                                                               | Package                                | Replaces, in a consumer                                                                                          |
-| ----------------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `elirobinson-ds` CLI                                                                | `ai-patterns` (`bin`)                  | A hand-written script that parses our directory layout and our `.d.ts` output                                    |
-| `manifest.json`                                                                     | `react` (`./manifest`)                 | Regex-parsing `dist/**/*.d.ts` to find components and variants                                                   |
-| `tailwind.css`                                                                      | `tokens`                               | A hand-maintained `@theme inline` block mapping ~80 colour aliases\*                                             |
-| Flat ESLint config: `@elirobinson/eslint-config` + `@elirobinson/eslint-config/css` | `eslint-config`                        | Hand-written lint rules, or more often no check at all. `pnpm ds contracts` names each rule and what it verifies |
-| Playwright contract helpers                                                         | `ai-patterns` (`./testing/playwright`) | Nothing — most consumers never check the runtime contracts                                                       |
-| AI SDK Core wrappers                                                                | `ai-patterns` (`./server*`)            | The house system prompt pasted into every route handler, and stream defaults re-derived per app                  |
-| Visual regression preset + sweeps                                                   | `ai-patterns` (`./testing/visual-*`)   | A copied `playwright.config.ts` and a hand-kept list of what to snapshot                                         |
-| Agent templates                                                                     | `ai-patterns` (`./agents/*`)           | Four near-identical instruction files per repo, each aging separately                                            |
-| `ds-resync` CLI                                                                     | `ai-patterns` (`bin`)                  | Noticing by hand that a repo is several releases behind                                                          |
-| `ds-resync artifacts`                                                               | `ai-patterns` (`bin`)                  | A copy of the brand skill and a hand-written component cheatsheet per repo                                       |
-| `ds-resync migrate`                                                                 | `ai-patterns` (`bin`)                  | Deriving the same token find/replace out of changelog prose by hand, in every consuming repo, every release      |
-| `ds-migrate` skill (adopt + upgrade patterns)                                       | `ai-patterns` (`ds-resync artifacts`)  | A hand-written mapping from the old UI library to ours, and per-release upgrade notes copied from changelogs     |
-| `design-system-mcp` server                                                          | `design-system-mcp` (`bin`)            | An agent guessing props from memory instead of querying the installed package                                    |
-| Dial roster (`./dials`)                                                             | `tokens`                               | A copied table of palettes, themes and platforms, wrong on the next palette                                      |
+| Piece                                                                               | Package                                | Replaces, in a consumer                                                                                            |
+| ----------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `elirobinson-ds` CLI                                                                | `ai-patterns` (`bin`)                  | A hand-written script that parses our directory layout and our `.d.ts` output                                      |
+| `manifest.json`                                                                     | `react` (`./manifest`)                 | Regex-parsing `dist/**/*.d.ts` to find components and variants                                                     |
+| `tailwind.css`                                                                      | `tokens`                               | A hand-maintained `@theme inline` block mapping ~80 colour aliases\*                                               |
+| Flat ESLint config: `@elirobinson/eslint-config` + `@elirobinson/eslint-config/css` | `eslint-config`                        | Hand-written lint rules, or more often no check at all. `pnpm ds contracts` names each rule and what it verifies   |
+| Playwright contract helpers                                                         | `ai-patterns` (`./testing/playwright`) | Nothing — most consumers never check the runtime contracts                                                         |
+| AI SDK Core wrappers                                                                | `ai-patterns` (`./server*`)            | The house system prompt pasted into every route handler, and stream defaults re-derived per app                    |
+| Visual regression preset + sweeps                                                   | `ai-patterns` (`./testing/visual-*`)   | A copied `playwright.config.ts` and a hand-kept list of what to snapshot                                           |
+| Agent templates                                                                     | `ai-patterns` (`./agents/*`)           | Four near-identical instruction files per repo, each aging separately                                              |
+| `ds-resync` CLI                                                                     | `ai-patterns` (`bin`)                  | Noticing by hand that a repo is several releases behind                                                            |
+| `ds-resync artifacts`                                                               | `ai-patterns` (`bin`)                  | A copy of the brand skill and a hand-written component cheatsheet per repo                                         |
+| `ds-resync migrate`                                                                 | `ai-patterns` (`bin`)                  | Deriving the same token find/replace out of changelog prose by hand, in every consuming repo, every release        |
+| `ds-migrate` skill (adopt + upgrade patterns)                                       | `ai-patterns` (`ds-resync artifacts`)  | A hand-written mapping from the old UI library to ours, and per-release upgrade notes copied from changelogs       |
+| `ds check`                                                                          | `ai-patterns` (`bin`)                  | Finding a silent trap (a font that falls back, a layered override, a stale copy) by its symptom, one app at a time |
+| `design-system-mcp` server                                                          | `design-system-mcp` (`bin`)            | An agent guessing props from memory instead of querying the installed package                                      |
+| Dial roster (`./dials`)                                                             | `tokens`                               | A copied table of palettes, themes and platforms, wrong on the next palette                                        |
 
 `ds-resync migrate` reads its instructions from a manifest the changed package ships —
 `src/migrations.json`, authored beside the stylesheets it describes and checked against them

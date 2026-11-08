@@ -23,6 +23,7 @@ pnpm ds classes [filter] # CSS classes the design system ships
 pnpm ds contracts        # machine-checkable rules your UI must satisfy — read this every time
 pnpm ds patterns         # working principles
 pnpm ds prompts [name]   # reusable prompt templates
+pnpm ds check            # known traps that fail with no error; run after setup and every upgrade
 ```
 
 If `pnpm ds` is not wired up as a script, `pnpm exec elirobinson-ds` is the same command.

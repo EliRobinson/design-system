@@ -75,6 +75,9 @@ Before migrating any screen, install the things that keep this from drifting bac
    `attribute="data-theme"`).
 9. Drop `expectDesignSystemContracts` from `@elirobinson/ai-patterns/testing/playwright`
    into the E2E suite for the routes in scope.
+10. `pnpm ds check` — finds the known traps that make an app look wrong with no error
+    (a font that falls back, an override a cascade layer hides, a stale copy) and prints
+    the fix for each. Fix what it reports before you move a screen.
 
 ## Recipes for what the app is built with now
 
@@ -120,6 +123,7 @@ from memory. The same files ship at `@elirobinson/ai-patterns/migrate/adopt/<sou
       revisits.
 - [ ] The Playwright contract check passes on every migrated route: touch targets, visible
       focus, and WCAG AA contrast.
+- [ ] `pnpm ds check` reports no known traps.
 - [ ] Every migrated screen is fully operable with the keyboard alone.
 - [ ] Every migrated screen renders correctly under `data-theme="dark"`.
 - [ ] The full checklist in `pnpm ds patterns` — **Definition of Done for UI work** —

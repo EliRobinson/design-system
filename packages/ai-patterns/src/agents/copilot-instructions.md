@@ -5,6 +5,7 @@
 All UI is built from **`@elirobinson/react`** (components, hooks), **`@elirobinson/tokens`** (color, type, space, radius, shadow, motion), and **`@elirobinson/ai-patterns`** (UI contracts, working patterns, prompt templates). These are the primary source of components, tokens, and design patterns — see the upstream [design system](https://github.com/EliRobinson/design-system).
 
 - Discover what exists with `pnpm ds` (also `pnpm ds props <Name>`, `pnpm ds tokens [filter]`, `pnpm ds classes`, `pnpm ds contracts`, `pnpm ds patterns`, `pnpm ds prompts`). It reads `node_modules` at run time, so it matches what is installed — do not trust a component list from memory or from a doc. If it warns on stderr that `node_modules` disagrees with the lockfile, install first: what is installed is not what CI builds. `pnpm exec elirobinson-ds` works if the `ds` script is not wired up.
+- Run `pnpm ds check` after setup and after every `@elirobinson/*` upgrade. It finds the known traps that make the app look wrong with no error, and prints the fix for each.
 - Import per component with the full subpath; `pnpm ds props <Name>` prints the exact import line. There is no barrel export and a bare `@elirobinson/react` import does not resolve.
 - Satisfy the contracts from `pnpm ds contracts`. Each carries its own `check` and a `verifiedBy` naming the lint rule or Playwright helper that enforces it.
 - Style with the component's own `variant` / `size` props; use utility classes for layout only.

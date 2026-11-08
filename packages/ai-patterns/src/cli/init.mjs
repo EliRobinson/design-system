@@ -107,6 +107,9 @@ export function installAgents({ templateDir, targetDir, force = false }) {
     'Add the discovery command to package.json so the instructions above resolve:',
     '',
     '  "scripts": { "ds": "elirobinson-ds" }',
+    '',
+    'Then run `pnpm ds check`, and run it again after every @elirobinson/* upgrade.',
+    'It finds the known traps that make the app look wrong with no error.',
   );
 
   return { text: lines.join('\n'), exitCode: 0 };
