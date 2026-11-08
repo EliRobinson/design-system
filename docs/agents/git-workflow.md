@@ -6,7 +6,7 @@
 - No body. No trailers.
 - The scope is the package, app or top-level folder the change lives in, for example `fix(react): ...` or `docs(agents): ...`. It is optional.
 - The allowed types and the length limit are in `scripts/git-hooks/commit-policy.mjs`. The `commit-msg` hook enforces them.
-- Git's sequencer (`git revert`, `rebase -i` squash, and `git cherry-pick` without an editor) skips the hooks. Write those messages yourself, as one Conventional line, for example `revert: fix(react): keep focus on the trigger`. Git's own `Revert "..."` subject does not pass. #278 adds a CI check.
+- Git's sequencer (`git revert`, `rebase -i` squash, and `git cherry-pick` without an editor) skips the hooks. Write those messages yourself, as one Conventional line, for example `revert: fix(react): keep focus on the trigger`. Git's own `Revert "..."` subject does not pass. The `quality` job checks every commit in a pull request, so a missed one fails CI. Fix it with `git rebase -i`.
 
 ## Hooks
 

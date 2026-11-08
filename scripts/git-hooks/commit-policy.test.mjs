@@ -1,12 +1,12 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { checkBranch, checkCommitMessage } from './commit-policy.mjs';
+import { checkBranch, checkCommitMessage, checkCommits } from './commit-policy.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..');
@@ -79,14 +79,53 @@ describe('checkCommitMessage', () => {
   });
 });
 
-/* Release commits on main inside CI, and the hooks run there (no HUSKY: 0).
-   If its message or the CI exemption ever stops passing, Release breaks. */
-describe('the Release workflow commit', () => {
-  const workflow = readFileSync(join(root, '.github/workflows/release.yml'), 'utf8');
-  const [, message] = workflow.match(/git commit -m "([^"]+)"/) ?? [];
+describe('checkCommits', () => {
+  it('passes one-line commits', () => {
+    expect(checkCommits([{ sha: 'a1', message: 'fix: one line\n' }])).toEqual([]);
+  });
 
-  it('passes the message check', () => {
-    expect(message).toBeDefined();
+  it('names each commit that fails, and why', () => {
+    const problems = checkCommits([
+      { sha: 'a1', message: 'fix: one line\n' },
+      { sha: 'b2', message: 'fix: one line\n\nA body.\n' },
+      { sha: 'c3', message: 'Revert "fix: x"\n' },
+    ]);
+    expect(problems).toHaveLength(2);
+    expect(problems[0]).toMatch(/^b2 fix: one line: .*one line/);
+    expect(problems[1]).toMatch(/^c3 Revert "fix: x": .*Conventional/);
+  });
+});
+
+/* Every bot commit in CI. The hooks do not run for the ones that set HUSKY: 0,
+   and the quality check reads every commit on a pull request, so each message
+   must pass on its own: one -m only. Release commits straight to main in CI,
+   with the hooks on, so it breaks if its message stops passing. */
+describe('the workflow bot commits', () => {
+  const dir = join(root, '.github/workflows');
+  const files = readdirSync(dir).filter((file) => /\.ya?ml$/.test(file));
+  const commits = files.flatMap((file) => {
+    const text = readFileSync(join(dir, file), 'utf8');
+    return [...text.matchAll(/git commit\b(?:[^\n]*\\\n)*[^\n]*/g)].map(([command]) => ({
+      file,
+      command,
+    }));
+  });
+
+  it('finds the five bot commits', () => {
+    expect(commits.map(({ file }) => file).sort()).toEqual([
+      'release.yml',
+      'visual-pr.yml',
+      'visual-pr.yml',
+      'visual-update.yml',
+      'visual.yml',
+    ]);
+  });
+
+  it.each(commits)('$file: $command', ({ command }) => {
+    const messages = [...command.matchAll(/-m "([^"]+)"/g)].map(([, message]) => message);
+    expect(messages).toHaveLength(1);
+    // A shell expansion here is a count or a step output, so stand a number in.
+    const message = messages[0].replace(/\$\{[^}]+\}|\$\{\{[^}]+\}\}/g, '3');
     expect(checkCommitMessage(`${message}\n`)).toBeNull();
   });
 });
@@ -115,6 +154,87 @@ describe('the CLI', () => {
     const run = spawnSync('node', [cli, 'branch'], { cwd: dir, encoding: 'utf8', env });
     expect(run.status).toBe(1);
     expect(run.stderr).toMatch(/main/);
+  });
+});
+
+function git(dir, ...args) {
+  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' }).trim();
+}
+
+/* The CI half: git's sequencer (revert, cherry-pick, rebase -i) skips the
+   hooks, so the quality job reads every commit a pull request adds. */
+describe('the CLI range mode', () => {
+  function repo() {
+    const dir = mkdtempSync(join(tmpdir(), 'commit-policy-range-'));
+    git(dir, 'init', '-q', '-b', 'main');
+    git(dir, 'config', 'user.email', 'test@example.com');
+    git(dir, 'config', 'user.name', 'Test');
+    git(dir, 'config', 'core.hooksPath', '/dev/null');
+    git(dir, 'commit', '-q', '--allow-empty', '-m', 'chore: base');
+    git(dir, 'checkout', '-q', '-b', 'feature');
+    return dir;
+  }
+  const commit = (dir, ...messages) =>
+    git(dir, 'commit', '-q', '--allow-empty', ...messages.flatMap((m) => ['-m', m]));
+  const range = (dir) =>
+    spawnSync('node', [cli, 'range', 'main..HEAD'], { cwd: dir, encoding: 'utf8' });
+
+  it('passes one-line commits', () => {
+    const dir = repo();
+    commit(dir, 'fix: one line');
+    commit(dir, 'revert: fix: one line');
+    const run = range(dir);
+    expect(run.stderr).toBe('');
+    expect(run.status).toBe(0);
+  });
+
+  it('fails a commit with a body', () => {
+    const dir = repo();
+    commit(dir, 'fix: one line', 'A body git revert or a squash would write.');
+    const run = range(dir);
+    expect(run.status).toBe(1);
+    expect(run.stderr).toMatch(/fix: one line: Write one line only/);
+  });
+
+  it("fails git's own revert subject, even on one line", () => {
+    const dir = repo();
+    commit(dir, 'Revert "fix: x"');
+    const run = range(dir);
+    expect(run.status).toBe(1);
+    expect(run.stderr).toMatch(/Revert "fix: x": Use a Conventional Commit/);
+  });
+
+  it('skips merge commits, which a rebase-merge never lands on main', () => {
+    const dir = repo();
+    commit(dir, 'fix: one line');
+    git(dir, 'checkout', '-q', 'main');
+    commit(dir, 'feat: on main');
+    git(dir, 'checkout', '-q', 'feature');
+    git(dir, 'merge', '-q', '--no-ff', 'main', '-m', 'Merge abc123 into def456', '-m', 'Body.');
+    expect(range(dir).status).toBe(0);
+  });
+
+  it('fails when git cannot read the range, rather than passing on nothing', () => {
+    const dir = repo();
+    const run = spawnSync('node', [cli, 'range', 'nope..HEAD'], { cwd: dir, encoding: 'utf8' });
+    expect(run.status).not.toBe(0);
+  });
+
+  it('fails with no range given', () => {
+    const run = spawnSync('node', [cli, 'range'], { encoding: 'utf8' });
+    expect(run.status).toBe(1);
+    expect(run.stderr).toMatch(/range/);
+  });
+});
+
+/* The quality job is the only thing that runs range mode. */
+describe('the quality workflow', () => {
+  const workflow = readFileSync(join(root, '.github/workflows/quality.yml'), 'utf8');
+
+  it('checks every commit the pull request adds', () => {
+    expect(workflow).toContain(
+      'node scripts/git-hooks/commit-policy.mjs range "origin/${BASE_REF}..${HEAD_SHA}"',
+    );
   });
 });
 

@@ -293,8 +293,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tests/visual/__screenshots__
-          git commit -m "test(visual): ${{ steps.mint.outputs.minted }} new baselines" \
-                     -m "Generated on the runner for shots that had none. Review the images in this diff."
+          git commit -m "test(visual): ${{ steps.mint.outputs.minted }} new baselines"
           git push origin "HEAD:$HEAD_REF"
 
       # The commit every later job checks out: the pull request head, or the
@@ -759,8 +758,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           xargs -d '\n' git add -- < /tmp/required.txt
-          git commit -m "test(visual): accept ${COUNT} baselines" \
-                     -m "Accepted via the visual-accept label on this pull request. Review the images in this diff."
+          git commit -m "test(visual): accept ${COUNT} baselines"
           git push origin "HEAD:$HEAD_REF"
           echo "Accepted ${COUNT} baselines." >> "$GITHUB_STEP_SUMMARY"
 

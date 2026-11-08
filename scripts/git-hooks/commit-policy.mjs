@@ -3,6 +3,10 @@
  *
  *   node scripts/git-hooks/commit-policy.mjs branch            (pre-commit)
  *   node scripts/git-hooks/commit-policy.mjs commit-msg <file> (commit-msg)
+ *   node scripts/git-hooks/commit-policy.mjs range <a>..<b>    (CI, quality.yml)
+ *
+ * `range` is the backstop: git's sequencer (revert, cherry-pick, rebase -i)
+ * skips the hooks, so CI reads every commit a pull request adds (#278).
  */
 
 import { execFileSync } from 'node:child_process';
@@ -42,7 +46,7 @@ export function checkCommitMessage(text) {
   for (const line of text.split('\n')) {
     if (SCISSORS.test(line)) break;
     // Known gap: git keeps `#` lines for `-m` and `-F`, and some people set
-    // another core.commentChar. Both are rare; CI is the backstop (#278).
+    // another core.commentChar. Both are rare; `range` in CI is the backstop.
     if (line.startsWith('#')) continue;
     lines.push(line.trimEnd());
   }
@@ -61,6 +65,34 @@ export function checkCommitMessage(text) {
   return null;
 }
 
+/** Returns one line per commit that breaks the rule: `<sha> <subject>: <why>`. */
+export function checkCommits(commits) {
+  return commits.flatMap(({ sha, message }) => {
+    const problem = checkCommitMessage(message);
+    if (!problem) return [];
+    const [subject] = message.split('\n');
+    return [`${sha} ${subject}: ${problem}`];
+  });
+}
+
+/* Merge commits are skipped: main takes rebase-merges only, so none lands
+   there, and GitHub's own `Merge <sha> into <sha>` is not ours to word.
+   `%B` is the raw message, so `#` lines count, as they do on main. Git exits
+   non-zero on a bad range, and execFileSync throws, so a typo never passes. */
+function commitsIn(range) {
+  const log = execFileSync('git', ['log', '--no-merges', '--format=%h%x00%B%x1e', range], {
+    encoding: 'utf8',
+  });
+  return log
+    .split('\x1e')
+    .map((entry) => entry.replace(/^\n/, ''))
+    .filter((entry) => entry !== '')
+    .map((entry) => {
+      const [sha, message] = entry.split('\0');
+      return { sha, message };
+    });
+}
+
 function currentBranch() {
   try {
     return execFileSync('git', ['symbolic-ref', '--short', '-q', 'HEAD'], {
@@ -71,11 +103,18 @@ function currentBranch() {
   }
 }
 
-function main([mode, file]) {
+function main([mode, arg]) {
   let problem;
   if (mode === 'branch') problem = checkBranch(currentBranch(), process.env);
-  else if (mode === 'commit-msg') problem = checkCommitMessage(readFileSync(file, 'utf8'));
-  else problem = `Unknown mode: ${mode}. Use "branch" or "commit-msg <file>".`;
+  else if (mode === 'commit-msg') problem = checkCommitMessage(readFileSync(arg, 'utf8'));
+  else if (mode === 'range') {
+    if (!arg) problem = 'Give a range, for example origin/main..HEAD.';
+    else {
+      const problems = checkCommits(commitsIn(arg));
+      if (problems.length)
+        problem = `these commits break the one-line rule:\n${problems.join('\n')}\nReword them with \`git rebase -i\`.`;
+    }
+  } else problem = `Unknown mode: ${mode}. Use "branch", "commit-msg <file>" or "range <a>..<b>".`;
 
   if (problem) {
     process.stderr.write(`commit blocked: ${problem}\nSee docs/agents/git-workflow.md.\n`);
