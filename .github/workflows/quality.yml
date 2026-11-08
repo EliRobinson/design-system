@@ -235,6 +235,28 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck
+      # #327: pack every published package, install the tarballs into a scratch
+      # app, and load every export. Release runs it on every publish; a PR runs
+      # it only when it changes what a package ships or how (a package.json:
+      # `exports`, `files`, `bin`, dependencies) or changes the check itself.
+      # `pnpm typecheck` above has already built every package, which the pack
+      # needs. If red, each failure names the past issue it repeats.
+      - name: Detect a packaging change
+        if: github.event_name == 'pull_request'
+        id: packaging
+        shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE_REF"
+          if git diff --name-only "$(git merge-base HEAD FETCH_HEAD)" HEAD \
+            | grep -qE '^(packages/[^/]+/package\.json|scripts/tarball-consumer/)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install the packed packages into a scratch app and load every export
+        if: steps.packaging.outputs.changed == 'true'
+        run: pnpm test:tarballs
 
       # A fourth whole-repo check, here for exactly the reason the three above
       # are: it must not be cached.

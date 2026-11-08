@@ -176,6 +176,18 @@ jobs:
           restore-keys: ${{ runner.os }}-pnpm-store-
       - run: pnpm install --frozen-lockfile
       - run: pnpm changeset:version
+      # Build and check the packed packages BEFORE the version commit goes to
+      # main, so a red check leaves neither the registry nor main holding a
+      # version no consumer can use. Neither step writes a tracked file — the
+      # check works in a temp folder — so `git add .` below still picks up the
+      # version bump alone.
+      - run: pnpm build
+      # Packs every published package, installs the tarballs into a scratch
+      # app, and loads every export the way a consumer does (#327). It catches
+      # the release breaks no other test here could: #33, #68, #76, #77, #119,
+      # #220. If red, the message names the issue each failure repeats.
+      - name: Install the packed packages into a scratch app and load every export
+        run: pnpm test:tarballs
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
@@ -187,7 +199,6 @@ jobs:
           else
             echo "No pending changesets; nothing to version."
           fi
-      - run: pnpm build
       - name: Capture existing tags
         id: pre_tags
         run: echo "tags=$(git tag -l | sort | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
