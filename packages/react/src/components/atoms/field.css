@@ -36,14 +36,14 @@
   /* The UA default, restated. Tailwind's Preflight makes form controls
      inherit the page's line-height, and every field grew past 44px (#126). */
   line-height: normal;
-  min-height: 44px;
+  min-height: var(--target);
   padding: var(--space-3) var(--space-3);
   width: 100%;
 }
 
 .ds-input:focus-visible {
   border-color: var(--fg); /* was --ink-1000: black-on-black when focused in dark */
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 1px;
 }
 

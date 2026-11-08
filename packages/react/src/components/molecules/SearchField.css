@@ -17,7 +17,7 @@
 
 .ds-search-field__input {
   width: 100%;
-  min-height: 44px;
+  min-height: var(--target);
   padding: 0 var(--space-8) 0 var(--space-8);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-control); /* control edge — SC 1.4.11 */
@@ -27,7 +27,7 @@
 }
 
 .ds-search-field__input:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -44,7 +44,7 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   border: none;
   background: transparent;
   color: var(--fg-3);
@@ -68,6 +68,6 @@
 }
 
 .ds-search-field__clear:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 1px;
 }

@@ -25,7 +25,7 @@
   /* The UA default for a button, restated so Preflight cannot replace it (#126). */
   line-height: normal;
   margin-bottom: -1px;
-  min-height: 44px;
+  min-height: var(--target);
   padding: var(--space-3) var(--space-4);
   transition: color var(--dur-fast) var(--ease-out);
 }
@@ -35,8 +35,8 @@
 }
 
 .ds-tabs__trigger:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* The underline is the only thing marking the active tab, so it has to follow

@@ -14,13 +14,13 @@
   display: inline-flex;
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
-  min-height: 44px;
+  min-height: var(--target);
   padding: var(--space-2) var(--space-4);
 }
 
 .ds-popover__trigger:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .ds-popover__content {
@@ -28,6 +28,8 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  max-width: 320px;
+  /* A component token: set it on .ds-popover__content to resize the panel. */
+  --ds-popover-max-width: 320px;
+  max-width: var(--ds-popover-max-width);
   padding: var(--space-4);
 }

@@ -8,7 +8,7 @@
   cursor: pointer;
   display: flex;
   gap: var(--space-3);
-  min-height: 44px;
+  min-height: var(--target);
   /* Anchors the hidden label's absolute box to the row. */
   position: relative;
 }
@@ -53,13 +53,13 @@
 /* The invalid edge, in Input's error border token. The focus rule below wins
    while focused; the error text still marks the control. */
 .ds-switch--error .ds-switch__input {
-  outline: 2px solid var(--status-danger);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--status-danger);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .ds-switch__input:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .ds-switch__label {

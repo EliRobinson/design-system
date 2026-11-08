@@ -16,13 +16,13 @@
   font-size: var(--fs-sm);
   gap: var(--space-2);
   justify-content: center;
-  min-height: 44px;
+  min-height: var(--target);
   padding: var(--space-2) var(--space-4);
 }
 
 .ds-dropdown__trigger:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* --anchored-min-width is this panel's floor, and useAnchoredPosition reads it
@@ -56,7 +56,7 @@
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
   gap: var(--space-2);
-  min-height: 44px;
+  min-height: var(--target);
   padding: var(--space-2) var(--space-3);
   text-align: left;
   width: 100%;
@@ -72,8 +72,8 @@
 }
 
 .ds-dropdown__item:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: calc(var(--focus-ring-width) * -1);
 }
 
 /* A disabled item reads as inactive and takes no hover fill. Both kinds of

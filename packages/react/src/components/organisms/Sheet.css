@@ -3,6 +3,10 @@
    ========================================================================== */
 
 .ds-sheet {
+  /* Component tokens: the panel's size from the side it opens on. Set them on
+     .ds-sheet to resize every sheet, or on one sheet to resize it alone. */
+  --ds-sheet-max-width: 400px;
+  --ds-sheet-max-height: 320px;
   background: transparent;
   border: none;
   height: 100%;
@@ -16,7 +20,7 @@
 }
 
 .ds-sheet::backdrop {
-  background: oklch(0% 0 0 / 0.45);
+  background: var(--scrim);
 }
 
 .ds-sheet__inner {
@@ -31,25 +35,25 @@
 
 .ds-sheet--right .ds-sheet__inner {
   margin-left: auto;
-  max-width: 400px;
+  max-width: var(--ds-sheet-max-width);
   width: 100%;
 }
 
 .ds-sheet--left .ds-sheet__inner {
   margin-right: auto;
-  max-width: 400px;
+  max-width: var(--ds-sheet-max-width);
   width: 100%;
 }
 
 .ds-sheet--top .ds-sheet__inner {
   margin-bottom: auto;
-  max-height: 320px;
+  max-height: var(--ds-sheet-max-height);
   width: 100%;
 }
 
 .ds-sheet--bottom .ds-sheet__inner {
   margin-top: auto;
-  max-height: 320px;
+  max-height: var(--ds-sheet-max-height);
   width: 100%;
 }
 

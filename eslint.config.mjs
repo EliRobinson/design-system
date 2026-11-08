@@ -1,4 +1,5 @@
 import designSystem, { mcpStdio, plugin as designSystemPlugin } from '@elirobinson/eslint-config';
+import designSystemCss from '@elirobinson/eslint-config/css';
 import js from '@eslint/js';
 import prettierConfig from 'eslint-config-prettier';
 import globals from 'globals';
@@ -22,9 +23,18 @@ import tseslint from 'typescript-eslint';
  */
 const VENDORED_ELEMENTS = ['packages/ai-elements/src/**'];
 
-/** `config` with VENDORED_ELEMENTS added to whatever it already ignores. */
+/** The script files every JS rule set is meant for. */
+const SCRIPT_FILES = ['**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'];
+
+/**
+ * `config` with VENDORED_ELEMENTS added to whatever it already ignores, and
+ * held to script files when it names none. The shared recommended sets carry
+ * no `files`, so they would also run on the stylesheets linted below, and a JS
+ * rule crashes on a CSS source.
+ */
 const offVendoredElements = (config) => ({
   ...config,
+  files: config.files ?? SCRIPT_FILES,
   ignores: [...(config.ignores ?? []), ...VENDORED_ELEMENTS],
 });
 
@@ -49,7 +59,7 @@ export default tseslint.config(
   offVendoredElements(js.configs.recommended),
   ...tseslint.configs.recommended.map(offVendoredElements),
   {
-    files: ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
+    files: SCRIPT_FILES,
     ignores: VENDORED_ELEMENTS,
     languageOptions: {
       ecmaVersion: 'latest',
@@ -118,6 +128,11 @@ export default tseslint.config(
         entry.rules['@elirobinson/no-hardcoded-design-values'],
     },
   })),
+  // The stylesheet half of the same bargain. Consumers run
+  // `@elirobinson/eslint-config/css` on their CSS; the component library's own
+  // stylesheets are held to it too. A value kept raw on purpose carries an
+  // `eslint-disable-next-line` with its reason, next to the value.
+  ...designSystemCss({ files: ['packages/react/src/**/*.css'] }),
   // The one rule that IS pointed at the vendored tree, and the reason
   // VENDORED_ELEMENTS is a per-config ignore rather than a global one.
   //

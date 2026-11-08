@@ -23,7 +23,7 @@
   gap: var(--space-2);
   justify-content: center;
   line-height: 1;
-  min-height: 44px;
+  min-height: var(--target);
   padding: var(--space-3) var(--space-4);
   /* A control that happens to be an anchor is a control, not a link. */
   text-decoration: none;
@@ -34,8 +34,8 @@
 }
 
 .ds-button:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .ds-button--sm {

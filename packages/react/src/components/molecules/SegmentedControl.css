@@ -11,8 +11,8 @@
 }
 
 .ds-segmented-control__item {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--target);
+  min-height: var(--target);
   padding: 0 var(--space-3);
   border: none;
   border-radius: var(--radius-sm);
@@ -36,7 +36,7 @@
 }
 
 .ds-segmented-control__item:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -53,6 +53,7 @@
     forced-color-adjust: none;
     background: Highlight;
     color: HighlightText;
+    /* eslint-disable-next-line @elirobinson-css/no-hardcoded-design-values -- forced colors: a system colour ring, which no token can name */
     box-shadow: inset 0 0 0 1px CanvasText;
   }
 
