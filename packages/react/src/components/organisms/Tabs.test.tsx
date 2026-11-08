@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { placeAt, stubAnchoredGeometry } from '../../test/anchoredGeometry.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './Tabs.js';
 
 describe('Tabs', () => {
@@ -372,25 +373,14 @@ describe('Tabs', () => {
       expect(document.activeElement).toBe(document.body);
     });
   });
+});
+
+describe('Tabs in a list too narrow for its tabs', () => {
+  // jsdom has no layout, so give the list and its tabs boxes.
+  stubAnchoredGeometry();
 
   it('scrolls the list, not the page, to bring the active tab into view', async () => {
     const user = userEvent.setup();
-    // jsdom has no layout, so give the list and its tabs boxes: the list is
-    // 100px wide and the third tab sits past its right edge.
-    const boxes: Record<string, { left: number; right: number }> = {
-      tablist: { left: 0, right: 100 },
-      one: { left: 0, right: 60 },
-      two: { left: 60, right: 120 },
-      three: { left: 120, right: 180 },
-    };
-    const spy = vi
-      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
-      .mockImplementation(function (this: HTMLElement) {
-        const key = this.getAttribute('role') === 'tablist' ? 'tablist' : this.dataset.value;
-        const box = boxes[key ?? ''] ?? { left: 0, right: 0 };
-        return { ...box, top: 0, bottom: 0, width: box.right - box.left, height: 0 } as DOMRect;
-      });
-
     render(
       <Tabs defaultValue="one">
         <TabsList>
@@ -401,11 +391,19 @@ describe('Tabs', () => {
       </Tabs>,
     );
     const list = screen.getByRole('tablist');
+    // The list is 100px wide and the third tab sits past its right edge.
+    placeAt(list, { top: 0, left: 0, width: 100, height: 44 });
+    placeAt(screen.getByRole('tab', { name: 'One' }), { top: 0, left: 0, width: 60, height: 44 });
+    placeAt(screen.getByRole('tab', { name: 'Two' }), { top: 0, left: 60, width: 60, height: 44 });
+    placeAt(screen.getByRole('tab', { name: 'Three' }), {
+      top: 0,
+      left: 120,
+      width: 60,
+      height: 44,
+    });
     expect(list.scrollLeft).toBe(0);
 
     await user.click(screen.getByRole('tab', { name: 'Three' }));
     expect(list.scrollLeft).toBe(80);
-
-    spy.mockRestore();
   });
 });

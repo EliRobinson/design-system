@@ -15,13 +15,6 @@
   justify-content: flex-end;
 }
 
-/* Pagination fills its parent's width, since it is a size container (#345),
-   so the footer's own justify-content no longer moves it. Push its buttons to
-   the end from inside instead. */
-.ds-table-wrapper__footer > .ds-pagination {
-  justify-content: flex-end;
-}
-
 .ds-table__filter {
   /* A component token. Set --ds-table-filter-max-width anywhere above the field. */
   max-width: var(--ds-table-filter-max-width, 320px);

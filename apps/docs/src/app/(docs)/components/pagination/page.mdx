@@ -21,9 +21,8 @@ matters — a store catalog, a search results page. Up to seven pages it shows a
 each. Past seven it keeps the first page, the last page and the current page with its
 neighbours, and draws a gap for the rest, so the row is never more than nine buttons wide.
 
-When even that row does not fit its container, it shows Previous, "Page 3 of 6" and Next
-instead. The nav is a size container, so it fills its parent's width; set
-`justify-content` on it to push the buttons to one side, as `Table` does.
+When even that row is wider than the nav, it shows Previous, "Page 3 of 6" and Next
+instead. The nav measures its own width, so it keeps the size its parent gives it.
 
 ## Boundary states
 
