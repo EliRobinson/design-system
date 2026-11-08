@@ -2,18 +2,9 @@
 /* Packs every published @elirobinson/* package, installs the tarballs into a
  * scratch app outside the repo, and loads them the way a consumer does (#327).
  *
- * Every check here exists because a release once broke consumers while every
- * test in this repo passed. Each failure message names the issue it guards:
- *
- *   #68   no component loads under Node ESM     → every exports subpath is imported
- *   #33   a testing helper had no `require`      → every `require` condition is required,
- *                                                  and ./testing/* must have one
- *   #76   tokens.css @import stranded and dropped → every CSS export is flattened
- *                                                  behind `@import 'tailwindcss'`
- *   #77   manifest listed fonts pack dropped     → every @import and url() resolves, and
- *                                                  `ds-resync artifacts --write` runs
- *   #119  shipped UI kits fail a consumer's lint → the written skills are linted
- *   #220  the test suite shipped                 → no test file is in any tarball
+ * Every check exists because a release once broke consumers while every test in
+ * this repo passed: #33, #68, #76, #77, #119, #220. `CHECKS` in checks.mjs is
+ * the list, and each failure names the break it repeats.
  *
  * The subpath list is read from each packed package.json, so a new export is
  * covered with no edit here. Tarballs are made with `pnpm pack`, the packer
@@ -27,21 +18,14 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { checkConsumer } from './checks.mjs';
+import { readJson } from './resolve.mjs';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const keep = process.argv.includes('--keep');
@@ -67,9 +51,8 @@ function run(command, args, cwd) {
   return result.stdout;
 }
 
-const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
-
-function publishedPackages() {
+/** Every package `changeset publish` would publish: all but the private ones. */
+function packablePackages() {
   const root = join(REPO, 'packages');
   return readdirSync(root)
     .map((dir) => join(root, dir))
@@ -133,7 +116,7 @@ mkdirSync(consumer);
 
 let failures;
 try {
-  const packages = publishedPackages();
+  const packages = packablePackages();
   const tarballs = {};
   for (const pkg of packages) {
     tarballs[pkg.manifest.name] = pack(pkg, join(scratch, 'tarballs'));

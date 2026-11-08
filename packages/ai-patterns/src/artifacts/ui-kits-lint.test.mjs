@@ -22,6 +22,8 @@ import { ESLint } from 'eslint';
 import react from 'eslint-plugin-react';
 import { describe, expect, it } from 'vitest';
 
+import { consumerLintConfig } from './consumer-lint.test-helper.mjs';
+
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const kitsRoot = join(repoRoot, 'design-system-docs/ui_kits');
 
@@ -39,7 +41,7 @@ function everyScript(dir) {
   return found.sort();
 }
 
-/* A stand-in for a typical consumer: eslint-plugin-react's rule over .jsx.
+/* A stand-in for a typical consumer (consumer-lint.test-helper.mjs).
    `overrideConfigFile: true` keeps this repo's own eslint.config.mjs out of
    it — the consumer's config is the thing being simulated, not ours. */
 const eslint = new ESLint({
@@ -51,24 +53,7 @@ const eslint = new ESLint({
      below. */
   cwd: repoRoot,
   overrideConfigFile: true,
-  overrideConfig: [
-    js.configs.recommended,
-    /* An unused directive is an error too. Adding a blanket header to a kit
-       that does not need one would trip this, which is why only the kits that
-       actually reference the shared primitives carry one. */
-    { linterOptions: { reportUnusedDisableDirectives: 'error' } },
-    {
-      files: ['**/*.jsx'],
-      plugins: { react },
-      languageOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        parserOptions: { ecmaFeatures: { jsx: true } },
-      },
-      settings: { react: { version: '18.3.1' } },
-      rules: { 'react/jsx-no-undef': 'error' },
-    },
-  ],
+  overrideConfig: consumerLintConfig({ js, react }),
 });
 
 describe('shipped UI kit samples (#119)', () => {

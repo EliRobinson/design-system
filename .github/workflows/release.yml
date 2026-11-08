@@ -176,29 +176,31 @@ jobs:
           restore-keys: ${{ runner.os }}-pnpm-store-
       - run: pnpm install --frozen-lockfile
       - run: pnpm changeset:version
-      # Build and check the packed packages BEFORE the version commit goes to
-      # main, so a red check leaves neither the registry nor main holding a
-      # version no consumer can use. Neither step writes a tracked file — the
-      # check works in a temp folder — so `git add .` below still picks up the
-      # version bump alone.
-      - run: pnpm build
-      # Packs every published package, installs the tarballs into a scratch
-      # app, and loads every export the way a consumer does (#327). It catches
-      # the release breaks no other test here could: #33, #68, #76, #77, #119,
-      # #220. If red, the message names the issue each failure repeats.
-      - name: Install the packed packages into a scratch app and load every export
-        run: pnpm test:tarballs
+      # Commit the bump BEFORE building, as before, so `git add .` takes the
+      # changeset output and nothing `pnpm build` regenerates. Push it only
+      # after the packed-package check below passes, so a red check leaves
+      # neither main nor the registry holding a version no consumer can use.
       - name: Commit version bump
+        id: version_commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ -n "$(git status --porcelain)" ]; then
             git add .
             git commit -m "chore(release): version packages"
-            git push origin HEAD:main
+            echo "committed=true" >> "$GITHUB_OUTPUT"
           else
             echo "No pending changesets; nothing to version."
           fi
+      - run: pnpm build
+      # #327: packs every published package, installs the tarballs into a
+      # scratch app, and loads every export the way a consumer does. If red,
+      # each failure names the past release break it repeats.
+      - name: Install the packed packages into a scratch app and load every export
+        run: pnpm test:tarballs
+      - name: Push version bump
+        if: steps.version_commit.outputs.committed == 'true'
+        run: git push origin HEAD:main
       - name: Capture existing tags
         id: pre_tags
         run: echo "tags=$(git tag -l | sort | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
