@@ -41,7 +41,7 @@ const NOT_BREAKING = {
   '@elirobinson/ai-patterns 2c3c5e7':
     'Adds the `./corpus` export. The breaking part, the removed manifest field, is @elirobinson/react 2.0.0 and has its section.',
   '@elirobinson/ai-patterns 761aecd':
-    'Adds the ds-migrate skill and its `./migrate/*.md` export. Additive; the word describes the breaking changes this test catches (#348).',
+    'Adds the ds-migrate skill and its `./migrate/*.md` export. Additive; the word describes the breaking changes this test catches.',
   '@elirobinson/tokens b0d68d7':
     'tokens only grew a hit area and used `--target-min`. The break is in the ai-patterns checks, which has its section.',
 };
