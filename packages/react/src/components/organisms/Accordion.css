@@ -19,7 +19,7 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  min-height: 44px;
+  min-height: var(--target);
   padding: var(--space-3) 0;
   border: none;
   background: transparent;
@@ -46,8 +46,8 @@
 }
 
 .ds-accordion__trigger:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .ds-accordion__content {

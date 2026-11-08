@@ -92,14 +92,14 @@
   font-size: var(--fs-lg);
   justify-content: center;
   line-height: 1;
-  min-height: 44px;
-  min-width: 44px;
+  min-height: var(--target);
+  min-width: var(--target);
   padding: 0;
 }
 
 .ds-toast__close:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* The action is a control; the toast's own edge and its status stripe stay
@@ -113,6 +113,6 @@
   cursor: pointer;
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
-  min-height: 44px;
+  min-height: var(--target);
   padding: var(--space-2) var(--space-3);
 }

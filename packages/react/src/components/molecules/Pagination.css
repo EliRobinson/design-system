@@ -21,8 +21,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--target);
+  min-height: var(--target);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-control); /* control edge — SC 1.4.11 */
   background: var(--surface);
@@ -52,7 +52,7 @@
 
 .ds-pagination__nav:focus-visible,
 .ds-pagination__item:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 1px;
 }
 

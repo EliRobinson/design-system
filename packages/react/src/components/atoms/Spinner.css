@@ -4,9 +4,10 @@
 
 .ds-spinner {
   display: inline-block;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   border: 2px solid var(--border);
   border-top-color: var(--accent);
+  /* eslint-disable-next-line @elirobinson-css/no-hardcoded-design-values -- one turn of an ambient loop, not a UI transition; the --dur-* ramp stops at 420ms */
   animation: ds-spin 0.7s linear infinite;
 }
 

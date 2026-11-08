@@ -3,6 +3,7 @@
    ========================================================================== */
 
 .ds-skeleton {
+  /* eslint-disable-next-line @elirobinson-css/no-hardcoded-design-values -- an ambient loop, not a UI transition; the --dur-* ramp stops at 420ms */
   animation: ds-skeleton-pulse 1.5s ease-in-out infinite;
   background: var(--bg-muted); /* a near-white block on a dark page otherwise */
   border-radius: var(--radius-sm);
