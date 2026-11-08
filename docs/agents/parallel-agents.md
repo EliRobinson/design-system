@@ -14,6 +14,7 @@ git worktree add .claude/worktrees/<name> -b <branch> origin/main
 ```
 
 - Never commit on `main`. Not in the main checkout. Not anywhere.
+- Never edit files in the main checkout, not even a one-line doc fix. The hook below sees only git, not `sed -i`, `>` or an editor, so this rule is on you.
 - A hook refuses git that changes the tree in the main checkout. See [The main checkout guard](git-workflow.md#the-main-checkout-guard).
 - Claim the issue before you start. Add the `in-progress` label. Comment the branch name and the worktree path.
 - You own the files your issue names. Never edit files another agent owns. Ask the owner, or comment on their issue.
