@@ -98,8 +98,8 @@ function upgradeEntries() {
 /* Which token migrations need a section. A silent one (`report: "none"`) renders the same
    and `ds-resync migrate` says nothing about it, so it breaks nothing a consumer wrote and
    needs no section; one may still have a section. Every other migration needs exactly one.
-   Silent migrations are exempt for a second reason: a section names a released changeset
-   hash, which a PR adding a migration cannot have yet (#334). */
+   tokens' migrations.test.mjs is what holds a silent entry to a repoint that renders the
+   same, so this exemption cannot let a visible change through. */
 function migrationCoverage(sections, migrations) {
   const named = sections.map((entry) => entry.migration).filter(Boolean);
   const ids = new Set(migrations.map((m) => m.id));
