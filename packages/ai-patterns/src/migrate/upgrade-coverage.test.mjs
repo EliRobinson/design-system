@@ -11,55 +11,67 @@
  *   version, and every token migration it names exists, with the same `since`.
  */
 
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { parseChangelog, parseChangesetEntries } from '../resync/changelog.mjs';
+import { parseVersion } from '../resync/semver.mjs';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const packagesDir = join(here, '..', '..', '..');
 const require = createRequire(import.meta.url);
 
-/* A changeset the "breaking" heuristic picks up that does not break a consumer. Each one
-   needs a reason, and one that stops matching fails the suite, so this cannot grow stale. */
+/* A package's share of a changeset the rule picks up that does not break that package's
+   consumers, keyed `<package> <hash>`. Each needs a reason, and one that stops matching
+   fails the suite, so this cannot grow stale. */
 const NOT_BREAKING = {
-  '0f09b17':
-    'Adds the token migration manifest and `ds-resync migrate`. Nothing a consumer wrote stops working; the word is about the palette release before it.',
-  a6f2796:
+  '@elirobinson/tokens 0f09b17':
+    'Adds the token migration manifest. Nothing a consumer wrote stops working; the word is about the palette release before it.',
+  '@elirobinson/ai-patterns 0f09b17': 'Adds `ds-resync migrate`. Additive.',
+  '@elirobinson/eslint-config 0f09b17':
+    'Adds the lint rule that reads the migration manifest. Additive.',
+  '@elirobinson/ai-patterns a6f2796':
     'Adds `ds-resync --only/--target`. The word describes the consumer majors this helps defer, not this change.',
+  '@elirobinson/ai-patterns 8938d09':
+    'ai-patterns only followed the token split. The breaking parts ship in @elirobinson/tokens 0.9.0 and each has its own section.',
+  '@elirobinson/ai-patterns 2c3c5e7':
+    'Adds the `./corpus` export. The breaking part, the removed manifest field, is @elirobinson/react 2.0.0 and has its section.',
+  '@elirobinson/tokens b0d68d7':
+    'tokens only grew a hit area and used `--target-min`. The break is in the ai-patterns checks, which has its section.',
 };
 
-/** @returns {{ pkg: string, version: string, heading: string, hash: string, body: string }[]} */
+/* One changeset can ship in several packages and break only some of them, so coverage is
+   per package. */
+const key = (pkg, hash) => `${pkg} ${hash}`;
+
+/** Every changeset in every package changelog in the workspace. */
 function changesets() {
-  const found = [];
-  for (const dir of readdirSync(packagesDir)) {
-    let text;
-    let pkg;
-    try {
-      text = readFileSync(join(packagesDir, dir, 'CHANGELOG.md'), 'utf8');
-      pkg = JSON.parse(readFileSync(join(packagesDir, dir, 'package.json'), 'utf8')).name;
-    } catch {
-      continue;
-    }
-    for (const release of text.split(/^## /m).slice(1)) {
-      const version = release.split('\n')[0].trim();
-      for (const section of release.split(/^### /m).slice(1)) {
-        const heading = section.split('\n')[0].trim();
-        for (const entry of section.split(/^- (?=[0-9a-f]{7}:)/m).slice(1)) {
-          found.push({ pkg, version, heading, hash: entry.slice(0, 7), body: entry });
-        }
-      }
-    }
-  }
-  return found;
+  return readdirSync(packagesDir)
+    .filter((dir) => existsSync(join(packagesDir, dir, 'CHANGELOG.md')))
+    .flatMap((dir) => {
+      const pkg = JSON.parse(readFileSync(join(packagesDir, dir, 'package.json'), 'utf8')).name;
+      const text = readFileSync(join(packagesDir, dir, 'CHANGELOG.md'), 'utf8');
+      return parseChangelog(text).flatMap(({ version, body }) =>
+        parseChangesetEntries(body).map((entry) => ({ pkg, version, ...entry })),
+      );
+    });
 }
 
-function isBreaking({ version, heading, body }) {
-  if (heading === 'Major Changes') return true;
+/* Not ds-resync's rule. ds-resync labels a whole version jump, so it calls every 0.x
+   minor breaking, which is right for "should I be careful upgrading". This file lists
+   changes, and most 0.x minors are additive: holding each one to a section would bury the
+   real ones. So a 0.x minor counts when its own author says it breaks, which is how this
+   repo writes them (see 84aef19, b0d68d7), and NOT_BREAKING answers the false hits. */
+function needsSection({ version, section, text }) {
+  if (section === 'Major Changes') return true;
   return (
-    version.startsWith('0.') && heading === 'Minor Changes' && /\bbreak(?:ing|s)\b/i.test(body)
+    parseVersion(version).major === 0 &&
+    section === 'Minor Changes' &&
+    /\bbreak(?:ing|s)\b/i.test(text)
   );
 }
 
@@ -103,18 +115,21 @@ describe('upgrade.md', () => {
     expect(ids).toEqual([...new Set(ids)]);
   });
 
-  it('covers every breaking changeset, or says why one is not breaking', () => {
-    const covered = new Set([...entries.map((entry) => entry.hash), ...Object.keys(NOT_BREAKING)]);
+  it('covers every breaking changeset in every package it ships in', () => {
+    const covered = new Set([
+      ...entries.map((entry) => key(entry.pkg, entry.hash)),
+      ...Object.keys(NOT_BREAKING),
+    ]);
     const missing = all
-      .filter(isBreaking)
-      .filter((cs) => !covered.has(cs.hash))
-      .map((cs) => `${cs.pkg}@${cs.version} ${cs.hash}: ${cs.body.split('\n')[0].slice(9, 90)}`);
+      .filter(needsSection)
+      .filter((cs) => !covered.has(key(cs.pkg, cs.hash)))
+      .map((cs) => `${key(cs.pkg, cs.hash)} (${cs.version}): ${cs.text.split('\n')[0]}`);
     expect(missing).toEqual([]);
   });
 
-  it('keeps NOT_BREAKING to changesets the heuristic still flags', () => {
-    const flagged = new Set(all.filter(isBreaking).map((cs) => cs.hash));
-    expect(Object.keys(NOT_BREAKING).filter((hash) => !flagged.has(hash))).toEqual([]);
+  it('keeps NOT_BREAKING to changesets the rule still flags', () => {
+    const flagged = new Set(all.filter(needsSection).map((cs) => key(cs.pkg, cs.hash)));
+    expect(Object.keys(NOT_BREAKING).filter((k) => !flagged.has(k))).toEqual([]);
   });
 
   it('names only changesets that exist, in that package, under that version', () => {

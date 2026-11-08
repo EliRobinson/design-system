@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isBreaking, parseChangelog, sliceChangelog } from './changelog.mjs';
+import { isBreaking, parseChangelog, parseChangesetEntries, sliceChangelog } from './changelog.mjs';
 
 const CHANGELOG = `# @elirobinson/react
 
@@ -86,5 +86,30 @@ describe('isBreaking', () => {
   it('is false for minor and patch entries', () => {
     expect(isBreaking({ body: '### Minor Changes\n\n- abc: added\n' })).toBe(false);
     expect(isBreaking({ body: '### Patch Changes\n\n- abc: fixed\n' })).toBe(false);
+  });
+});
+
+describe('parseChangesetEntries', () => {
+  it('splits a version body into changesets, keeping each section and hash', () => {
+    const body = [
+      '### Major Changes',
+      '',
+      '- abc1234: Move the thing.',
+      '',
+      '  More about it.',
+      '',
+      '### Patch Changes',
+      '',
+      '- def5678: Fix a bug.',
+      '- Updated dependencies [abc1234]',
+    ].join('\n');
+    expect(parseChangesetEntries(body)).toEqual([
+      { section: 'Major Changes', hash: 'abc1234', text: 'Move the thing.\n\n  More about it.' },
+      {
+        section: 'Patch Changes',
+        hash: 'def5678',
+        text: 'Fix a bug.\n- Updated dependencies [abc1234]',
+      },
+    ]);
   });
 });

@@ -42,7 +42,7 @@ Before migrating any screen, install the things that keep this from drifting bac
    depend on review. Both are functions; spread what they return, after the config
    that already parses the app's JSX or TypeScript (typescript-eslint, `eslint-config-next`):
 
-   ```js
+   ```js after
    import designSystem from '@elirobinson/eslint-config';
    import designSystemCss from '@elirobinson/eslint-config/css';
 
@@ -62,7 +62,7 @@ Before migrating any screen, install the things that keep this from drifting bac
 7. If the framework supplies the fonts — `next/font` and friends — re-point the families
    at its variables, or the app silently renders in the system font:
 
-   ```css
+   ```css after
    :root {
      --ds-font-sans-override: var(--font-geist-sans);
      --ds-font-mono-override: var(--font-geist-mono);
@@ -78,7 +78,8 @@ Before migrating any screen, install the things that keep this from drifting bac
 
 ## Recipes for what the app is built with now
 
-Step 5 above writes `.claude/skills/ds-migrate/` (if you are reading this file from that folder, it is already there). Its `adopt/` folder has one file per
+Step 5 writes `.claude/skills/ds-migrate/`, which already holds this file if you are
+reading it from there. Its `adopt/` folder has one file per
 source system: `tailwind.md`, `shadcn.md`, `mui.md`, `bootstrap.md` and `plain-css.md`.
 Each maps colour, type, spacing, radius, shadow and the common components onto tokens and
 system components, with before and after code. Read every one that matches the app (most

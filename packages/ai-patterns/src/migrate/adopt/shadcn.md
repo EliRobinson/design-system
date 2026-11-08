@@ -59,35 +59,47 @@ Move the theme switch from the `.dark` class to `data-theme="dark"` on `<html>`.
 shadcn's variable names mostly mean the same thing as the bridge's colour names. Three do
 not. Watch these when you touch a utility by hand.
 
-| shadcn variable           | Miltinson          | Note                                                                                                                 |
-| ------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `--background`            | `--bg`             | Same role                                                                                                            |
-| `--foreground`            | `--fg`             | Same role                                                                                                            |
-| `--card`, `--popover`     | `--surface`        | Same role                                                                                                            |
-| `--primary`               | `--fg`             | shadcn's primary is the ink action; so is ours                                                                       |
-| `--secondary`             | `--bg-subtle`      | Same role                                                                                                            |
-| `--muted`                 | `--bg-muted`       | Same role                                                                                                            |
-| `--muted-foreground`      | `--fg-3`           | Same role                                                                                                            |
-| `--accent`                | `--surface-2`      | **Collision.** shadcn's accent is a hover tint. Ours is the brand colour. Use `bg-surface-2` or `bg-muted` for hover |
-| `--destructive`           | `--status-danger`  | Same role                                                                                                            |
-| `--border`                | `--border`         | Decorative edge                                                                                                      |
-| `--input`                 | `--border-control` | Control edge, 3:1                                                                                                    |
-| `--ring`                  | `--focus-ring`     | The token sheet draws focus rings; do not add your own                                                               |
-| `--chart-1` … `--chart-5` | `--chart-1`        | Eight series colours, same idea                                                                                      |
-| `--sidebar-*`             | `--surface`        | No sidebar set; use the surface tokens                                                                               |
+| shadcn variable            | Miltinson                  | Note                                                                                                                 |
+| -------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `--background`             | `--bg`                     | Same role                                                                                                            |
+| `--foreground`             | `--fg`                     | Same role                                                                                                            |
+| `--card`, `--popover`      | `--surface`                | Same role                                                                                                            |
+| `--primary`                | `--fg`                     | shadcn's primary is the ink action; so is ours                                                                       |
+| `--secondary`              | `--bg-subtle`              | Same role                                                                                                            |
+| `--muted`                  | `--bg-muted`               | Same role                                                                                                            |
+| `--muted-foreground`       | `--fg-3`                   | Same role                                                                                                            |
+| `--accent`                 | `--surface-2`              | **Collision.** shadcn's accent is a hover tint. Ours is the brand colour. Use `bg-surface-2` or `bg-muted` for hover |
+| `--destructive`            | `--status-danger`          | Same role                                                                                                            |
+| `--border`                 | `--border`                 | Decorative edge                                                                                                      |
+| `--input`                  | `--border-control`         | Control edge, 3:1                                                                                                    |
+| `--ring`                   | `--focus-ring`             | The token sheet draws focus rings; do not add your own                                                               |
+| `--chart-1` to `--chart-5` | `--chart-1` to `--chart-5` | Same idea; the system has eight series colours                                                                       |
+| `--sidebar-*`              | `--surface`                | No sidebar set; use the surface tokens                                                                               |
 
-A `hover:bg-accent` in shadcn code means "tint on hover". After the bridge it paints the
-brand colour. Search for it and change it to `hover:bg-muted`.
+`bg-accent` in shadcn code means "tint on hover or focus". After the bridge it paints the
+brand colour, and its partner `text-accent-foreground` paints the ink that sits on brand,
+which is near-black in both themes. Move both together. Search every variant, not only
+`hover:`:
+
+```bash
+grep -rnE "(hover|focus|data-\[[^]]+\]):(bg|text)-accent(-foreground)?" src
+```
+
+Change `bg-accent` to `bg-muted` and `text-accent-foreground` to `text-foreground`.
 
 ```jsx before
 export const Row = ({ children }) => (
-  <div className="rounded-md px-2 py-1.5 hover:bg-accent">{children}</div>
+  <div className="rounded-md px-2 py-1.5 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+    {children}
+  </div>
 );
 ```
 
 ```jsx after
 export const Row = ({ children }) => (
-  <div className="rounded-md px-2 py-1.5 hover:bg-muted">{children}</div>
+  <div className="rounded-md px-2 py-1.5 hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground">
+    {children}
+  </div>
 );
 ```
 
@@ -136,32 +148,34 @@ Most shadcn components have a system twin with the same compound names. The diff
 that break a straight swap are in the right-hand column. Run `pnpm ds props <Name>` for the
 full prop list and the import line.
 
-| shadcn                                                                                         | Miltinson                                         | What changes                                                  |
-| ---------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------- |
-| `<Button>` (default)                                                                           | `<Button variant="primary">`                      | `variant="default"` becomes `primary`                         |
-| `<Button variant="outline">`                                                                   | `<Button variant="secondary">`                    | No `outline`                                                  |
-| `<Button variant="link">`                                                                      | `<a>` styled by the token sheet                   | No link variant; a link is a link                             |
-| `<Button size="icon">`                                                                         | `<Button size="sm" aria-label="Close">`           | No icon size; give it a name                                  |
-| `<Input>` + `<Label>`                                                                          | `<Input label="Email">`                           | `label` is required and wires the `<label>` for you           |
-| `<Textarea>` + `<Label>`                                                                       | `<Textarea label="Notes">`                        | Same                                                          |
-| `<Checkbox>` + `<Label>`                                                                       | `<Checkbox label="Accept terms">`                 | Same                                                          |
-| `<Switch>` + `<Label>`                                                                         | `<Switch label="Email alerts">`                   | Same                                                          |
-| `Select` (Radix, `SelectItem`)                                                                 | `<Select label="Plan">`                           | Native `<select>`; children are `<option>`                    |
-| `RadioGroup` + `RadioGroupItem`                                                                | `RadioGroup`                                      | `name` is required; each `RadioGroupItem` takes `label`       |
-| `Card` and its parts                                                                           | `Card`                                            | Same part names; no `CardAction`, put actions in `CardFooter` |
-| `Alert` + `AlertTitle` + `AlertDescription`                                                    | `<Alert variant="danger" title="Payment failed">` | Title is a prop; body is children; `destructive` is `danger`  |
-| `<Badge variant="secondary">`                                                                  | `<Badge variant="default">`                       | Variants differ; no destructive badge                         |
-| `Dialog` and its parts                                                                         | `Dialog`                                          | `DialogTrigger` is the button; drop `asChild`                 |
-| `Sheet` and its parts                                                                          | `Sheet`                                           | Same; `side` goes on `SheetContent`                           |
-| `DropdownMenu` and its parts                                                                   | `DropdownMenu`                                    | Same core parts; no sub-menus                                 |
-| `Tooltip` + `TooltipProvider`                                                                  | `Tooltip`                                         | No provider                                                   |
-| `Tabs` and its parts                                                                           | `Tabs`                                            | Same                                                          |
-| `Accordion` and its parts                                                                      | `Accordion`                                       | Same; set `headingLevel` to fit the page outline              |
-| `Sonner` / `toast()`                                                                           | `Toaster`                                         | Mount `Toaster`; call `useToast` inside it                    |
-| `Separator`, `Skeleton`, `Progress`, `Avatar`, `Breadcrumb`, `Pagination`, `Slider`, `Popover` | `Separator`                                       | Same names; check props with `pnpm ds props`                  |
-| `Command`                                                                                      | `CommandPalette`                                  | Built on the system `Dialog`, not `cmdk`                      |
-| `Calendar` + `Popover` date picker                                                             | `DatePicker`                                      | One component                                                 |
-| Data table recipe                                                                              | `Table`                                           | Pass `columns` and `data`                                     |
+| shadcn                                                             | Miltinson                                         | What changes                                                                     |
+| ------------------------------------------------------------------ | ------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `<Button>` (default)                                               | `<Button variant="primary">`                      | `variant="default"` becomes `primary`                                            |
+| `<Button variant="outline">`                                       | `<Button variant="secondary">`                    | No `outline`                                                                     |
+| `<Button variant="link">`                                          | `<a>` styled by the token sheet                   | No link variant; a link is a link                                                |
+| `<Button size="icon">`                                             | `<Button size="sm" aria-label="Close">`           | No icon size; give it a name                                                     |
+| `<Input>` + `<Label>`                                              | `<Input label="Email">`                           | `label` is required and wires the `<label>` for you                              |
+| `<Textarea>` + `<Label>`                                           | `<Textarea label="Notes">`                        | Same                                                                             |
+| `<Checkbox>` + `<Label>`                                           | `<Checkbox label="Accept terms">`                 | Same                                                                             |
+| `<Switch>` + `<Label>`                                             | `<Switch label="Email alerts">`                   | Same                                                                             |
+| `Select` (Radix, `SelectItem`)                                     | `<Select label="Plan">`                           | Native `<select>`; children are `<option>`                                       |
+| `RadioGroup` + `RadioGroupItem`                                    | `RadioGroup`                                      | `name` is required; each `RadioGroupItem` takes `label`                          |
+| `Card` and its parts                                               | `Card`                                            | Same part names; no `CardAction`, put actions in `CardFooter`                    |
+| `Alert` + `AlertTitle` + `AlertDescription`                        | `<Alert variant="danger" title="Payment failed">` | Title is a prop; body is children; `destructive` is `danger`                     |
+| `<Badge variant="secondary">`                                      | `<Badge variant="default">`                       | Variants differ; no destructive badge                                            |
+| `Dialog` and its parts                                             | `Dialog`                                          | `DialogTrigger` is the button; drop `asChild`                                    |
+| `Sheet` and its parts                                              | `Sheet`                                           | Same; `side` goes on `SheetContent`                                              |
+| `DropdownMenu` and its parts                                       | `DropdownMenu`                                    | Same core parts; no sub-menus                                                    |
+| `Tooltip` + `TooltipProvider`                                      | `Tooltip`                                         | No provider                                                                      |
+| `Tabs` and its parts                                               | `Tabs`                                            | Same                                                                             |
+| `Accordion` and its parts                                          | `Accordion`                                       | Same; set `headingLevel` to fit the page outline                                 |
+| `Sonner` / `toast()`                                               | `Toaster`                                         | Mount `Toaster`; call `useToast` inside it                                       |
+| `Separator`, `Skeleton`, `Progress`, `Avatar`, `Slider`, `Popover` | `Separator`                                       | Same names; check props with `pnpm ds props`                                     |
+| `Pagination` and its parts                                         | `Pagination`                                      | One component, not compound: `page`, `pageCount` and `onPageChange` are required |
+| `Breadcrumb` and its parts                                         | `Breadcrumb`                                      | `BreadcrumbPage` is `BreadcrumbLink` with `current`; no `BreadcrumbEllipsis`     |
+| `Command`                                                          | `CommandPalette`                                  | Built on the system `Dialog`, not `cmdk`                                         |
+| `Calendar` + `Popover` date picker                                 | `DatePicker`                                      | One component                                                                    |
+| Data table recipe                                                  | `Table`                                           | Pass `columns` and `data`                                                        |
 
 ```jsx before
 import { Button } from '@/components/ui/button';
@@ -242,5 +256,6 @@ When the last import of a `components/ui/<name>` file is gone, delete the file. 
 
 - `pnpm lint` passes. Outside `components/ui/`, it rejects direct `@radix-ui/*` imports.
 - No `:root` block in the app still defines `--background`, `--primary` or `--accent`.
-- `hover:bg-accent` is gone, or is a brand hover on purpose.
+- No `bg-accent` or `text-accent-foreground` is left in a hover, focus or `data-` state,
+  unless it is a brand hover on purpose.
 - The screen renders correctly with `data-theme="dark"` on `<html>`.

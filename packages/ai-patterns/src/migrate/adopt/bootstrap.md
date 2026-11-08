@@ -67,8 +67,11 @@ Delete `data-bs-theme="dark"` handling. The system's switch is `data-theme="dark
 
 ## Type
 
-Bootstrap sizes in rem. Map by pixels. Headings get their size from `tokens.css`; set one
-only where the design needs another.
+Bootstrap sizes in rem. Map by pixels.
+A bare `h1`–`h6` gets browser defaults from `tokens.css`, and nothing at all under
+Tailwind's preflight. Give each heading a size: a `.t-*` type class from `tokens.css`
+(`t-h1` to `t-h5`, `t-lead`, `t-body`, `t-caption`; `pnpm ds` lists them), or `font-size`
+from the `--fs-*` token below.
 
 | Bootstrap              | Source px | Miltinson  |
 | ---------------------- | --------- | ---------- |

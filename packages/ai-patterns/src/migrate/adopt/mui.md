@@ -65,9 +65,11 @@ which in this system is ink (`--fg`). Keep the brand colour for one moment per s
 
 ## Type
 
-MUI's variants map to plain elements plus `--fs-*`. There is no `Typography` component;
-use `h1`–`h6` and `p` and let `tokens.css` style them, then set a size only where the
-design needs another.
+MUI's variants map to plain elements plus a size. There is no `Typography` component.
+A bare `h1`–`h6` gets browser defaults from `tokens.css`, and nothing at all under
+Tailwind's preflight. Give each heading a size: a `.t-*` type class from `tokens.css`
+(`t-h1` to `t-h5`, `t-lead`, `t-body`, `t-caption`; `pnpm ds` lists them), or `font-size`
+from the `--fs-*` token below.
 
 | MUI variant           | Source px | Miltinson  |
 | --------------------- | --------- | ---------- |
