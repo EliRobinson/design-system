@@ -31,8 +31,14 @@
   cursor: pointer;
 }
 
+/* #302: --bg-subtle is ink-950 in dark, the same as the list's --surface
+   (1.00:1), so no option looked chosen. Same fix as CommandPalette (#275): a
+   fill plus an inset ring (SC 1.4.11, at least 3:1 in every palette x theme;
+   combobox-contrast.test.mjs measures it). The two sheets each carry the rule
+   because a shared sheet would add a third stylesheet to both imports. */
 .ds-combobox__option--active {
-  background: var(--bg-subtle);
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--border-control);
 }
 
 .ds-combobox__option--selected {
