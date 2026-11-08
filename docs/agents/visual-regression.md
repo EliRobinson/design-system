@@ -98,6 +98,16 @@ Four things worth knowing about the framing:
 
 Condition **(B)** was #100: the sweep is a matrix of per-project jobs, and `docs-wide` runs as concurrent shards alongside the storybook jobs rather than ahead of them. It started at two. By 2026-09-17 the two shards took 213s and 123s — Playwright balances shards by test count, not duration — so `SHARDS` in `scripts/visual-matrix.mjs` now gives `docs-wide` four and each storybook project two, sized so no leg's screenshots take much more than ~90s. The machine-minute argument that once held the count at two no longer applies: the repository is public, so standard runners are not billed. The limit left is the account's 20 concurrent jobs, shared with every other workflow. Clipping does not make a shot cheaper — the settle loop still captures the whole page, deliberately, and that is the expensive half.
 
+### `preflight-wide`: components inside a Tailwind v4 consumer
+
+Storybook loads no Preflight, and the docs site scopes it to its demo stage (#228). So neither can show a bug that exists only where our CSS meets the reset, and seven consumer issues were that shape (#34, #78, #103, #112, #126, #250, #251). `apps/preflight-host` is a consumer's build: Vite, `@tailwindcss/vite`, and the CSS entry the installation page prescribes, with full Preflight. `tests/visual/preflight/preflight.spec.ts` renders one case per page (`?case=<id>`), both themes.
+
+Each test runs a **layout check before its shot**: measured geometry or computed colour, written so that reverting the case's fix fails it. Before, not after, because CI mints a baseline for any shot that has none, and a check after the capture would let a first shot record a broken state as truth. This also means the checks run locally with no Docker: a missing baseline fails after the check, so `pnpm exec playwright test --project=preflight-wide` tells you which checks pass.
+
+To add a case: add its id to `apps/preflight-host/src/cases.ts`, its component to `main.tsx`'s `COMPONENTS`, and its check to the spec's `CHECKS`. Both are `Record<PreflightCaseId, …>`, so a missing one is a type error. Then prove the check fails with the fix reverted.
+
+The scoper never narrows these shots. When Nx reports `preflight-host` affected (it depends on react and tokens), every preflight shot runs. Their subjects start with `/preflight/`, which keeps them out of the docs route list and out of a docs pattern's `--grep`.
+
 ## The baseline bot, and why the pushes need it
 
 Every workflow here that commits baselines — `visual-pr.yml`'s mint (in `plan`) and accept (in `scoped`) steps, `recover`'s

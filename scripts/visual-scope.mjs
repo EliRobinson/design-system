@@ -32,6 +32,20 @@ import { listShots } from './visual-shots.mjs';
 const DOCS_PROJECT = 'docs';
 const STORYBOOK_PROJECT = 'storybook';
 
+/* apps/preflight-host: @elirobinson/react inside a Tailwind v4 consumer with
+   full Preflight (#329). Its shots are never narrowed. There are a dozen, each
+   one is a cascade case that any token or component stylesheet can move, and
+   which file reaches which case is exactly what the suite exists to find out.
+   So when Nx says the host is affected (it depends on react and tokens), every
+   one of its shots runs. Their subjects all start with this prefix, which is
+   also how they are kept out of the docs route list below. */
+const PREFLIGHT_PROJECT = 'preflight-host';
+const PREFLIGHT_SUBJECT_PREFIX = '/preflight/';
+
+function isPreflightShot(shot) {
+  return shot.route?.startsWith(PREFLIGHT_SUBJECT_PREFIX) ?? false;
+}
+
 const COMPONENT_FILE = /^packages\/react\/src\/components\/[^/]+\/([A-Z][A-Za-z0-9]*)\.(tsx|css)$/;
 const STORY_FILE = /^apps\/storybook\/src\/stories\/([A-Z][A-Za-z0-9]*)\.stories\.tsx$/;
 const DOCS_PAGE = /^apps\/docs\/src\/app\/\(docs\)\/(.+)\/page\.(mdx|tsx)$/;
@@ -261,21 +275,33 @@ export function scopeFor({ changes, affectedProjects, shots, affectedBy }) {
   const forcedByBrandSource = touchesBrandSource(changes);
   const docsAffected = affected.has(DOCS_PROJECT) || forcedBySuiteConfig || forcedByBrandSource;
   const storybookAffected = affected.has(STORYBOOK_PROJECT) || forcedBySuiteConfig;
+  const preflightAffected = affected.has(PREFLIGHT_PROJECT) || forcedBySuiteConfig;
 
-  if (!docsAffected && !storybookAffected) {
+  if (!docsAffected && !storybookAffected && !preflightAffected) {
     return {
       run: false,
       grep: null,
-      reason: 'nx reports neither docs nor storybook affected, so no shot can have changed',
+      reason:
+        'nx reports neither docs, storybook nor preflight-host affected, so no shot can have changed',
     };
   }
 
-  const allRoutes = [...new Set(shots.filter((s) => s.route).map((s) => s.route))];
+  const preflightRoutes = [...new Set(shots.filter(isPreflightShot).map((s) => s.route))];
+  const allRoutes = [
+    ...new Set(shots.filter((s) => s.route && !isPreflightShot(s)).map((s) => s.route)),
+  ];
   const allStoryIds = [...new Set(shots.filter((s) => s.storyId).map((s) => s.storyId))];
 
   const patterns = new Set();
   const reasons = [];
   const unmapped = [];
+
+  if (preflightAffected) {
+    for (const route of preflightRoutes) {
+      patterns.add(routePattern(route));
+    }
+    reasons.push('preflight-host is affected, so every preflight shot runs');
+  }
 
   /* Layer 1a, before any narrowing: a registry change fans out to every docs
      page, so there is nothing left to narrow on that side. */
