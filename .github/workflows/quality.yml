@@ -25,6 +25,21 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
+      # The one-line rule (ADR 0002) for every commit this pull request adds.
+      # The commit-msg hook cannot be the only check: git's sequencer (revert,
+      # cherry-pick, rebase -i squash) skips it. The range ends at the PR head,
+      # not HEAD, because HEAD here is GitHub's test merge commit. Merge
+      # commits are skipped; see commitsIn() in the script. fetch-depth: 0
+      # above gives the whole range. Values go through env, never `${{ }}` in
+      # the run text: a branch name is attacker-controlled.
+      - name: Commits are one line (if red, reword them with `git rebase -i`)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          node scripts/git-hooks/commit-policy.mjs range "origin/${BASE_REF}..${HEAD_SHA}"
       # Corepack activates the exact pnpm from `packageManager` in ./package.json,
       # same as pnpm/action-setup did, but without installing a second pnpm to get
       # there. That action bootstrapped its own pnpm into a flat, v10-style
