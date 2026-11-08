@@ -463,22 +463,17 @@
      luminance to take away. Only the alpha moves; the colour stays black. */
   --scrim: oklch(0% 0 0 / 0.72);
 
-  /* Shadows (#255). The light set is black at 4–20% alpha, and black on an
-     ink page is invisible, so elevation went flat in dark. Each step here
-     keeps the light geometry and changes the two colours: the drop shadow
-     goes much darker, which still reads where it falls past a lighter
-     surface, and the 1px ring turns white, which is what actually draws the
-     edge on black. The ring rises with the step, so a menu still sits above
-     a card. --shadow-inset is a well, so it pairs a dark top with a light
-     bottom lip. --shadow-focus needs nothing here: it is built from --bg and
-     --focus-ring, which already flip. dark-shadow.test.mjs fails on any
-     --shadow-* token that resolves the same in both themes. */
+  /* Shadows (#255): a deeper drop and a white 1px ring that rises with the
+     step. xs gains the ring it lacks in light. --shadow-inset is a well, so
+     it adds a light bottom lip. --shadow-focus has no line here: --bg and
+     --focus-ring already flip. The why, and the contract, is in
+     dark-shadow.test.mjs. */
   --shadow-xs: 0 1px 0 0 oklch(0% 0 0 / 0.5), 0 0 0 1px oklch(100% 0 0 / 0.08);
   --shadow-sm: 0 1px 2px 0 oklch(0% 0 0 / 0.5), 0 0 0 1px oklch(100% 0 0 / 0.08);
   --shadow-md: 0 4px 12px -2px oklch(0% 0 0 / 0.6), 0 0 0 1px oklch(100% 0 0 / 0.1);
   --shadow-lg: 0 12px 32px -8px oklch(0% 0 0 / 0.7), 0 0 0 1px oklch(100% 0 0 / 0.12);
   --shadow-xl: 0 24px 56px -12px oklch(0% 0 0 / 0.8), 0 0 0 1px oklch(100% 0 0 / 0.14);
-  --shadow-inset: inset 0 1px 2px 0 oklch(0% 0 0 / 0.5), inset 0 -1px 0 0 oklch(100% 0 0 / 0.08);
+  --shadow-inset: inset 0 1px 0 0 oklch(0% 0 0 / 0.5), inset 0 -1px 0 0 oklch(100% 0 0 / 0.08);
 }
 
 /* ==========================================================================
