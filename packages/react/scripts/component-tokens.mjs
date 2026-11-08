@@ -2,7 +2,7 @@
  *
  * Shared by the tests that measure a component's own pairings per palette x
  * theme (decision-surfaces-contrast, segmented-control-contrast,
- * command-palette-contrast) and by forced-colors-states, so the rule parser,
+ * command-palette-contrast, combobox-contrast) and by forced-colors-states, so the rule parser,
  * the product-layer guard and the "is it declared" checks exist once.
  *
  * Kept out of a *.test.mjs file on purpose: importing one test file from
