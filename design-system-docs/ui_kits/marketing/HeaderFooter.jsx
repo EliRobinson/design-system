@@ -1,129 +1,95 @@
 /* eslint-disable react/jsx-no-undef --
-   Wordmark and Button are defined by _shared/Primitives.jsx. These kits are loaded as
-   classic <script type="text/babel"> tags (see the index.html beside this
-   file), in dependency order, sharing one global scope — so there is nothing
-   to import and no module boundary to import it across.
-
-   The directive is here because ds-resync writes this file into a consuming
-   repo's .claude/skills/, a directory most projects lint, where the same code
-   is indistinguishable from a module with missing imports. Scoped to the one
+   Wordmark is defined by _shared/Kit.jsx. These kits are loaded as classic
+   <script type="text/babel"> tags (see the index.html beside this file), in dependency
+   order, sharing one global scope — so there is nothing to import and no module boundary
+   to import it across. The directive is here because ds-resync writes this file into a
+   consuming repo's .claude/skills/, a directory most projects lint. Scoped to the one
    rule so everything else about these samples is still linted. #119 */
-/* global window, KIT_CONTENT -- a browser script: the kits publish their components
-   onto window for the sibling kit files loaded after them, and read their strings from
-   _shared/content.js, which is loaded first. See index.html. */
-const copy = KIT_CONTENT.marketing;
-const Header = ({ active = 'Home' }) => {
-  const items = copy.nav;
+/* global window, KIT_CONTENT -- a browser script: it reads the real components from
+   window.DesignSystem (ds-bundle.js) and its strings from _shared/content.js, and
+   publishes onto window for the files loaded after it. See index.html. */
+/*
+ * The page's header and footer. The footer sits on the inverse surface, so its text uses
+ * the inverse tokens; the header is the page's own surface.
+ */
+
+const { Button, Separator } = window.DesignSystem;
+const site = KIT_CONTENT.marketing;
+
+const linkStyle = { color: 'inherit', textDecoration: 'none' };
+
+function Header({ active = site.nav[0] }) {
   return (
     <header
       style={{
         position: 'sticky',
         top: 0,
-        zIndex: 100,
-        background: 'color-mix(in oklch, var(--surface) 92%, transparent)',
-        backdropFilter: 'blur(8px)',
-        borderBottom: '1px solid var(--border)',
-        padding: '14px max(20px, 4vw)',
+        zIndex: 5,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: 'var(--space-4)',
+        flexWrap: 'wrap',
+        minHeight: 64,
+        padding: 'var(--space-2) var(--space-7)',
+        background: 'var(--bg)',
+        borderBottom: '1px solid var(--border)',
       }}
     >
-      <a href="#" style={{ textDecoration: 'none' }}>
-        <Wordmark size={22} />
+      <a href="#" style={linkStyle}>
+        <Wordmark />
       </a>
-      <nav style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-        {items.map((item) => (
+      <nav aria-label={site.navLabel} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-6)', flexWrap: 'wrap' }}>
+        {site.nav.map((item) => (
           <a
             key={item}
             href="#"
+            className="t-body-sm"
+            aria-current={item === active ? 'page' : undefined}
             style={{
-              fontFamily: 'Geist, sans-serif',
-              fontSize: 14,
-              color: active === item ? 'var(--ink-1000)' : 'var(--fg-2)',
-              fontWeight: active === item ? 500 : 400,
-              textDecoration: 'none',
+              ...linkStyle,
+              color: item === active ? 'var(--fg)' : 'var(--fg-2)',
+              fontWeight: item === active ? 'var(--fw-medium)' : undefined,
             }}
           >
             {item}
           </a>
         ))}
         <Button variant="primary" size="sm">
-          Hire Me
+          {site.headerCta}
         </Button>
       </nav>
     </header>
   );
-};
+}
 
-const Footer = () => (
-  <footer
-    style={{
-      background: 'var(--ink-1000)',
-      color: 'var(--ink-0)',
-      padding: '40px max(20px, 4vw) 32px',
-      marginTop: 96,
-    }}
-  >
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        gap: 32,
-        paddingBottom: 28,
-        borderBottom: '1px solid color-mix(in oklch, var(--ink-0) 18%, transparent)',
-      }}
-    >
-      <div>
-        <Wordmark size={26} dark />
-        <div
-          style={{
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: 11,
-            letterSpacing: '0.08em',
-            color: 'var(--fg-inverse-2)',
-            marginTop: 12,
-            textTransform: 'uppercase',
-          }}
-        >
-          Builder · Consultant · Founder
+function Footer() {
+  return (
+    <footer style={{ background: 'var(--bg-inverse)', color: 'var(--fg-inverse)', padding: 'var(--space-10) var(--space-7) var(--space-7)' }}>
+      <div style={{ maxWidth: 'var(--container-xl)', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-7)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-6)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <Wordmark className="t-h4" />
+            <span className="t-caption" style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-inverse-2)' }}>
+              {site.footer.tagline}
+            </span>
+          </div>
+          <nav aria-label={site.footer.navLabel} style={{ display: 'flex', gap: 'var(--space-6)', flexWrap: 'wrap' }}>
+            {site.footer.nav.map((item) => (
+              <a key={item} href="#" className="t-body-sm" style={{ ...linkStyle, color: 'var(--fg-inverse)' }}>
+                {item}
+              </a>
+            ))}
+          </nav>
+        </div>
+        <Separator style={{ background: 'var(--border-inverse)' }} />
+        <div className="t-caption" style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-4)', flexWrap: 'wrap', fontFamily: 'var(--font-mono)', color: 'var(--fg-inverse-2)' }}>
+          <span>{KIT_CONTENT.brand.domain}</span>
+          <span>{KIT_CONTENT.brand.copyright}</span>
         </div>
       </div>
-      <nav style={{ display: 'flex', gap: 24 }}>
-        {['Portfolio', 'Store', 'Services', 'About'].map((i) => (
-          <a
-            key={i}
-            href="#"
-            style={{
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: 11,
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
-              color: 'var(--ink-0)',
-              textDecoration: 'none',
-            }}
-          >
-            {i}
-          </a>
-        ))}
-      </nav>
-    </div>
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        marginTop: 18,
-        fontFamily: 'JetBrains Mono, monospace',
-        fontSize: 11,
-        color: 'var(--fg-inverse-3)',
-        letterSpacing: '0.04em',
-      }}
-    >
-      <span>{KIT_CONTENT.brand.domain}</span>
-      <span>{KIT_CONTENT.brand.copyright}</span>
-    </div>
-  </footer>
-);
+    </footer>
+  );
+}
 
 Object.assign(window, { Header, Footer });

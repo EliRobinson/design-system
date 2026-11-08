@@ -1,5 +1,6 @@
 /* A stand-in for a typical consumer's ESLint over the UI kit samples (#119):
- * the recommended rules, plus eslint-plugin-react's jsx-no-undef over .jsx.
+ * the recommended rules, plus eslint-plugin-react's jsx-no-undef and jsx-uses-vars
+ * over .jsx.
  *
  * Shared by ui-kits-lint.test.mjs, which lints the kits in this repo, and by
  * scripts/tarball-consumer/checks.mjs, which lints what `ds-resync artifacts
@@ -25,7 +26,12 @@ export function consumerLintConfig({ js, react }) {
         parserOptions: { ecmaFeatures: { jsx: true } },
       },
       settings: { react: { version: '18.3.1' } },
-      rules: { 'react/jsx-no-undef': 'error' },
+      /* jsx-uses-vars too: without it core no-unused-vars counts no JSX tag as a
+         use, so every React file that imports a component fails, kit or not. It is
+         in eslint-plugin-react's recommended set, the config a consumer who loads
+         the plugin for JSX has. The kits name the real components they render as
+         locals, read from window.DesignSystem (#321). */
+      rules: { 'react/jsx-no-undef': 'error', 'react/jsx-uses-vars': 'error' },
     },
   ];
 }

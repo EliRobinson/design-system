@@ -1,13 +1,16 @@
 # Mobile UI Kit
 
-Two representative phone screens:
+Three phone screens, each in a frame with `data-platform="mobile"`, the token layer for
+small screens:
 
-- **`BrowseScreen`** — emoji-led list with category chips
-- **`PracticeScreen`** — quiz screen with progress bar, mono question, answer grid
+- **`BrowseScreen`** — SearchField, filter Buttons, a list of Cards with Badges
+- **`PracticeScreen`** — Progress, a RadioGroup of answers, a Button, an Alert with the result
+- **`AccountScreen`** — Avatar, Badge, and setting rows whose Switches use `hideLabel`, because the row text already names them
 
-These are the two "playful" surfaces where emoji is allowed (per the brand rules — never
-elsewhere).
+The recipe list is the one place emoji appear, per the brand rules.
 
-Every string these screens render comes from `../_shared/content.js`.
+The components come from `../_shared/ds-bundle.js`. Every string comes from
+`../_shared/content.js`.
 
-Open `index.html` to see both side-by-side.
+Open `index.html` to see the three side by side. The bar at the top sets the theme and the
+palette.

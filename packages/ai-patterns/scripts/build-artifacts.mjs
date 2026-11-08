@@ -51,6 +51,7 @@ import {
   SOURCE_KINDS,
 } from '../src/artifacts/reference.mjs';
 import { migrateSkillFiles, SKILL_DIRS } from '../src/artifacts/skills.mjs';
+import { writeKitBundle } from './kit-bundle.mjs';
 
 const packageDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(packageDir, '..', '..');
@@ -136,7 +137,7 @@ function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
 }
 
-function main() {
+async function main() {
   const versions = {
     aiPatterns: readJson(join(packageDir, 'package.json')).version,
     react: version('react'),
@@ -205,6 +206,9 @@ function main() {
        dropped (#77). copyTree materialises links at every depth. */
     copyTree(from, join(brandOut, entry));
   }
+  /* The kits load the real components from ui_kits/_shared/ds-bundle.{js,css}, which no
+     one commits: they are built from react's dist/ for every copy of the kits. */
+  await writeKitBundle(join(brandOut, 'ui_kits/_shared'));
 
   /* The inventory the consumer reads is derived from the files that just landed
      in the tarball — every one of them, at full depth — plus the two documents
@@ -316,4 +320,7 @@ function main() {
   );
 }
 
-main();
+main().catch((error) => {
+  process.stderr.write(`${error.stack ?? error}\n`);
+  process.exit(1);
+});

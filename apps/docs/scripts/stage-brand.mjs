@@ -44,6 +44,8 @@ import process from 'node:process';
 /* Relative, not a package subpath: this is a build helper, not something
    @elirobinson/ai-patterns should publish. */
 import { copyTree } from '../../../packages/ai-patterns/src/artifacts/copy-tree.mjs';
+/* The UI kits' component bundle, built from react's dist/ next to the staged kits. */
+import { writeKitBundle } from '../../../packages/ai-patterns/scripts/kit-bundle.mjs';
 
 const appDir = process.cwd();
 const source = join(appDir, '../../design-system-docs');
@@ -148,6 +150,7 @@ for (const sibling of importedSiblings('colors_and_type.css')) {
   copyFileSync(join(source, sibling), join(out, sibling));
 }
 copyTree(join(source, 'fonts'), join(out, 'fonts'));
+await writeKitBundle(join(out, 'ui_kits/_shared'));
 writeFileSync(join(out, 'styles.css'), flattenCss(join(source, 'styles.css')));
 
 const links = symlinksUnder(out);

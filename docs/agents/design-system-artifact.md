@@ -14,7 +14,9 @@ One owner per file. Never edit a file on both sides.
 | ----------------------------------------- | --------------------------------------------------------- |
 | `tokens.json`, `tokens.css`               | `README.md`, `accessibility.md`, `handoff/`, `patterns/`  |
 | `components/bundle.js`                    | `components/<Comp>/README.md` and `preview.html`          |
-| `components/bundle.css`                   | `ui_kits/`, `templates/`, `slides/`, `guidelines/`        |
+| `components/bundle.css`                   | the other `ui_kits/` folders, `templates/`, `slides/`     |
+| `ui_kits/{webapp,marketing,mobile,docs}/` | `guidelines/`                                             |
+| `ui_kits/_shared/`                        |                                                           |
 | `components/index.d.ts`                   | `components/src/**` (incl. the two artifact-only sources) |
 | `components/<Comp>/<Comp>.d.ts`           | `assets/`, `design-system.json`, `SKILL.md`               |
 | `fonts/geist-…`, `fonts/jetbrains-mono-…` |                                                           |
@@ -28,6 +30,15 @@ was written on the page:
   builds them from `components/src/components/ai/*.jsx`. Their CSS and types are carried from
   the live `bundle.css` and `index.d.ts`, found by their `/* ── … ── */` and `// ── …` markers.
 - **Family membership and order** in `tokens.json`, so the page sections do not move.
+
+## The UI kits
+
+The four kits in `design-system-docs/ui_kits/` are the repo's. The build copies them to
+`ui_kits/` with two changes, made in `scripts/design-system-artifact/kits.mjs`: each page's
+`../../colors_and_type.css` link becomes `../../tokens.css`, and its `../_shared/ds-bundle.css`
+link becomes `../../components/bundle.css`. It adds `ui_kits/_shared/ds-bundle.js`, the real
+components on `window.DesignSystem`, which is the name the kits read. The artifact's other
+kit folders (`auth/`, `billing/`, and so on) stay the artifact's.
 
 ## Themes
 

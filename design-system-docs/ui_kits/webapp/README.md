@@ -1,15 +1,22 @@
 # Web App UI Kit
 
-A generic admin/dashboard kit for an internal tool — project tracking, client list,
-invoices, analytics.
+An app with a sidebar and six screens, each built from the real `@elirobinson/react`
+components:
 
-**Components**
+- **Dashboard** (`#/`) — Alert, stat Cards with Badges, Progress, Avatar activity, Stepper, Toast
+- **Projects** (`#/projects`) — project Cards under the CommandPalette (groups, shortcuts, a loading row). ⌘K opens it on every screen.
+- **Invoices** (`#/invoices`) — DropdownMenu with checkbox and radio items, an icon Button with a `labelOnly` Tooltip, SearchField, SegmentedControl, removable Chips, a paginated Table
+- **Assistant** (`#/assistant`) — ChatThread, ChatMessage, DecisionCard, StreamingCaret, a Textarea composer
+- **Settings** (`#/settings`) — Breadcrumb, Tabs, Inputs and a Select with errors, `FieldError` for a checkbox group, RadioGroup, Switch, a `destructive` Button; the Security tab puts `hideLabel` Switches in a Table
+- **Onboarding** (`#/onboarding`) — Stepper, RadioGroup, Slider, EmptyState, Spinner, Skeleton
 
-- `Sidebar` — navigation with active state, account card pinned at the bottom
-- `TopBar` — page title with eyebrow + primary actions
-- `StatCard` — KPI tile with delta indicator (forest = positive, danger = negative)
-- `ProjectsTable` — typed status pills (Live / Draft / In progress)
+**Files**
 
-Every string this kit renders comes from `../_shared/content.js`.
+- `Shell.jsx` — `AppShell` (sidebar, hash routing, the command palette) and `PageHeader`
+- `Screens.jsx` — the six screens
 
-Open `index.html` for the assembled dashboard.
+The components come from `../_shared/ds-bundle.js`; nothing here draws its own copy of
+one. Every string comes from `../_shared/content.js`.
+
+Open `index.html`. The bar at the top sets the theme and the palette; so does the query
+string, as in `index.html?theme=dark&palette=steady#/invoices`.
