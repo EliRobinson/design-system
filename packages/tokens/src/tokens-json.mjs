@@ -97,6 +97,10 @@ const GROUPS = [
      is the accessible disabled-control text, so the new token takes its own
      leaf rather than displacing a key consumers already import. */
   { match: /^--fg-disabled$/, path: () => semantic('fgDisabledText') },
+  /* The focus ring's geometry. Ahead of the sweep below, which would otherwise
+     file these two as colours by their --focus-ring prefix. Layout, beside
+     --target, for the same reason: they are lengths a component reads. */
+  { match: /^--focus-ring-(width|offset)$/, path: (name) => ['layout', camel(name)] },
   /* --scrim joins the sweep rather than getting its own rule: it is a semantic
      colour like the rest, it just has no family to be a member of. */
   {
