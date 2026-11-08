@@ -109,6 +109,25 @@ function scopedPalettes(palettesCss) {
 }
 
 /**
+ * @elirobinson/react's src/styles.css with its imports inlined in order, each
+ * under its own marker. The tokens.css import is left out: whoever loads this
+ * loads the tokens first. The UI kits' stylesheet is this and nothing else.
+ */
+export function reactComponentCss(repoRoot) {
+  const read = (path) => readFileSync(join(repoRoot, path), 'utf8');
+  const imports = [...read('packages/react/src/styles.css').matchAll(/@import '([^']+)';/g)]
+    .map((match) => match[1])
+    .filter((path) => path !== '@elirobinson/tokens/tokens.css');
+  if (!imports.length) throw new Error('packages/react/src/styles.css imports nothing');
+  return imports
+    .map((path) => {
+      const relative = path.replace(/^\.\//, '');
+      return `${marker(relative)}\n${read(`packages/react/src/${relative}`).trim()}`;
+    })
+    .join('\n\n');
+}
+
+/**
  * @param {object} options
  * @param {string} options.repoRoot
  * @param {string} options.tokensSrc   packages/tokens/src
@@ -142,19 +161,10 @@ export function buildBundleCss({
       tokensElementRules(readTokens('tokens.css')),
   );
 
-  const styles = read('packages/react/src/styles.css');
-  const imports = [...styles.matchAll(/@import '([^']+)';/g)]
-    .map((match) => match[1])
-    .filter((path) => path !== '@elirobinson/tokens/tokens.css');
-  if (!imports.length) throw new Error('packages/react/src/styles.css imports nothing');
-  let components = marker(
-    `c. @elirobinson/react ${reactVersion} src/styles.css, imports inlined in order (tokens.css import left out)`,
+  parts.push(
+    `${marker(`c. @elirobinson/react ${reactVersion} src/styles.css, imports inlined in order (tokens.css import left out)`)}\n\n` +
+      reactComponentCss(repoRoot),
   );
-  for (const path of imports) {
-    const relative = path.replace(/^\.\//, '');
-    components += `\n\n${marker(relative)}\n${read(`packages/react/src/${relative}`).trim()}`;
-  }
-  parts.push(components);
 
   const noTokenDeclarations = (css, label) =>
     postcss.parse(css).walkDecls((decl) => {

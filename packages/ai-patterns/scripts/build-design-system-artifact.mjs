@@ -17,8 +17,9 @@
  * the `files` map to publish them in one call. docs/agents/design-system-artifact.md
  * has the publish steps.
  *
- * The split is one-directional per file. The repo owns these files; the
- * artifact owns everything else (README, guides, previews, ui_kits,
+ * The split is one-directional per file. The repo owns these files, and the
+ * four UI kits in design-system-docs/ui_kits/ (see kits.mjs); the artifact
+ * owns everything else (README, guides, previews, the other ui_kits folders,
  * templates, design-system.json). Nothing here writes those.
  */
 
@@ -39,6 +40,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { ARTIFACT_ONLY } from './design-system-artifact/artifact-only.mjs';
+import { artifactKitFiles } from './design-system-artifact/kits.mjs';
 import { buildBundleJs } from './design-system-artifact/bundle.mjs';
 import { checkLimits } from './design-system-artifact/limits.mjs';
 import { buildBundleCss } from './design-system-artifact/stylesheet.mjs';
@@ -63,6 +65,10 @@ const CONTENT_TYPES = {
   /* The artifact serves code as text. */
   '.js': 'text/plain',
   '.ts': 'text/plain',
+  /* The UI kits. The artifact keeps its own HTML pages as text too. */
+  '.jsx': 'text/plain',
+  '.html': 'text/plain',
+  '.md': 'text/markdown',
   '.woff2': 'font/woff2',
 };
 
@@ -182,6 +188,7 @@ async function main() {
     ['components/index.d.ts', types.index],
   ]);
   for (const [name, text] of types.perComponent) files.set(`components/${name}/${name}.d.ts`, text);
+  for (const [path, text] of await artifactKitFiles(repoRoot)) files.set(path, text);
   const fonts = new Map(
     latinFonts(tokensSrc).map((font) => [
       `fonts/${font.file}`,

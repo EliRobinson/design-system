@@ -582,18 +582,21 @@ export function buildBrandManifest({ root, tokens }) {
   }
 
   /* -- UI kits ----------------------------------------------------------- */
+  /* The bar every kit opens with, and the wordmark. The components themselves come from
+     ui_kits/_shared/ds-bundle.js, which is built next to each copy of the kits and is
+     never on disk here (scripts/kit-bundle.mjs). */
   add({
-    id: 'ui_kits/_shared/Primitives',
-    entry: 'ui_kits/_shared/Primitives.jsx',
+    id: 'ui_kits/_shared/Kit',
+    entry: 'ui_kits/_shared/Kit.jsx',
     category: 'support-file',
-    title: 'Shared kit primitives',
+    title: 'Shared kit chrome',
     group: 'ui_kits',
     origin: 'hand-authored',
-    members: [{ path: 'ui_kits/_shared/Primitives.jsx', role: 'entry' }],
+    members: [{ path: 'ui_kits/_shared/Kit.jsx', role: 'entry' }],
   });
   /* The kits' strings, in one file. Its own artifact rather than a second member of
-     Primitives: they are loaded separately and for different reasons — a consumer keeps
-     the primitives and rewrites this one. */
+     Kit: they are loaded separately and for different reasons — a consumer keeps
+     the chrome and rewrites this one. */
   add({
     id: 'ui_kits/_shared/content',
     entry: 'ui_kits/_shared/content.js',
@@ -862,8 +865,9 @@ export function renderRepoIndexTable(manifest) {
     {
       path: 'ui_kits/_shared/',
       description:
-        'Shared JSX primitives every kit loads, and content.js — every string the kits ' +
-        'render, in one file.',
+        'Kit.jsx, the theme and palette bar every kit opens with, and content.js — every string ' +
+        'the kits render, in one file. The packed skill adds ds-bundle.js and ds-bundle.css, the ' +
+        'real @elirobinson/react components the kits render.',
     },
     {
       path: 'slides/',

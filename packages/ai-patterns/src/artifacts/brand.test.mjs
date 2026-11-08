@@ -108,7 +108,7 @@ describe('referencePointer', () => {
 
 describe('indexPathFor', () => {
   it('groups a nested file under its own folder, not its top-level segment', () => {
-    expect(indexPathFor('ui_kits/_shared/Primitives.jsx')).toBe('ui_kits/_shared/');
+    expect(indexPathFor('ui_kits/_shared/Kit.jsx')).toBe('ui_kits/_shared/');
     expect(indexPathFor('ui_kits/marketing/index.html')).toBe('ui_kits/marketing/');
     expect(indexPathFor('fonts/geist-latin-wght-normal.woff2')).toBe('fonts/');
   });
@@ -125,7 +125,7 @@ describe('brandIndex', () => {
   });
 
   it('covers ui_kits/_shared/, which the four kit rows used to mask', () => {
-    expect(shipped).toContain('ui_kits/_shared/Primitives.jsx');
+    expect(shipped).toContain('ui_kits/_shared/Kit.jsx');
     expect(brandIndex(shipped).map((entry) => entry.path)).toContain('ui_kits/_shared/');
   });
 

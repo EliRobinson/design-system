@@ -143,22 +143,31 @@ describe('ui kits', () => {
     const roles = Object.fromEntries(webapp.members.map((m) => [m.path.split('/').pop(), m.role]));
     expect(roles['index.html']).toBe('entry');
     expect(roles['README.md']).toBe('doc');
-    expect(roles['Components.jsx']).toBe('source');
+    expect(roles['Screens.jsx']).toBe('source');
+    expect(roles['Shell.jsx']).toBe('source');
   });
 
   it('derives what a kit actually defines instead of trusting prose', () => {
     /* The old hand-kept index claimed the webapp kit covered "auth" — the
-       auth kit lives in _project-mirror and does not ship. */
-    expect(byId('ui_kits/webapp').components).toEqual([
-      'Sidebar',
-      'TopBar',
-      'StatCard',
-      'ProjectsTable',
-    ]);
+       auth kit lives in _project-mirror and does not ship. The list is read from
+       the kit's sources: its six screens and the shell around them (#321). */
+    const components = byId('ui_kits/webapp').components;
+    expect(components).toEqual(
+      expect.arrayContaining([
+        'AppShell',
+        'DashboardScreen',
+        'ProjectsScreen',
+        'InvoicesScreen',
+        'AssistantScreen',
+        'SettingsScreen',
+        'OnboardingScreen',
+      ]),
+    );
+    expect(components).not.toContain('StatCard');
   });
 
   it('ships the shared primitives the kits load', () => {
-    const shared = byId('ui_kits/_shared/Primitives');
+    const shared = byId('ui_kits/_shared/Kit');
     expect(shared.category).toBe('support-file');
     expect(shared.ships).toBe(true);
   });
@@ -226,7 +235,7 @@ describe('the in-repo index table', () => {
     /* Four slide templates exist; the old table named a fifth, "comparison". */
     expect(table).not.toContain('comparison');
     /* The webapp kit exports these — the old table claimed "auth". */
-    expect(table).toContain('ProjectsTable');
+    expect(table).toContain('InvoicesScreen');
     expect(table).not.toMatch(/webapp[^|]*\|[^|]*auth/);
   });
 

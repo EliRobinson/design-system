@@ -1,336 +1,260 @@
-/* eslint-disable react/jsx-no-undef --
-   Eyebrow, Button, RuleLink and Tag are defined by _shared/Primitives.jsx. These kits are loaded as
-   classic <script type="text/babel"> tags (see the index.html beside this
-   file), in dependency order, sharing one global scope — so there is nothing
-   to import and no module boundary to import it across.
+/* global window, React, KIT_CONTENT -- a browser script: it reads the real components
+   from window.DesignSystem (ds-bundle.js) and its strings from _shared/content.js, and
+   publishes onto window for the inline script in index.html. */
+/*
+ * The homepage sections: hero, featured apps, the flagship band, services, questions and
+ * the sign-up. Every control and card is an @elirobinson/react component.
+ */
 
-   The directive is here because ds-resync writes this file into a consuming
-   repo's .claude/skills/, a directory most projects lint, where the same code
-   is indistinguishable from a module with missing imports. Scoped to the one
-   rule so everything else about these samples is still linted. #119 */
-/* global window, KIT_CONTENT -- a browser script: the kits publish their components
-   onto window for the sibling kit files loaded after them, and read their strings from
-   _shared/content.js, which is loaded first. See index.html. */
-const copy = KIT_CONTENT.marketing;
-const Hero = () => (
-  <section
-    style={{
-      padding: '96px max(20px, 4vw) 80px',
-      background: 'var(--bg)',
-      borderBottom: '1px solid var(--border)',
-      position: 'relative',
-    }}
-  >
-    <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-      <Eyebrow>{copy.hero.eyebrow}</Eyebrow>
-      <h1
-        style={{
-          fontFamily: 'Geist, sans-serif',
-          fontWeight: 600,
-          fontSize: 'clamp(56px, 9vw, 112px)',
-          lineHeight: 1.02,
-          letterSpacing: '-0.03em',
-          margin: '20px 0 0',
-          maxWidth: 1100,
-        }}
-      >
-        {copy.hero.headline}{' '}
-        <span
-          style={{
-            background: 'linear-gradient(transparent 65%, var(--signal-300) 65%)',
-          }}
-        >
-          {copy.hero.headlineAccent}
-        </span>
+const {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Eyebrow,
+  Input,
+  RuleLink,
+} = window.DesignSystem;
+const page = KIT_CONTENT.marketing;
+
+const section = (extra) => ({
+  maxWidth: 'var(--container-xl)',
+  margin: '0 auto',
+  padding: 'var(--space-12) var(--space-7)',
+  boxSizing: 'border-box',
+  ...extra,
+});
+const cluster = (gap) => ({ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: `var(--space-${gap})` });
+const column = (gap) => ({ display: 'flex', flexDirection: 'column', gap: `var(--space-${gap})` });
+
+function Check() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+
+function Hero() {
+  const copy = page.hero;
+  return (
+    <section style={section({ ...column(6), paddingTop: 'var(--space-13)' })}>
+      <Eyebrow>{copy.eyebrow}</Eyebrow>
+      <h1 className="t-display-1" style={{ margin: 0, maxWidth: '14ch' }}>
+        {copy.headline} <span style={{ color: 'var(--accent-ink)' }}>{copy.headlineAccent}</span>
       </h1>
-      <p
-        style={{
-          fontFamily: 'Geist, sans-serif',
-          fontSize: 22,
-          color: 'var(--fg-2)',
-          lineHeight: 1.5,
-          maxWidth: 720,
-          margin: '32px 0 0',
-        }}
-      >
-        {copy.hero.standfirst}
+      <p className="t-lead" style={{ margin: 0, maxWidth: '52ch', color: 'var(--fg-2)' }}>
+        {copy.standfirst}
       </p>
-      <div style={{ display: 'flex', gap: 12, marginTop: 40 }}>
-        <Button variant="primary" size="lg" icon>
-          {copy.hero.primaryCta}
+      <div style={cluster(3)}>
+        <Button variant="accent" size="lg">
+          {copy.primaryCta}
         </Button>
         <Button variant="secondary" size="lg">
-          {copy.hero.secondaryCta}
+          {copy.secondaryCta}
         </Button>
-      </div>
-    </div>
-  </section>
-);
-
-const FeaturedApps = () => {
-  const apps = copy.featured.apps;
-  return (
-    <section style={{ padding: '96px max(20px, 4vw)', borderBottom: '1px solid var(--border)' }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'baseline',
-            marginBottom: 40,
-          }}
-        >
-          <h2
-            style={{
-              fontFamily: 'Geist, sans-serif',
-              fontWeight: 600,
-              fontSize: 48,
-              letterSpacing: '-0.025em',
-              margin: 0,
-            }}
-          >
-            {copy.featured.heading}
-          </h2>
-          <RuleLink>{copy.featured.viewAll}</RuleLink>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-          {apps.map((app, i) => (
-            <a
-              key={i}
-              href="#"
-              style={{
-                textDecoration: 'none',
-                color: 'inherit',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                padding: 24,
-                background: 'var(--surface)',
-                transition: 'all 220ms cubic-bezier(0.22,1,0.36,1)',
-                display: 'block',
-              }}
-            >
-              <div
-                style={{
-                  aspectRatio: '16/10',
-                  borderRadius: 4,
-                  background:
-                    app.thumb === 'recipes'
-                      ? 'linear-gradient(0deg, var(--signal-100), var(--signal-50))'
-                      : 'var(--ink-1000)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: app.thumb === 'recipes' ? 'inherit' : 'var(--ink-0)',
-                  fontFamily: app.thumb === 'recipes' ? 'inherit' : 'JetBrains Mono, monospace',
-                  fontSize: app.thumb === 'recipes' ? 64 : 28,
-                  marginBottom: 20,
-                }}
-              >
-                {app.thumb === 'recipes' ? '🍳' : 'f(x) = mx + b'}
-              </div>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                {app.tags.map((t) => (
-                  <Tag key={t}>{t}</Tag>
-                ))}
-              </div>
-              <h3
-                style={{
-                  fontFamily: 'Geist, sans-serif',
-                  fontWeight: 600,
-                  fontSize: 24,
-                  letterSpacing: '-0.02em',
-                  margin: '0 0 6px',
-                }}
-              >
-                {app.title}
-              </h3>
-              <p
-                style={{
-                  fontFamily: 'Geist, sans-serif',
-                  fontSize: 15,
-                  color: 'var(--fg-2)',
-                  lineHeight: 1.55,
-                  margin: 0,
-                }}
-              >
-                {app.body}
-              </p>
-            </a>
-          ))}
-        </div>
       </div>
     </section>
   );
-};
+}
 
-const FeatureBand = () => (
-  <section
-    style={{
-      padding: '96px max(20px, 4vw)',
-      background: 'var(--anchor-900)',
-      color: 'var(--ink-0)',
-      borderBottom: '1px solid var(--border)',
-    }}
-  >
-    <div
-      style={{
-        maxWidth: 1280,
-        margin: '0 auto',
-        display: 'grid',
-        gridTemplateColumns: '7fr 5fr',
-        gap: 64,
-        alignItems: 'center',
-      }}
-    >
-      <div>
-        <Eyebrow color="var(--fg-inverse-3)">{copy.feature.eyebrow}</Eyebrow>
-        <h2
-          style={{
-            fontFamily: 'Geist, sans-serif',
-            fontWeight: 600,
-            fontSize: 48,
-            letterSpacing: '-0.025em',
-            margin: '20px 0 16px',
-            lineHeight: 1.05,
-          }}
-        >
-          {copy.feature.heading}
+function FeaturedApps() {
+  const copy = page.featured;
+  return (
+    <section style={section(column(6))}>
+      <div style={{ ...cluster(4), justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <h2 className="t-h2" style={{ margin: 0 }}>
+          {copy.heading}
         </h2>
-        <p
-          style={{
-            fontFamily: 'Geist, sans-serif',
-            fontSize: 18,
-            color: 'var(--fg-inverse-2)',
-            lineHeight: 1.6,
-            margin: '0 0 32px',
-            maxWidth: 560,
-          }}
-        >
-          {copy.feature.body}
-        </p>
-        <Button variant="accent" size="lg" icon>
-          {copy.feature.cta}
-        </Button>
+        <RuleLink href="#">{copy.viewAll}</RuleLink>
       </div>
-      <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end' }}>
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            style={{
-              width: 140,
-              height: 200,
-              background: i === 1 ? 'var(--signal-100)' : 'var(--ink-50)',
-              borderRadius: 4,
-              transform: `rotate(${(i - 1) * 4}deg) translateY(${i === 1 ? -8 : 0}px)`,
-              boxShadow: '0 18px 40px -12px color-mix(in oklch, var(--ink-1000) 50%, transparent)',
-              padding: 16,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-            }}
-          >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: 'var(--space-6)' }}>
+        {copy.apps.map((app) => (
+          <Card key={app.title}>
             <div
+              aria-hidden="true"
+              className="t-display-2"
               style={{
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: 9,
-                letterSpacing: '0.16em',
-                color: 'var(--anchor-700)',
-              }}
-            >
-              {copy.feature.cardLabel} · 0{i + 1}
-            </div>
-            <div
-              style={{
-                fontFamily: 'Geist, sans-serif',
-                fontWeight: 600,
-                fontSize: 14,
-                color: 'var(--ink-1000)',
-                letterSpacing: '-0.015em',
-                lineHeight: 1.2,
-              }}
-            >
-              {copy.feature.cards[i]}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-);
-
-const ServicesBand = () => (
-  <section style={{ padding: '96px max(20px, 4vw)' }}>
-    <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-        {copy.services.items.map((s, i) => (
-          <div
-            key={i}
-            style={{
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              padding: 32,
-              background: 'var(--surface)',
-            }}
-          >
-            <Eyebrow>{s.eb}</Eyebrow>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'baseline',
-                gap: 6,
-                marginTop: 16,
-                marginBottom: 20,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: 13,
-                  color: 'var(--fg-3)',
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                From
-              </span>
-              <span
-                style={{
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontWeight: 500,
-                  fontSize: 38,
-                  letterSpacing: '-0.02em',
-                }}
-              >
-                ${s.price}
-              </span>
-              <span
-                style={{
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: 14,
-                  color: 'var(--fg-2)',
-                }}
-              >
-                /hr
-              </span>
-            </div>
-            <p
-              style={{
-                fontFamily: 'Geist, sans-serif',
-                fontSize: 16,
+                aspectRatio: '16 / 10',
+                display: 'grid',
+                placeItems: 'center',
+                background: 'var(--bg-muted)',
+                borderBottom: '1px solid var(--border)',
+                fontFamily: 'var(--font-mono)',
                 color: 'var(--fg-2)',
-                lineHeight: 1.6,
-                margin: 0,
               }}
             >
-              {s.body}
-            </p>
-            <div style={{ marginTop: 24 }}>
-              <RuleLink>{copy.services.detailsLink}</RuleLink>
+              {app.mark}
             </div>
-          </div>
+            <CardHeader>
+              <div style={{ ...cluster(2), justifyContent: 'space-between' }}>
+                <CardTitle>{app.title}</CardTitle>
+                <Badge variant="signal">{app.status}</Badge>
+              </div>
+              <CardDescription>{app.body}</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <div style={{ ...cluster(2), justifyContent: 'space-between', width: '100%' }}>
+                <div style={cluster(2)}>
+                  {app.tags.map((tag) => (
+                    <Badge key={tag} variant="outline">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+                <RuleLink href="#">{copy.open}</RuleLink>
+              </div>
+            </CardFooter>
+          </Card>
         ))}
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+}
 
-Object.assign(window, { Hero, FeaturedApps, FeatureBand, ServicesBand });
+/* The flagship band sits on the inverse surface: its own text uses the inverse tokens,
+   and the cards keep their own surface. */
+function FeatureBand() {
+  const copy = page.feature;
+  return (
+    <div style={{ background: 'var(--bg-inverse)', color: 'var(--fg-inverse)' }}>
+      <section style={section({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 'var(--space-9)', alignItems: 'center' })}>
+        <div style={column(5)}>
+          <Eyebrow style={{ color: 'var(--accent-ink-inverse)' }}>{copy.eyebrow}</Eyebrow>
+          <h2 className="t-h1" style={{ margin: 0, color: 'var(--fg-inverse)' }}>
+            {copy.heading}
+          </h2>
+          <p className="t-body" style={{ margin: 0, color: 'var(--fg-inverse-2)', maxWidth: '48ch' }}>
+            {copy.body}
+          </p>
+          <div>
+            <Button variant="accent">{copy.cta}</Button>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-4)' }}>
+          {copy.cards.map((guide) => (
+            <Card key={guide.title} style={{ aspectRatio: '3 / 4' }}>
+              <CardContent>
+                <div style={{ ...column(3), height: '100%' }}>
+                  <Eyebrow>{copy.cardLabel}</Eyebrow>
+                  <span className="t-h5">{guide.title}</span>
+                  <span className="t-caption" style={{ marginTop: 'auto', fontFamily: 'var(--font-mono)', color: 'var(--fg-3)' }}>
+                    {guide.meta}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ServicesBand() {
+  const copy = page.services;
+  return (
+    <section style={section(column(6))}>
+      <h2 className="t-h2" style={{ margin: 0 }}>
+        {copy.heading}
+      </h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 'var(--space-6)' }}>
+        {copy.items.map((service) => (
+          <Card key={service.eb}>
+            <CardHeader>
+              <Eyebrow>{service.eb}</Eyebrow>
+              <CardTitle>
+                <span className="t-caption" style={{ color: 'var(--fg-2)' }}>
+                  {copy.pricePrefix}{' '}
+                </span>
+                <span style={{ fontFamily: 'var(--font-mono)' }}>
+                  {service.price}
+                  {copy.priceUnit}
+                </span>
+              </CardTitle>
+              <CardDescription>{service.body}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul style={{ ...column(2), listStyle: 'none', margin: 0, padding: 0 }}>
+                {service.points.map((point) => (
+                  <li key={point} className="t-body-sm" style={cluster(2)}>
+                    <span style={{ color: 'var(--accent-ink)', display: 'inline-flex' }}>
+                      <Check />
+                    </span>
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <RuleLink href="#">{copy.detailsLink}</RuleLink>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Questions() {
+  const copy = page.faq;
+  return (
+    <section style={section({ ...column(6), maxWidth: 'var(--container-md)', paddingTop: 0 })}>
+      <h2 className="t-h2" style={{ margin: 0 }}>
+        {copy.heading}
+      </h2>
+      <Accordion type="single" defaultValue={copy.items[0].q} headingLevel={3}>
+        {copy.items.map((item) => (
+          <AccordionItem key={item.q} value={item.q}>
+            <AccordionTrigger>{item.q}</AccordionTrigger>
+            <AccordionContent>{item.a}</AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </section>
+  );
+}
+
+function SignUp() {
+  const copy = page.newsletter;
+  const [email, setEmail] = React.useState('');
+  return (
+    <section style={section({ paddingTop: 0 })}>
+      <Card>
+        <CardContent>
+          <form
+            onSubmit={(event) => event.preventDefault()}
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 'var(--space-6)', alignItems: 'end' }}
+          >
+            <div style={column(2)}>
+              <h2 className="t-h3" style={{ margin: 0 }}>
+                {copy.heading}
+              </h2>
+              <p className="t-body" style={{ margin: 0, color: 'var(--fg-2)' }}>
+                {copy.body}
+              </p>
+            </div>
+            <div style={{ ...cluster(3), alignItems: 'flex-end', flexWrap: 'nowrap' }}>
+              <div style={{ flex: 1 }}>
+                <Input label={copy.label} type="email" placeholder={copy.placeholder} value={email} onChange={(event) => setEmail(event.target.value)} />
+              </div>
+              <Button type="submit" variant="accent">
+                {copy.cta}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+Object.assign(window, { Hero, FeaturedApps, FeatureBand, ServicesBand, Questions, SignUp });

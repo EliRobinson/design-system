@@ -60,24 +60,31 @@ const reactGlobals = {
   },
 };
 
-/** The bundle's components in order, each with its exports and its source file. */
+/** The published components, each with its exports and its source file. */
+function published(reactDist) {
+  return (component) => ({
+    name: component.name,
+    exports: component.exports,
+    file: join(reactDist, 'components', `${component.subpath}.js`),
+    sourcePath: `components/${component.subpath}.tsx`,
+  });
+}
+
+/**
+ * The bundle's components in order, each with its exports and its source file.
+ * With no `previousDir` the bundle holds only what @elirobinson/react publishes:
+ * the artifact-only components live in the artifact and nowhere else.
+ */
 export function bundleComponents({ manifest, reactDist, previousDir }) {
-  const components = inArtifactOrder(
-    manifest.components,
-    (component) => ({
-      name: component.name,
-      exports: component.exports,
-      file: join(reactDist, 'components', `${component.subpath}.js`),
-      sourcePath: `components/${component.subpath}.tsx`,
-    }),
-    (name) => ({
-      name,
-      exports: [name],
-      file: join(previousDir, ARTIFACT_ONLY.source(name)),
-      /* The header names a source relative to components/src/, as the published ones do. */
-      sourcePath: ARTIFACT_ONLY.source(name).replace(/^components\/src\//, ''),
-    }),
-  );
+  const components = !previousDir
+    ? manifest.components.map(published(reactDist))
+    : inArtifactOrder(manifest.components, published(reactDist), (name) => ({
+        name,
+        exports: [name],
+        file: join(previousDir, ARTIFACT_ONLY.source(name)),
+        /* The header names a source relative to components/src/, as the published ones do. */
+        sourcePath: ARTIFACT_ONLY.source(name).replace(/^components\/src\//, ''),
+      }));
   const seen = new Set();
   for (const component of components) {
     if (!existsSync(component.file)) throw new Error(`bundle.js: missing ${component.file}`);
@@ -89,10 +96,10 @@ export function bundleComponents({ manifest, reactDist, previousDir }) {
   return components;
 }
 
-export function bundleHeader(components) {
+export function bundleHeader(components, namespace = NAMESPACE) {
   return `/* @ds-bundle: ${JSON.stringify({
     format: 4,
-    namespace: NAMESPACE,
+    namespace,
     components: components.map(({ name, sourcePath }) => ({ name, sourcePath })),
   })} */`;
 }
@@ -103,7 +110,11 @@ export function readBundleHeader(js) {
   return match ? JSON.parse(match[1]) : null;
 }
 
-export async function buildBundleJs({ manifest, reactDist, previousDir }) {
+/**
+ * `namespace` is the global the bundle assigns. The artifact's bundle keeps
+ * NAMESPACE; the UI kits' own copy (scripts/kit-bundle.mjs) names another.
+ */
+export async function buildBundleJs({ manifest, reactDist, previousDir, namespace = NAMESPACE }) {
   const components = bundleComponents({ manifest, reactDist, previousDir });
   const entry = components
     .map(({ exports, file }) => `export { ${exports.join(', ')} } from ${JSON.stringify(file)};\n`)
@@ -113,7 +124,7 @@ export async function buildBundleJs({ manifest, reactDist, previousDir }) {
     bundle: true,
     minify: true,
     format: 'iife',
-    globalName: NAMESPACE,
+    globalName: namespace,
     platform: 'browser',
     target: 'es2019',
     jsx: 'automatic',
@@ -128,11 +139,11 @@ export async function buildBundleJs({ manifest, reactDist, previousDir }) {
   let js = result.outputFiles[0].text;
   /* esbuild writes `var NS=(()=>{…})();`. A classic script inlined by the
      artifact must set the global explicitly. */
-  js = js.replace(new RegExp(`^var ${NAMESPACE}=`), `window.${NAMESPACE}=`);
-  if (!js.startsWith(`window.${NAMESPACE}=`)) {
+  js = js.replace(new RegExp(`^var ${namespace}=`), `window.${namespace}=`);
+  if (!js.startsWith(`window.${namespace}=`)) {
     throw new Error(`bundle.js: unexpected prelude ${js.slice(0, 80)}`);
   }
   /* The artifact inlines this file in a <script> element. */
   js = js.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
-  return { js: `${bundleHeader(components)}\n${js}`, components };
+  return { js: `${bundleHeader(components, namespace)}\n${js}`, components };
 }

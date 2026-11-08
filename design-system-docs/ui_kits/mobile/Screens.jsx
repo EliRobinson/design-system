@@ -1,307 +1,200 @@
-/* global window, KIT_CONTENT -- a browser script: the kits publish their components
-   onto window for the sibling kit files loaded after them, and read their strings from
-   _shared/content.js, which is loaded first. See index.html. */
-// Mobile screen kit. Two screens: a browsable list, and a practice/quiz screen.
-const copy = KIT_CONTENT.mobile;
+/* global window, React, KIT_CONTENT -- a browser script: it reads the real components
+   from window.DesignSystem (ds-bundle.js) and its strings from _shared/content.js, and
+   publishes onto window for the inline script in index.html. */
+/*
+ * Three phone screens. Each frame sets data-platform="mobile", the token layer that
+ * tightens radii, the small end of the type ramp and the gutter for small screens. The
+ * screens are @elirobinson/react components; the frame is the only thing drawn here.
+ *
+ * Emoji appear only in the recipe list: the playful sub-brand is the one place the brand
+ * rules allow them.
+ */
 
-const PhoneFrame = ({ children, label }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-    <div
-      style={{
-        width: 320,
-        height: 640,
-        borderRadius: 44,
-        background: 'var(--ink-1000)',
-        padding: 10,
-        boxShadow: '0 24px 60px -16px color-mix(in oklch, var(--ink-1000) 30%, transparent)',
-      }}
-    >
+const {
+  Alert,
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Eyebrow,
+  Progress,
+  RadioGroup,
+  RadioGroupItem,
+  SearchField,
+  Separator,
+  Switch,
+} = window.DesignSystem;
+const { Fragment } = React;
+const phone = KIT_CONTENT.mobile;
+
+const column = (gap) => ({ display: 'flex', flexDirection: 'column', gap: `var(--space-${gap})` });
+const cluster = (gap) => ({ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: `var(--space-${gap})` });
+
+function PhoneFrame({ label, children }) {
+  return (
+    <figure style={{ ...column(3), margin: 0, alignItems: 'center' }}>
       <div
+        data-platform="mobile"
         style={{
-          width: '100%',
-          height: '100%',
-          borderRadius: 36,
+          width: 375,
+          height: 780,
+          boxSizing: 'border-box',
+          overflowY: 'auto',
+          border: '1px solid var(--border-strong)',
+          borderRadius: 'var(--radius-xl)',
+          boxShadow: 'var(--shadow-lg)',
           background: 'var(--bg)',
-          overflow: 'hidden',
-          position: 'relative',
+          color: 'var(--fg)',
+          padding: 'var(--space-9) var(--space-4) var(--space-6)',
         }}
       >
-        <div
-          style={{
-            height: 36,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 24px',
-            fontFamily: 'Geist, sans-serif',
-            fontSize: 13,
-            fontWeight: 600,
-          }}
-        >
-          <span>9:41</span>
-          <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <span
-              style={{
-                width: 18,
-                height: 11,
-                border: '1.5px solid currentColor',
-                borderRadius: 2,
-                position: 'relative',
-              }}
-            >
-              <span
-                style={{
-                  position: 'absolute',
-                  inset: 1,
-                  background: 'currentColor',
-                  borderRadius: 1,
-                }}
-              ></span>
-            </span>
-          </span>
-        </div>
         {children}
       </div>
-    </div>
-    <div
-      style={{
-        fontFamily: 'JetBrains Mono, monospace',
-        fontSize: 11,
-        letterSpacing: '0.12em',
-        textTransform: 'uppercase',
-        color: 'var(--fg-3)',
-      }}
-    >
-      {label}
-    </div>
-  </div>
-);
+      <figcaption className="t-caption" style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-3)' }}>
+        {label}
+      </figcaption>
+    </figure>
+  );
+}
 
-const BrowseScreen = () => {
-  const recipes = copy.browse.items;
+function BrowseScreen() {
+  const copy = phone.browse;
+  const [filter, setFilter] = React.useState(copy.filters[0]);
+  const [query, setQuery] = React.useState('');
+  const items = copy.items
+    .filter((item) => filter === copy.filters[0] || item.tag === filter)
+    .filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
   return (
-    <div style={{ padding: '8px 20px 20px', overflow: 'auto', height: 'calc(100% - 36px)' }}>
-      <div
-        style={{
-          fontFamily: 'JetBrains Mono, monospace',
-          fontSize: 10,
-          letterSpacing: '0.16em',
-          textTransform: 'uppercase',
-          color: 'var(--signal-700)',
-          marginBottom: 6,
-        }}
-      >
-        {copy.browse.eyebrow}
+    <div style={column(4)}>
+      <div style={column(1)}>
+        <Eyebrow>{copy.eyebrow}</Eyebrow>
+        <h1 className="t-h3" style={{ margin: 0 }}>
+          {copy.heading}
+        </h1>
+        <p className="t-body-sm" style={{ margin: 0, color: 'var(--fg-2)' }}>
+          {copy.standfirst}
+        </p>
       </div>
-      <h1
-        style={{
-          fontFamily: 'Geist, sans-serif',
-          fontWeight: 600,
-          fontSize: 30,
-          letterSpacing: '-0.02em',
-          margin: '0 0 6px',
-          lineHeight: 1.1,
-        }}
-      >
-        {copy.browse.heading}
-      </h1>
-      <p
-        style={{
-          fontFamily: 'Geist, sans-serif',
-          fontSize: 13,
-          color: 'var(--fg-2)',
-          margin: '0 0 18px',
-        }}
-      >
-        {copy.browse.standfirst}
-      </p>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto' }}>
-        {copy.browse.filters.map((t, i) => (
-          <span
-            key={t}
-            style={{
-              padding: '6px 12px',
-              borderRadius: 999,
-              fontFamily: 'Geist, sans-serif',
-              fontSize: 12,
-              fontWeight: 500,
-              background: i === 0 ? 'var(--ink-1000)' : 'var(--ink-100)',
-              color: i === 0 ? 'var(--ink-0)' : 'var(--fg-2)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {t}
-          </span>
+      <SearchField aria-label={copy.search} placeholder={copy.search} value={query} onValueChange={setQuery} />
+      <div role="group" aria-label={copy.filtersLabel} style={{ display: 'flex', gap: 'var(--space-2)', overflowX: 'auto', paddingBottom: 'var(--space-1)' }}>
+        {copy.filters.map((name) => (
+          <Button key={name} size="sm" variant={name === filter ? 'primary' : 'secondary'} aria-pressed={name === filter} onClick={() => setFilter(name)}>
+            {name}
+          </Button>
         ))}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {recipes.map((r, i) => (
-          <div
-            key={i}
-            style={{
-              display: 'flex',
-              gap: 12,
-              padding: 12,
-              alignItems: 'center',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              background: 'var(--surface)',
-            }}
-          >
-            <div
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 6,
-                background: 'var(--signal-50)',
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: 28,
-              }}
-            >
-              {r.emoji}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  fontFamily: 'Geist, sans-serif',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                {r.name}
-              </div>
-              <div
-                style={{
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: 10,
-                  color: 'var(--fg-3)',
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  marginTop: 4,
-                }}
-              >
-                {r.tag} · {r.time} · {r.diff}
-              </div>
-            </div>
-          </div>
+      {items.length === 0 && (
+        <p className="t-body-sm" style={{ color: 'var(--fg-3)' }}>
+          {copy.empty}
+        </p>
+      )}
+      <ul style={{ ...column(3), listStyle: 'none', margin: 0, padding: 0 }}>
+        {items.map((item) => (
+          <li key={item.name}>
+            <Card>
+              <CardContent>
+                <div style={cluster(3)}>
+                  <span aria-hidden="true" className="t-h3" style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', borderRadius: 'var(--radius-md)', background: 'var(--bg-muted)' }}>
+                    {item.emoji}
+                  </span>
+                  <div style={{ ...column(1), flex: 1, minWidth: 0 }}>
+                    <span className="t-body" style={{ fontWeight: 'var(--fw-medium)' }}>
+                      {item.name}
+                    </span>
+                    <span className="t-caption" style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-3)' }}>
+                      {item.time} · {item.diff}
+                    </span>
+                  </div>
+                  <Badge variant="outline">{item.tag}</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
-};
+}
 
-const PracticeScreen = () => {
+function PracticeScreen() {
+  const copy = phone.practice;
+  const [answer, setAnswer] = React.useState(null);
+  const [checked, setChecked] = React.useState(false);
+  const result = answer === copy.correct ? copy.right : copy.wrong;
   return (
-    <div
-      style={{
-        padding: '8px 20px 20px',
-        height: 'calc(100% - 36px)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontFamily: 'JetBrains Mono, monospace',
-          fontSize: 11,
-          color: 'var(--fg-2)',
-          marginBottom: 22,
-        }}
-      >
-        <span style={{ letterSpacing: '0.16em', textTransform: 'uppercase' }}>
-          {copy.practice.progress}
+    <div style={column(5)}>
+      <div style={{ ...cluster(2), justifyContent: 'space-between' }}>
+        <span className="t-caption" style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-2)' }}>
+          {copy.progressLabel}
         </span>
-        <span style={{ color: 'var(--anchor-500)' }}>{copy.practice.streak}</span>
+        <Badge variant="signal">{copy.streak}</Badge>
       </div>
-      <div
-        style={{
-          height: 4,
-          background: 'var(--ink-100)',
-          borderRadius: 999,
-          marginBottom: 36,
-          overflow: 'hidden',
+      <Progress value={copy.progress} label={copy.progressLabel} />
+      <Eyebrow>{copy.topic}</Eyebrow>
+      <p className="t-h1" style={{ margin: 0, fontFamily: 'var(--font-mono)', textAlign: 'center' }}>
+        {copy.question}
+      </p>
+      <RadioGroup
+        name="answer"
+        aria-label={copy.answersLabel}
+        value={answer}
+        onValueChange={(value) => {
+          setAnswer(value);
+          setChecked(false);
         }}
       >
-        <div style={{ width: '40%', height: '100%', background: 'var(--ink-1000)' }}></div>
-      </div>
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          textAlign: 'center',
-        }}
-      >
-        <div
-          style={{
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: 11,
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-            color: 'var(--fg-3)',
-            marginBottom: 16,
-          }}
-        >
-          {copy.practice.topic}
-        </div>
-        <div
-          style={{
-            fontFamily: 'JetBrains Mono, monospace',
-            fontWeight: 500,
-            fontSize: 56,
-            letterSpacing: '-0.02em',
-            color: 'var(--ink-1000)',
-            lineHeight: 1,
-          }}
-        >
-          {copy.practice.question}
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-        {copy.practice.answers.map((v, i) => (
-          <button
-            key={v}
-            style={{
-              padding: '20px 0',
-              borderRadius: 8,
-              border: '1px solid var(--border-strong)',
-              background: i === 1 ? 'var(--signal-500)' : 'var(--surface)',
-              color: 'var(--ink-1000)',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontWeight: 500,
-              fontSize: 22,
-              letterSpacing: '-0.01em',
-              cursor: 'pointer',
-            }}
-          >
-            {v}
-          </button>
+        {copy.answers.map((option) => (
+          <RadioGroupItem key={option} value={option} label={option} />
         ))}
-      </div>
-      <button
-        style={{
-          width: '100%',
-          padding: '14px 0',
-          borderRadius: 8,
-          background: 'var(--ink-1000)',
-          color: 'var(--ink-0)',
-          border: 'none',
-          fontFamily: 'Geist, sans-serif',
-          fontSize: 14,
-          fontWeight: 500,
-          cursor: 'pointer',
-        }}
-      >
-        Skip question
-      </button>
+      </RadioGroup>
+      <Button variant="accent" size="lg" disabled={!answer} onClick={() => setChecked(true)}>
+        {copy.check}
+      </Button>
+      {checked && (
+        <Alert variant={answer === copy.correct ? 'success' : 'warning'} title={result.title}>
+          {result.body}
+        </Alert>
+      )}
     </div>
   );
-};
+}
 
-Object.assign(window, { PhoneFrame, BrowseScreen, PracticeScreen });
+function AccountScreen() {
+  const copy = phone.account;
+  return (
+    <div style={column(5)}>
+      <div style={cluster(3)}>
+        <Avatar alt={copy.name} fallback={copy.initials} size="lg" />
+        <div style={column(1)}>
+          <span className="t-h4">{copy.name}</span>
+          <div>
+            <Badge variant="anchor">{copy.plan}</Badge>
+          </div>
+        </div>
+      </div>
+      <Card>
+        <CardContent>
+          <h2 className="t-eyebrow" style={{ margin: '0 0 var(--space-2)', color: 'var(--fg-2)' }}>
+            {copy.settingsLabel}
+          </h2>
+          {copy.settings.map((setting, index) => (
+            <Fragment key={setting.label}>
+              {index > 0 && <Separator />}
+              {/* The row's text names the switch, so the switch draws no label of its own. */}
+              <div style={{ ...cluster(3), justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+                <span className="t-body-sm" aria-hidden="true">
+                  {setting.label}
+                </span>
+                <Switch label={setting.label} hideLabel defaultChecked={setting.on} />
+              </div>
+            </Fragment>
+          ))}
+        </CardContent>
+      </Card>
+      <Button variant="secondary">{copy.signOut}</Button>
+    </div>
+  );
+}
+
+Object.assign(window, { PhoneFrame, BrowseScreen, PracticeScreen, AccountScreen });

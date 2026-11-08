@@ -110,11 +110,12 @@ export const BRAND_DESCRIPTIONS = {
   'fonts/': 'The woff2 files fonts.css loads, with their SIL OFL licenses.',
   'assets/': 'Wordmark, monogram, lockup, dot-grid pattern. SVG-first.',
   'ui_kits/marketing/': 'Marketing site kit (homepage, services, store, portfolio).',
-  'ui_kits/webapp/': 'Web app / dashboard kit (auth, sidebar, settings).',
+  'ui_kits/webapp/':
+    'Web app kit: dashboard, projects with the command palette, invoices table, assistant, settings, onboarding.',
   'ui_kits/mobile/': 'Mobile screen kit.',
   'ui_kits/docs/': 'Docs / long-form reading kit.',
   'ui_kits/_shared/':
-    'JSX primitives every kit loads over `../_shared/Primitives.jsx` — a kit copied without it renders nothing.',
+    'What every kit loads from `../_shared/`: ds-bundle.js and ds-bundle.css (the real @elirobinson/react components), Kit.jsx (the theme and palette bar), and content.js (every string). A kit copied without this folder renders nothing.',
   'miltinson.voice.json':
     "The default voice pack — the brand's prose values as data, the way palettes.css holds its colour. The voice rules in README.md are rendered from it; swap the whole pack rather than editing the prose.",
   'README.md': 'Brand voice, color, type, and layout rules. Read this first.',
