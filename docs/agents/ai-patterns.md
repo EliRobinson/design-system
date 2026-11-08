@@ -88,6 +88,7 @@ and `prepack`, so a tarball cannot be produced without it. It stages `dist/artif
 | `skills/miltinson-design/`        | A subset of `design-system-docs/`                                                     |
 | `skills/design-system-reference/` | `@elirobinson/react/manifest`, `packages/tokens/src/tokens.css`, `src/contracts.json` |
 | `skills/ds-resync/SKILL.md`       | `src/resync/SKILL.md`                                                                 |
+| `skills/ds-migrate/`              | `src/migrate/**/*.md`, plus `src/prompts/adopt-system.md`                             |
 | `reference-inputs.json`           | Voice pack id, note and brand artifact list (the voice itself is read from README.md) |
 | `artifacts.json`                  | The version stamp and a sha256 per staged file                                        |
 
@@ -214,6 +215,33 @@ reason, and an exclusion naming a prop that no longer exists fails the suite.
 
 Worked routes are in `packages/ai-patterns/docs/examples/`, and the repo's `tsc` compiles
 them, so they cannot drift from the export map.
+
+## Migration patterns
+
+`src/migrate/` is the `ds-migrate` skill (#322): how an agent moves an existing site onto
+the system. `adopt/<source>.md` has one file per source system (raw Tailwind, shadcn/ui,
+MUI, Bootstrap, hand-written CSS), each mapping colour, type, spacing, radius, shadow and
+components, with before and after code. `upgrade.md` has one section per breaking change
+in any `@elirobinson/*` package. `ds-resync artifacts --write` installs the folder at
+`.claude/skills/ds-migrate/`, and `./migrate/*.md` exports the same files.
+
+These files restate names the other packages own, so two suites keep them honest:
+
+- `migrate-files.test.mjs` reads every file the way an agent does. Each fenced block is
+  labelled `before` (the source system, never checked) or `after` (ours). An `after`
+  block is parsed and every import, component, prop, literal variant, required prop,
+  token, Tailwind colour utility and `ds-*` class is checked against
+  `@elirobinson/react/manifest`, the token stylesheets and the Tailwind bridge, then
+  linted with `@elirobinson/eslint-config`. Table columns headed `Miltinson` or
+  `HTML classes` are checked the same way, and a `Source px` column must map to the
+  nearest token on that scale. An unlabelled block fails.
+- `upgrade-coverage.test.mjs` ties `upgrade.md` to the changelogs and to
+  `@elirobinson/tokens/migrations`. Every `### Major Changes` changeset, and every 0.x
+  minor changeset that calls itself breaking, needs a section or a reasoned entry in
+  `NOT_BREAKING`. Every token migration needs exactly one section. A section naming a
+  changeset that is not in that package's changelog under that version fails.
+
+So adding a breaking change means adding its section to `upgrade.md`, and the test says so.
 
 ## Agent templates
 

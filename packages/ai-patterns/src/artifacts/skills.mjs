@@ -15,6 +15,7 @@ export const SKILL_DIRS = {
   brand: 'miltinson-design',
   reference: 'design-system-reference',
   resync: 'ds-resync',
+  migrate: 'ds-migrate',
 };
 
 /**

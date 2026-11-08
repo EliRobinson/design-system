@@ -89,7 +89,8 @@
     "./server/surfaces/stub-card": {
       "types": "./src/server/surfaces/stub-card.d.ts",
       "import": "./src/server/surfaces/stub-card.mjs"
-    }
+    },
+    "./migrate/*.md": "./src/migrate/*.md"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -125,11 +126,14 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "@elirobinson/eslint-config": "workspace:*",
     "@elirobinson/react": "workspace:*",
     "@elirobinson/tokens": "workspace:*",
+    "@eslint/css": "^1.4.0",
     "ai": "^7.0.92",
     "axe-core": "^4.11.0",
     "esbuild": "^0.27.7",
+    "eslint": "^9.39.4",
     "playwright": "^1.56.0",
     "postcss": "^8.5.23",
     "typescript": "^6.0.3",
