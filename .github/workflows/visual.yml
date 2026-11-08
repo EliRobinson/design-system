@@ -703,9 +703,25 @@ jobs:
             echo "recovered=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          FAILED=$(node scripts/visual-failures.mjs test-results/report.json)
+          # A check that takes no screenshot (`smoke`, `docs-reflow`) fails
+          # its rerun too, and under `set -e` that would end this step before
+          # it recovers the real shots. Report those checks here, then
+          # regenerate only the shots that have baselines.
+          if ! node scripts/visual-failures.mjs --baselines test-results/report.json > /dev/null 2> unbaselined.txt; then
+            {
+              echo "### Checks with no baseline failed"
+              echo
+              echo "These take no screenshot, so no baseline can fix them. Fix the page. See \`docs/agents/visual-regression.md\`."
+              echo
+              echo '````'
+              cat unbaselined.txt
+              echo '````'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          FAILED=$(node scripts/visual-failures.mjs --baselined test-results/report.json)
           if [ -z "$FAILED" ]; then
-            echo "The sweep failed with no failing shot listed — a crash or a build break, not a baseline. Nothing to regenerate."
+            echo "The sweep failed with no failing shot listed — a crash, a build break, or only checks with no baseline (see the summary). Nothing to regenerate."
             echo "recovered=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -714,7 +730,7 @@ jobs:
           # `recover` to read back, and what the tracking issue lists. Kept
           # separate from $FAILED (the --grep pattern below), which is
           # regex-escaped and not meant for a human to read.
-          node scripts/visual-failures.mjs --plain test-results/report.json > failing-shots.txt
+          node scripts/visual-failures.mjs --plain --baselined test-results/report.json > failing-shots.txt
 
           pnpm exec playwright test --update-snapshots=changed --workers=1 --grep "$FAILED"
 

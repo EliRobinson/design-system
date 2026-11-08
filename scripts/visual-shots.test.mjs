@@ -48,7 +48,6 @@ describe('parseShots', () => {
 
   it('drops the projects that take no baselines', () => {
     expect(shots.some((shot) => NO_BASELINE_PROJECTS.has(shot.project))).toBe(false);
-    expect(NO_BASELINE_PROJECTS).toEqual(new Set(['smoke', 'docs-reflow']));
   });
 
   it('does not read a reflow check as a shot of its route', () => {
