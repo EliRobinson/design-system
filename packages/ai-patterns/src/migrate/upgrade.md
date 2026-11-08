@@ -6,8 +6,8 @@ is the same id that leads the entry in that package's `CHANGELOG.md`, which ship
 package, so `node_modules/<package>/CHANGELOG.md` has the full story.
 
 This file is checked against those changelogs and against `@elirobinson/tokens/migrations`
-by this package's tests. A changeset released as `major`, or a 0.x `minor` whose own text
-says it breaks, fails the build until it has a section here for each package it ships in.
+by this package's tests. A `major` changeset, or a 0.x `minor` one whose text starts with
+`**Breaking:**`, fails the build until it has a section here for each package it ships in.
 
 ## How to use this file
 

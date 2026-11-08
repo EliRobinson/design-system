@@ -6,15 +6,15 @@ anywhere in this repo**, and nothing here edits `packages/ai-elements/src/`.
 
 ## Where it lives
 
-| Path                                            | What it is                                                  |
-| ----------------------------------------------- | ----------------------------------------------------------- |
-| `apps/docs/src/app/ai-theme/ai-bridge.css`      | The token bridge — shadcn, xyflow and Streamdown variables  |
-| `apps/docs/src/app/ai-theme/ai-core.css`        | Conversation, Message, PromptInput, Response, Code, Actions |
-| `apps/docs/src/app/ai-theme/ai-agent.css`       | Reasoning, Tool, Sources, Task, Context, Artifact, Confirm  |
-| `apps/docs/src/app/ai-theme/ai-media.css`       | Web Preview, Image, Attachments, Dropzone, Open In          |
-| `apps/docs/src/app/ai-theme/ai-canvas.css`      | Canvas, Node, Edge, Toolbar, Controls, Panel                |
-| `apps/docs/src/app/ai-theme/ai-shell.css`       | Assistant shell, threads, greeting, model picker, notices   |
-| `apps/docs/src/app/ai-theme-bundler-fixups.css` | The one deviation — see "The port-size defect" below        |
+| Path                                            | What it is                                                          |
+| ----------------------------------------------- | ------------------------------------------------------------------- |
+| `apps/docs/src/app/ai-theme/ai-bridge.css`      | The token bridge — shadcn, xyflow and Streamdown variables          |
+| `apps/docs/src/app/ai-theme/ai-core.css`        | Conversation, Message, PromptInput, Response, Code, Actions         |
+| `apps/docs/src/app/ai-theme/ai-agent.css`       | Reasoning, Tool, Sources, Task, Context, Artifact, Confirm          |
+| `apps/docs/src/app/ai-theme/ai-media.css`       | Web Preview, Image, Attachments, Dropzone, Open In                  |
+| `apps/docs/src/app/ai-theme/ai-canvas.css`      | Canvas, Node, Edge, Toolbar, Controls, Panel                        |
+| `apps/docs/src/app/ai-theme/ai-shell.css`       | Assistant shell, threads, greeting, model picker, notices           |
+| `apps/docs/src/app/ai-theme-bundler-fixups.css` | Two deviations — "The port-size defect", and the model list's floor |
 
 `app/ai-theme/` is **verbatim** and is in `.prettierignore` for the same reason
 `packages/ai-elements/src` is: these six files are authored in the design handoff and
@@ -134,14 +134,15 @@ Tailwind group variant, and the handoff asks that no new ones be added outside t
 a stylesheet of defensive doubles is a different and worse problem. Do not collapse the
 existing doubles, and do not add more.
 
-The fixups file introduces no value of its own. Every declaration is copied from the rule in
+Apart from the model list's 180px floor, the fixups file introduces no value of its own. Every declaration is copied from the rule in
 `ai-canvas.css` it re-asserts; if those values move, these are wrong and must move with them.
 
 ## Colours
 
 **No new colour was introduced.** Every pair the layer uses was already measured and is
-recorded in the handoff's `accessibility.md`. All 99 `var(--…)` names the six files
-reference resolve against `@elirobinson/tokens`. If you think you need a new one, measure it
+recorded in the handoff's `accessibility.md`. Every `var(--…)` name the six files
+read resolves against `@elirobinson/tokens` or a declaration in the theme files or the
+fixups file (`--anchored-min-width` on `.ds-ai-model-list`, which the handoff lacks). `ai-theme-tokens.test.ts` checks this. If you think you need a new one, measure it
 against `--bg` in both themes and every palette and record it — do not invent one.
 
 ## Known gaps
@@ -150,9 +151,6 @@ against `--bg` in both themes and every palette and record it — do not invent 
   internally and exposes no `className` for it, so the badge keeps its `secondary` variant
   (`--bg-muted` / `--fg`, 19.5:1). It already renders all three channels, so this is a
   styling gap and not an accessibility one.
-- **`.ds-ai-model-list` uses `--anchored-min-width`,** which in the handoff's source project
-  was a global token. Here it is declared locally on `.ds-dropdown__content` in
-  `packages/react`, so that one `min-inline-size` resolves to nothing.
 - **The vendored `Canvas` paints `bgColor="var(--sidebar)"`** — the bare name, which neither
   bridge declares (the handoff's bare-names list omits sidebar on purpose). It resolves to
   nothing; `.ds-ai-canvas` paints its own background, so the visible result is correct.

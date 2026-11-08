@@ -37,12 +37,16 @@
          apps/docs, and the docs app depends on this package, not the other way.
          With no edge Nx can see, a change to those layers alone would replay a
          cached pass. "default" and "^default" are what Nx uses when a target
-         names no inputs, so they are restated here. */
+         names no inputs, so they are restated here.
+         upgrade-coverage.test.mjs reads every package's CHANGELOG.md and the
+         pending changesets (#334), and most of those are no edge either. */
       "inputs": [
         "default",
         "^default",
         "{workspaceRoot}/apps/docs/src/app/elements.css",
-        "{workspaceRoot}/apps/docs/src/app/ai-theme/**"
+        "{workspaceRoot}/apps/docs/src/app/ai-theme/**",
+        "{workspaceRoot}/.changeset/*.md",
+        "{workspaceRoot}/packages/*/CHANGELOG.md"
       ]
     }
   },

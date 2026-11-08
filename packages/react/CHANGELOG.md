@@ -1,5 +1,11 @@
 # @elirobinson/react
 
+## 3.9.5
+
+### Patch Changes
+
+- a05d440: Combobox: the active option is now visible in dark theme. It gets a raised fill and an inset ring, the same as the CommandPalette active row.
+
 ## 3.9.4
 
 ### Patch Changes
