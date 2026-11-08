@@ -239,8 +239,10 @@ These files restate names the other packages own, so two suites keep them honest
   `@elirobinson/tokens/migrations`, reading them with `src/resync/changelog.mjs`. Every
   `### Major Changes` changeset, and every 0.x minor changeset whose text calls itself
   breaking, needs a section for each package it ships in, or a per-package entry in
-  `NOT_BREAKING` with a reason. Every token migration needs exactly one section. A section
-  naming a changeset that is not in that package's changelog under that version fails.
+  `NOT_BREAKING` with a reason. Every token migration needs exactly one section, except a
+  silent one (`report: "none"`): it renders the same and breaks nothing, so a section is
+  allowed but not required. A section naming a changeset that is not in that package's
+  changelog under that version fails.
   Pending `.changeset/*.md` files are not read yet (#334).
 
 So adding a breaking change means adding its section to `upgrade.md`, and the test says so.
