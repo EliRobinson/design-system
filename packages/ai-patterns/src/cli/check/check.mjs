@@ -5,21 +5,53 @@
 // gate CI on it when it chooses to. Failing by default would break builds that
 // pass today, which needs a major version (decided on #328).
 
+import { statSync } from 'node:fs';
+
 import { readRecord } from '../../resync/artifacts.mjs';
-import { cssImports, DS_STYLESHEETS, scanRepo, scriptImports } from './scan.mjs';
+import { REACT_PKG, TOKENS_PKG } from '../discovery.mjs';
+import { DS_STYLESHEETS, scanRepo, scriptImports } from './scan.mjs';
 import { TRAPS } from './traps.mjs';
 
 const ISSUES = 'https://github.com/EliRobinson/design-system/issues';
+
+function isDirectory(path) {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
 
 /**
  * @param {object} input
  * @param {string} input.root consumer repo root
  * @param {object} input.env what `loadEnvironment` found installed for that root
  * @param {boolean} [input.strict] exit 1 on any warning
+ * @returns {{ text: string, exitCode: number, findings: object[] }}
  */
 export function runCheck({ root, env, strict = false }) {
+  if (!isDirectory(root)) {
+    return { text: `ds check: ${root} is not a directory.`, exitCode: 1, findings: [] };
+  }
+
+  /* With neither package installed every check is blind, and "no traps found"
+     would be a false all-clear for a wrong --dir or a missing install. */
+  if (!env.react && !env.tokens) {
+    return {
+      text: [
+        `ds check: ${REACT_PKG} and ${TOKENS_PKG} are not installed in ${root},`,
+        'so nothing could be checked. Run it from the app that uses the design system,',
+        'or pass --dir <path>.',
+      ].join('\n'),
+      exitCode: strict ? 1 : 0,
+      findings: [],
+    };
+  }
+
   const { css, source } = scanRepo(root);
-  const imports = css.flatMap((file) => cssImports(file).map((entry) => entry.specifier));
+  const entryStylesheet = css.find((file) =>
+    file.imports.some((entry) => DS_STYLESHEETS.includes(entry.specifier)),
+  )?.path;
 
   const context = {
     root,
@@ -27,10 +59,12 @@ export function runCheck({ root, env, strict = false }) {
     css,
     source,
     record: readRecord(root),
+    entryStylesheet,
     usesDesignSystem:
-      imports.some((specifier) => DS_STYLESHEETS.includes(specifier)) ||
-      source.some((file) => scriptImports(file, DS_STYLESHEETS)),
-    usesTailwind: imports.includes('tailwindcss'),
+      entryStylesheet !== undefined || source.some((file) => scriptImports(file, DS_STYLESHEETS)),
+    usesTailwind: css.some((file) =>
+      file.imports.some((entry) => entry.specifier === 'tailwindcss'),
+    ),
   };
 
   const findings = TRAPS.flatMap((trap) =>
@@ -49,7 +83,7 @@ function formatFinding(finding) {
   return [
     `warn  ${finding.id}  (${issues})`,
     ...finding.where.map((line) => `  Where: ${line}`),
-    ...finding.what.map((line, index) => `  ${index === 0 ? 'What: ' : '      '} ${line}`),
+    ...finding.what.map((line, index) => `  ${index === 0 ? 'What: ' : '      '}${line}`),
     '  Fix:',
     ...finding.fix.map((line) => (line ? `    ${line}` : '')),
   ].join('\n');

@@ -41,14 +41,13 @@ const PLAUSIBLE_KEY = /^(?:--)?[A-Za-z][A-Za-z0-9-]*$/;
 /** Every design token named anywhere in a chunk of text. */
 const TOKEN_MENTION = /--[a-z][a-z0-9-]*/g;
 
+/** The stylesheet extensions among SCANNED_EXTENSIONS. */
+export const STYLESHEET_EXTENSIONS = ['.css', '.scss', '.sass', '.less', '.pcss'];
+
 /** The extensions worth reading. A token can only be referenced from something
  *  that ends up as CSS or as a style value in script. */
 export const SCANNED_EXTENSIONS = [
-  '.css',
-  '.scss',
-  '.sass',
-  '.less',
-  '.pcss',
+  ...STYLESHEET_EXTENSIONS,
   '.ts',
   '.tsx',
   '.js',

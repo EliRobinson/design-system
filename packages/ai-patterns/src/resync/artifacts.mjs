@@ -39,6 +39,9 @@ import { readInstalledSources, resolveIn } from './installed.mjs';
 /** Where the record of what we wrote lives, relative to the consuming repo root. */
 export const RECORD_PATH = '.claude/ds-artifacts.json';
 
+/** The command that regenerates the artifacts from what is installed. */
+export const REGENERATE_ARTIFACTS = `${DLX} ds-resync artifacts --write`;
+
 export function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
 }
@@ -314,7 +317,7 @@ export function formatDriftWarning(drift) {
         (entry) => `!!    ${entry.name}: written for ${entry.written}, installed ${entry.now}`,
       ),
       '!!  Regenerate them from what is installed:',
-      `!!    ${DLX} ds-resync artifacts --write`,
+      `!!    ${REGENERATE_ARTIFACTS}`,
     ].join('\n');
   }
   return [
@@ -325,7 +328,7 @@ export function formatDriftWarning(drift) {
     '!!',
     '!!  They came from the bundled snapshot because the installed packages could not be',
     '!!  read (the reason is below). Install or upgrade the package it names, then:',
-    `!!    ${DLX} ds-resync artifacts --write   # regenerate from what is installed`,
+    `!!    ${REGENERATE_ARTIFACTS}   # regenerate from what is installed`,
     '!!  Until then, trust `pnpm ds props <Name>` over anything in the snapshot.',
   ].join('\n');
 }
