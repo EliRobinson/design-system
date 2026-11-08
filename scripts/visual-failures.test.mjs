@@ -199,6 +199,28 @@ describe('failedBaselines', () => {
     });
   });
 
+  it('leaves checks with no baseline out of the baselined titles', () => {
+    const mixed = {
+      specs: [
+        {
+          title: '/components/pagination · reflow',
+          ok: false,
+          tests: [{ projectName: 'docs-reflow', status: 'unexpected' }],
+        },
+        {
+          title: '/components/card · light',
+          ok: false,
+          tests: [{ projectName: 'docs-wide', status: 'unexpected' }],
+        },
+      ],
+    };
+    expect(failedTitles(mixed)).toEqual([
+      '/components/pagination · reflow',
+      '/components/card · light',
+    ]);
+    expect(failedTitles(mixed, { baselinedOnly: true })).toEqual(['/components/card · light']);
+  });
+
   it('reports a reflow check as a failure no baseline can fix', () => {
     /* Its title is route-shaped. Read as a shot, it would map to a
        `…-reflow.png` baseline that nothing writes, and accept would go green

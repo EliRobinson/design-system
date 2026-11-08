@@ -20,12 +20,27 @@ function collectSpecs(node, out = []) {
   return out;
 }
 
-/** Titles of every spec that did not pass. De-duplicated across projects. */
-export function failedTitles(report) {
+/**
+ * Titles of every spec that did not pass. De-duplicated across projects.
+ *
+ * `baselinedOnly` keeps only the titles that failed in a project with
+ * baselines. Main's recovery reruns the failures with
+ * --update-snapshots=changed; a NO_BASELINE_PROJECTS test fails that rerun
+ * again, and the step would crash before it recovers the real shots.
+ */
+export function failedTitles(report, { baselinedOnly = false } = {}) {
   const failed = new Set();
 
   for (const spec of collectSpecs(report)) {
-    if (spec.ok === false) {
+    if (spec.ok !== false) {
+      continue;
+    }
+    const counts =
+      !baselinedOnly ||
+      (spec.tests ?? []).some(
+        (test) => test.status === 'unexpected' && !NO_BASELINE_PROJECTS.has(test.projectName),
+      );
+    if (counts) {
       failed.add(spec.title);
     }
   }
@@ -41,8 +56,8 @@ export function failedTitles(report) {
  * writes exactly the baselines that failed, so the list is built from each
  * test's own `status`.
  *
- * `unbaselined` is the failures that no baseline can fix — a `smoke` or
- * `docs-reflow` test takes no screenshot at all. A caller must refuse to accept while it is non-empty:
+ * `unbaselined` is the failures that no baseline can fix — a test in a
+ * NO_BASELINE_PROJECTS project takes no screenshot at all. A caller must refuse to accept while it is non-empty:
  * committing the other baselines would turn a red run green with one of its
  * failures still standing.
  */
@@ -113,9 +128,10 @@ export function failuresByProject(report) {
     .sort((a, b) => b.shots - a.shots || a.project.localeCompare(b.project));
 }
 
-/* CLI: three modes.
+/* CLI: these modes.
      node visual-failures.mjs <report.json>              a --grep pattern
      node visual-failures.mjs --plain <report.json>       plain titles, one per line
+       add --baselined to either: only titles that failed in a project with baselines
      node visual-failures.mjs --by-project <report.json>  "<project>\t<count>" rows
      node visual-failures.mjs --baselines <report.json>   failing shots' baseline paths, one per line;
                                                           exits 1 naming any failure no baseline can fix
@@ -162,7 +178,7 @@ if (isEntrypoint) {
     process.exit(0);
   }
 
-  const titles = failedTitles(report);
+  const titles = failedTitles(report, { baselinedOnly: args.includes('--baselined') });
 
   if (plain) {
     const output = formatPlain(titles);

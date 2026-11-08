@@ -115,6 +115,8 @@ The scoper never narrows these shots. When Nx reports `preflight-host` affected 
 - It lives here because the visual container is the one place CI has a browser.
 - Its titles are `<route> · reflow`. The scoper's route pattern is `<route> · `, so a pull request that touches a page runs that page's check too. An added component widens the scope to every docs route, so it runs every check.
 - A red one cannot be accepted. `visual-failures.mjs --baselines` lists it as a failure with no baseline and exits 1. Fix the page.
+- On `main`, the `full` job lists it in the summary under "Checks with no baseline failed". It regenerates only the shots that have baselines (`--baselined`), so a reflow failure cannot stop a real baseline recovery in the same run.
+- Pages a component makes too wide, not the docs site, are in `KNOWN_OVERFLOW` in the spec, each linked to its issue (#345). They are asserted to still overflow, so the fix turns them red and the entry must come out.
 - It runs in the `smoke+docs-narrow+preflight-wide+docs-reflow` job (`GROUPS` in `scripts/visual-matrix.mjs`). It takes about 50 seconds.
 - The failure message names the widest elements, so start there.
 
