@@ -188,20 +188,113 @@ describe('artifacts --write from the installed packages', () => {
       expect([entry.path, entry.hash]).toEqual([entry.path, hashes[entry.path]]);
   });
 
+  it('falls back, with a reason, when an installed package.json is corrupt', async () => {
+    const { root, cwd } = makeConsumer();
+    writeFileSync(join(root, 'node_modules/@elirobinson/react/package.json'), '{bad');
+
+    const result = await runArtifacts({ cwd });
+
+    expect(result.source).toBe('bundled');
+    expect(result.fallbackReason).toContain('could not be read');
+  });
+
+  it('falls back when the installed tokens is too old to export its parser', async () => {
+    const { root, cwd } = makeConsumer();
+    const manifestPath = join(root, 'node_modules/@elirobinson/tokens/package.json');
+    const manifest = readJson(manifestPath);
+    delete manifest.exports['./parse-tokens-css'];
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    const result = await runArtifacts({ cwd });
+
+    expect(result.source).toBe('bundled');
+    expect(result.fallbackReason).toContain('parse-tokens-css');
+  });
+
+  it('falls back when the installed stylesheets declare no tokens', async () => {
+    const { root, cwd } = makeConsumer();
+    for (const name of ['palettes.css', 'tokens.css']) {
+      writeFileSync(join(root, 'node_modules/@elirobinson/tokens/src', name), '');
+    }
+
+    const result = await runArtifacts({ cwd });
+
+    expect(result.source).toBe('bundled');
+    expect(result.fallbackReason).toContain('No tokens parsed');
+  });
+
+  it('reports the repo as out of date when the installed packages moved since --write', async () => {
+    const { root, cwd } = makeConsumer();
+    await runArtifacts({ cwd, write: true });
+    const manifestPath = join(root, 'node_modules/@elirobinson/react/package.json');
+    writeFileSync(manifestPath, JSON.stringify({ ...readJson(manifestPath), version: '99.1.0' }));
+
+    const dryRun = await runArtifacts({ cwd });
+
+    expect(dryRun.drift).toEqual({
+      kind: 'record',
+      packages: [{ name: '@elirobinson/react', written: '99.0.0', now: '99.1.0' }],
+    });
+    expect(formatArtifactsReport(dryRun)).toContain('OUT OF DATE');
+
+    const afterWrite = await runArtifacts({ cwd, write: true });
+    expect(afterWrite.drift).toBeNull();
+    expect((await runArtifacts({ cwd })).drift).toBeNull();
+  });
+
+  it('writes a font that a newer installed tokens added and references', async () => {
+    const { root, cwd } = makeConsumer();
+    const tokensSrc = join(root, 'node_modules/@elirobinson/tokens/src');
+    writeFileSync(join(tokensSrc, 'fonts', 'brand-new.woff2'), 'font bytes');
+    writeFileSync(
+      join(tokensSrc, 'fonts.css'),
+      `${readFileSync(join(tokensSrc, 'fonts.css'), 'utf8')}\n@font-face { font-family: 'New'; src: url('./fonts/brand-new.woff2') format('woff2'); }\n`,
+    );
+
+    const result = await runArtifacts({ cwd, write: true });
+
+    expect(written(cwd, 'miltinson-design/fonts/brand-new.woff2')).toBe('font bytes');
+    expect(result.keptBundled).toEqual([]);
+  });
+
+  it('reports a referenced file the installed package does not have', async () => {
+    const { root, cwd } = makeConsumer();
+    const fontsCss = join(root, 'node_modules/@elirobinson/tokens/src/fonts.css');
+    writeFileSync(
+      fontsCss,
+      `${readFileSync(fontsCss, 'utf8')}\n@font-face { src: url('./fonts/missing.woff2'); }\n`,
+    );
+
+    const result = await runArtifacts({ cwd });
+
+    expect(result.keptBundled).toEqual([
+      'miltinson-design/fonts/missing.woff2 (referenced by miltinson-design/fonts.css, missing from @elirobinson/tokens)',
+    ]);
+  });
+
   it('marks every file that has an installed source in the staged stamp', () => {
     const { files } = readArtifactSet(artifactsDir());
     const byPath = Object.fromEntries(files.map((entry) => [entry.path, entry]));
 
-    expect(byPath['miltinson-design/palettes.css'].from).toEqual({
+    expect(byPath['miltinson-design/palettes.css'].source).toEqual({
+      kind: 'package',
       package: '@elirobinson/tokens',
       path: 'src/palettes.css',
+      specifier: '@elirobinson/tokens/palettes.css',
     });
-    expect(byPath['miltinson-design/colors_and_type.css'].from).toEqual({
+    expect(byPath['miltinson-design/colors_and_type.css'].source).toEqual({
+      kind: 'package',
       package: '@elirobinson/tokens',
       path: 'src/tokens.css',
+      specifier: '@elirobinson/tokens/tokens.css',
+    });
+    expect(byPath['miltinson-design/fonts/geist-latin-wght-normal.woff2'].source).toEqual({
+      kind: 'package',
+      package: '@elirobinson/tokens',
+      path: 'src/fonts/geist-latin-wght-normal.woff2',
     });
     for (const name of ['llms.txt', 'llms-full.txt', 'SKILL.md']) {
-      expect(byPath[`design-system-reference/${name}`].generated).toBe('reference');
+      expect(byPath[`design-system-reference/${name}`].source).toEqual({ kind: 'reference' });
     }
   });
 });

@@ -15,8 +15,16 @@
 import { llmsFull, llmsIndex } from './llms.mjs';
 import { referenceSkillDoc, SKILL_DIRS } from './skills.mjs';
 
-/** Marks a staged file the reference builder produces, in `artifacts.json`. */
-export const REFERENCE_GENERATOR = 'reference';
+/**
+ * `source.kind` on a staged file in `artifacts.json`: where `ds-resync
+ * artifacts` gets its bytes in a consuming repo. A file with no `source` is
+ * ai-patterns' own and is written as staged.
+ *
+ * - `reference`: rebuilt by `buildReferenceSkill` from the installed packages.
+ * - `package`: copied from `{ package, path, specifier? }` in the installed
+ *   package, through its exports map when `specifier` is set.
+ */
+export const SOURCE_KINDS = { reference: 'reference', package: 'package' };
 
 /** The staged inputs file, next to `artifacts.json`. */
 export const REFERENCE_INPUTS = 'reference-inputs.json';
@@ -25,7 +33,7 @@ export const REFERENCE_INPUTS = 'reference-inputs.json';
    same question with URLs; a consumer has files and a CLI, so this is one of
    the few things the two corpora cannot share. */
 const SNAPSHOT_CONTENTS = {
-  heading: 'The rest of this snapshot',
+  heading: 'The rest of this reference',
   entries: [
     '- `llms-full.txt` — every token, every constraint, and every component with its prop table',
     '- `pnpm ds` / `pnpm ds props <Name>` — the same information read live from the installed',

@@ -169,8 +169,8 @@ export function referencePointer(referenceSkill) {
   return [
     'The brand rules in this skill cover voice, color, type, and visual direction. They do *not*',
     'describe the React component library — for that, read the sibling skill',
-    `\`.claude/skills/${referenceSkill}/\`, which carries a version-stamped snapshot of every`,
-    'component and prop table, and run `pnpm ds props <Name>` for the live answer from the',
+    `\`.claude/skills/${referenceSkill}/\`, which carries every component and prop table for the`,
+    'installed version, and run `pnpm ds props <Name>` for the live answer from the',
     'installed package. When the two disagree, the CLI wins.',
   ].join('\n');
 }

@@ -26,19 +26,15 @@
 
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, posix, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { REACT_PKG, TOKENS_PKG } from '../cli/discovery.mjs';
 import { DLX } from '../artifacts/llms.mjs';
-import {
-  buildReferenceSkill,
-  REFERENCE_GENERATOR,
-  REFERENCE_INPUTS,
-} from '../artifacts/reference.mjs';
+import { buildReferenceSkill, REFERENCE_INPUTS, SOURCE_KINDS } from '../artifacts/reference.mjs';
 import { SKILL_DIRS } from '../artifacts/skills.mjs';
-import { findInstalledPackage, REACT_PACKAGE, readInstalledSources } from './installed.mjs';
-
-export { REACT_PACKAGE };
+import { CONTRACTS_PATH } from '../server/prompt.mjs';
+import { readInstalledSources, resolveIn } from './installed.mjs';
 
 /** Where the record of what we wrote lives, relative to the consuming repo root. */
 export const RECORD_PATH = '.claude/ds-artifacts.json';
@@ -68,6 +64,7 @@ export function readArtifactSet(dir = artifactsDir()) {
   }
 
   const stamp = JSON.parse(readFileSync(stampPath, 'utf8'));
+  const inputsPath = join(dir, REFERENCE_INPUTS);
 
   return {
     stamp,
@@ -76,52 +73,129 @@ export function readArtifactSet(dir = artifactsDir()) {
       ...entry,
       contents: readFileSync(join(dir, 'skills', entry.path)),
     })),
+    referenceInputs: existsSync(inputsPath) ? JSON.parse(readFileSync(inputsPath, 'utf8')) : null,
+    keptBundled: [],
   };
 }
 
-const CONTRACTS_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'contracts.json');
+/** A path inside an installed package, or null if it would leave the package. */
+function insidePackage(root, path) {
+  const target = join(root, ...path.split('/'));
+  const rel = relative(root, target);
+  return rel.startsWith('..') || rel.split(sep).includes('..') ? null : target;
+}
+
+/** Where a package-sourced file lives in the installed package: through the
+ *  exports map when it is exported, by path when it is not (the fonts). */
+function installedPath(source, roots) {
+  const root = roots[source.package];
+  if (source.specifier) {
+    try {
+      return resolveIn(root, source.specifier);
+    } catch {
+      // Unexported in this version: fall through to the path.
+    }
+  }
+  return insidePackage(root, source.path);
+}
+
+/* `url(...)` and `@import '...'` targets in a stylesheet, relative ones only.
+   Comments are stripped first: tokens.css quotes both forms in prose. */
+const CSS_REFERENCE = /url\(\s*['"]?([^'")]+)['"]?\s*\)|@import\s+['"]([^'"]+)['"]/g;
+
+function relativeReferences(css) {
+  const found = new Set();
+  for (const match of css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(CSS_REFERENCE)) {
+    const ref = (match[1] ?? match[2]).split(/[?#]/)[0];
+    if (!/^([a-z]+:|\/|data:)/i.test(ref)) found.add(ref);
+  }
+  return [...found];
+}
 
 /**
- * The staged set with every installed-sourced file replaced by what the
- * consumer's packages produce: the reference skill rebuilt from the installed
- * react manifest and tokens, and each `from` file copied out of the installed
- * package. The stamp's versions become the installed ones, because that is now
- * what the files describe.
+ * The file set a consumer gets from the installed packages.
+ *
+ * The staged set fixes which files exist; the installed packages decide their
+ * bytes. Every `reference` file is rebuilt from the installed react manifest
+ * and tokens, and every `package` file is copied from the installed package.
+ * Then each copied stylesheet's relative `url()` and `@import` targets are
+ * followed, so a font or stylesheet a newer tokens release added is written
+ * too, instead of leaving `fonts.css` pointing at a file that is not there.
+ * Anything that cannot be found is kept from the bundle and reported.
+ *
+ * Pure apart from reading the installed package files it names.
  *
  * @param {ReturnType<typeof readArtifactSet>} set
  * @param {Extract<Awaited<ReturnType<typeof readInstalledSources>>, {ok: true}>} installed
- * @param {string} dir the staged tree, for `reference-inputs.json`
+ * @param {object} contracts `src/contracts.json`
  */
-export function fromInstalled(set, installed, dir) {
+export function fromInstalled(set, installed, contracts) {
+  if (!set.referenceInputs) {
+    throw new Error(`The staged artifacts have no ${REFERENCE_INPUTS}. Rebuild ai-patterns.`);
+  }
   const versions = {
     aiPatterns: set.stamp.aiPatternsVersion,
-    react: installed.react.version,
-    tokens: installed.tokens.version,
+    react: installed.reactVersion,
+    tokens: installed.tokensVersion,
   };
-  const staged = JSON.parse(readFileSync(join(dir, REFERENCE_INPUTS), 'utf8'));
   const readme = set.files.find((file) => file.path === `${SKILL_DIRS.brand}/README.md`);
   if (!readme) throw new Error(`The staged artifacts have no ${SKILL_DIRS.brand}/README.md.`);
-  const brand = { ...staged.brand, readme: readme.contents.toString('utf8') };
   const reference = buildReferenceSkill({
-    manifest: installed.react.manifest,
-    contracts: JSON.parse(readFileSync(CONTRACTS_PATH, 'utf8')),
-    tokens: installed.tokens.tokens,
+    manifest: installed.manifest,
+    contracts,
+    tokens: installed.tokens,
     versions,
-    brand,
+    brand: { ...set.referenceInputs.brand, readme: readme.contents.toString('utf8') },
   });
 
   const keptBundled = [];
-  const files = set.files.map((file) => {
-    let contents = null;
-    if (file.generated === REFERENCE_GENERATOR) {
-      contents = Buffer.from(reference[file.path]);
-    } else if (file.from) {
-      const source = join(installed.roots[file.from.package], ...file.from.path.split('/'));
-      if (existsSync(source)) contents = readFileSync(source);
-      else keptBundled.push(`${file.path} (${file.from.package} has no ${file.from.path})`);
+  const withContents = (file, contents) => ({ ...file, contents, hash: sha256(contents) });
+
+  const resolveContents = {
+    [SOURCE_KINDS.reference]: (file) => {
+      if (!(file.path in reference)) {
+        throw new Error(`The reference builder made no ${file.path}.`);
+      }
+      return withContents(file, Buffer.from(reference[file.path]));
+    },
+    [SOURCE_KINDS.package]: (file) => {
+      const path = installedPath(file.source, installed.roots);
+      if (path && existsSync(path)) return withContents(file, readFileSync(path));
+      keptBundled.push(`${file.path} (${file.source.package} has no ${file.source.path})`);
+      return file;
+    },
+  };
+
+  const files = set.files.map((file) =>
+    file.source ? resolveContents[file.source.kind](file) : file,
+  );
+
+  // Follow what the installed stylesheets reference.
+  const byPath = new Map(files.map((file) => [file.path, file]));
+  const queue = files.filter((file) => file.source?.kind === SOURCE_KINDS.package);
+  while (queue.length) {
+    const file = queue.shift();
+    if (!file.path.endsWith('.css')) continue;
+    for (const ref of relativeReferences(file.contents.toString('utf8'))) {
+      const path = posix.normalize(posix.join(posix.dirname(file.path), ref));
+      if (byPath.has(path) || path.startsWith('..')) continue;
+      const source = {
+        kind: SOURCE_KINDS.package,
+        package: file.source.package,
+        path: posix.normalize(posix.join(posix.dirname(file.source.path), ref)),
+      };
+      const from = installedPath(source, installed.roots);
+      if (!from || !existsSync(from)) {
+        keptBundled.push(`${path} (referenced by ${file.path}, missing from ${source.package})`);
+        byPath.set(path, null);
+        continue;
+      }
+      const added = withContents({ path, source }, readFileSync(from));
+      byPath.set(path, added);
+      files.push(added);
+      queue.push(added);
     }
-    return contents === null ? file : { ...file, contents, hash: sha256(contents) };
-  });
+  }
 
   return {
     ...set,
@@ -208,18 +282,49 @@ export function recordFrom(plan, previous) {
 export function checkDrift({ stamp, installed }) {
   if (!installed || !stamp.reactVersion) return null;
   if (installed === stamp.reactVersion) return null;
-  return { expected: stamp.reactVersion, installed };
+  return { kind: 'snapshot', expected: stamp.reactVersion, installed };
+}
+
+/**
+ * On the installed path the files are always generated from what is installed,
+ * so the drift that matters is the repo's: artifacts last written for other
+ * versions than the ones installed now. A react or tokens bump that nobody
+ * re-ran `--write` for is exactly what `--fail-on-drift` exists to catch in CI.
+ * Null when nothing was written yet, since there is nothing on disk to be stale.
+ */
+export function checkRecordDrift({ record, installed }) {
+  if (!record.reactVersion && !record.tokensVersion) return null;
+  const stale = [
+    [REACT_PKG, record.reactVersion, installed.reactVersion],
+    [TOKENS_PKG, record.tokensVersion, installed.tokensVersion],
+  ].filter(([, written, now]) => written !== now);
+  if (stale.length === 0) return null;
+  return {
+    kind: 'record',
+    packages: stale.map(([name, written, now]) => ({ name, written: written ?? 'none', now })),
+  };
 }
 
 export function formatDriftWarning(drift) {
+  if (drift.kind === 'record') {
+    return [
+      '!!  OUT OF DATE',
+      '!!  The artifacts in this repo were written for other versions than the installed ones:',
+      ...drift.packages.map(
+        (entry) => `!!    ${entry.name}: written for ${entry.written}, installed ${entry.now}`,
+      ),
+      '!!  Regenerate them from what is installed:',
+      `!!    ${DLX} ds-resync artifacts --write`,
+    ].join('\n');
+  }
   return [
     '!!  STALE SNAPSHOT',
-    `!!  These artifacts describe ${REACT_PACKAGE}@${drift.expected}, but this repo has`,
+    `!!  These artifacts describe ${REACT_PKG}@${drift.expected}, but this repo has`,
     `!!  ${drift.installed} installed. Component and prop tables in llms-full.txt may name`,
     '!!  props that do not exist at the installed version, and omit ones that do.',
     '!!',
-    '!!  These came from the bundled snapshot because the installed packages could not be',
-    '!!  read (see below). Install @elirobinson/react and @elirobinson/tokens, then:',
+    '!!  They came from the bundled snapshot because the installed packages could not be',
+    '!!  read (the reason is below). Install or upgrade the package it names, then:',
     `!!    ${DLX} ds-resync artifacts --write   # regenerate from what is installed`,
     '!!  Until then, trust `pnpm ds props <Name>` over anything in the snapshot.',
   ].join('\n');
@@ -237,8 +342,8 @@ export function formatArtifactsReport(result) {
   const modified = byStatus('modified');
 
   const versions =
-    `${REACT_PACKAGE}@${result.stamp.reactVersion} and ` +
-    `@elirobinson/tokens@${result.stamp.tokensVersion}`;
+    `${REACT_PKG}@${result.stamp.reactVersion} and ` +
+    `${TOKENS_PKG}@${result.stamp.tokensVersion}`;
   lines.push(
     `Design system artifacts from @elirobinson/ai-patterns@${result.stamp.aiPatternsVersion},`,
   );
@@ -246,13 +351,12 @@ export function formatArtifactsReport(result) {
     lines.push(`generated from the installed ${versions}.`, '');
   } else {
     lines.push(
-      `copied from the bundled snapshot of ${versions},`,
-      `because ${result.fallbackReason}.`,
-      'Install both packages and re-run to generate from what is installed.',
+      `using the bundled snapshot (${versions}) because ${result.fallbackReason}.`,
+      'Install or upgrade the package named above, then re-run to generate from what is installed.',
       '',
     );
   }
-  if (result.keptBundled?.length) {
+  if (result.keptBundled.length) {
     lines.push('Kept the bundled copy of:', ...result.keptBundled.map((entry) => `  ${entry}`), '');
   }
 
@@ -317,7 +421,19 @@ function applyPlan(cwd, set, plan) {
 export async function runArtifacts({ cwd, write = false, force = false, dir = artifactsDir() }) {
   const staged = readArtifactSet(dir);
   const installed = await readInstalledSources(cwd);
-  const set = installed.ok ? fromInstalled(staged, installed, dir) : staged;
+  let set = staged;
+  if (installed.ok) {
+    try {
+      set = fromInstalled(staged, installed, JSON.parse(readFileSync(CONTRACTS_PATH, 'utf8')));
+    } catch (error) {
+      /* Readable but unusable — an empty manifest, stylesheets with no tokens.
+         The promise is a fallback with a reason, not a crash. */
+      Object.assign(installed, {
+        ok: false,
+        reason: `the installed packages produced no usable reference (${error.message})`,
+      });
+    }
+  }
   const record = readRecord(cwd);
 
   const onDisk = {};
@@ -334,10 +450,13 @@ export async function runArtifacts({ cwd, write = false, force = false, dir = ar
     force,
   });
 
-  const drift = checkDrift({
-    stamp: set.stamp,
-    installed: findInstalledPackage(cwd, REACT_PACKAGE)?.version ?? null,
-  });
+  /* After a write the record matches what is installed, so only a dry run
+     can find the repo's own artifacts out of date. */
+  const drift = installed.ok
+    ? write
+      ? null
+      : checkRecordDrift({ record, installed })
+    : checkDrift({ stamp: set.stamp, installed: installed.reactVersion });
 
   if (write) {
     applyPlan(cwd, set, plan);
@@ -364,7 +483,7 @@ export async function runArtifacts({ cwd, write = false, force = false, dir = ar
     stamp: set.stamp,
     source: installed.ok ? 'installed' : 'bundled',
     fallbackReason: installed.ok ? null : installed.reason,
-    keptBundled: set.keptBundled ?? [],
+    keptBundled: set.keptBundled,
     plan,
     drift,
     wrote: write,
