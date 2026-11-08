@@ -14,7 +14,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "release": "changeset publish",
-    "changeset:version": "changeset version",
+    "changeset:version": "changeset version && node packages/ai-patterns/scripts/stamp-upgrade.mjs",
     "changeset": "changeset",
     "prepare": "husky",
     "lint:fix": "eslint . --fix",
