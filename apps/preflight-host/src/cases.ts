@@ -38,7 +38,9 @@ export const PREFLIGHT_CASES = [
      `text-*` utility could colour one. */
   { id: 'type-colour', issues: [251] },
   /* #34: a consumer re-points the sans family at a font the framework loaded
-     (next/font's shape), through the override hook tokens.css reads first. */
+     (next/font's shape), through the override hook tokens.css reads first.
+     app.css names this id in a `:root:has()` selector, because the override
+     must be an unlayered :root rule. Rename it there too. */
   { id: 'font-override', issues: [34] },
 ] as const satisfies readonly PreflightCase[];
 
