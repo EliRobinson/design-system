@@ -45,6 +45,23 @@ export function rules(css) {
 }
 
 /**
+ * Rules inside the first `@media (forced-colors: active)` block of a sheet, as
+ * {selector, body}. Empty when the sheet has no such block. jsdom cannot
+ * emulate forced colours, so the forced-colors tests read the shipped sheet.
+ */
+export function forcedColorsRules(css) {
+  const start = css.indexOf('@media (forced-colors: active)');
+  if (start === -1) return [];
+  const open = css.indexOf('{', start);
+  let depth = 0;
+  for (let i = open; i < css.length; i++) {
+    if (css[i] === '{') depth++;
+    if (css[i] === '}' && --depth === 0) return rules(css.slice(open + 1, i));
+  }
+  return [];
+}
+
+/**
  * The SYSTEM token a declaration resolves to when no product layer is present.
  *
  * `var(--product-x, var(--system-token))` and a bare `var(--system-token)` both

@@ -9,30 +9,14 @@
 
 import { expect, it } from 'vitest';
 
-import { rules, sheet } from './component-tokens.mjs';
+import { forcedColorsRules, sheet } from './component-tokens.mjs';
 
-const css = sheet('molecules/SegmentedControl.css');
+const forced = forcedColorsRules(sheet('molecules/SegmentedControl.css'));
 
-/* Body of the first `@media (forced-colors: active) { ... }` block. */
-function forcedColorsBlock() {
-  const start = css.indexOf('@media (forced-colors: active)');
-  if (start === -1) return '';
-  const open = css.indexOf('{', start);
-  let depth = 0;
-  for (let i = open; i < css.length; i++) {
-    if (css[i] === '{') depth++;
-    if (css[i] === '}' && --depth === 0) return css.slice(open + 1, i);
-  }
-  return '';
-}
-
-const block = forcedColorsBlock();
-
-const declarations = (selector) =>
-  rules(block).find((rule) => rule.selector === selector)?.body ?? '';
+const declarations = (selector) => forced.find((rule) => rule.selector === selector)?.body ?? '';
 
 it('has a forced-colors block', () => {
-  expect(block).not.toBe('');
+  expect(forced).not.toEqual([]);
 });
 
 it('paints the selected segment with Highlight and HighlightText', () => {

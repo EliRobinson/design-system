@@ -60,3 +60,16 @@
   background: var(--status-success);
   color: var(--status-success-on); /* 5.17:1 on the fill, both themes */
 }
+
+/* Forced colors (Windows High Contrast) drops background, so the current
+   step's marker is only a ring like the upcoming ones. The marker opts out
+   and is painted with system colours; its ring joins the fill. Keep this
+   block after the base rules: component-tokens.mjs reads the first rule. */
+@media (forced-colors: active) {
+  .ds-stepper__step--active .ds-stepper__indicator {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+}

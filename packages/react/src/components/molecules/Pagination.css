@@ -55,3 +55,21 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
+
+/* Forced colors (Windows High Contrast) drops background, so the active page
+   looks like the others. The active item opts out and is painted with system
+   colours; its border joins the fill. Opting out leaves the focus outline on
+   var(--focus-ring), so it is set to CanvasText here. Keep this block after
+   the base rules: component-tokens.mjs reads the first rule. */
+@media (forced-colors: active) {
+  .ds-pagination__item--active {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+
+  .ds-pagination__item:focus-visible {
+    outline-color: CanvasText;
+  }
+}

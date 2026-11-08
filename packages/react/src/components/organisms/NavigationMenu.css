@@ -52,3 +52,22 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
+
+/* Forced colors (Windows High Contrast) drops background, so only the weight
+   marks the current page. The active link opts out and is painted with system
+   colours; its :hover is listed too because the base hover rule outranks it.
+   Opting out leaves the focus outline on var(--focus-ring), so it is set to
+   CanvasText here. Keep this block after the base rules: component-tokens.mjs
+   reads the first rule. */
+@media (forced-colors: active) {
+  .ds-navigation-menu__link--active,
+  .ds-navigation-menu__link--active:hover {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .ds-navigation-menu__link:focus-visible {
+    outline-color: CanvasText;
+  }
+}
