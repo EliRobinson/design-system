@@ -142,3 +142,28 @@
 .ds-date-picker__day--today.ds-date-picker__day--selected {
   box-shadow: none;
 }
+
+/* Forced colors (Windows High Contrast) drops background and box-shadow, so
+   the selected day and today's ring vanish. The selected day opts out and is
+   painted with system colours; its :hover is listed too because the base
+   hover rule outranks it and would repaint the accent fill. Today's ring
+   becomes an inset outline, which forced colors keeps. The focus rule
+   outranks it, so a focused day still shows its focus outline. Keep this block
+   after the base rules: component-tokens.mjs reads the first rule. */
+@media (forced-colors: active) {
+  .ds-date-picker__day--selected,
+  .ds-date-picker__day--selected:hover {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .ds-date-picker__day--today {
+    outline: 1px solid CanvasText;
+    outline-offset: -1px;
+  }
+
+  .ds-date-picker__day:focus-visible {
+    outline-color: CanvasText;
+  }
+}

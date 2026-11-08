@@ -44,3 +44,21 @@
   color: var(--fg-3);
   font-size: var(--fs-sm);
 }
+
+/* Forced colors (Windows High Contrast) drops background, so the active
+   option looks like the others. It opts out and is painted with system
+   colours. The chosen option keeps its weight and also gets an inset
+   CanvasText outline, so it reads apart from the active one. Keep this block
+   after the base rules: component-tokens.mjs reads the first rule. */
+@media (forced-colors: active) {
+  .ds-combobox__option--active {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .ds-combobox__option--selected {
+    outline: 1px solid CanvasText;
+    outline-offset: -1px;
+  }
+}
