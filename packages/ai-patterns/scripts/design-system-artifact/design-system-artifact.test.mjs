@@ -27,8 +27,8 @@ import { LIMITS, checkLimits } from './limits.mjs';
 import {
   AI_THEME_DIR,
   AI_THEME_ENTRY,
-  aiFixups,
   aiLayers,
+  aiThemeImports,
   buildBundleCss,
   previousSection,
 } from './stylesheet.mjs';
@@ -299,17 +299,42 @@ describe('bundle.css', () => {
     expect(out).toContain('/* ── components/atoms/Button.css ── */');
   });
 
-  it("carries the docs app's ai-theme fixups after the layers, so no rule reads an undeclared token", () => {
-    const entryCss = readFileSync(join(repoRoot, AI_THEME_ENTRY), 'utf8');
-    const fixups = aiFixups(entryCss);
-    expect(fixups).toContain('ai-theme-bundler-fixups');
-    const lastLayer = out.indexOf(`/* ── components/ai/${aiLayers(entryCss).at(-1)}.css`);
-    for (const fixup of fixups) {
-      const at = out.indexOf(`/* ── components/ai/${fixup}.css (apps/docs/src/app) ── */`);
-      expect(at).toBeGreaterThan(lastLayer);
+  it("carries the docs app's ai-theme fixups in its import order, so no rule reads an undeclared token", () => {
+    const sheets = aiThemeImports(readFileSync(join(repoRoot, AI_THEME_ENTRY), 'utf8'));
+    expect(sheets.filter((sheet) => !sheet.layer).map((sheet) => sheet.name)).toContain(
+      'ai-theme-bundler-fixups',
+    );
+
+    const at = sheets.map(({ name, dir }) =>
+      out.indexOf(`/* ── components/ai/${name}.css (${dir}) ── */`),
+    );
+    for (const position of at) expect(position).toBeGreaterThan(-1);
+    expect(at).toEqual([...at].sort((a, b) => a - b));
+    const carried = out.indexOf(
+      '/* ── components/ai/ChatComposer.css (previous artifact bundle) ── */',
+    );
+    expect(carried).toBeGreaterThan(at.at(-1));
+
+    /* #352 and #250: the layers read --anchored-min-width and --container-md, which the tokens
+       no longer declare. The fixups declare the first and replace the second. */
+    const fixups = out.slice(at.at(-1), carried);
+    expect(fixups).toMatch(/\.ds-ai-model-list \{\s*--anchored-min-width: 180px;/);
+    for (const selector of [
+      '.ds-ai-conversation__content',
+      '.ds-ai-shell__composer > *',
+      '.ds-ai-greeting',
+    ]) {
+      const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      expect(fixups).toMatch(new RegExp(`${escaped}\\s*\\{[^}]*var\\(--shell-md\\)`));
     }
-    /* #352 and #358: these two leave the global tokens, and the fixups declare or replace them. */
-    expect(out).toMatch(/\.ds-ai-model-list \{\s*--anchored-min-width: 180px;/);
-    expect(out).toContain('var(--shell-md)');
+  });
+
+  it('refuses an ai-theme import it cannot place, and an entry with no layer', () => {
+    expect(() =>
+      aiThemeImports("@import './ai-theme/ai-core.css';\n@import './ai-theme.css';"),
+    ).toThrow(/neither an ai-theme\/ layer nor an ai-theme-\*\.css fixup/);
+    expect(() => aiThemeImports("@import './ai-theme-bundler-fixups.css';")).toThrow(
+      /imports no ai-theme layer/,
+    );
   });
 });
