@@ -45,6 +45,13 @@ export function aiLayers(entryCss) {
   return layers;
 }
 
+/** The docs app's corrections to the class layers (`ai-theme-*.css` next to the entry), in
+ *  import order. They load after the layers there, so they load after them here too: without
+ *  them the artifact reads tokens no one declares (#352, #358). */
+export function aiFixups(entryCss) {
+  return [...entryCss.matchAll(/@import '\.\/(ai-theme-[a-z-]+)\.css';/g)].map((match) => match[1]);
+}
+
 /** One section of a previous bundle.css, by its marker line. */
 export function previousSection(bundleCss, path) {
   const lines = bundleCss.split('\n');
@@ -170,15 +177,24 @@ export function buildBundleCss({
     postcss.parse(css).walkDecls((decl) => {
       if (tokens.has(decl.prop)) throw new Error(`${label} declares the token ${decl.prop}`);
     });
-  const layers = aiLayers(read(AI_THEME_ENTRY));
+  const entryCss = read(AI_THEME_ENTRY);
+  const layers = aiLayers(entryCss);
+  const fixups = aiFixups(entryCss);
+  const entryDir = AI_THEME_ENTRY.slice(0, AI_THEME_ENTRY.lastIndexOf('/'));
   let ai =
     `/* The Miltinson × AI Elements class layers (${layers.join(', ')}) from\n` +
-    `   ${AI_THEME_DIR}/, then the stylesheets of the artifact-only components,\n` +
+    `   ${AI_THEME_DIR}/, the docs app's corrections to them (${fixups.join(', ')}),\n` +
+    `   then the stylesheets of the artifact-only components,\n` +
     `   ${ARTIFACT_ONLY.names.join(' and ')}, carried from the previous artifact bundle. No token declarations. */`;
   for (const layer of layers) {
     const css = read(`${AI_THEME_DIR}/${layer}.css`).trim();
     noTokenDeclarations(css, `${layer}.css`);
     ai += `\n\n${marker(`components/ai/${layer}.css (${AI_THEME_DIR})`)}\n${css}`;
+  }
+  for (const fixup of fixups) {
+    const css = read(`${entryDir}/${fixup}.css`).trim();
+    noTokenDeclarations(css, `${fixup}.css`);
+    ai += `\n\n${marker(`components/ai/${fixup}.css (${entryDir})`)}\n${css}`;
   }
   for (const path of ARTIFACT_ONLY.names.map(ARTIFACT_ONLY.stylesheet)) {
     const css = previousSection(previousBundleCss, path);

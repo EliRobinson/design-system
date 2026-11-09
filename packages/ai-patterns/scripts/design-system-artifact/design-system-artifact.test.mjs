@@ -27,6 +27,7 @@ import { LIMITS, checkLimits } from './limits.mjs';
 import {
   AI_THEME_DIR,
   AI_THEME_ENTRY,
+  aiFixups,
   aiLayers,
   buildBundleCss,
   previousSection,
@@ -296,5 +297,19 @@ describe('bundle.css', () => {
       expect(out).toContain(`/* ── components/ai/${layer}.css (${AI_THEME_DIR}) ── */`);
     }
     expect(out).toContain('/* ── components/atoms/Button.css ── */');
+  });
+
+  it("carries the docs app's ai-theme fixups after the layers, so no rule reads an undeclared token", () => {
+    const entryCss = readFileSync(join(repoRoot, AI_THEME_ENTRY), 'utf8');
+    const fixups = aiFixups(entryCss);
+    expect(fixups).toContain('ai-theme-bundler-fixups');
+    const lastLayer = out.indexOf(`/* ── components/ai/${aiLayers(entryCss).at(-1)}.css`);
+    for (const fixup of fixups) {
+      const at = out.indexOf(`/* ── components/ai/${fixup}.css (apps/docs/src/app) ── */`);
+      expect(at).toBeGreaterThan(lastLayer);
+    }
+    /* #352 and #358: these two leave the global tokens, and the fixups declare or replace them. */
+    expect(out).toMatch(/\.ds-ai-model-list \{\s*--anchored-min-width: 180px;/);
+    expect(out).toContain('var(--shell-md)');
   });
 });
