@@ -22,9 +22,9 @@ One owner per file. Never edit a file on both sides.
 | `fonts/geist-…`, `fonts/jetbrains-mono-…` |                                                           |
 
 `components/bundle.css` also carries the docs app's AI Elements theme: the `ai-theme/` layers
-that `apps/docs/src/app/elements.css` imports, then every `ai-theme-*.css` fixups file it
-imports after them, in that order. A fixup that is left out makes a layer read a token nothing
-declares.
+that `apps/docs/src/app/elements.css` imports and every `ai-theme-*.css` fixups file it
+imports, in its import order. A fixup that is left out makes a layer read a token nothing
+declares, so the build throws on an `./ai-theme…` import it cannot place.
 
 Three things the repo builds are read back from the artifact, so a rebuild never drops what
 was written on the page:

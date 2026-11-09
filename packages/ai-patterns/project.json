@@ -33,8 +33,8 @@
       "options": {
         "cwd": "packages/ai-patterns"
       },
-      /* scripts/design-system-artifact reads the AI Elements class layers from
-         apps/docs, and the docs app depends on this package, not the other way.
+      /* scripts/design-system-artifact reads the AI Elements class layers and the
+         ai-theme-*.css fixups from apps/docs, and the docs app depends on this package, not the other way.
          With no edge Nx can see, a change to those layers alone would replay a
          cached pass. "default" and "^default" are what Nx uses when a target
          names no inputs, so they are restated here.
@@ -45,6 +45,7 @@
         "^default",
         "{workspaceRoot}/apps/docs/src/app/elements.css",
         "{workspaceRoot}/apps/docs/src/app/ai-theme/**",
+        "{workspaceRoot}/apps/docs/src/app/ai-theme-*.css",
         "{workspaceRoot}/.changeset/*.md",
         "{workspaceRoot}/packages/*/CHANGELOG.md"
       ]

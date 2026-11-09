@@ -6,14 +6,15 @@
  *   b. the element rules in tokens.css (its custom-property blocks and
  *      @imports removed: the artifact's tokens.css holds those values)
  *   c. @elirobinson/react's styles.css, its imports inlined in order
- *   d. the Miltinson × AI Elements class layers from apps/docs, then the
+ *   d. the Miltinson × AI Elements class layers from apps/docs and the docs
+ *      app's ai-theme-*.css fixups, in its import order, then the
  *      stylesheets of the artifact-only components (artifact-only.mjs), read
  *      back from the previous bundle.css
  *   e. the scoped [data-palette] blocks from palettes.css
  */
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import { tokenBlocks } from '@elirobinson/tokens/contrast';
 import {
@@ -25,7 +26,8 @@ import postcss from 'postcss';
 import { ARTIFACT_ONLY } from './artifact-only.mjs';
 
 export const AI_THEME_ENTRY = 'apps/docs/src/app/elements.css';
-export const AI_THEME_DIR = `${AI_THEME_ENTRY.slice(0, AI_THEME_ENTRY.lastIndexOf('/'))}/ai-theme`;
+export const AI_THEME_ENTRY_DIR = dirname(AI_THEME_ENTRY);
+export const AI_THEME_DIR = `${AI_THEME_ENTRY_DIR}/ai-theme`;
 /* Section e's title. A carried section ends where it starts. */
 const SCOPED_PALETTES = 'Scoped palettes';
 /* The token bridge is not a class layer: the artifact carries it as its own file. */
@@ -36,21 +38,36 @@ const marker = (label) => `/* ── ${label} ── */`;
 /* A whole marker line. A comment inside a carried stylesheet does not end its section. */
 const MARKER_LINE = /^\/\* ── .+ ── \*\/$/;
 
-/** The AI Elements class layers, in the order the docs app imports them. */
-export function aiLayers(entryCss) {
-  const layers = [...entryCss.matchAll(/@import '\.\/ai-theme\/(ai-[a-z]+)\.css';/g)]
-    .map((match) => match[1])
-    .filter((layer) => !AI_THEME_NOT_LAYERS.includes(layer));
-  if (!layers.length) throw new Error(`${AI_THEME_ENTRY} imports no ai-theme layer`);
-  return layers;
+/**
+ * Every AI theme stylesheet the docs app imports, in its import order: the class layers in
+ * `ai-theme/` (the token bridge left out) and the docs app's `ai-theme-*.css` fixups next to
+ * the entry. The fixups correct the layers, which read tokens no one declares without them
+ * (#352, #250), so the artifact keeps the docs app's order exactly. An `./ai-theme…` import
+ * that is neither throws, so no sheet is dropped without a sound.
+ */
+export function aiThemeImports(entryCss) {
+  const sheets = [...entryCss.matchAll(/@import '\.\/(ai-theme[^']*)\.css';/g)]
+    .map(([, path]) => {
+      const layer = path.match(/^ai-theme\/(ai-[\w-]+)$/);
+      if (layer) return { name: layer[1], dir: AI_THEME_DIR, layer: true };
+      const fixup = path.match(/^(ai-theme-[\w-]+)$/);
+      if (fixup) return { name: fixup[1], dir: AI_THEME_ENTRY_DIR, layer: false };
+      throw new Error(
+        `${AI_THEME_ENTRY} imports ./${path}.css, which is neither an ai-theme/ layer nor an ai-theme-*.css fixup`,
+      );
+    })
+    .filter((sheet) => !AI_THEME_NOT_LAYERS.includes(sheet.name));
+  if (!sheets.some((sheet) => sheet.layer)) {
+    throw new Error(`${AI_THEME_ENTRY} imports no ai-theme layer`);
+  }
+  return sheets;
 }
 
-/** The docs app's corrections to the class layers (`ai-theme-*.css` next to the entry), in
- *  import order. They load after the layers there, so they load after them here too: without
- *  them the artifact reads tokens no one declares (#352, #358). */
-export function aiFixups(entryCss) {
-  return [...entryCss.matchAll(/@import '\.\/(ai-theme-[a-z-]+)\.css';/g)].map((match) => match[1]);
-}
+/** The AI Elements class layers, in the order the docs app imports them. */
+export const aiLayers = (entryCss) =>
+  aiThemeImports(entryCss)
+    .filter((sheet) => sheet.layer)
+    .map((sheet) => sheet.name);
 
 /** One section of a previous bundle.css, by its marker line. */
 export function previousSection(bundleCss, path) {
@@ -177,24 +194,16 @@ export function buildBundleCss({
     postcss.parse(css).walkDecls((decl) => {
       if (tokens.has(decl.prop)) throw new Error(`${label} declares the token ${decl.prop}`);
     });
-  const entryCss = read(AI_THEME_ENTRY);
-  const layers = aiLayers(entryCss);
-  const fixups = aiFixups(entryCss);
-  const entryDir = AI_THEME_ENTRY.slice(0, AI_THEME_ENTRY.lastIndexOf('/'));
+  const sheets = aiThemeImports(read(AI_THEME_ENTRY));
   let ai =
-    `/* The Miltinson × AI Elements class layers (${layers.join(', ')}) from\n` +
-    `   ${AI_THEME_DIR}/, the docs app's corrections to them (${fixups.join(', ')}),\n` +
-    `   then the stylesheets of the artifact-only components,\n` +
+    `/* The Miltinson × AI Elements stylesheets (${sheets.map((sheet) => sheet.name).join(', ')}),\n` +
+    `   in the order ${AI_THEME_ENTRY} imports them: the class layers from ${AI_THEME_DIR}/ and\n` +
+    `   the docs app's ai-theme-*.css fixups. Then the stylesheets of the artifact-only components,\n` +
     `   ${ARTIFACT_ONLY.names.join(' and ')}, carried from the previous artifact bundle. No token declarations. */`;
-  for (const layer of layers) {
-    const css = read(`${AI_THEME_DIR}/${layer}.css`).trim();
-    noTokenDeclarations(css, `${layer}.css`);
-    ai += `\n\n${marker(`components/ai/${layer}.css (${AI_THEME_DIR})`)}\n${css}`;
-  }
-  for (const fixup of fixups) {
-    const css = read(`${entryDir}/${fixup}.css`).trim();
-    noTokenDeclarations(css, `${fixup}.css`);
-    ai += `\n\n${marker(`components/ai/${fixup}.css (${entryDir})`)}\n${css}`;
+  for (const { name, dir } of sheets) {
+    const css = read(`${dir}/${name}.css`).trim();
+    noTokenDeclarations(css, `${name}.css`);
+    ai += `\n\n${marker(`components/ai/${name}.css (${dir})`)}\n${css}`;
   }
   for (const path of ARTIFACT_ONLY.names.map(ARTIFACT_ONLY.stylesheet)) {
     const css = previousSection(previousBundleCss, path);
