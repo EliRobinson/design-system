@@ -161,6 +161,7 @@
 .site-sidebar .ds-navigation-menu__list .ds-navigation-menu__list .ds-navigation-menu__link:hover {
   color: var(--fg);
   background: var(--bg-subtle);
+  box-shadow: none; /* the component's hover ring (#354) is not part of the docs sidebar */
 }
 
 .site-sidebar .ds-navigation-menu__link--active {

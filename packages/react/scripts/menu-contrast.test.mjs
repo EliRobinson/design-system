@@ -16,35 +16,45 @@ import { ratio, rules, sheet, systemToken } from './component-tokens.mjs';
 
 const INSET_RING = /inset\s+0\s+0\s+0\s+1px\s+var\(--/;
 
-/* `grounds` are the tokens the item can sit on. The nav has no surface of its
-   own: it sits on the page, or on a --surface the consumer puts it in. */
+/* A menu with a panel of its own sits on that panel's background, read from the
+   stylesheet. The nav has no panel: it sits on the page, or on a --surface the
+   consumer puts it in, so its grounds are listed. `disabled` is a rule that
+   must reset the fill and the ring. */
 const MENUS = [
   {
     name: 'DropdownMenu',
     path: 'organisms/DropdownMenu.css',
-    grounds: ['--surface'],
+    panel: '.ds-dropdown__content',
     states: ['.ds-dropdown__item:hover, .ds-dropdown__item:focus-visible'],
+    disabled: ".ds-dropdown__item:disabled, .ds-dropdown__item[aria-disabled='true']",
   },
   {
     name: 'NavigationMenu',
     path: 'organisms/NavigationMenu.css',
-    grounds: ['--bg', '--surface'],
+    grounds: ['--bg', '--surface', '--bg-subtle'],
     states: ['.ds-navigation-menu__link:hover', '.ds-navigation-menu__link--active'],
   },
 ];
 
-describe.each(MENUS)('$name', ({ path, grounds, states }) => {
+describe.each(MENUS)('$name', ({ path, panel, grounds: listed, states, disabled }) => {
+  const body = (selector) => rules(sheet(path)).find((r) => r.selector === selector)?.body;
+  const grounds = panel ? [systemToken(path, panel, 'background')] : listed;
+
   it('reads the tokens the item is made of', () => {
-    if (path.includes('Dropdown')) {
-      expect(systemToken(path, '.ds-dropdown__content', 'background')).toBe('--surface');
-    }
+    if (panel) expect(grounds).toEqual(['--surface']);
     for (const state of states) {
-      const rule = rules(sheet(path)).find((r) => r.selector === state);
-      expect(rule?.body, state).toMatch(INSET_RING);
+      expect(body(state), state).toMatch(INSET_RING);
       expect(systemToken(path, state, 'box-shadow')).toBe('--border-control');
       expect(systemToken(path, state, 'background')).toBe('--surface-3');
     }
   });
+
+  if (disabled) {
+    it('a disabled item takes no hover fill or ring', () => {
+      expect(body(disabled)).toMatch(/background:\s*transparent/);
+      expect(body(disabled)).toMatch(/box-shadow:\s*none/);
+    });
+  }
 
   describe.each(states)('%s stands out from its ground', (state) => {
     const fill = systemToken(path, state, 'background');
@@ -62,15 +72,5 @@ describe.each(MENUS)('$name', ({ path, grounds, states }) => {
         expect(ratio(id, text, fill)).toBeGreaterThanOrEqual(4.5);
       });
     }
-  });
-});
-
-describe('DropdownMenu: a disabled item takes no hover fill or ring', () => {
-  it('resets the fill and the ring', () => {
-    const rule = rules(sheet('organisms/DropdownMenu.css')).find(
-      (r) => r.selector === ".ds-dropdown__item:disabled, .ds-dropdown__item[aria-disabled='true']",
-    );
-    expect(rule?.body).toMatch(/background:\s*transparent/);
-    expect(rule?.body).toMatch(/box-shadow:\s*none/);
   });
 });
