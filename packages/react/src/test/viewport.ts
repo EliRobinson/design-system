@@ -20,6 +20,9 @@ const FIXED_SIZE_PROPERTIES = [
  * silently corrupt any future test that asserts on real layout, and would do
  * it invisibly, reporting a plausible number instead of failing.
  *
+ * It also cancels any timer the suite left pending, so a virtualizer's
+ * leftover scroll timer cannot fire after the environment is torn down.
+ *
  * Call at the top level of a `describe` block.
  */
 export function stubViewportLayout() {
@@ -42,13 +45,14 @@ export function stubViewportLayout() {
   // the timer fires after jsdom is torn down and vitest reports an unhandled
   // `window is not defined`. Record this suite's timers so `afterAll` can
   // cancel them while the environment is still alive.
-  const originalSetTimeout = window.setTimeout;
-  const pendingTimers = new Set<ReturnType<typeof window.setTimeout>>();
+  let originalSetTimeout = window.setTimeout;
+  const suiteTimers = new Set<ReturnType<typeof window.setTimeout>>();
 
   beforeAll(() => {
+    originalSetTimeout = window.setTimeout;
     window.setTimeout = ((...args: Parameters<typeof window.setTimeout>) => {
       const id = originalSetTimeout.apply(window, args);
-      pendingTimers.add(id);
+      suiteTimers.add(id);
       return id;
     }) as typeof window.setTimeout;
 
@@ -91,8 +95,8 @@ export function stubViewportLayout() {
 
   afterAll(() => {
     window.setTimeout = originalSetTimeout;
-    for (const id of pendingTimers) window.clearTimeout(id);
-    pendingTimers.clear();
+    for (const id of suiteTimers) window.clearTimeout(id);
+    suiteTimers.clear();
 
     for (const [property, descriptor] of originalDescriptors) {
       if (descriptor) {
