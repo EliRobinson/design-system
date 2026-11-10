@@ -34,16 +34,17 @@
 }
 
 /* Reduced motion swaps the spin for a slow opacity pulse — no rotation (#332).
-   The global clamp in tokens.css cannot settle an infinite loop: it squeezes
-   each turn into 0.01ms, so the ring looks frozen with jumps and "loading"
-   reads as "stuck". A Spinner has no other state to fall back on, so it keeps
-   moving, but only in opacity, which carries no sense of travel.
+   The global clamp in tokens.css plays every loop once (#336), so a clamped
+   ring would sit still and "loading" would read as "stuck". A Spinner has no
+   other state to fall back on, so it opts out and keeps moving, but only in
+   opacity, which carries no sense of travel.
 
-   `!important` because the clamp sets the duration with `!important`; at class
-   specificity this beats the clamp's `*` and nothing else. That holds with
+   `!important` because the clamp sets the duration and iteration count with
+   `!important`; the shorthand below resets both, and at class specificity it
+   beats the clamp's `*` and nothing else. That holds with
    tokens.css imported unlayered, as documented. A consumer who wraps tokens.css
    in a cascade layer flips it: layered `!important` beats unlayered, so the
-   clamp wins again and the pulse is squeezed to 0.01ms. */
+   clamp wins again and the pulse plays once, in 0.01ms. */
 @media (prefers-reduced-motion: reduce) {
   .ds-spinner {
     animation: ds-spinner-pulse calc(var(--dur-slow) * 4) var(--ease-in-out) infinite !important;
