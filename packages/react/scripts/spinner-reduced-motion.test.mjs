@@ -26,6 +26,7 @@ const ATOMS = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'compon
 const STYLESHEETS = {
   'Spinner.css': join(ATOMS, 'Spinner.css'),
   'Skeleton.css': join(ATOMS, 'Skeleton.css'),
+  'StreamingCaret.css': join(ATOMS, '..', 'ai', 'StreamingCaret.css'),
 };
 
 /* Same budget, and the same reason, as packages/tokens' browser tests. */
@@ -91,6 +92,7 @@ async function sample(reducedMotion) {
           <link rel="stylesheet" href="/tokens.css">
           <link rel="stylesheet" href="/Spinner.css">
           <link rel="stylesheet" href="/Skeleton.css">
+          <link rel="stylesheet" href="/StreamingCaret.css">
           <style>
             @keyframes probe { to { opacity: 0.5; } }
             #probe { animation: probe 1s linear infinite; transition: opacity 1s; }
@@ -98,6 +100,7 @@ async function sample(reducedMotion) {
           </head><body>
           <span id="spinner" class="ds-spinner ds-spinner--lg" role="status" aria-label="Loading"></span>
           <div id="skeleton" class="ds-skeleton"></div>
+          <span id="caret" class="ds-streaming-caret"></span>
           <div id="probe">probe</div>
           </body></html>`,
       });
@@ -137,6 +140,10 @@ async function sample(reducedMotion) {
         spinner: animation('spinner'),
         skeleton: animation('skeleton'),
         probe: animation('probe'),
+        caret: {
+          ...animation('caret'),
+          opacity: getComputedStyle(document.getElementById('caret')).opacity,
+        },
         readings,
       };
     },
@@ -188,6 +195,23 @@ describeBrowser('the Spinner under prefers-reduced-motion: reduce', () => {
     expect(seconds(probe.transition)).toBeLessThan(0.001);
     // Skeleton stays under the clamp; #332 accepts that for a placeholder.
     expect(seconds(skeleton.duration)).toBeLessThan(0.001);
+  });
+});
+
+describeBrowser('the StreamingCaret under the iteration clamp (#336)', () => {
+  let reduced;
+  beforeAll(async () => {
+    reduced = await sample('reduce');
+  }, BROWSER_BUDGET);
+
+  it('stays a solid caret: no animation, fully opaque', () => {
+    expect(reduced.caret.name).toBe('none');
+    expect(reduced.caret.opacity).toBe('1');
+  });
+
+  it('settles an infinite loop that has no opt-out', () => {
+    expect(reduced.probe.iterations).toBe('1');
+    expect(reduced.skeleton.iterations).toBe('1');
   });
 });
 
