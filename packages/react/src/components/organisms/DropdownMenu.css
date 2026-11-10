@@ -62,12 +62,18 @@
   width: 100%;
 }
 
-/* A menu item is often an <a>. Restating the colour keeps the global
+/* #354: --bg-subtle is ink-950 in dark, the same as the panel's --surface
+   (1.00:1), so no hovered item looked chosen. Same fix as CommandPalette (#275)
+   and Combobox (#302): a fill plus an inset ring (SC 1.4.11, at least 3:1 in
+   every palette x theme; menu-contrast.test.mjs measures it).
+
+   A menu item is often an <a>. Restating the colour keeps the global
    `a:hover` hue shift off it — see docs/agents/components.md. */
 .ds-dropdown__item:hover,
 .ds-dropdown__item:focus-visible {
-  background: var(--bg-subtle);
-  color: var(--fg); /* 20.06:1 */
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--border-control);
+  color: var(--fg); /* label on --surface-3: measured by menu-contrast.test.mjs */
   outline: none;
 }
 
@@ -85,6 +91,7 @@
 .ds-dropdown__item:disabled,
 .ds-dropdown__item[aria-disabled='true'] {
   background: transparent;
+  box-shadow: none;
   color: var(--fg-disabled); /* 4.85:1 light, 7.87:1 dark, on --surface */
   cursor: not-allowed;
 }
