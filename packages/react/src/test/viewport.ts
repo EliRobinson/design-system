@@ -36,7 +36,22 @@ export function stubViewportLayout() {
     });
   }
 
+  // The virtualizer arms a 150ms `isScrolling` debounce timer on the window
+  // and never clears it on unmount (@tanstack/virtual-core `observeOffset`
+  // returns a cleanup that only removes listeners). If the file ends first,
+  // the timer fires after jsdom is torn down and vitest reports an unhandled
+  // `window is not defined`. Record this suite's timers so `afterAll` can
+  // cancel them while the environment is still alive.
+  const originalSetTimeout = window.setTimeout;
+  const pendingTimers = new Set<ReturnType<typeof window.setTimeout>>();
+
   beforeAll(() => {
+    window.setTimeout = ((...args: Parameters<typeof window.setTimeout>) => {
+      const id = originalSetTimeout.apply(window, args);
+      pendingTimers.add(id);
+      return id;
+    }) as typeof window.setTimeout;
+
     for (const property of FIXED_SIZE_PROPERTIES) {
       override(property, { value: STUBBED_VIEWPORT_SIZE });
     }
@@ -75,6 +90,10 @@ export function stubViewportLayout() {
   });
 
   afterAll(() => {
+    window.setTimeout = originalSetTimeout;
+    for (const id of pendingTimers) window.clearTimeout(id);
+    pendingTimers.clear();
+
     for (const [property, descriptor] of originalDescriptors) {
       if (descriptor) {
         Object.defineProperty(HTMLElement.prototype, property, descriptor);
