@@ -67,6 +67,16 @@ describe('readInstalledVersion', () => {
   });
 });
 
+describe('readInstalledVersion, hoisted', () => {
+  it('finds a package that only a parent node_modules holds', () => {
+    const root = makeRepo({ workspaces: ['packages/*'] }, { '@elirobinson/react': '1.1.0' });
+    const member = join(root, 'packages', 'app');
+    mkdirSync(member, { recursive: true });
+
+    expect(readInstalledVersion(member, '@elirobinson/react')).toBe('1.1.0');
+  });
+});
+
 describe('detect', () => {
   it('pairs declared ranges with installed and locked versions', () => {
     const dir = makeRepo(

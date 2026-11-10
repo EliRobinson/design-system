@@ -79,6 +79,16 @@ describe('readManifest', () => {
     expect(readManifest(makeConsumer({}), '@elirobinson/tokens')).toBeNull();
   });
 
+  it('finds a manifest that only a parent node_modules holds', () => {
+    const root = makeConsumer({
+      '@elirobinson/tokens': { package: '@elirobinson/tokens', migrations: [entry('a', '0.9.0')] },
+    });
+    const member = join(root, 'packages', 'app');
+    mkdirSync(member, { recursive: true });
+
+    expect(readManifest(member, '@elirobinson/tokens')?.migrations).toHaveLength(1);
+  });
+
   it('returns the parsed manifest', () => {
     const cwd = makeConsumer({
       '@elirobinson/tokens': { package: '@elirobinson/tokens', migrations: [entry('a', '0.9.0')] },
