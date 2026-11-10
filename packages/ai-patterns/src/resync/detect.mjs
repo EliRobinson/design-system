@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { findPackageDir } from '../cli/discovery.mjs';
 import { lockedVersionFor, readLockfile } from './lockfile.mjs';
 
 export const SCOPE = '@elirobinson/';
@@ -33,8 +34,15 @@ export function findScopedDependencies(packageJson) {
   return found.sort((a, b) => (a.name < b.name ? -1 : 1));
 }
 
+/**
+ * Walks `node_modules` up from `cwd`, the way `ds-resync artifacts` does, so a
+ * workspace member with a hoisted install agrees with it. The lockfile is still
+ * read from `cwd` only; a member without its own lockfile has no locked version,
+ * and `findDrift` stays silent for that case.
+ */
 export function readInstalledVersion(cwd, name) {
-  const manifest = readJson(join(cwd, 'node_modules', ...name.split('/'), 'package.json'));
+  const dir = findPackageDir(name, [cwd]);
+  const manifest = dir ? readJson(join(dir, 'package.json')) : null;
   return manifest?.version ?? null;
 }
 

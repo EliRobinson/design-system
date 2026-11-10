@@ -17,6 +17,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { findPackageDir } from '../cli/discovery.mjs';
 import { SCOPE } from './detect.mjs';
 import { compareVersions, parseVersion } from './semver.mjs';
 
@@ -27,11 +28,14 @@ export const MANIFEST_PATH = 'src/migrations.json';
 export const UPGRADE_RECORD_PATH = '.claude/ds-resync.json';
 
 /**
- * Reads one package's manifest out of the consuming repo's node_modules.
+ * Reads one package's manifest out of the consuming repo's node_modules,
+ * walking up from `cwd` so a hoisted workspace install is found too.
  * Returns null when the package ships none — most do, and that is not an error.
  */
 export function readManifest(cwd, name) {
-  const path = join(cwd, 'node_modules', ...name.split('/'), MANIFEST_PATH);
+  const dir = findPackageDir(name, [cwd]);
+  if (!dir) return null;
+  const path = join(dir, MANIFEST_PATH);
   if (!existsSync(path)) return null;
 
   try {
