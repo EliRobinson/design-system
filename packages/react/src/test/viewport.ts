@@ -43,8 +43,8 @@ export function stubViewportLayout() {
   // and never clears it on unmount (@tanstack/virtual-core `observeOffset`
   // returns a cleanup that only removes listeners). If the file ends first,
   // the timer fires after jsdom is torn down and vitest reports an unhandled
-  // `window is not defined`. Record this suite's timers so `afterAll` can
-  // cancel them while the environment is still alive.
+  // `window is not defined`. Record every timer armed while the suite runs
+  // so `afterAll` can cancel them while the environment is still alive.
   let originalSetTimeout = window.setTimeout;
   const suiteTimers = new Set<ReturnType<typeof window.setTimeout>>();
 
