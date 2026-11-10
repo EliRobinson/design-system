@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { ColumnDef } from './Table.js';
 import { VirtualTable } from './VirtualTable.js';
@@ -21,13 +21,6 @@ function makeRows(count: number): Row[] {
 
 describe('VirtualTable', () => {
   stubViewportLayout();
-
-  /* The virtualizer debounces its scrolling flag with a 150ms timer set when
-     the list mounts, and unmounting does not cancel it. If the file ends first,
-     the timer fires after the environment is torn down and vitest reports an
-     unhandled `window is not defined`. Letting it run out keeps this file from
-     leaking it into whichever run happens to stay alive long enough to see it. */
-  afterAll(() => new Promise((resolve) => setTimeout(resolve, 200)));
 
   it('renders an ARIA table/row/cell grid instead of a literal <table> in virtualized mode, and windows the rows', () => {
     render(<VirtualTable data={makeRows(200)} columns={columns} height={200} rowHeight={40} />);
