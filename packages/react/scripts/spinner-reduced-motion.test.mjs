@@ -9,6 +9,9 @@
  * audit made: emulate the preference in a real engine and sample the computed
  * style over time.
  *
+ * #336 added the clamp's `animation-iteration-count: 1`; the Skeleton and
+ * StreamingCaret cases below check that loops settle and the caret stays solid.
+ *
  * Skipped, loudly, when no browser is available — the same contract as
  * anchored-panel-width and select-intrinsic-width.
  */
@@ -195,10 +198,12 @@ describeBrowser('the Spinner under prefers-reduced-motion: reduce', () => {
     expect(seconds(probe.transition)).toBeLessThan(0.001);
     // Skeleton stays under the clamp; #332 accepts that for a placeholder.
     expect(seconds(skeleton.duration)).toBeLessThan(0.001);
+    // The clamp plays loops once (#336), so the placeholder settles, not strobes.
+    expect(skeleton.iterations).toBe('1');
   });
 });
 
-describeBrowser('the StreamingCaret under the iteration clamp (#336)', () => {
+describeBrowser('the StreamingCaret under reduced motion', () => {
   let reduced;
   beforeAll(async () => {
     reduced = await sample('reduce');
@@ -207,11 +212,6 @@ describeBrowser('the StreamingCaret under the iteration clamp (#336)', () => {
   it('stays a solid caret: no animation, fully opaque', () => {
     expect(reduced.caret.name).toBe('none');
     expect(reduced.caret.opacity).toBe('1');
-  });
-
-  it('settles an infinite loop that has no opt-out', () => {
-    expect(reduced.probe.iterations).toBe('1');
-    expect(reduced.skeleton.iterations).toBe('1');
   });
 });
 

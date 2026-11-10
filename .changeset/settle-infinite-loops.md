@@ -2,4 +2,4 @@
 '@elirobinson/tokens': patch
 ---
 
-Reduced-motion clamp now sets `animation-iteration-count: 1`, so infinite loops settle on their final frame instead of strobing. The Spinner pulse stays the one declared opt-out.
+The reduced-motion clamp now sets `animation-iteration-count: 1`, so infinite loops play once and rest on the element's own style instead of strobing. Components that need motion, such as the Spinner pulse, opt out.

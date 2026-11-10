@@ -4,7 +4,7 @@
  * `prefers-reduced-motion: reduce`. A finite animation then lands on its final
  * frame. An `infinite` one keeps looping at 0.01ms a cycle, so each paint shows
  * a random frame: frozen with jumps. The clamp also sets the iteration count to
- * 1, so a loop plays once and rests on its last frame.
+ * 1, so a loop plays once and then rests on the element's own style.
  *
  * Measured in a real engine with the preference emulated, because jsdom has no
  * animation timeline.
@@ -16,17 +16,15 @@ import { BROWSER_BUDGET, bootBrowser, openTokensPage } from './browser.test-help
 
 const { browser, describeBrowser } = await bootBrowser('reduced motion');
 
-/* `to` is opacity 0.5 and `from` is the default 1. A loop that rests on its
-   last frame reads 0.5. A strobing loop reads a mix of 1 and 0.5. */
+/* The probe fades from 1 to 0.5. A loop that plays once rests on the element's
+   own style, so it reads 1 every time. A strobing loop reads a mix. */
 const HTML = `<!doctype html><html><head><meta charset="utf-8">
   <link rel="stylesheet" href="/tokens.css">
   <style>
     @keyframes probe { from { opacity: 1; } to { opacity: 0.5; } }
     #loop { animation: probe 1s linear infinite; }
-    #once { animation: probe 1s linear 1; }
-    #fills { animation: probe 1s linear infinite alternate; }
   </style></head><body>
-  <div id="loop">loop</div><div id="once">once</div><div id="fills">fills</div>
+  <div id="loop">loop</div>
   </body></html>`;
 
 async function read(reducedMotion) {
@@ -62,7 +60,7 @@ describeBrowser('the reduced-motion clamp', () => {
   });
 
   it('rests on one frame instead of strobing', () => {
-    expect(new Set(reduced.opacities).size).toBe(1);
+    expect([...new Set(reduced.opacities)]).toEqual(['1.00']);
   });
 
   it('leaves loops alone when there is no preference', () => {
