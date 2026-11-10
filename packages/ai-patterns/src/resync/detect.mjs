@@ -1,19 +1,10 @@
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { findPackageDir } from '../cli/discovery.mjs';
+import { findPackageDir, readJson, versionOf } from '../cli/discovery.mjs';
 import { lockedVersionFor, readLockfile } from './lockfile.mjs';
 
 export const SCOPE = '@elirobinson/';
 
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies'];
-
-function readJson(path) {
-  try {
-    return JSON.parse(readFileSync(path, 'utf-8'));
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Scope-matched rather than a hardcoded package list, so packages published
@@ -36,14 +27,10 @@ export function findScopedDependencies(packageJson) {
 
 /**
  * Walks `node_modules` up from `cwd`, the way `ds-resync artifacts` does, so a
- * workspace member with a hoisted install agrees with it. The lockfile is still
- * read from `cwd` only; a member without its own lockfile has no locked version,
- * and `findDrift` stays silent for that case.
+ * workspace member with a hoisted install agrees with it.
  */
 export function readInstalledVersion(cwd, name) {
-  const dir = findPackageDir(name, [cwd]);
-  const manifest = dir ? readJson(join(dir, 'package.json')) : null;
-  return manifest?.version ?? null;
+  return versionOf(findPackageDir(name, [cwd]));
 }
 
 /**
@@ -51,9 +38,10 @@ export function readInstalledVersion(cwd, name) {
  *
  * Both versions have to be known for the comparison to mean anything. A
  * missing install is a fresh clone, not drift; a missing lockfile entry leaves
- * nothing to compare against, and that case is indistinguishable from a
- * workspace whose `node_modules` is hoisted somewhere above this directory —
- * warning there would be a false positive, so it stays silent instead.
+ * nothing to compare against. That is the case for a workspace member whose
+ * lockfile lives at the root: the lockfile is read from `cwd` only, while the
+ * install is found by walking up. Warning there would be a false positive, so
+ * it stays silent instead.
  *
  * Lives here rather than with either command because both need it: `ds-resync`
  * reports it, and `elirobinson-ds` warns that its own answers are about the
