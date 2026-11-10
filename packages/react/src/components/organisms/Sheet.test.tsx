@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { describeModalFocusReturn } from '../../test/modalFocusReturn.js';
 import {
   Sheet,
   SheetClose,
@@ -201,4 +202,13 @@ describe('Sheet', () => {
       expect(screen.getByRole('button', { name: 'Apply' })).toHaveAttribute('type', 'submit');
     });
   });
+  describeModalFocusReturn(
+    <Sheet defaultOpen>
+      <SheetContent>
+        <SheetTitle>Focus</SheetTitle>
+        <button type="button">Inside</button>
+        <SheetClose />
+      </SheetContent>
+    </Sheet>,
+  );
 });
