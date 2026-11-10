@@ -1,5 +1,13 @@
 # @elirobinson/react
 
+## 3.10.2
+
+### Patch Changes
+
+- 68fbc7d: DropdownMenu hover and focus-visible items, and NavigationMenu hover and current links, now show in dark, and the fill and ring change in light too. They painted `--bg-subtle` on a `--surface` ground, both ink-950 (1.00:1). They now use a fill plus an inset ring, as CommandPalette and Combobox do.
+- 33db445: Dialog and Sheet now give focus back to the element that opened them when a consumer unmounts them while open (a conditional render). Before, focus fell to the page body. CommandPalette now gets this from the shared modal surface instead of its own copy. Focus that something else took on purpose stays where it is.
+- a57ed27: Test-only: `stubViewportLayout` cancels the virtualizer's leftover scroll timer when a suite ends, so no test file needs a wait.
+
 ## 3.10.1
 
 ### Patch Changes

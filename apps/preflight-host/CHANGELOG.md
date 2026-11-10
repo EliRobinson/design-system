@@ -1,5 +1,14 @@
 # preflight-host
 
+## 0.0.7
+
+### Patch Changes
+
+- Updated dependencies [68fbc7d]
+- Updated dependencies [33db445]
+- Updated dependencies [a57ed27]
+  - @elirobinson/react@3.10.2
+
 ## 0.0.6
 
 ### Patch Changes
