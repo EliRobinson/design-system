@@ -280,6 +280,7 @@ describe('Dialog', () => {
       bare.remove();
     });
   });
+
   describeModalFocusReturn(
     <Dialog defaultOpen>
       <DialogContent>

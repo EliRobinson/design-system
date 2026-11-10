@@ -202,6 +202,7 @@ describe('Sheet', () => {
       expect(screen.getByRole('button', { name: 'Apply' })).toHaveAttribute('type', 'submit');
     });
   });
+
   describeModalFocusReturn(
     <Sheet defaultOpen>
       <SheetContent>

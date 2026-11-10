@@ -1,5 +1,5 @@
-import type { ButtonHTMLAttributes, HTMLAttributes } from 'react';
-import { forwardRef, useEffect, useId, useMemo, useRef } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, RefObject } from 'react';
+import { forwardRef, useCallback, useEffect, useId, useMemo, useRef } from 'react';
 
 import type { UseDisclosureOptions } from '../../../hooks/useDisclosure.js';
 import { useDisclosure } from '../../../hooks/useDisclosure.js';
@@ -57,6 +57,45 @@ export type ModalSurfaceProps = HTMLAttributes<HTMLDialogElement> & {
 };
 
 /**
+ * Gives focus back to the opener when an open <dialog> is unmounted.
+ *
+ * `close()` returns focus natively, but a <dialog> that is removed while open
+ * (a consumer rendering it conditionally) never closes. Call the returned
+ * function just before `showModal()`. It runs in this component's effect,
+ * before any parent effect, so a parent that moves focus on open
+ * (CommandPalette's input) has not done it yet.
+ */
+function useFocusReturnOnUnmount(dialogRef: RefObject<HTMLDialogElement | null>) {
+  const openerRef = useRef<HTMLElement | SVGElement | null>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    return () => {
+      const opener = openerRef.current;
+      // Removal keeps the `open` attribute, so `dialog.open` still says
+      // whether it was showing. StrictMode's simulated unmount (dev only)
+      // leaves the node in the document, which is how a real unmount is told
+      // apart from it.
+      if (!dialog?.open || dialog.isConnected || !opener) {
+        return;
+      }
+      // Only step in when focus went down with the dialog: the browser moves
+      // it to <body>. Focus that something else took on purpose stays put.
+      const active = document.activeElement;
+      if (!active || active === document.body) {
+        opener.focus();
+      }
+    };
+  }, [dialogRef]);
+
+  return useCallback(() => {
+    const active = document.activeElement;
+    openerRef.current =
+      active instanceof HTMLElement || active instanceof SVGElement ? active : null;
+  }, []);
+}
+
+/**
  * The <dialog> element itself. Native <dialog> owns modality, the backdrop,
  * the focus trap, and Escape; React only mirrors `open` onto
  * `showModal()`/`close()` and reports the native close back up.
@@ -68,10 +107,7 @@ export const ModalSurface = forwardRef<HTMLDialogElement, ModalSurfaceProps>(fun
   const dialogRef = useRef<HTMLDialogElement>(null);
   const setRefs = useMergedRef<HTMLDialogElement>(dialogRef, ref);
   const { open, onOpenChange, titleId, descriptionId } = context;
-  // Whatever had focus just before showModal(). This runs before any parent
-  // effect, so a parent that moves focus on open (CommandPalette's input)
-  // has not done it yet.
-  const openerRef = useRef<Element | null>(null);
+  const captureOpener = useFocusReturnOnUnmount(dialogRef);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -79,34 +115,12 @@ export const ModalSurface = forwardRef<HTMLDialogElement, ModalSurfaceProps>(fun
       return;
     }
     if (open && !dialog.open) {
-      openerRef.current = document.activeElement;
+      captureOpener();
       dialog.showModal();
     } else if (!open && dialog.open) {
       dialog.close();
     }
-  }, [open]);
-
-  // close() gives focus back natively. A <dialog> that is removed while open
-  // (a consumer rendering it conditionally) never closes, so do it here.
-  // Removal keeps the `open` attribute, so `dialog.open` still says whether
-  // it was showing. StrictMode's test cleanup leaves the node in the
-  // document, which is how a real unmount is told apart from it.
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    return () => {
-      const opener = openerRef.current;
-      if (!dialog?.open || dialog.isConnected || !(opener instanceof HTMLElement)) {
-        return;
-      }
-      // Only step in when focus went down with the dialog. Focus that
-      // something else took on purpose stays where it is.
-      const active = document.activeElement;
-      const focusLost = !active || active === document.body || dialog.contains(active);
-      if (opener.isConnected && focusLost) {
-        opener.focus();
-      }
-    };
-  }, []);
+  }, [open, captureOpener]);
 
   return (
     <dialog
