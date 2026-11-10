@@ -1,5 +1,11 @@
 # @elirobinson/tokens
 
+## 1.0.1
+
+### Patch Changes
+
+- bb33530: The reduced-motion clamp now sets `animation-iteration-count: 1`, so infinite loops play once and rest on the element's own style instead of strobing. Components that need motion, such as the Spinner pulse, opt out.
+
 ## 1.0.0
 
 ### Major Changes

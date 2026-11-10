@@ -1,5 +1,11 @@
 # @elirobinson/ai-patterns
 
+## 0.34.3
+
+### Patch Changes
+
+- ef0c0d4: `ds-resync` now finds an installed package and its migration manifest by walking `node_modules` up from the working directory. Before, only `cwd/node_modules` counted, so a workspace member with a hoisted install disagreed with `ds-resync artifacts`.
+
 ## 0.34.2
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @elirobinson/react
 
+## 3.10.1
+
+### Patch Changes
+
+- Updated dependencies [bb33530]
+  - @elirobinson/tokens@1.0.1
+
 ## 3.10.0
 
 ### Minor Changes
