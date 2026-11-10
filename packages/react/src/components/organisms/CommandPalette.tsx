@@ -123,14 +123,6 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
       [onQueryChangeRef],
     );
 
-    // The element that had focus when the palette opened. Read during render
-    // on purpose: `showModal()` in DialogContent's effect may already have
-    // moved focus by the time any effect of this component runs.
-    const openerRef = useRef<HTMLElement | null>(null);
-    if (open && openerRef.current === null && typeof document !== 'undefined') {
-      openerRef.current = document.activeElement as HTMLElement | null;
-    }
-
     // A single ref prop can only point one direction, but both this
     // component (to focus the input on open) and a consumer (via the
     // forwarded `ref`) need the underlying input node.
@@ -170,31 +162,6 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
         inputRef.current?.focus();
       }
     }, [open, setActiveIndex, onQueryChangeRef]);
-
-    // `open={false}` unmounts the <dialog>, so the browser's own return of
-    // focus never runs. Give it back here, to whatever opened the palette.
-    // Keyed on the close itself, not on an effect cleanup: StrictMode runs a
-    // cleanup right after mount, which would hand focus back too early.
-    const wasOpenRef = useRef(false);
-    useEffect(() => {
-      if (open) {
-        wasOpenRef.current = true;
-        return;
-      }
-      if (!wasOpenRef.current) {
-        return;
-      }
-      wasOpenRef.current = false;
-      const opener = openerRef.current;
-      openerRef.current = null;
-      // A command may have moved focus on purpose (to a field, say). Only
-      // step in when nothing holds it.
-      const active = document.activeElement;
-      const nothingFocused = !active || active === document.body || !active.isConnected;
-      if (opener?.isConnected && nothingFocused) {
-        opener.focus();
-      }
-    }, [open]);
 
     // Focus stays on the input at all times; the active item is tracked via
     // aria-activedescendant rather than moving DOM focus into the list.

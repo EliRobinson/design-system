@@ -4,6 +4,7 @@ import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { stubConsumerReset } from '../../test/consumerReset.js';
+import { describeModalFocusReturn } from '../../test/modalFocusReturn.js';
 import {
   Dialog,
   DialogClose,
@@ -279,4 +280,13 @@ describe('Dialog', () => {
       bare.remove();
     });
   });
+  describeModalFocusReturn(
+    <Dialog defaultOpen>
+      <DialogContent>
+        <DialogTitle>Focus</DialogTitle>
+        <button type="button">Inside</button>
+        <DialogClose />
+      </DialogContent>
+    </Dialog>,
+  );
 });
