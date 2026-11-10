@@ -84,6 +84,7 @@ describe('edges that would keep a normal-mode colour after opting out', () => {
     ['molecules/SegmentedControl.css', '.ds-segmented-control__item--active'],
     ['organisms/CommandPalette.css', '.ds-command-palette__item--active'],
     ['organisms/Combobox.css', '.ds-combobox__option--active'],
+    ['organisms/NavigationMenu.css', '.ds-navigation-menu__link--active'],
   ])('%s: keeps an inset ring, not a border that would resize it', (path, selector) => {
     const body = declarations(path, selector);
     expect(body).toMatch(/box-shadow:\s*inset 0 0 0 1px CanvasText\b/);

@@ -37,13 +37,19 @@
   text-decoration: none;
 }
 
+/* #354: --bg-subtle is ink-950 in dark, the same as a --surface ground
+   (1.00:1), so the current page did not show. Same fix as CommandPalette (#275)
+   and Combobox (#302): a fill plus an inset ring (SC 1.4.11; the ring clears
+   3:1 on --bg and --surface; menu-contrast.test.mjs measures it). */
 .ds-navigation-menu__link:hover {
-  background: var(--bg-subtle);
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--border-control);
   color: var(--fg);
 }
 
 .ds-navigation-menu__link--active {
-  background: var(--bg-subtle);
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--border-control);
   color: var(--fg);
   font-weight: var(--fw-medium);
 }
@@ -55,9 +61,10 @@
 
 /* Forced colors (Windows High Contrast) drops background, so only the weight
    marks the current page. The active link opts out and is painted with system
-   colours; its :hover is listed too because the base hover rule outranks it.
+   colours, with an inset CanvasText ring that replaces the token ring (which
+   would otherwise show through once the link opts out); its :hover is listed too because the base hover rule outranks it.
    Opting out leaves the focus outline on var(--focus-ring), so it is set to
-   CanvasText here. The ring is inset, so on the active link it sits on the
+   CanvasText here. The focus outline is inset, so on the active link it sits on the
    Highlight fill and uses HighlightText. Keep this block after the base
    rules: component-tokens.mjs reads the first rule. */
 @media (forced-colors: active) {
@@ -66,6 +73,8 @@
     forced-color-adjust: none;
     background: Highlight;
     color: HighlightText;
+    /* eslint-disable-next-line @elirobinson-css/no-hardcoded-design-values -- forced colors: a system colour ring, which no token can name */
+    box-shadow: inset 0 0 0 1px CanvasText;
   }
 
   .ds-navigation-menu__link:focus-visible {
