@@ -1,12 +1,11 @@
 /* The unit half of the #77 guard. The integration half is pack-integrity.test.mjs,
    which checks the real tarball; this one pins the behaviour that made the bug
-   possible, including the `cpSync` call it replaced, so the difference between
-   the two is a fact this suite asserts rather than a claim in a comment. */
+   possible: a link left as a link anywhere in the copy. */
 import {
-  cpSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -64,14 +63,26 @@ describe('copyTree', () => {
     expect(readFileSync(join(out, 'a.woff2'), 'utf8')).toBe('font-a');
   });
 
-  /* The bug itself: `dereference` governs the copy root only, so this is the
-     call that shipped thirteen manifest rows with no bytes behind them. If a
-     future Node makes it recurse, this test fails and the workaround can go. */
-  it('differs from cpSync({ dereference: true }), which only dereferences the root', () => {
-    const viaCp = join(root, 'via-cp');
-    cpSync(join(source, 'fonts'), viaCp, { recursive: true, dereference: true });
+  /* The bug itself (#77): a link recreated as a link in the copy was dropped by
+     `npm pack`. Walk the whole output and fail on any link at any depth. This
+     does not lean on what `cpSync` does with nested links, which differs by
+     Node version (Node 24 keeps them, Node 26 follows them). */
+  it('leaves no symlink anywhere in the copied tree', () => {
+    const out = join(root, 'out-walk');
+    copyTree(source, out);
 
-    expect(lstatSync(join(viaCp, 'a.woff2')).isSymbolicLink()).toBe(true);
+    const links = [];
+    const walk = (dir) => {
+      for (const entry of readdirSync(dir)) {
+        const path = join(dir, entry);
+        const stat = lstatSync(path);
+        if (stat.isSymbolicLink()) links.push(path);
+        else if (stat.isDirectory()) walk(path);
+      }
+    };
+    walk(out);
+
+    expect(links).toEqual([]);
   });
 
   it('copies plain files and nested directories unchanged', () => {
