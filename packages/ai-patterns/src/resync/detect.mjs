@@ -26,14 +26,6 @@ export function findScopedDependencies(packageJson) {
 }
 
 /**
- * Walks `node_modules` up from `cwd`, the way `ds-resync artifacts` does, so a
- * workspace member with a hoisted install agrees with it.
- */
-export function readInstalledVersion(cwd, name) {
-  return versionOf(findPackageDir(name, [cwd]));
-}
-
-/**
  * Packages whose `node_modules` copy disagrees with the lockfile.
  *
  * Both versions have to be known for the comparison to mean anything. A
@@ -55,7 +47,6 @@ export function findDrift(entries) {
       (entry) =>
         entry.installedVersion &&
         entry.lockedVersion &&
-        entry.installedUnderLock &&
         entry.installedUnderLock &&
         entry.installedVersion !== entry.lockedVersion,
     )
@@ -90,6 +81,8 @@ export function detect(cwd) {
     packageJson,
     lock,
     packages: findScopedDependencies(packageJson).map((entry) => {
+      // Walks `node_modules` up from `cwd`, like `ds-resync artifacts`, so a
+      // workspace member with a hoisted install agrees with it.
       const installDir = findPackageDir(entry.name, [cwd]);
       return {
         ...entry,
