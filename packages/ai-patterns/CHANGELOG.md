@@ -1,5 +1,12 @@
 # @elirobinson/ai-patterns
 
+## 0.34.4
+
+### Patch Changes
+
+- b8e44f4: `ds-resync` and `elirobinson-ds` now find the lockfile by walking up, as installs do, so a workspace member with a root lockfile reports its locked version. Drift counts only when the install sits under the lockfile's directory, which removes a false warning from an ancestor's install. The package lookup moved to one shared module.
+- 3f4cdb8: The visual sweeps' settle probe now retries Chromium's "Unable to capture screenshot" up to four times, with growing pauses (about 1.5s in all), instead of twice 100ms apart. The shot compared against the baseline is unchanged: Playwright's `toHaveScreenshot` already retries that error itself.
+
 ## 0.34.3
 
 ### Patch Changes
