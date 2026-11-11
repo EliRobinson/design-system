@@ -31,13 +31,20 @@ const ANSI = /\u001b\[[\d;]*m/g;
 
 /* Every error of the test's last attempt is a screenshot comparison. A layout
    check, a missing-asset guard, or a capture that threw fails before any
-   comparison, fails its rerun the same way, and no baseline can fix it (#346). */
+   comparison, fails its rerun the same way, and no baseline can fix it (#346).
+
+   Only the verdict is read, not the call log under it. A shot that never held
+   still times out with "Failed to take two consecutive stable screenshots",
+   and its call log quotes the "pixels … are different" lines of the frames it
+   compared. That is a settle failure, and a rerun would write an unsettled
+   frame as the baseline. */
 function failedOnComparison(test) {
   const errors = test.results?.at(-1)?.errors ?? [];
-  return (
-    errors.length > 0 &&
-    errors.every((error) => BASELINE_FIXABLE.test(String(error.message ?? '').replace(ANSI, '')))
-  );
+  const verdict = (error) =>
+    String(error.message ?? '')
+      .replace(ANSI, '')
+      .split('Call log:')[0];
+  return errors.length > 0 && errors.every((error) => BASELINE_FIXABLE.test(verdict(error)));
 }
 
 /* A failed test that a baseline could fix: its project takes screenshots, and
@@ -59,6 +66,11 @@ function failedWithBaseline(test) {
  * failures with --update-snapshots=changed; a NO_BASELINE_PROJECTS test, or a
  * shot whose layout check failed before its capture, fails that rerun again,
  * and the step would crash before it recovers the real shots.
+ *
+ * Every failure of the title, not some: the rerun greps by title, so it runs
+ * the title in every project. A title that failed on pixels in `docs-wide`
+ * and on a missing asset in `docs-narrow` would crash the rerun all the same.
+ * `failedBaselines` lists the second one as a failure no baseline can fix.
  */
 export function failedTitles(report, { baselinedOnly = false } = {}) {
   const failed = new Set();
@@ -67,7 +79,8 @@ export function failedTitles(report, { baselinedOnly = false } = {}) {
     if (spec.ok !== false) {
       continue;
     }
-    if (!baselinedOnly || (spec.tests ?? []).some(failedWithBaseline)) {
+    const failures = (spec.tests ?? []).filter((test) => test.status === 'unexpected');
+    if (!baselinedOnly || (failures.length > 0 && failures.every(failedWithBaseline))) {
       failed.add(spec.title);
     }
   }
@@ -163,8 +176,8 @@ export function failuresByProject(report) {
      node visual-failures.mjs --by-project <report.json>  "<project>\t<count>" rows
      node visual-failures.mjs --baselines <report.json>   failing shots' baseline paths, one per line;
                                                           exits 1 naming any failure no baseline can fix
-   Add --baselined-only to the first two modes to keep only titles that failed in a
-   project with baselines.
+   Add --baselined-only to the first two modes to keep only the titles a
+   baseline can fix (see `failedTitles`).
    Every one of them prints nothing at all when nothing failed, so a workflow
    step can test the output for emptiness rather than parsing it.
 

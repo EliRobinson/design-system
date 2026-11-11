@@ -321,45 +321,31 @@ export async function waitForStablePixels(page, { expect, fullPage = false, time
    cold-process runs of it in the pinned image (640 shots) produced no crash.
    It is the browser failing a call, not the page failing a test.
 
-   Retried here up to three times. These captures are the settle loop's own
-   probes, compared with each other and then thrown away, so repeating one
-   cannot hide a wrong pixel. The match is the one message, not any error, and
-   the count is three, so a closed page or a page that really
-   cannot be captured still fails on the first or third try. A short pause sits
-   between tries so a retry does not land in the same gap. */
-const CAPTURE_ATTEMPTS = 3;
+   Retried here and only here. These captures are the settle loop's own probes,
+   compared with each other and then thrown away, so repeating one cannot hide
+   a wrong pixel. The shot compared against a baseline is `toHaveScreenshot`'s,
+   and it needs no retry from us: Playwright's matcher already catches this
+   error, logs "failed to take screenshot", and tries again until its own
+   timeout (`expectScreenshot` in playwright-core). A pixel mismatch is
+   that matcher's verdict, so nothing here can ever retry one.
+
+   The gap can outlast three tries 100ms apart. #320 is that case:
+   /components/dropdown-menu · dark failed all three settle probes in one
+   ~300ms window (PR #319, compare (docs-wide 2/4)), and passed on a re-run.
+   So the pauses grow, like the settle poll's own intervals, giving the
+   compositor about 1.5s in all. The match is still the one message, not any
+   error, so a closed page fails on its first try, and a page that really
+   cannot be captured still fails, on the fifth. */
+const CAPTURE_RETRY_PAUSES = Object.freeze([100, 200, 400, 800]);
 
 async function captureForSettle(page, { fullPage }) {
-  return retryTransientCapture(page, CAPTURE_ATTEMPTS, () =>
-    page.screenshot({ animations: 'disabled', fullPage }),
-  );
-}
-
-/* The same protocol error also hits the final capture, the one compared with
-   the baseline (#320: /components/dropdown-menu · dark, no pixel diff, gone on
-   a re-run). Retried once there, on that message only. A pixel mismatch
-   reports differently ("pixels … are different", "Expected an image …"), and a
-   message carrying either is never retried, even if its call log also names
-   the capture error: a second try could only hide a real difference. */
-const FINAL_CAPTURE_ATTEMPTS = 2;
-
-const TRANSIENT_CAPTURE = /Unable to capture screenshot/;
-const MISMATCH =
-  /pixels \(ratio [\d.]+ of all image pixels\) are different|Expected an image \d+px by \d+px/;
-
-async function captureAgainstBaseline(page, compare) {
-  return retryTransientCapture(page, FINAL_CAPTURE_ATTEMPTS, compare);
-}
-
-async function retryTransientCapture(page, attempts, capture) {
-  for (let attempt = 1; ; attempt++) {
+  for (let attempt = 0; ; attempt++) {
     try {
-      return await capture();
+      return await page.screenshot({ animations: 'disabled', fullPage });
     } catch (error) {
-      const message = String(error?.message);
-      const transient = TRANSIENT_CAPTURE.test(message) && !MISMATCH.test(message);
-      if (!transient || attempt >= attempts) throw error;
-      await page.waitForTimeout(100);
+      const transient = /Unable to capture screenshot/.test(String(error?.message));
+      if (!transient || attempt >= CAPTURE_RETRY_PAUSES.length) throw error;
+      await page.waitForTimeout(CAPTURE_RETRY_PAUSES[attempt]);
     }
   }
 }
@@ -413,7 +399,7 @@ export function sweepStorybook({
 
         assertNoMissingAssets();
 
-        await captureAgainstBaseline(page, () => expect(page).toHaveScreenshot(name(story, theme)));
+        await expect(page).toHaveScreenshot(name(story, theme));
 
         await afterCapture?.(page, { story, theme });
       });
@@ -554,16 +540,13 @@ export function sweepPages({
            first-shot route record its broken state as truth. */
         assertNoMissingAssets();
 
-        /* Measured after the settle: before it, the box is whatever the
-           pre-hydration layout happened to be. */
-        const clip = region ? { clip: await regionBox(page, region) } : {};
-        await captureAgainstBaseline(page, () =>
-          expect(page).toHaveScreenshot(name(route, theme), {
-            fullPage,
-            ...clip,
-            mask: mask.map((selector) => page.locator(selector)),
-          }),
-        );
+        await expect(page).toHaveScreenshot(name(route, theme), {
+          fullPage,
+          /* Measured after the settle: before it, the box is whatever the
+             pre-hydration layout happened to be. */
+          ...(region ? { clip: await regionBox(page, region) } : {}),
+          mask: mask.map((selector) => page.locator(selector)),
+        });
 
         await afterCapture?.(page, { route, theme });
       });
@@ -636,14 +619,11 @@ export function sweepChrome({
 
         assertNoMissingAssets();
 
-        const clip = await regionBox(page, chrome.selector);
-        await captureAgainstBaseline(page, () =>
-          expect(page).toHaveScreenshot(name(chrome, theme), {
-            fullPage: true,
-            clip,
-            mask: mask.map((selector) => page.locator(selector)),
-          }),
-        );
+        await expect(page).toHaveScreenshot(name(chrome, theme), {
+          fullPage: true,
+          clip: await regionBox(page, chrome.selector),
+          mask: mask.map((selector) => page.locator(selector)),
+        });
 
         await afterCapture?.(page, { region: chrome, theme });
       });
