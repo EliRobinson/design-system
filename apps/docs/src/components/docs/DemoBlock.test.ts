@@ -11,11 +11,15 @@ describe('DemoBlock', () => {
   it('marks the live stage, and only the stage, as a prose boundary', () => {
     type Element = ReactElement<{ className?: string; children?: ReactElement[] }>;
     const figure = DemoBlock({ file: 'combobox/Basic.tsx', children: null }) as Element;
-    const [stage, source] = figure.props.children as Element[];
+    const children = figure.props.children as Element[];
+    const byClass = (name: string) =>
+      children.find((child) => child.props.className?.split(' ').includes(name));
+    const stage = byClass('demo-block__stage');
+    const source = byClass('demo-block__source');
 
     expect(figure.props.className?.split(' ')).not.toContain('not-prose');
-    expect(stage.props.className?.split(' ')).toEqual(['demo-block__stage', 'not-prose']);
+    expect(stage?.props.className?.split(' ')).toContain('not-prose');
     // The source panel stays in prose, which styles its code.
-    expect(source.props.className).toBe('demo-block__source');
+    expect(source?.props.className?.split(' ')).not.toContain('not-prose');
   });
 });

@@ -68,16 +68,37 @@ const DIALOG = renderToStaticMarkup(
     children: h(DialogContent, null, h(DialogHeader, null, h(DialogTitle, null, 'Rename'))),
   }),
 );
-const PLAIN = '<h2>Heading</h2><p>Paragraph</p><ul><li>Item</li></ul>';
-const TARGETS = ['.ds-dialog__title', 'h2:not([class])', 'p', 'ul', 'li'];
+const PLAIN =
+  '<h2>Heading</h2><h3>Sub</h3><h4>Minor</h4><p>Paragraph <code>x</code></p>' +
+  '<ul><li>Item</li></ul><ol><li>One</li></ol><hr><blockquote>Quote</blockquote>' +
+  '<img alt="" width="2000" height="1">';
+const PLAIN_TARGETS = [
+  'h2:not([class])',
+  'h3',
+  'h4',
+  'p',
+  'code',
+  'ul',
+  'ol',
+  'li',
+  'hr',
+  'blockquote',
+  'img',
+];
+const TARGETS = ['.ds-dialog__title', ...PLAIN_TARGETS];
 const PROPERTIES = [
   'font-size',
   'line-height',
   'margin-top',
   'margin-bottom',
   'padding-top',
+  'padding-left',
   'border-top-width',
+  'border-left-width',
+  'background-color',
+  'color',
   'list-style-type',
+  'max-width',
 ];
 
 const ORIGIN = 'https://demo-boundary.test';
@@ -146,7 +167,7 @@ async function computed(): Promise<{ bare: Styles; stage: Styles; prose: Styles 
 describeBrowser('a demo stage is a prose boundary', () => {
   it('prose restyles plain elements outside the stage (positive control)', async () => {
     const { bare, prose } = await computed();
-    for (const selector of ['h2:not([class])', 'p', 'ul', 'li']) {
+    for (const selector of PLAIN_TARGETS) {
       expect(prose[selector], selector).not.toEqual(bare[selector]);
     }
   });

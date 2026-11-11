@@ -88,6 +88,7 @@ describe('Combobox', () => {
     expect(list?.tagName).toBe('DIV');
     expect(list?.getAttribute('class')).toBe('ds-combobox__list');
     expect(list?.getAttribute('aria-label')).toBe('Fruit options');
+    expect(list?.getAttribute('role')).toBe('listbox');
     expect(list?.children).toHaveLength(1);
     expect(list?.firstElementChild?.outerHTML).toBe('<p class="ds-combobox__empty">No matches</p>');
   });
