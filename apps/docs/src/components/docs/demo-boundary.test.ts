@@ -26,7 +26,7 @@ import {
 import { TOKENS_SRC_DIR } from '@elirobinson/tokens/token-stylesheets';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const SITE_CSS = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'app', 'site.css');
@@ -107,73 +107,81 @@ type Styles = Record<string, Record<string, string> | null>;
 
 async function computed(): Promise<{ bare: Styles; stage: Styles; prose: Styles }> {
   const context = await browser!.newContext();
-  const page = await context.newPage();
+  try {
+    const page = await context.newPage();
 
-  await page.route(`${ORIGIN}/**`, async (route) => {
-    const name = new URL(route.request().url()).pathname.slice(1);
-    if (name === 'index.html') {
+    await page.route(`${ORIGIN}/**`, async (route) => {
+      const name = new URL(route.request().url()).pathname.slice(1);
+      if (name === 'index.html') {
+        return route.fulfill({
+          contentType: 'text/html',
+          body: `<!doctype html><html><head><meta charset="utf-8">
+            <link rel="stylesheet" href="/tokens.css">
+            <link rel="stylesheet" href="/Dialog.css">
+            <link rel="stylesheet" href="/site.css">
+            </head><body>
+            <div id="bare">${DIALOG}${PLAIN}</div>
+            <article class="prose">
+              <div id="prose">${PLAIN}</div>
+              <div class="demo-block__stage not-prose" id="stage">${DIALOG}${PLAIN}</div>
+            </article>
+            </body></html>`,
+        });
+      }
+      if (name === 'Dialog.css') {
+        return route.fulfill({ contentType: 'text/css', body: readFileSync(DIALOG_CSS) });
+      }
+      if (name === 'site.css') {
+        return route.fulfill({ contentType: 'text/css', body: readFileSync(SITE_CSS) });
+      }
+      const file = join(TOKENS_SRC_DIR, name);
+      if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
       return route.fulfill({
-        contentType: 'text/html',
-        body: `<!doctype html><html><head><meta charset="utf-8">
-          <link rel="stylesheet" href="/tokens.css">
-          <link rel="stylesheet" href="/Dialog.css">
-          <link rel="stylesheet" href="/site.css">
-          </head><body>
-          <div id="bare">${DIALOG}${PLAIN}</div>
-          <article class="prose">
-            <div id="prose">${PLAIN}</div>
-            <div class="demo-block__stage not-prose" id="stage">${DIALOG}${PLAIN}</div>
-          </article>
-          </body></html>`,
+        contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
+        body: readFileSync(file),
       });
-    }
-    if (name === 'Dialog.css') {
-      return route.fulfill({ contentType: 'text/css', body: readFileSync(DIALOG_CSS) });
-    }
-    if (name === 'site.css') {
-      return route.fulfill({ contentType: 'text/css', body: readFileSync(SITE_CSS) });
-    }
-    const file = join(TOKENS_SRC_DIR, name);
-    if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
-    return route.fulfill({
-      contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
-      body: readFileSync(file),
     });
-  });
 
-  await page.goto(`${ORIGIN}/index.html`);
-  const result = await page.evaluate(
-    ({ targets, properties }) => {
-      const read = (id: string) =>
-        Object.fromEntries(
-          targets.map((selector) => {
-            const element = document.getElementById(id)!.querySelector(selector);
-            if (!element) return [selector, null];
-            const style = getComputedStyle(element);
-            return [
-              selector,
-              Object.fromEntries(properties.map((p) => [p, style.getPropertyValue(p)])),
-            ];
-          }),
-        );
-      return { bare: read('bare'), stage: read('stage'), prose: read('prose') };
-    },
-    { targets: TARGETS, properties: PROPERTIES },
-  );
-  await context.close();
-  return result;
+    await page.goto(`${ORIGIN}/index.html`);
+    const result = await page.evaluate(
+      ({ targets, properties }) => {
+        const read = (id: string) =>
+          Object.fromEntries(
+            targets.map((selector) => {
+              const element = document.getElementById(id)!.querySelector(selector);
+              if (!element) return [selector, null];
+              const style = getComputedStyle(element);
+              return [
+                selector,
+                Object.fromEntries(properties.map((p) => [p, style.getPropertyValue(p)])),
+              ];
+            }),
+          );
+        return { bare: read('bare'), stage: read('stage'), prose: read('prose') };
+      },
+      { targets: TARGETS, properties: PROPERTIES },
+    );
+    return result;
+  } finally {
+    await context.close();
+  }
 }
 
 describeBrowser('a demo stage is a prose boundary', () => {
+  let styles: Awaited<ReturnType<typeof computed>>;
+  beforeAll(async () => {
+    styles = await computed();
+  }, 60_000);
+
   it('prose restyles plain elements outside the stage (positive control)', async () => {
-    const { bare, prose } = await computed();
+    const { bare, prose } = styles;
     for (const selector of PLAIN_TARGETS) {
       expect(prose[selector], selector).not.toEqual(bare[selector]);
     }
   });
 
   it('nothing inside the stage is restyled by prose', async () => {
-    const { bare, stage } = await computed();
+    const { bare, stage } = styles;
     for (const selector of TARGETS) {
       expect(bare[selector], `${selector} rendered`).not.toBeNull();
       expect(stage[selector], selector).toEqual(bare[selector]);

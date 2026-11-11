@@ -286,9 +286,10 @@
   max-width: var(--shell-md);
 }
 
-/* Every rule below skips a `.not-prose` subtree, the class DemoBlock puts on
-   a live demo's stage, so docs typography never restyles a component (#367).
-   `:where()` adds no specificity. Tailwind Typography uses the same class. */
+/* Every .prose rule in this file skips a `.not-prose` subtree, the class
+   DemoBlock puts on a live demo's stage, so docs typography never restyles a
+   component (#367). prose-boundary.test.ts fails a rule without it. `:where()`
+   adds no specificity. Tailwind Typography uses the same class. */
 .prose > h1:where(:not(.not-prose, .not-prose *)) {
   font-size: var(--fs-4xl);
   font-weight: var(--fw-semibold);
