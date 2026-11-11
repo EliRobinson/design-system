@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -38,6 +38,7 @@ beforeEach(() => {
   symlinkSync('../real/tokens.css', join(source, 'colors_and_type.css'));
   symlinkSync('../../real/fonts/a.woff2', join(source, 'fonts', 'a.woff2'));
   symlinkSync('../../real/fonts/LICENSE.txt', join(source, 'fonts', 'LICENSE.txt'));
+  symlinkSync('../real/fonts', join(source, 'fonts-link'));
   writeFileSync(join(source, 'fonts.css'), '@font-face {}\n');
 });
 
@@ -72,17 +73,27 @@ describe('copyTree', () => {
     copyTree(source, out);
 
     const links = [];
+    const files = [];
     const walk = (dir) => {
       for (const entry of readdirSync(dir)) {
         const path = join(dir, entry);
         const stat = lstatSync(path);
         if (stat.isSymbolicLink()) links.push(path);
         else if (stat.isDirectory()) walk(path);
+        else files.push(relative(out, path));
       }
     };
     walk(out);
 
     expect(links).toEqual([]);
+    expect(files.sort()).toEqual([
+      'colors_and_type.css',
+      'fonts-link/LICENSE.txt',
+      'fonts-link/a.woff2',
+      'fonts.css',
+      'fonts/LICENSE.txt',
+      'fonts/a.woff2',
+    ]);
   });
 
   it('copies plain files and nested directories unchanged', () => {
