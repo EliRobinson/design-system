@@ -8,12 +8,18 @@ import { readSiteCss } from './css-source';
    demo-boundary.test.ts proves in a browser that the guard works. */
 const GUARD = ':where(:not(.not-prose, .not-prose *))';
 
+/* The guard must sit on the last compound, the element the rule styles. A
+   trailing pseudo-class such as `:hover` is fine. */
+const ENDS_GUARDED = new RegExp(`${GUARD.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(:[\\w-]+)*$`);
+
 const proseSelectors = () =>
   [...readSiteCss().matchAll(/([^{}]+)\{/g)]
     // Split the list on commas outside parentheses: the guard has one inside.
     .flatMap(([, list]) => list.split(/,(?![^(]*\))/))
     .map((selector) => selector.trim())
-    .filter((selector) => /^\.prose[\s>+~]/.test(selector));
+    // Every selector that styles inside .prose, wherever .prose sits in it
+    // (`.dark .prose code` too). The bare `.prose` root rule styles no child.
+    .filter((selector) => /(^|[\s>+~])\.prose(?=[\s>+~])/.test(selector));
 
 describe('site.css prose rules', () => {
   it('finds the prose rules to check', () => {
@@ -21,7 +27,7 @@ describe('site.css prose rules', () => {
   });
 
   it('skip a not-prose subtree, every one', () => {
-    const unguarded = proseSelectors().filter((selector) => !selector.includes(GUARD));
+    const unguarded = proseSelectors().filter((selector) => !ENDS_GUARDED.test(selector));
     expect(unguarded).toEqual([]);
   });
 });

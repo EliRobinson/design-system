@@ -6,9 +6,9 @@ import { join } from 'node:path';
    comments, so every assertion reads them with comments removed. */
 export const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '');
 
-/* The docs stylesheet, comments removed. */
-export const readSiteCss = () =>
-  stripComments(readFileSync(join(process.cwd(), 'src/app/site.css'), 'utf8'));
+/* The docs stylesheet's path, and its text with comments removed. */
+export const SITE_CSS = join(process.cwd(), 'src/app/site.css');
+export const readSiteCss = () => stripComments(readFileSync(SITE_CSS, 'utf8'));
 
 /* The body of every rule whose selector list names `selector`, joined. Rules in
    a grouped selector (`a, b { }`) count; nested at-rule bodies are read too. */
