@@ -229,6 +229,18 @@ describe('foreground/fill pairs', () => {
   }
 });
 
+/* A state fill equal to the resting fill is a hover nobody can see. */
+describe('danger hover and press differ from the resting fill', () => {
+  for (const { id } of COMBINATIONS) {
+    it(`${id}: --status-danger-hover and -press are not --status-danger`, () => {
+      const values = resolved.get(id);
+      const resting = values.get('--status-danger');
+      expect(values.get('--status-danger-hover')).not.toBe(resting);
+      expect(values.get('--status-danger-press')).not.toBe(resting);
+    });
+  }
+});
+
 describe('the focus ring is visible in every combination', () => {
   for (const { id } of COMBINATIONS) {
     it(`${id}: --focus-ring clears 3:1 against --bg and --surface`, () => {
