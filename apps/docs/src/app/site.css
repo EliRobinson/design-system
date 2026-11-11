@@ -171,17 +171,79 @@
   box-shadow: inset 2px 0 0 0 var(--accent);
 }
 
+/* The menu button and its Sheet exist for the widths where the sidebar and the
+   header links are hidden (#370). Above 960px the button is not rendered. */
+.site-menu-button {
+  display: none;
+}
+
+.site-menu-button,
+.site-menu__close {
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.site-menu-button:hover,
+.site-menu__close:hover {
+  background: var(--bg-subtle);
+}
+
+.site-menu .ds-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.site-menu .ds-sheet__inner {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.site-menu__body {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.site-menu__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+/* The sidebar's rules, without its sticky column. */
+.site-sidebar--menu {
+  position: static;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
 @media (max-width: 960px) {
   .docs-shell {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .site-sidebar {
+  .docs-shell > .site-sidebar {
     display: none;
   }
 
   .site-header__nav {
     display: none;
+  }
+
+  .site-menu-button {
+    display: inline-flex;
+    flex: none;
   }
 }
 
@@ -919,9 +981,12 @@
 
 /* --- Landing page --------------------------------------------------------- */
 
+/* The hero is the brand's dark slab in both themes (#369). --bg-inverse and the
+   --fg-inverse family flip with the theme, which turned it into a white slab in
+   dark, so it reads the ink and signal ramps directly: those do not move. */
 .home-hero {
-  background: var(--bg-inverse);
-  color: var(--fg-inverse);
+  background: var(--ink-1000);
+  color: var(--ink-0);
   background-image: radial-gradient(oklch(100% 0 0 / 0.08) 1px, transparent 1px);
   background-size: 24px 24px;
 }
@@ -933,7 +998,7 @@
 }
 
 .home-hero__eyebrow {
-  color: var(--accent-ink-inverse);
+  color: var(--signal-400);
   margin: 0 0 var(--space-4);
 }
 
@@ -943,7 +1008,7 @@
   font-size: clamp(38px, 5.5vw, var(--fs-6xl));
   line-height: var(--lh-tight);
   letter-spacing: var(--tr-tight);
-  color: var(--fg-inverse);
+  color: var(--ink-0);
   margin: 0 0 var(--space-5);
   max-width: 16em;
 }
@@ -955,7 +1020,7 @@
 .home-hero__lead {
   font-size: var(--fs-xl);
   line-height: var(--lh-relaxed);
-  color: var(--fg-inverse-2);
+  color: var(--ink-300);
   max-width: var(--shell-md);
   margin: 0 0 var(--space-7);
 }
@@ -972,12 +1037,12 @@
 }
 
 .home-hero__secondary {
-  color: var(--fg-inverse);
+  color: var(--ink-0);
   font-weight: var(--fw-medium);
 }
 
 .home-hero__secondary:hover {
-  color: var(--accent-ink-inverse);
+  color: var(--signal-400);
 }
 
 .home-hero__stats {
@@ -985,7 +1050,7 @@
   flex-wrap: wrap;
   gap: var(--space-9);
   margin: 0;
-  border-top: 1px solid var(--border-inverse);
+  border-top: 1px solid oklch(100% 0 0 / 0.12);
   padding-top: var(--space-6);
 }
 
@@ -993,7 +1058,7 @@
   font-family: var(--font-mono);
   font-size: var(--fs-3xl);
   font-weight: var(--fw-semibold);
-  color: var(--accent);
+  color: var(--signal-400);
   margin: 0;
 }
 
@@ -1002,7 +1067,7 @@
   font-size: var(--fs-xs);
   letter-spacing: var(--tr-caps);
   text-transform: uppercase;
-  color: var(--fg-inverse-3);
+  color: var(--ink-400);
 }
 
 .home-section {
