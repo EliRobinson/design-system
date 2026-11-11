@@ -66,3 +66,14 @@
   outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset, 2px);
 }
+
+/* The invalid edge, in the same danger token Checkbox uses. The focus rule
+   below it wins while focused; the error text still marks the control. */
+.ds-slider__input--error {
+  outline: var(--focus-ring-width, 2px) solid var(--status-danger);
+  outline-offset: var(--focus-ring-offset, 2px);
+}
+
+.ds-slider__input--error:focus-visible {
+  outline-color: var(--focus-ring);
+}
