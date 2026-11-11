@@ -18,14 +18,12 @@
  * anchored-panel-width.test.mjs.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, extname, join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { TOKENS_SRC_DIR } from '@elirobinson/tokens/token-stylesheets';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterAll, describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 
 import { Combobox } from '../src/components/organisms/Combobox.tsx';
 import { CommandPalette } from '../src/components/organisms/CommandPalette.tsx';
@@ -44,6 +42,8 @@ import {
   SheetTitle,
 } from '../src/components/organisms/Sheet.tsx';
 
+import { bootBrowser, inPage } from './browser.test-helper.mjs';
+
 const COMPONENTS = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'components');
 const SHEETS = {
   'Dialog.css': join(COMPONENTS, 'organisms', 'Dialog.css'),
@@ -52,36 +52,17 @@ const SHEETS = {
   'Combobox.css': join(COMPONENTS, 'organisms', 'Combobox.css'),
   'SearchField.css': join(COMPONENTS, 'molecules', 'SearchField.css'),
 };
+const VIEWPORT = { width: 1024, height: 768 };
 
-const BROWSER_BUDGET = 60_000;
+const { browser, describeBrowser } = await bootBrowser('host typography');
 
-let chromium;
-try {
-  ({ chromium } = await import('playwright'));
-} catch {
-  chromium = null;
-}
-
-let browser;
-let launchError;
-if (chromium) {
-  try {
-    browser = await chromium.launch();
-  } catch (error) {
-    launchError = error;
-  }
-}
-
-afterAll(async () => {
-  await browser?.close();
-}, BROWSER_BUDGET);
-
-const describeBrowser = browser ? describe : describe.skip;
-if (!browser) {
-  console.warn(
-    `Skipping host typography tests: ${
-      chromium ? launchError?.message : 'playwright is not installed'
-    }`,
+/** One page: the component sheets, then `host` (loaded last, the worst order). */
+function load({ body, host = '' }, probe, arg) {
+  return inPage(
+    browser,
+    { sheets: SHEETS, head: `<style>${host}</style>`, body, viewport: VIEWPORT },
+    probe,
+    arg,
   );
 }
 
@@ -90,8 +71,9 @@ if (!browser) {
 const NOT = ':not(:where([class~="not-prose"], [class~="not-prose"] *))';
 
 const HOSTS = {
-  /* The shape of apps/docs/src/app/site.css: plain descendant selectors at
-     (0,1,1), which outrank a single class. */
+  /* The specificity of apps/docs/src/app/site.css: descendant selectors at
+     (0,1,1), which outrank a single class. Kept hostile and apart from the
+     real file, so it stays a worst case whatever the docs do. */
   docs: `
     .prose h2 {
       font-size: 32px; font-weight: 800; line-height: 1.9; letter-spacing: 0.1em;
@@ -135,6 +117,30 @@ const PROPERTIES = [
 
 const noop = () => {};
 
+const PALETTE_LISTS = [
+  '.ds-command-palette__list',
+  '.ds-command-palette__list > li',
+  '.ds-command-palette__group-list',
+  '.ds-command-palette__group-list > li',
+];
+
+/* The open list is client state, so a server render has none. This is the
+   list Combobox.tsx renders when nothing matches (the `filtered.length === 0`
+   branch): the one branch with a text element a host can reach. It is
+   spliced into the server-rendered root, where the component mounts it. */
+const COMBOBOX_EMPTY_LIST =
+  '<div role="listbox" aria-label="Fruit options" class="ds-combobox__list">' +
+  '<p class="ds-combobox__empty">No matches</p></div>';
+
+const COMBOBOX_OPEN = renderToStaticMarkup(
+  h(Combobox, {
+    label: 'Fruit',
+    options: [{ value: 'apple', label: 'Apple' }],
+    value: null,
+    onValueChange: noop,
+  }),
+).replace(/<\/div>$/, `${COMBOBOX_EMPTY_LIST}</div>`);
+
 /* Each case is real component markup plus the elements to compare. */
 const CASES = {
   Dialog: {
@@ -176,77 +182,18 @@ const CASES = {
         ],
       }),
     ),
-    targets: [
-      '.ds-dialog__title',
-      '.ds-command-palette__list',
-      '.ds-command-palette__list > li',
-      '.ds-command-palette__group-list',
-      '.ds-command-palette__group-list > li',
-    ],
+    targets: ['.ds-dialog__title', ...PALETTE_LISTS],
   },
   Combobox: {
-    markup: renderToStaticMarkup(
-      h(Combobox, {
-        label: 'Fruit',
-        options: [{ value: 'apple', label: 'Apple' }],
-        value: null,
-        onValueChange: noop,
-      }),
-    ),
-    /* The open list is client state, so the server render has none. This is
-       the markup Combobox renders when nothing matches: the one branch with a
-       text element a host can reach. */
-    open: '<div role="listbox" class="ds-combobox__list"><p class="ds-combobox__empty">No matches</p></div>',
+    markup: COMBOBOX_OPEN,
     targets: ['.ds-combobox__list', '.ds-combobox__empty'],
   },
 };
 
-const ORIGIN = 'https://host-typography.test';
-
-/** Serve the tokens, the component sheets and one page, then run `probe`. */
-async function inPage({ body, host = '' }, probe, arg) {
-  const context = await browser.newContext({ viewport: { width: 1024, height: 768 } });
-  const page = await context.newPage();
-
-  await page.route(`${ORIGIN}/**`, async (route) => {
-    const name = new URL(route.request().url()).pathname.slice(1);
-
-    if (name === 'index.html') {
-      const links = Object.keys(SHEETS)
-        .map((sheet) => `<link rel="stylesheet" href="/${sheet}">`)
-        .join('');
-      return route.fulfill({
-        contentType: 'text/html',
-        body: `<!doctype html><html><head><meta charset="utf-8">
-          <link rel="stylesheet" href="/tokens.css">${links}
-          <style>${host}</style>
-          </head><body>${body}</body></html>`,
-      });
-    }
-
-    if (SHEETS[name]) {
-      return route.fulfill({ contentType: 'text/css', body: readFileSync(SHEETS[name]) });
-    }
-
-    const file = join(TOKENS_SRC_DIR, name);
-    if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
-    return route.fulfill({
-      contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
-      body: readFileSync(file),
-    });
-  });
-
-  await page.goto(`${ORIGIN}/index.html`);
-  const result = await page.evaluate(probe, arg);
-  await context.close();
-  return result;
-}
-
 /** Computed PROPERTIES for each target, in a bare root and in a `.prose` root. */
-function readStyles({ targets, properties, open }) {
-  const read = (root) => {
-    if (open) root.querySelector('.ds-combobox')?.insertAdjacentHTML('beforeend', open);
-    return Object.fromEntries(
+function readStyles({ targets, properties }) {
+  const read = (root) =>
+    Object.fromEntries(
       targets.map((selector) => {
         const element = root.querySelector(selector);
         if (!element) return [selector, null];
@@ -257,7 +204,6 @@ function readStyles({ targets, properties, open }) {
         ];
       }),
     );
-  };
   return {
     bare: read(document.getElementById('bare')),
     prose: read(document.getElementById('prose')),
@@ -273,7 +219,7 @@ describeBrowser('components keep their own type and list styles inside .prose (#
     /* The positive control: a plain h2 and ul really are restyled by this host,
        so a pass below is the component winning, not the fixture missing. */
     it(`${hostName}: the host fixture restyles a plain h2 and ul`, async () => {
-      const { bare, prose } = await inPage(
+      const { bare, prose } = await load(
         { body: twoRoots('<h2>Plain</h2><ul><li>Plain</li></ul>'), host },
         readStyles,
         { targets: ['h2', 'ul'], properties: PROPERTIES },
@@ -282,12 +228,11 @@ describeBrowser('components keep their own type and list styles inside .prose (#
       expect(prose.ul).not.toEqual(bare.ul);
     });
 
-    for (const [name, { markup, targets, open }] of Object.entries(CASES)) {
+    for (const [name, { markup, targets }] of Object.entries(CASES)) {
       it(`${hostName}: ${name} computes the same inside .prose`, async () => {
-        const { bare, prose } = await inPage({ body: twoRoots(markup), host }, readStyles, {
+        const { bare, prose } = await load({ body: twoRoots(markup), host }, readStyles, {
           targets,
           properties: PROPERTIES,
-          open,
         });
         for (const selector of targets) {
           expect(bare[selector], `${selector} rendered`).not.toBeNull();
@@ -297,11 +242,45 @@ describeBrowser('components keep their own type and list styles inside .prose (#
     }
   }
 
+  /* The comparisons above are relative: a reset lost from both roots would
+     still match. This pins the bare values to the system's own sizes, and
+     Dialog and Sheet to each other, since the two sheets restate one block. */
+  it('titles and descriptions sit at the system sizes, the same in Dialog and Sheet', async () => {
+    const body =
+      CASES.Dialog.markup +
+      CASES.Sheet.markup +
+      '<span id="fs-lg" style="font-size: var(--fs-lg)"></span>' +
+      '<span id="fs-sm" style="font-size: var(--fs-sm)"></span>';
+    const styles = await load(
+      { body },
+      (properties) => {
+        const read = (selector) => {
+          const style = getComputedStyle(document.querySelector(selector));
+          return Object.fromEntries(properties.map((p) => [p, style.getPropertyValue(p)]));
+        };
+        return {
+          dialogTitle: read('.ds-dialog__title'),
+          sheetTitle: read('.ds-sheet__title'),
+          dialogDescription: read('.ds-dialog__description'),
+          sheetDescription: read('.ds-sheet__description'),
+          lg: read('#fs-lg')['font-size'],
+          sm: read('#fs-sm')['font-size'],
+        };
+      },
+      PROPERTIES,
+    );
+
+    expect(styles.dialogTitle['font-size']).toBe(styles.lg);
+    expect(styles.dialogDescription['font-size']).toBe(styles.sm);
+    expect(styles.sheetTitle).toEqual(styles.dialogTitle);
+    expect(styles.sheetDescription).toEqual(styles.dialogDescription);
+  });
+
   it('lists carry no markers, bare or inside .prose', async () => {
-    const { bare, prose } = await inPage(
+    const { bare, prose } = await load(
       { body: twoRoots(CASES.CommandPalette.markup), host: HOSTS.tailwind },
       readStyles,
-      { targets: CASES.CommandPalette.targets.slice(1), properties: ['list-style-type'] },
+      { targets: PALETTE_LISTS, properties: ['list-style-type'] },
     );
     for (const styles of [bare, prose]) {
       for (const value of Object.values(styles)) expect(value['list-style-type']).toBe('none');
@@ -310,10 +289,9 @@ describeBrowser('components keep their own type and list styles inside .prose (#
 });
 
 /** Where the open list sits against the input, in the given root layout. */
-function measureList({ open, rootStyle }) {
+function measureList(rootStyle) {
   const root = document.querySelector('.ds-combobox');
   root.setAttribute('style', rootStyle);
-  root.insertAdjacentHTML('beforeend', open);
   const box = root.getBoundingClientRect();
   const input = root.querySelector('.ds-search-field').getBoundingClientRect();
   const list = root.querySelector('.ds-combobox__list').getBoundingClientRect();
@@ -337,10 +315,7 @@ describeBrowser('the Combobox list opens below its input (#368)', () => {
 
   for (const [layout, rootStyle] of Object.entries(layouts)) {
     it(`${layout} root: the list opens below the input, across the root`, async () => {
-      const box = await inPage({ body: CASES.Combobox.markup }, measureList, {
-        open: CASES.Combobox.open,
-        rootStyle,
-      });
+      const box = await load({ body: COMBOBOX_OPEN }, measureList, rootStyle);
       expect(box.listTop).toBeGreaterThanOrEqual(box.inputBottom);
       // And it spans the root, whatever the root's main axis.
       expect(box.listLeft).toBeCloseTo(box.rootLeft, 0);

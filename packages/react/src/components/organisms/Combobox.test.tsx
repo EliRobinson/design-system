@@ -73,6 +73,25 @@ describe('Combobox', () => {
     expect(document.getElementById(controlsId as string)).toBeInTheDocument();
   });
 
+  // scripts/host-typography.test.mjs restates this markup, because a server
+  // render has no open list. This pins the restatement to the component.
+  it('renders the empty list as the shape the browser test restates', async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <Combobox label="Fruit" options={options} onValueChange={vi.fn()} />,
+    );
+
+    await user.click(screen.getByLabelText('Fruit'));
+    await user.type(screen.getByLabelText('Fruit'), 'zzz');
+
+    const list = container.querySelector('.ds-combobox > .ds-combobox__list');
+    expect(list?.tagName).toBe('DIV');
+    expect(list?.getAttribute('class')).toBe('ds-combobox__list');
+    expect(list?.getAttribute('aria-label')).toBe('Fruit options');
+    expect(list?.children).toHaveLength(1);
+    expect(list?.firstElementChild?.outerHTML).toBe('<p class="ds-combobox__empty">No matches</p>');
+  });
+
   it('moves the active option with ArrowDown/ArrowUp and keeps aria-activedescendant pointed at a real, rendered element', async () => {
     const user = userEvent.setup();
     render(<Combobox label="Fruit" options={options} onValueChange={vi.fn()} />);
