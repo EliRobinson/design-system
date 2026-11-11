@@ -286,6 +286,76 @@ describe('failedBaselines', () => {
       });
     });
 
+    it('leaves out a title that failed both ways, since the rerun runs it in every project', () => {
+      const both = {
+        specs: [
+          {
+            title: '/components/x · dark',
+            ok: false,
+            tests: [
+              { projectName: 'docs-wide', status: 'unexpected', results: mismatch() },
+              { projectName: 'docs-narrow', status: 'unexpected', results: [layout] },
+            ],
+          },
+        ],
+      };
+      expect(failedTitles(both, { baselinedOnly: true })).toEqual([]);
+      expect(failedBaselines(both).unbaselined).toEqual(['docs-narrow: /components/x · dark']);
+    });
+
+    it('keeps a title that failed on pixels in one project and passed in the other', () => {
+      const one = {
+        specs: [
+          {
+            title: '/components/x · dark',
+            ok: false,
+            tests: [
+              { projectName: 'docs-wide', status: 'unexpected', results: mismatch() },
+              { projectName: 'docs-narrow', status: 'expected' },
+            ],
+          },
+        ],
+      };
+      expect(failedTitles(one, { baselinedOnly: true })).toEqual(['/components/x · dark']);
+    });
+
+    it('does not mistake a shot that never held still for a mismatch', () => {
+      const stall = {
+        specs: [
+          {
+            title: '/ · dark',
+            ok: false,
+            tests: [
+              {
+                projectName: 'docs-wide',
+                status: 'unexpected',
+                results: [
+                  {
+                    errors: [
+                      {
+                        message: [
+                          'Error: expect(page).toHaveScreenshot(expected) failed',
+                          '',
+                          '  Timeout: 20000ms',
+                          '  Failed to take two consecutive stable screenshots.',
+                          '',
+                          'Call log:',
+                          '  - Expect "toHaveScreenshot(dark.png)" with timeout 20000ms',
+                          '  - 312 pixels (ratio 0.01 of all image pixels) are different.',
+                        ].join('\n'),
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      expect(failedTitles(stall, { baselinedOnly: true })).toEqual([]);
+      expect(failedBaselines(stall).unbaselined).toEqual(['docs-wide: / · dark']);
+    });
+
     it('judges the last attempt, which is the one the rerun repeats', () => {
       const retried = {
         specs: [
