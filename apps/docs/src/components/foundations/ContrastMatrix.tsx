@@ -9,7 +9,7 @@ import { getToken } from '../../lib/tokens-css';
    declares and therefore what `getToken` resolves. Every other combination is
    measured in the package's own contrast.test.mjs, across all four; this table
    is the one a reader can see. */
-const PAIRINGS: { fg: string; bg: string; usage: string }[] = [
+const PAIRINGS: { fg: string; bg: string; usage: string; kind?: 'text' | 'non-text' }[] = [
   { fg: '--fg', bg: '--bg', usage: 'Body text on the page' },
   { fg: '--fg-2', bg: '--bg', usage: 'Secondary text' },
   { fg: '--fg-3', bg: '--bg', usage: 'Tertiary / meta text' },
@@ -40,12 +40,13 @@ const PAIRINGS: { fg: string; bg: string; usage: string }[] = [
   /* The documented exception. Yellow cannot clear 3:1 on white and still read
      as yellow, so --status-warning sits at 1.87:1 and a warning fill or rule
      has to be edged with this token, which carries SC 1.4.11's 3:1 on its own.
-     The verdict column below grades text, so read this row against 3:1: it is
-     a non-text boundary, not a label. */
+     This row is a non-text boundary, not a label, so its verdict is graded
+     against 3:1 rather than the text thresholds. */
   {
     fg: '--status-warning-border',
     bg: '--bg',
     usage: 'The edge a warning fill must carry (non-text, 3:1)',
+    kind: 'non-text',
   },
 ];
 
@@ -67,7 +68,7 @@ export function ContrastMatrix() {
             const fg = getToken(pair.fg)?.resolved;
             const bg = getToken(pair.bg)?.resolved;
             const ratio = fg && bg ? contrastRatio(fg, bg) : null;
-            const verdict = ratio ? aaVerdict(ratio) : null;
+            const verdict = ratio ? aaVerdict(ratio, pair.kind) : null;
             return (
               <tr key={`${pair.fg}-${pair.bg}`}>
                 <td>
