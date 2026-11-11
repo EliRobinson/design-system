@@ -314,12 +314,13 @@ function measureList({ open, rootStyle }) {
   const root = document.querySelector('.ds-combobox');
   root.setAttribute('style', rootStyle);
   root.insertAdjacentHTML('beforeend', open);
+  const box = root.getBoundingClientRect();
   const input = root.querySelector('.ds-search-field').getBoundingClientRect();
   const list = root.querySelector('.ds-combobox__list').getBoundingClientRect();
   return {
     inputBottom: input.bottom,
-    inputLeft: input.left,
-    inputRight: input.right,
+    rootLeft: box.left,
+    rootRight: box.right,
     listTop: list.top,
     listLeft: list.left,
     listRight: list.right,
@@ -335,14 +336,15 @@ describeBrowser('the Combobox list opens below its input (#368)', () => {
   };
 
   for (const [layout, rootStyle] of Object.entries(layouts)) {
-    it(`${layout} root: the list top is at or below the input bottom`, async () => {
+    it(`${layout} root: the list opens below the input, across the root`, async () => {
       const box = await inPage({ body: CASES.Combobox.markup }, measureList, {
         open: CASES.Combobox.open,
         rootStyle,
       });
       expect(box.listTop).toBeGreaterThanOrEqual(box.inputBottom);
-      expect(box.listLeft).toBeCloseTo(box.inputLeft, 0);
-      expect(box.listRight).toBeCloseTo(box.inputRight, 0);
+      // And it spans the root, whatever the root's main axis.
+      expect(box.listLeft).toBeCloseTo(box.rootLeft, 0);
+      expect(box.listRight).toBeCloseTo(box.rootRight, 0);
     });
   }
 });

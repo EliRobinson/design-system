@@ -19,6 +19,19 @@
   overflow-y: auto;
 }
 
+/* #367: the list is a <ul> of <li>s, so host typography (a `.prose ul`, a
+   Tailwind Typography list) adds bullets, margins and an indent. Scoped
+   under the root so it outranks a (0,1,1) host rule. The title is reset by
+   Dialog.css, since the palette renders a DialogTitle. */
+.ds-command-palette .ds-command-palette__list,
+.ds-command-palette .ds-command-palette__group-list,
+.ds-command-palette .ds-command-palette__list li {
+  line-height: inherit;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .ds-command-palette__item {
   display: flex;
   align-items: center;
