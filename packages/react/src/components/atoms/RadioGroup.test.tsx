@@ -281,6 +281,8 @@ describe('RadioGroup controlled/uncontrolled boundary', () => {
   });
 });
 
+/* Not in lib/useFieldMessage.test.tsx: the group is the described control, not
+   an input, so the shared per-input cases do not fit. */
 describe('RadioGroup error', () => {
   it('puts aria-invalid and aria-describedby on the group, not the items', () => {
     render(
