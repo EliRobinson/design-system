@@ -8,5 +8,5 @@
    the one thing neither is allowed to do. This module stays as the docs' import
    path so the foundations components did not have to change. */
 
-export type { AaVerdict, Rgb } from '@elirobinson/tokens/color';
+export type { AaVerdict, ContrastKind, Rgb } from '@elirobinson/tokens/color';
 export { aaVerdict, contrastRatio, parseColor, toHex } from '@elirobinson/tokens/color';

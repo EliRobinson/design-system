@@ -1,4 +1,4 @@
-import { aaVerdict, contrastRatio } from '../../lib/color';
+import { aaVerdict, type ContrastKind, contrastRatio } from '../../lib/color';
 import { getToken } from '../../lib/tokens-css';
 
 /* The pairings that actually occur in the system. Ratios and verdicts are
@@ -9,7 +9,7 @@ import { getToken } from '../../lib/tokens-css';
    declares and therefore what `getToken` resolves. Every other combination is
    measured in the package's own contrast.test.mjs, across all four; this table
    is the one a reader can see. */
-const PAIRINGS: { fg: string; bg: string; usage: string; kind?: 'text' | 'non-text' }[] = [
+const PAIRINGS: { fg: string; bg: string; usage: string; kind?: ContrastKind }[] = [
   { fg: '--fg', bg: '--bg', usage: 'Body text on the page' },
   { fg: '--fg-2', bg: '--bg', usage: 'Secondary text' },
   { fg: '--fg-3', bg: '--bg', usage: 'Tertiary / meta text' },
