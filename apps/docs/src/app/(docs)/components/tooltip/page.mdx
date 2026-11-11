@@ -46,8 +46,9 @@ accessible name an icon-only `Button` still needs on its own `aria-label`.
 - **Keyboard:** opens on native focus, closes on blur. There's no separate keyboard path to
   keep in sync with hover — focusing the wrapped element opens the tooltip the same way
   hovering it does.
-- No `Escape` handling — pressing it does not close the tooltip. Moving focus or the
-  pointer away is the only way to dismiss it.
+- **Escape** closes an open tooltip without moving focus or the pointer (WCAG 1.4.13,
+  dismissible). It stays closed until hover or focus starts over. Moving focus or the
+  pointer away closes it too.
 - `TooltipContent` renders through a portal to `document.body` and only mounts while open —
   it isn't hidden with CSS, so there's nothing sitting in the DOM to tab into while closed.
 - Position is fixed: centered under the trigger, a few pixels below it. There's no
@@ -68,8 +69,7 @@ accessible name an icon-only `Button` still needs on its own `aria-label`.
   dont={[
     'Put interactive content — a link, a button — inside TooltipContent; it disappears the moment focus or the pointer leaves the trigger, before a reader could reach it.',
     'Rely on a tooltip to convey something required for the task — touch-only visitors will never see it.',
-    'Expect Escape to close it — nothing listens for that key here; move focus or the pointer instead.',
-    'Wrap plain, non-focusable text in TooltipTrigger and expect Tab to reach it.',
+        'Wrap plain, non-focusable text in TooltipTrigger and expect Tab to reach it.',
   ]}
 />
 

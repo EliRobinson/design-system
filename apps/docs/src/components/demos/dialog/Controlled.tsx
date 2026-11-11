@@ -32,7 +32,7 @@ export default function Controlled() {
           </DialogHeader>
           <DialogFooter>
             <DialogClose>Cancel</DialogClose>
-            <Button variant="primary" onClick={() => setOpen(false)}>
+            <Button variant="destructive" onClick={() => setOpen(false)}>
               Delete
             </Button>
           </DialogFooter>
