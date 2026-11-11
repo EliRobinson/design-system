@@ -280,3 +280,67 @@ describe('RadioGroup controlled/uncontrolled boundary', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 });
+
+describe('RadioGroup error', () => {
+  it('puts aria-invalid and aria-describedby on the group, not the items', () => {
+    render(
+      <RadioGroup name="plan" error="Pick a plan.">
+        <RadioGroupItem value="free" label="Free" />
+        <RadioGroupItem value="pro" label="Pro" />
+      </RadioGroup>,
+    );
+
+    const group = screen.getByRole('radiogroup');
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Pick a plan.');
+    expect(group).toHaveAttribute('aria-invalid', 'true');
+    expect(group.getAttribute('aria-describedby')).toBe(alert.id);
+    expect(group).toHaveClass('ds-radio-group--error');
+    for (const radio of screen.getAllByRole('radio')) {
+      expect(radio).not.toHaveAttribute('aria-invalid');
+      expect(radio).not.toHaveAttribute('aria-describedby');
+    }
+  });
+
+  it('keeps the caller aria-describedby first', () => {
+    render(
+      <RadioGroup name="plan" error="Pick a plan." aria-describedby="mine">
+        <RadioGroupItem value="free" label="Free" />
+      </RadioGroup>,
+    );
+
+    const group = screen.getByRole('radiogroup');
+    expect(group.getAttribute('aria-describedby')).toBe(`mine ${screen.getByRole('alert').id}`);
+  });
+
+  it('renders the same markup as before when there is no error', () => {
+    const { container } = render(
+      <RadioGroup name="plan">
+        <RadioGroupItem value="free" label="Free" id="f" />
+      </RadioGroup>,
+    );
+
+    expect(container.innerHTML).toBe(
+      '<div role="radiogroup" class="ds-radio-group"><label class="ds-radio-group__item" for="f"><input id="f" class="ds-radio-group__input" type="radio" value="free" name="plan"><span class="ds-radio-group__label">Free</span></label></div>',
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('keeps the selection when an error appears', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <RadioGroup name="plan">
+        <RadioGroupItem value="free" label="Free" />
+      </RadioGroup>,
+    );
+    await user.click(screen.getByRole('radio', { name: 'Free' }));
+
+    rerender(
+      <RadioGroup name="plan" error="Pick a plan.">
+        <RadioGroupItem value="free" label="Free" />
+      </RadioGroup>,
+    );
+
+    expect(screen.getByRole('radio', { name: 'Free' })).toBeChecked();
+  });
+});

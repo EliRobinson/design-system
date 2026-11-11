@@ -12,3 +12,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: { label: 'Volume', min: 0, max: 100, defaultValue: 50 },
 };
+
+export const WithError: Story = {
+  args: { label: 'Volume', min: 0, max: 100, defaultValue: 95, error: 'Keep the volume under 90.' },
+};

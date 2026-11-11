@@ -201,9 +201,9 @@ That last sentence is a check, not advice. `component-css.test.mjs` sweeps every
   `aria-required`) to spread onto that control. Do not nest `Input` inside `FormField` —
   `Input` already renders its own label and message region, so wrapping it produces
   duplicate labels.
-- `Input`, `Textarea`, `Select`, `FormField`, `Checkbox` and `Switch` all render their
+- `Input`, `Textarea`, `Select`, `FormField`, `Checkbox`, `Switch`, `RadioGroup` and `Slider` all render their
   error with `role="alert"`, in a slot of its own so a hint turning into an error mounts
-  a fresh live region. All six get the message slots and the `aria-describedby` and
+  a fresh live region. All eight get the message slots and the `aria-describedby` and
   `aria-invalid` wiring from the internal `lib/useFieldMessage`, which takes one options
   object (`FieldMessageOptions`). A new labelled control uses the
   hook, never its own copy: a consumer should never have to render the error themselves
