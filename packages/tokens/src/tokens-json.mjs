@@ -87,7 +87,7 @@ const GROUPS = [
      anchor already forces the backtrack — because a member list that reads in
      the same order as the table in palettes.css is one fewer thing to check. */
   {
-    match: /^--status-(success|warning|danger|info)-(fg|tint-edge|tint|on|border)$/,
+    match: /^--status-(success|warning|danger|info)-(fg|tint-edge|tint|on|border|hover|press)$/,
     path: (name) => semantic(camel(`--${suffix(name, 'status')}`)),
   },
   { match: /^--fg-2$/, path: () => semantic('fgSecondary') },

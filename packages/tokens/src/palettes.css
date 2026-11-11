@@ -193,7 +193,8 @@
 
      `--status-X` is NEVER text. The fills carry over to dark unchanged — each
      one clears 3:1 against both a white and a black page — and every `-fg`
-     and `-tint` is re-picked in block 2.
+     and `-tint` is re-picked in block 2. Danger also has `-hover` and
+     `-press` fills, re-picked in block 2 because their direction flips.
      ====================================================================== */
   --status-success: oklch(51.9% 0.145 150); /* fill — 5.17:1 light, 4.06:1 dark */
   --status-success-on: var(--ink-0); /* on the fill — 5.17:1 */
@@ -219,6 +220,12 @@
   --status-danger-fg: oklch(47% 0.19 27); /* 7.54:1 on --bg */
   --status-danger-tint: oklch(96.5% 0.025 27); /* with -fg: 6.69:1 */
   --status-danger-tint-edge: oklch(87% 0.07 27); /* decorative hairline on the tint */
+  /* Danger is the one status with interactive states, because it is the one a
+     Button fills. Both stay hue 27 and step DARKER on a white page, so the
+     fill only gains contrast; block 2 steps them LIGHTER on ink. -on is
+     drawn on all three fills, so it is measured on each. */
+  --status-danger-hover: oklch(50% 0.2 27); /* fill — 6.66:1; -on on it 6.66:1 */
+  --status-danger-press: oklch(46% 0.2 27); /* fill — 7.60:1; -on on it 7.60:1 */
 
   --status-info: oklch(54% 0.155 250); /* fill — 5.06:1 light, 4.15:1 dark */
   --status-info-on: var(--ink-0); /* on the fill — 5.06:1 */
@@ -321,12 +328,20 @@
   --link-on-fill: currentColor;
 
   /* --- Status, dark ------------------------------------------------------
-     The four fills and their `-on` partners are unchanged from block 1 — each
+     The four resting fills and their `-on` partners are unchanged from block 1 — each
      clears 3:1 against a black page as well as a white one, which is what
      lets a status colour mean the same thing in both themes. Warning still
      cannot be drawn bare, but on ink it needs no lift: the fill itself is
      11.22:1 here, so the border token is the fill. -------------------- */
   --status-warning-border: var(--status-warning); /* 11.22:1 */
+
+  /* Danger's hover and press are the exception to "unchanged": a darker step
+     on ink is under 3:1 by 48% (2.93:1), so dark steps LIGHTER. The window
+     is narrow from both sides — the fill needs 3:1 against the page and the
+     white -on label needs 4.5:1 on the fill, and the two ratios multiply to
+     21 — so the press fill stops at 59%, where the label is 4.54:1. */
+  --status-danger-hover: oklch(57% 0.2 27); /* fill — 4.26:1; -on on it 4.94:1 */
+  --status-danger-press: oklch(59% 0.2 27); /* fill — 4.63:1; -on on it 4.54:1 */
 
   --status-success-fg: oklch(78% 0.13 150); /* 11.03:1 on --bg */
   --status-warning-fg: oklch(82% 0.13 82); /* 11.91:1 on --bg */
