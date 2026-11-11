@@ -703,15 +703,17 @@ jobs:
             echo "recovered=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # A check that takes no screenshot (`smoke`, `docs-reflow`) fails
-          # its rerun too, and under `set -e` that would end this step before
-          # it recovers the real shots. Report those checks here, then
-          # regenerate only the shots that have baselines.
+          # A check that takes no screenshot (`smoke`, `docs-reflow`), or a
+          # shot that failed before its comparison (a preflight layout check,
+          # a missing asset), fails its rerun too, and under `set -e` that
+          # would end this step before it recovers the real shots (#346).
+          # Report those here, then regenerate only the shots whose
+          # screenshot comparison failed.
           if ! node scripts/visual-failures.mjs --baselines test-results/report.json > /dev/null 2> unbaselined.txt; then
             {
               echo "### Checks with no baseline failed"
               echo
-              echo "These take no screenshot, so no baseline can fix them. Fix the page. See \`docs/agents/visual-regression.md\`."
+              echo "These take no screenshot, or failed before their screenshot was compared (a layout check, a missing asset), so no baseline can fix them. Fix the page. See \`docs/agents/visual-regression.md\`."
               echo
               echo '````'
               # Skip the CLI's own heading; the lines above say it.

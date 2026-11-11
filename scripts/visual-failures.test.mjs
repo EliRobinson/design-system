@@ -7,6 +7,14 @@ import {
   formatPlain,
 } from './visual-failures.mjs';
 
+/* What a failed `toHaveScreenshot` leaves in the JSON report. */
+const mismatch = (message = '1234 pixels (ratio 0.02 of all image pixels) are different.') => [
+  {
+    status: 'failed',
+    errors: [{ message: `Error: expect(page).toHaveScreenshot(expected) failed\n\n  ${message}` }],
+  },
+];
+
 const report = {
   suites: [
     {
@@ -152,14 +160,14 @@ describe('failedBaselines', () => {
             title: 'components-button--primary · light',
             ok: false,
             tests: [
-              { projectName: 'storybook-wide', status: 'unexpected' },
+              { projectName: 'storybook-wide', status: 'unexpected', results: mismatch() },
               { projectName: 'storybook-narrow', status: 'expected' },
             ],
           },
           {
             title: '/patterns/forms · dark @responsive',
             ok: false,
-            tests: [{ projectName: 'docs-narrow', status: 'unexpected' }],
+            tests: [{ projectName: 'docs-narrow', status: 'unexpected', results: mismatch() }],
           },
           {
             title: '/ · light',
@@ -210,7 +218,7 @@ describe('failedBaselines', () => {
         {
           title: '/components/card · light',
           ok: false,
-          tests: [{ projectName: 'docs-wide', status: 'unexpected' }],
+          tests: [{ projectName: 'docs-wide', status: 'unexpected', results: mismatch() }],
         },
       ],
     };
@@ -237,6 +245,144 @@ describe('failedBaselines', () => {
     expect(failedBaselines(reflow)).toEqual({
       paths: [],
       unbaselined: ['docs-reflow: /components/pagination · reflow'],
+    });
+  });
+
+  describe('a shot that failed before its comparison (#346)', () => {
+    const layout = {
+      status: 'failed',
+      errors: [
+        {
+          message:
+            'Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < 2\nReceived:   14',
+        },
+      ],
+    };
+    const report = {
+      specs: [
+        {
+          title: '/preflight/dialog · light',
+          ok: false,
+          tests: [{ projectName: 'preflight-wide', status: 'unexpected', results: [layout] }],
+        },
+        {
+          title: '/components/card · light',
+          ok: false,
+          tests: [{ projectName: 'docs-wide', status: 'unexpected', results: mismatch() }],
+        },
+      ],
+    };
+
+    it('leaves it out of the rerun, so the other shots are still recovered', () => {
+      expect(failedTitles(report, { baselinedOnly: true })).toEqual(['/components/card · light']);
+    });
+
+    it('reports it as a failure no baseline can fix', () => {
+      expect(failedBaselines(report)).toEqual({
+        paths: [
+          'tests/visual/__screenshots__/docs-wide/docs/docs.spec.ts/components-card-light.png',
+        ],
+        unbaselined: ['preflight-wide: /preflight/dialog · light'],
+      });
+    });
+
+    it('judges the last attempt, which is the one the rerun repeats', () => {
+      const retried = {
+        specs: [
+          {
+            title: '/preflight/dialog · dark',
+            ok: false,
+            tests: [
+              {
+                projectName: 'preflight-wide',
+                status: 'unexpected',
+                results: [...mismatch(), layout],
+              },
+            ],
+          },
+        ],
+      };
+      expect(failedTitles(retried, { baselinedOnly: true })).toEqual([]);
+    });
+
+    it('treats a failure with no error recorded as one no baseline can fix', () => {
+      const bare = {
+        specs: [
+          {
+            title: '/ · dark',
+            ok: false,
+            tests: [{ projectName: 'docs-wide', status: 'unexpected' }],
+          },
+        ],
+      };
+      expect(failedBaselines(bare).unbaselined).toEqual(['docs-wide: / · dark']);
+    });
+
+    it('does not mistake a capture that threw for a mismatch (#320)', () => {
+      const threw = {
+        specs: [
+          {
+            title: '/components/dropdown-menu · dark',
+            ok: false,
+            tests: [
+              {
+                projectName: 'docs-wide',
+                status: 'unexpected',
+                results: [
+                  {
+                    errors: [
+                      {
+                        message:
+                          'Error: page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture screenshot',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      expect(failedTitles(threw, { baselinedOnly: true })).toEqual([]);
+    });
+
+    it.each([
+      ['a pixel difference', mismatch()],
+      [
+        'a size difference',
+        mismatch('Expected an image 1280px by 720px, received 1280px by 744px.'),
+      ],
+      [
+        'a missing baseline',
+        mismatch("A snapshot doesn't exist at /work/tests/visual/__screenshots__/a.png."),
+      ],
+    ])('keeps %s in the rerun', (_name, results) => {
+      const one = {
+        specs: [
+          {
+            title: '/ · light',
+            ok: false,
+            tests: [{ projectName: 'docs-wide', status: 'unexpected', results }],
+          },
+        ],
+      };
+      expect(failedTitles(one, { baselinedOnly: true })).toEqual(['/ · light']);
+    });
+
+    it('reads a message through the colour codes the reporter keeps', () => {
+      const coloured = mismatch(
+        '\u001b[31m1234\u001b[39m pixels (ratio 0.02 of all image pixels) are different.',
+      );
+      const one = {
+        specs: [
+          {
+            title: '/ · light',
+            ok: false,
+            tests: [{ projectName: 'docs-wide', status: 'unexpected', results: coloured }],
+          },
+        ],
+      };
+      expect(failedTitles(one, { baselinedOnly: true })).toEqual(['/ · light']);
     });
   });
 

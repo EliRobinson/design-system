@@ -849,6 +849,92 @@ describe('waitForStablePixels capture retries', () => {
   });
 });
 
+describe('final capture retries (#320)', () => {
+  const CRASH =
+    'expect(page).toHaveScreenshot(expected) failed\n\n  page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture screenshot';
+  const MISMATCH =
+    'expect(page).toHaveScreenshot(expected) failed\n\n  1234 pixels (ratio 0.02 of all image pixels) are different.';
+
+  /* A page sweep whose comparison throws `messages` in order, then passes. */
+  function sweepFailing(sweep, ...messages) {
+    const { test, bodies } = recorder();
+    const { page } = fakePage();
+    const order = [];
+    page.waitForTimeout = async () => {
+      order.push('wait');
+    };
+    let calls = 0;
+    const expectStub = Object.assign(
+      () => ({
+        toHaveScreenshot: async () => {
+          order.push('compare');
+          const message = messages[calls++];
+          if (message) throw new Error(message);
+        },
+      }),
+      { poll: () => ({ toBe: async () => {} }) },
+    );
+    sweep({ test, expect: expectStub });
+    return { run: () => bodies[0]({ page }), calls: () => calls, order };
+  }
+
+  const pages = ({ test, expect: e }) =>
+    sweepPages({ test, expect: e, baseUrl: 'http://docs', routes: ['/'], region: 'main' });
+
+  it('retries the comparison once on the transient protocol error, after a pause', async () => {
+    const { run, calls, order } = sweepFailing(pages, CRASH);
+    await run();
+    expect(calls()).toBe(2);
+    expect(order).toEqual(['compare', 'wait', 'compare']);
+  });
+
+  it('retries only once, so a page that really cannot be captured still fails', async () => {
+    const { run, calls } = sweepFailing(pages, CRASH, CRASH);
+    await expect(run()).rejects.toThrow(/Unable to capture screenshot/);
+    expect(calls()).toBe(2);
+  });
+
+  it('never retries a pixel mismatch', async () => {
+    const { run, calls } = sweepFailing(pages, MISMATCH);
+    await expect(run()).rejects.toThrow(/are different/);
+    expect(calls()).toBe(1);
+  });
+
+  it('never retries a mismatch whose call log also names the capture error', async () => {
+    const { run, calls } = sweepFailing(pages, `${MISMATCH}\n\nCall log:\n  - ${CRASH}`);
+    await expect(run()).rejects.toThrow(/are different/);
+    expect(calls()).toBe(1);
+  });
+
+  it('retries the storybook and chrome sweeps on the same terms', async () => {
+    const storybook = sweepFailing(
+      ({ test, expect: e }) =>
+        sweepStorybook({
+          test,
+          expect: e,
+          baseUrl: 'http://sb',
+          stories: [{ id: 'a--one', title: 'A', name: 'One' }],
+        }),
+      CRASH,
+    );
+    await storybook.run();
+    expect(storybook.calls()).toBe(2);
+
+    const chrome = sweepFailing(
+      ({ test, expect: e }) =>
+        sweepChrome({
+          test,
+          expect: e,
+          baseUrl: 'http://docs',
+          regions: [{ name: 'header', selector: 'header' }],
+        }),
+      CRASH,
+    );
+    await chrome.run();
+    expect(chrome.calls()).toBe(2);
+  });
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
 });

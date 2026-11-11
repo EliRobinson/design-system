@@ -505,8 +505,10 @@ jobs:
             echo "::error::The comparison wrote no report, so no shot was judged. Nothing here can be accepted."
             exit 1
           fi
-          # Only shots with baselines: a check with none (`smoke`,
-          # `docs-reflow`) fails its rerun too and would end this step.
+          # Only shots whose comparison failed: a check with no baseline
+          # (`smoke`, `docs-reflow`), or a shot that failed before its
+          # comparison (a layout check), fails its rerun too and would end
+          # this step (#346).
           # `scoped` refuses to accept while one of those is red anyway.
           FAILED=$(node scripts/visual-failures.mjs --baselined-only leg-report.json)
           if [ -z "$FAILED" ]; then
@@ -782,13 +784,14 @@ jobs:
           else
             ACCEPT_INSTRUCTION="If these changes are intended, add the \`visual-accept\` label — that starts a new run on its own; there is no need to re-run this one."
           fi
-          # A check with no baseline (`smoke`, `docs-reflow`) cannot be
-          # accepted: the accept step refuses while one is red. Say so first.
+          # A check with no baseline (`smoke`, `docs-reflow`), or a shot that
+          # failed before its comparison, cannot be accepted: the accept step
+          # refuses while one is red. Say so first.
           if ! node scripts/visual-failures.mjs --baselines test-results/report.json > /dev/null 2> unbaselined.txt; then
             {
               echo "### Checks with no baseline failed"
               echo
-              echo "These take no screenshot, so \`visual-accept\` will refuse while they are red. Fix the page first. See \`docs/agents/visual-regression.md\`."
+              echo "These take no screenshot, or failed before their screenshot was compared (a layout check, a missing asset), so \`visual-accept\` will refuse while they are red. Fix the page first. See \`docs/agents/visual-regression.md\`."
               echo
               echo '````'
               tail -n +2 unbaselined.txt
