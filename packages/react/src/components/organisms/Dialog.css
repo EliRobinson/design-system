@@ -39,12 +39,8 @@
   gap: var(--space-1);
 }
 
-/* #367: the title and description are an h2 and a p, so host typography
-   reaches them. A docs-style `.prose h2` is (0,1,1) and beats one class, so
-   these are scoped under the root at (0,2,0), and they set every property a
-   heading or paragraph rule reaches for: size, weight, line-height, spacing,
-   margin, padding and rule. A consumer overrides them at (0,2,0) too, or on
-   the root. host-typography.test.mjs measures it under two hosts. */
+/* #367: an h2 and a p, so host typography reaches them. Scoped under the
+   root at (0,2,0); docs/agents/components.md says why. */
 .ds-dialog .ds-dialog__title {
   border: 0;
   color: var(--fg);

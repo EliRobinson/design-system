@@ -190,6 +190,14 @@ Because the hover hue shift is gone on those surfaces, the hover affordance is c
 
 That last sentence is a check, not advice. `component-css.test.mjs` sweeps every component stylesheet for a `text-decoration: underline`, and `control-affordance.test.mjs` resolves the real cascade over `tokens.css` plus the component sheets and asserts the declaration that _wins_ is not one — a `text-decoration: none` that loses to a more specific rule satisfies the first and not the second. Consumers get the same constraint as `@elirobinson-css/no-underlined-control-label` from `@elirobinson/eslint-config/css`.
 
+#### Why an overlay title resets at (0,2,0)
+
+A component that renders a heading, paragraph or list (`h2`, `p`, `ul`, `ol`, `li`) is reachable by the host page's typography. A docs-style `.prose h2` is **(0,1,1)** and beats a single class; Tailwind Typography is (0,1,0) and wins on load order. Either one gave every Dialog title a page heading's size, margin and rule, and every CommandPalette option a bullet (#367).
+
+So those resets are scoped under the component's own root, at **(0,2,0)**: `.ds-dialog .ds-dialog__title`, `.ds-command-palette .ds-command-palette__list`. Each rule sets every property a host heading, paragraph or list rule reaches for: size, weight, line-height, letter-spacing, margin, padding, border and `list-style`. A consumer overrides it at (0,2,0) too, or through the root. `host-typography.test.mjs` mounts each component bare and inside two hostile `.prose` hosts loaded last, and asserts the two compute the same. A new text-bearing component joins its `CASES`.
+
+What the host sets on `.prose` itself and the page inherits (font family, a base `line-height`, `color`) still reaches a component that does not set it. That is the host's choice, not a leak.
+
 ### FormField vs Input
 
 - **`Input`** (`atoms/Input`) is the batteries-included labelled control: it requires a
