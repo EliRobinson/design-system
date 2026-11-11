@@ -39,21 +39,32 @@
   gap: var(--space-1);
 }
 
-.ds-dialog__title {
+/* #367: the title and description are an h2 and a p, so host typography
+   reaches them. A docs-style `.prose h2` is (0,1,1) and beats one class, so
+   these are scoped under the root at (0,2,0), and they set every property a
+   heading or paragraph rule reaches for: size, weight, line-height, spacing,
+   margin, padding and rule. A consumer overrides them at (0,2,0) too, or on
+   the root. host-typography.test.mjs measures it under two hosts. */
+.ds-dialog .ds-dialog__title {
+  border: 0;
   color: var(--fg);
   font-family: var(--font-sans);
   font-size: var(--fs-lg);
   font-weight: var(--fw-semibold);
   letter-spacing: var(--tr-tight);
+  line-height: var(--lh-snug);
   margin: 0;
+  padding: 0;
 }
 
-.ds-dialog__description {
+.ds-dialog .ds-dialog__description {
   color: var(--fg-2);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
+  letter-spacing: normal;
   line-height: var(--lh-normal);
   margin: 0;
+  padding: 0;
 }
 
 .ds-dialog__footer {
