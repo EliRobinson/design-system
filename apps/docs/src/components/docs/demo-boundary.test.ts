@@ -63,11 +63,10 @@ if (!browser) {
 }
 
 const DIALOG = renderToStaticMarkup(
-  h(
-    Dialog,
-    { defaultOpen: true },
-    h(DialogContent, null, h(DialogHeader, null, h(DialogTitle, null, 'Rename'))),
-  ),
+  h(Dialog, {
+    defaultOpen: true,
+    children: h(DialogContent, null, h(DialogHeader, null, h(DialogTitle, null, 'Rename'))),
+  }),
 );
 const PLAIN = '<h2>Heading</h2><p>Paragraph</p><ul><li>Item</li></ul>';
 const TARGETS = ['.ds-dialog__title', 'h2:not([class])', 'p', 'ul', 'li'];
