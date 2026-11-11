@@ -3,17 +3,19 @@ import { describe, expect, it } from 'vitest';
 
 import { DemoBlock } from './DemoBlock';
 
-/* #367: a demo sits inside the page's `.prose`, and prose rules for headings,
-   paragraphs and lists must not reach it. The figure carries `not-prose`, the
-   boundary the prose rules skip. Called as a function, not rendered, because
-   CodeSnippet is an async server component. */
+/* #367: the live stage carries `not-prose`, the boundary every prose rule in
+   site.css skips; demo-boundary.test.ts proves the skip in a browser. This
+   pins the other half: DemoBlock puts the class on the stage. Called as a
+   function, not rendered, because CodeSnippet is an async server component. */
 describe('DemoBlock', () => {
-  it('marks the demo as a prose boundary', () => {
-    const figure = DemoBlock({ file: 'combobox/Basic.tsx', children: null }) as ReactElement<{
-      className: string;
-    }>;
+  it('marks the live stage, and only the stage, as a prose boundary', () => {
+    type Element = ReactElement<{ className?: string; children?: ReactElement[] }>;
+    const figure = DemoBlock({ file: 'combobox/Basic.tsx', children: null }) as Element;
+    const [stage, source] = figure.props.children as Element[];
 
-    expect(figure.type).toBe('figure');
-    expect(figure.props.className.split(' ')).toContain('not-prose');
+    expect(figure.props.className?.split(' ')).not.toContain('not-prose');
+    expect(stage.props.className?.split(' ')).toEqual(['demo-block__stage', 'not-prose']);
+    // The source panel stays in prose, which styles its code.
+    expect(source.props.className).toBe('demo-block__source');
   });
 });
