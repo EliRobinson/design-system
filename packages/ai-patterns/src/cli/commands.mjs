@@ -5,6 +5,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { readFile } from '../package-lookup.mjs';
 import { renderVoice } from '../voice/render.mjs';
 import { resolveVoicePack } from '../voice/resolve.mjs';
 import {
@@ -13,7 +14,6 @@ import {
   loadDials,
   PATTERNS_PKG,
   REACT_PKG,
-  readFile,
   TOKENS_PKG,
   typeClasses,
   walk,

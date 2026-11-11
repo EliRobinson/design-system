@@ -93,6 +93,60 @@ describe('detect, from a workspace member', () => {
   });
 });
 
+describe('detect, with a lockfile above the project', () => {
+  it('reads a workspace member from the root lockfile and counts drift against the root install', () => {
+    const root = makeRepo({ workspaces: ['packages/*'] }, { '@elirobinson/react': '1.1.0' });
+    writeFileSync(
+      join(root, 'pnpm-lock.yaml'),
+      [
+        'importers:',
+        '  .:',
+        '    dependencies:',
+        "      '@elirobinson/react':",
+        '        version: 9.9.9',
+        '  packages/app:',
+        '    dependencies:',
+        "      '@elirobinson/react':",
+        '        version: 1.3.0',
+        '',
+      ].join('\n'),
+    );
+    const member = join(root, 'packages', 'app');
+    mkdirSync(member, { recursive: true });
+    writeFileSync(
+      join(member, 'package.json'),
+      JSON.stringify({ dependencies: { '@elirobinson/react': '^1.0.0' } }),
+    );
+
+    const { packages } = detect(member);
+
+    expect(packages[0].lockedVersion).toBe('1.3.0');
+    expect(findDrift(packages)).toEqual([
+      { name: '@elirobinson/react', locked: '1.3.0', installed: '1.1.0' },
+    ]);
+  });
+
+  it('reports no drift when the only install is an ancestor of the lockfile', () => {
+    const outer = makeRepo({}, { '@elirobinson/react': '1.1.0' });
+    const project = join(outer, 'apps', 'site');
+    mkdirSync(project, { recursive: true });
+    writeFileSync(
+      join(project, 'package.json'),
+      JSON.stringify({ dependencies: { '@elirobinson/react': '^1.0.0' } }),
+    );
+    writeFileSync(
+      join(project, 'pnpm-lock.yaml'),
+      "importers:\n  .:\n    dependencies:\n      '@elirobinson/react':\n        version: 1.3.0\n",
+    );
+
+    const { packages } = detect(project);
+
+    expect(packages[0].installedVersion).toBe('1.1.0');
+    expect(packages[0].lockedVersion).toBe('1.3.0');
+    expect(findDrift(packages)).toEqual([]);
+  });
+});
+
 describe('detect', () => {
   it('pairs declared ranges with installed and locked versions', () => {
     const dir = makeRepo(
@@ -109,6 +163,7 @@ describe('detect', () => {
         declaredRange: '^1.0.0',
         field: 'dependencies',
         installedVersion: '1.1.0',
+        installedUnderLock: true,
         lockedVersion: '1.1.0',
       },
       {
@@ -116,6 +171,7 @@ describe('detect', () => {
         declaredRange: '^0.2.0',
         field: 'dependencies',
         installedVersion: null,
+        installedUnderLock: false,
         lockedVersion: null,
       },
     ]);

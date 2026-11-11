@@ -1,6 +1,6 @@
 import { join } from 'node:path';
-import { findPackageDir, readJson, versionOf } from '../cli/discovery.mjs';
-import { lockedVersionFor, readLockfile } from './lockfile.mjs';
+import { findPackageDir, readJson, versionOf } from '../package-lookup.mjs';
+import { isWithin, lockedVersionFor, readLockfile } from './lockfile.mjs';
 
 export const SCOPE = '@elirobinson/';
 
@@ -38,10 +38,12 @@ export function readInstalledVersion(cwd, name) {
  *
  * Both versions have to be known for the comparison to mean anything. A
  * missing install is a fresh clone, not drift; a missing lockfile entry leaves
- * nothing to compare against. That is the case for a workspace member whose
- * lockfile lives at the root: the lockfile is read from `cwd` only, while the
- * install is found by walking up. Warning there would be a false positive, so
- * it stays silent instead.
+ * nothing to compare against.
+ *
+ * The install must also sit under the directory whose lockfile was read
+ * (`installedUnderLock`). A project with its own lockfile and no `node_modules`
+ * yet, inside a tree whose ancestor has an install, would otherwise be compared
+ * against that ancestor's copy.
  *
  * Lives here rather than with either command because both need it: `ds-resync`
  * reports it, and `elirobinson-ds` warns that its own answers are about the
@@ -53,6 +55,8 @@ export function findDrift(entries) {
       (entry) =>
         entry.installedVersion &&
         entry.lockedVersion &&
+        entry.installedUnderLock &&
+        entry.installedUnderLock &&
         entry.installedVersion !== entry.lockedVersion,
     )
     .map((entry) => ({
@@ -85,10 +89,14 @@ export function detect(cwd) {
     packageJsonPath,
     packageJson,
     lock,
-    packages: findScopedDependencies(packageJson).map((entry) => ({
-      ...entry,
-      installedVersion: readInstalledVersion(cwd, entry.name),
-      lockedVersion: lockedVersionFor(lock, entry.name, entry.declaredRange),
-    })),
+    packages: findScopedDependencies(packageJson).map((entry) => {
+      const installDir = findPackageDir(entry.name, [cwd]);
+      return {
+        ...entry,
+        installedVersion: versionOf(installDir),
+        installedUnderLock: Boolean(installDir && lock && isWithin(lock.dir, installDir)),
+        lockedVersion: lockedVersionFor(lock, entry.name, entry.declaredRange),
+      };
+    }),
   };
 }
