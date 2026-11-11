@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import type { MouseEvent } from 'react';
 
 import {
@@ -13,34 +14,34 @@ import {
   SheetTrigger,
 } from '@elirobinson/react/components/organisms/Sheet';
 
+import type { SiteLink } from '../lib/site-links';
 import { SiteNav } from './SiteSidebar';
 import type { SidebarSection } from './SiteSidebar';
-
-type MenuLink = { label: string; href: string };
 
 /* Below 960px the sidebar and the header links are hidden (#370). This menu
    carries both, so a phone reader is not left with Search as the only way to
    move around. */
-export function SiteMenu({ sections, links }: { sections: SidebarSection[]; links: MenuLink[] }) {
+export function SiteMenu({ sections, links }: { sections: SidebarSection[]; links: SiteLink[] }) {
   const [open, setOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const pathname = usePathname();
 
-  function onOpenChange(next: boolean) {
-    setOpen(next);
-    // A native <dialog> hands focus back on close(); say it here as well so it
-    // does not depend on which way the sheet was closed.
-    if (!next) buttonRef.current?.focus();
-  }
+  // Browser back and forward change the route without a click in the sheet.
+  useEffect(() => setOpen(false), [pathname]);
 
-  // Following any link closes the sheet, the current page's link included:
-  // that one does not change the route, so nothing else would close it.
+  // Following a link closes the sheet, the current page's link included: that
+  // one does not change the route, so nothing else would close it. A modified
+  // click opens a new tab and leaves this page where it is. Focus goes back to
+  // the menu button through the Sheet's own focus return.
   function onNavigate(event: MouseEvent) {
-    if ((event.target as HTMLElement).closest('a')) onOpenChange(false);
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+      return;
+    }
+    if ((event.target as HTMLElement).closest('a')) setOpen(false);
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetTrigger ref={buttonRef} className="site-menu-button" aria-label="Menu">
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger className="site-menu-button" aria-label="Menu">
         <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none">
           <path
             d="M4 7h16M4 12h16M4 17h16"
@@ -51,7 +52,7 @@ export function SiteMenu({ sections, links }: { sections: SidebarSection[]; link
         </svg>
       </SheetTrigger>
       <SheetContent side="left" className="site-menu">
-        <SheetHeader>
+        <SheetHeader className="site-menu__header">
           <SheetTitle>Menu</SheetTitle>
           <SheetClose className="site-menu__close" aria-label="Close menu">
             <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none">
@@ -67,20 +68,18 @@ export function SiteMenu({ sections, links }: { sections: SidebarSection[]; link
         <div className="site-menu__body" onClick={onNavigate}>
           <nav aria-label="Site" className="site-menu__links">
             {links.map((link) =>
-              link.href.startsWith('/') ? (
-                <Link key={link.href} href={link.href} className="site-header__link">
-                  {link.label}
-                </Link>
-              ) : (
-                <a key={link.href} href={link.href} rel="noreferrer" className="site-header__link">
+              link.external ? (
+                <a key={link.href} href={link.href} rel="noreferrer" className="site-menu__link">
                   {link.label}
                 </a>
+              ) : (
+                <Link key={link.href} href={link.href} className="site-menu__link">
+                  {link.label}
+                </Link>
               ),
             )}
           </nav>
-          <div className="site-sidebar site-sidebar--menu">
-            <SiteNav sections={sections} />
-          </div>
+          <SiteNav sections={sections} />
         </div>
       </SheetContent>
     </Sheet>

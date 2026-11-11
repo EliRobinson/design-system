@@ -1,3 +1,5 @@
+import { REPO_URL } from '../lib/site-links';
+
 export function SiteFooter() {
   return (
     <footer className="site-footer">
@@ -7,7 +9,7 @@ export function SiteFooter() {
         </p>
         <p className="site-footer__tagline">Practical tech, honestly built.</p>
         <nav aria-label="Footer" className="site-footer__links">
-          <a href="https://github.com/EliRobinson/design-system" rel="noreferrer">
+          <a href={REPO_URL} rel="noreferrer">
             GitHub
           </a>
           <a href="https://www.miltinsons.com/" rel="noreferrer">
