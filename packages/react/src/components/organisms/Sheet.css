@@ -61,7 +61,7 @@
   gap: var(--space-1);
 }
 
-/* #367: scoped to (0,2,0) so host typography cannot reach in. See Dialog.css. */
+/* #367: scoped under the root at (0,2,0), as in Dialog.css. */
 .ds-sheet .ds-sheet__title {
   border: 0;
   color: var(--fg);
