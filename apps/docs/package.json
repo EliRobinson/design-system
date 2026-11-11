@@ -33,6 +33,7 @@
     "@types/mdx": "^2.0.13",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "playwright": "^1.56.0",
     "shiki": "^4.4.2",
     "tailwindcss": "^4.3.3",
     "vitest": "^3.2.4",
