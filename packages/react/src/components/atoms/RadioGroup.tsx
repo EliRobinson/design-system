@@ -2,6 +2,7 @@ import type { HTMLAttributes, InputHTMLAttributes } from 'react';
 import { createContext, forwardRef, useContext, useEffect, useId, useRef, useState } from 'react';
 
 import { cn } from '../../lib/cn.js';
+import { useFieldMessage } from '../../lib/useFieldMessage.js';
 
 type RadioGroupContextValue = {
   name: string;
@@ -37,10 +38,27 @@ export type RadioGroupProps = Omit<HTMLAttributes<HTMLDivElement>, 'role'> & {
   value?: string | null;
   defaultValue?: string;
   onValueChange?: (value: string) => void;
+  /**
+   * Marks the group invalid and renders the message with `role="alert"`, the
+   * way `Input`'s `error` does. `aria-invalid` and `aria-describedby` go on the
+   * `role="radiogroup"` element, not on each item. The message is a sibling
+   * after the group, so in a flex or grid parent it is laid out as its own item.
+   */
+  error?: string;
 };
 
 export const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(function RadioGroup(
-  { className, name, value, defaultValue, onValueChange, children, ...props },
+  {
+    className,
+    name,
+    value,
+    defaultValue,
+    onValueChange,
+    error,
+    'aria-describedby': ariaDescribedBy,
+    children,
+    ...props
+  },
   ref,
 ) {
   const [internalValue, setInternalValue] = useState(defaultValue);
@@ -74,6 +92,8 @@ export const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(function R
     wasControlled.current = isControlled;
   }, [isControlled, name]);
 
+  const { controlProps, message } = useFieldMessage({ error, ariaDescribedBy });
+
   const setValue = (next: string) => {
     if (!isControlled) {
       setInternalValue(next);
@@ -83,9 +103,17 @@ export const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(function R
 
   return (
     <RadioGroupContext.Provider value={{ name, value: currentValue, setValue }}>
-      <div ref={ref} role="radiogroup" className={cn('ds-radio-group', className)} {...props}>
+      <div
+        ref={ref}
+        role="radiogroup"
+        className={cn('ds-radio-group', error && 'ds-radio-group--error', className)}
+        {...controlProps}
+        {...props}
+      >
         {children}
       </div>
+      {/* A sibling, not a wrapper: see useFieldMessage. */}
+      {message}
     </RadioGroupContext.Provider>
   );
 });

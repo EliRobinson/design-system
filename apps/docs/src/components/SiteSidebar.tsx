@@ -4,16 +4,19 @@ import { usePathname } from 'next/navigation';
 
 import { NavigationMenu } from '@elirobinson/react/components/organisms/NavigationMenu';
 
-type SidebarSection = {
+export type SidebarSection = {
   title: string;
   pages: { title: string; href: string }[];
 };
 
-export function SiteSidebar({ sections }: { sections: SidebarSection[] }) {
+/* The docs navigation tree. The sidebar shows it at 960px and up; SiteMenu
+   shows the same tree in a Sheet below that. One component, so the two cannot
+   list different pages. */
+export function SiteNav({ sections }: { sections: SidebarSection[] }) {
   const pathname = usePathname();
 
   return (
-    <aside className="site-sidebar">
+    <div className="site-nav">
       <NavigationMenu
         aria-label="Documentation"
         currentPath={pathname}
@@ -25,6 +28,14 @@ export function SiteSidebar({ sections }: { sections: SidebarSection[] }) {
           items: section.pages.map((page) => ({ label: page.title, href: page.href })),
         }))}
       />
+    </div>
+  );
+}
+
+export function SiteSidebar({ sections }: { sections: SidebarSection[] }) {
+  return (
+    <aside className="site-sidebar">
+      <SiteNav sections={sections} />
     </aside>
   );
 }

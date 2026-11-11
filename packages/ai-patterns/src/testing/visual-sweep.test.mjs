@@ -808,8 +808,8 @@ describe('waitForStablePixels capture retries', () => {
   function pageFailing(failures, message = CRASH) {
     const { page } = fakePage();
     const order = [];
-    page.waitForTimeout = async () => {
-      order.push('wait');
+    page.waitForTimeout = async (ms) => {
+      order.push(`wait ${ms}`);
     };
     let calls = 0;
     page.screenshot = async () => {
@@ -830,13 +830,30 @@ describe('waitForStablePixels capture retries', () => {
   it('pauses before each retry, so it does not land in the same gap', async () => {
     const { page, order } = pageFailing(2);
     await waitForStablePixels(page, { expect: pollingExpect });
-    expect(order.slice(0, 5)).toEqual(['shot', 'wait', 'shot', 'wait', 'shot']);
+    expect(order.slice(0, 5)).toEqual(['shot', 'wait 100', 'shot', 'wait 200', 'shot']);
   });
 
-  it('gives up after three tries, so a page that really cannot be captured still fails', async () => {
+  /* #320: three failures 100ms apart, then a pass on a re-run of the commit. */
+  it('outlasts a gap longer than three tries, with growing pauses (#320)', async () => {
+    const { page, order } = pageFailing(4);
+    await waitForStablePixels(page, { expect: pollingExpect });
+    expect(order.slice(0, 9)).toEqual([
+      'shot',
+      'wait 100',
+      'shot',
+      'wait 200',
+      'shot',
+      'wait 400',
+      'shot',
+      'wait 800',
+      'shot',
+    ]);
+  });
+
+  it('gives up after five tries, so a page that really cannot be captured still fails', async () => {
     const { page, calls } = pageFailing(99);
     await expect(waitForStablePixels(page, { expect: pollingExpect })).rejects.toThrow(CRASH);
-    expect(calls()).toBe(3);
+    expect(calls()).toBe(5);
   });
 
   it('does not retry any other screenshot error', async () => {

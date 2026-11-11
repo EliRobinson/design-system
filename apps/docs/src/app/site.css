@@ -90,7 +90,7 @@
   font-size: var(--fs-sm);
   color: var(--fg-3);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
@@ -128,17 +128,17 @@
   padding-right: var(--space-2);
 }
 
-.site-sidebar .ds-navigation-menu__list {
+.site-nav .ds-navigation-menu__list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.site-sidebar > nav > .ds-navigation-menu__list > li {
+.site-nav > nav > .ds-navigation-menu__list > li {
   margin-bottom: var(--space-5);
 }
 
-.site-sidebar > nav > .ds-navigation-menu__list > li > .ds-navigation-menu__label {
+.site-nav > nav > .ds-navigation-menu__list > li > .ds-navigation-menu__label {
   padding: var(--space-1) var(--space-2);
   font-family: var(--font-mono);
   font-size: var(--fs-2xs);
@@ -148,7 +148,7 @@
   color: var(--fg-3);
 }
 
-.site-sidebar .ds-navigation-menu__link {
+.site-nav .ds-navigation-menu__link {
   display: flex;
   align-items: center;
   padding: var(--space-1) var(--space-2);
@@ -158,17 +158,86 @@
   border-radius: var(--radius-xs);
 }
 
-.site-sidebar .ds-navigation-menu__list .ds-navigation-menu__list .ds-navigation-menu__link:hover {
+.site-nav .ds-navigation-menu__list .ds-navigation-menu__list .ds-navigation-menu__link:hover {
   color: var(--fg);
   background: var(--bg-subtle);
   box-shadow: none; /* the component's hover ring (#354) is not part of the docs sidebar */
 }
 
-.site-sidebar .ds-navigation-menu__link--active {
+.site-nav .ds-navigation-menu__link--active {
   color: var(--fg);
   font-weight: var(--fw-medium);
   background: var(--bg-subtle);
   box-shadow: inset 2px 0 0 0 var(--accent);
+}
+
+/* The menu button and its Sheet exist for the widths where the sidebar and the
+   header links are hidden (#370). Above 960px the button is not rendered. */
+.site-menu-button {
+  display: none;
+}
+
+.site-menu-button,
+.site-menu__close {
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.site-menu-button:hover,
+.site-menu__close:hover {
+  background: var(--bg-subtle);
+}
+
+.site-menu__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.site-menu .ds-sheet__inner {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.site-menu__body {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.site-menu__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--fg-2);
+  text-decoration: none;
+}
+
+.site-menu__link:hover {
+  color: var(--fg);
+}
+
+/* Primary navigation on a phone: each link holds the 44px floor. */
+.site-menu .ds-navigation-menu__link {
+  min-height: 44px;
+}
+
+.site-menu__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
 }
 
 @media (max-width: 960px) {
@@ -182,6 +251,11 @@
 
   .site-header__nav {
     display: none;
+  }
+
+  .site-menu-button {
+    display: inline-flex;
+    flex: none;
   }
 }
 
@@ -550,7 +624,7 @@
    edge of visible in both themes. --ink-100 is a fixed near-white, so it reads
    as a hairline on a white page and as loud white pinpricks on a dark one. The
    dot colour is therefore its own custom property, matched per theme to the
-   same weight the landing hero uses over --bg-inverse. */
+   same weight the landing hero's --hero-dot has on its slab. */
 .demo-block__stage {
   --demo-stage-dot: var(--ink-100);
   display: flow-root;
@@ -919,10 +993,25 @@
 
 /* --- Landing page --------------------------------------------------------- */
 
+/* The hero is the brand's dark slab in both themes (#369). --bg-inverse and the
+   --fg-inverse family flip with the theme, which turned it into a white slab in
+   dark. Its colours are therefore declared once here, off the ink and signal
+   ramps, and every hero rule below reads these. Lightness carries contrast and
+   no palette moves it, so home-hero-contrast.test.ts measures each pair under
+   every palette and theme. */
 .home-hero {
-  background: var(--bg-inverse);
-  color: var(--fg-inverse);
-  background-image: radial-gradient(oklch(100% 0 0 / 0.08) 1px, transparent 1px);
+  --hero-bg: var(--ink-1000);
+  --hero-fg: var(--ink-0);
+  --hero-fg-2: var(--ink-300);
+  --hero-fg-3: var(--ink-400);
+  --hero-accent: var(--signal-400);
+  --hero-rule: oklch(100% 0 0 / 0.12);
+  --hero-dot: oklch(100% 0 0 / 0.08);
+  /* --focus-ring is --ink-1000 in light, which is invisible on this slab. */
+  --focus-ring: var(--hero-fg);
+  background: var(--hero-bg);
+  color: var(--hero-fg);
+  background-image: radial-gradient(var(--hero-dot) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -933,7 +1022,7 @@
 }
 
 .home-hero__eyebrow {
-  color: var(--accent-ink-inverse);
+  color: var(--hero-accent);
   margin: 0 0 var(--space-4);
 }
 
@@ -943,7 +1032,7 @@
   font-size: clamp(38px, 5.5vw, var(--fs-6xl));
   line-height: var(--lh-tight);
   letter-spacing: var(--tr-tight);
-  color: var(--fg-inverse);
+  color: var(--hero-fg);
   margin: 0 0 var(--space-5);
   max-width: 16em;
 }
@@ -955,7 +1044,7 @@
 .home-hero__lead {
   font-size: var(--fs-xl);
   line-height: var(--lh-relaxed);
-  color: var(--fg-inverse-2);
+  color: var(--hero-fg-2);
   max-width: var(--shell-md);
   margin: 0 0 var(--space-7);
 }
@@ -972,12 +1061,12 @@
 }
 
 .home-hero__secondary {
-  color: var(--fg-inverse);
+  color: var(--hero-fg);
   font-weight: var(--fw-medium);
 }
 
 .home-hero__secondary:hover {
-  color: var(--accent-ink-inverse);
+  color: var(--hero-accent);
 }
 
 .home-hero__stats {
@@ -985,7 +1074,7 @@
   flex-wrap: wrap;
   gap: var(--space-9);
   margin: 0;
-  border-top: 1px solid var(--border-inverse);
+  border-top: 1px solid var(--hero-rule);
   padding-top: var(--space-6);
 }
 
@@ -993,7 +1082,7 @@
   font-family: var(--font-mono);
   font-size: var(--fs-3xl);
   font-weight: var(--fw-semibold);
-  color: var(--accent);
+  color: var(--hero-accent);
   margin: 0;
 }
 
@@ -1002,7 +1091,7 @@
   font-size: var(--fs-xs);
   letter-spacing: var(--tr-caps);
   text-transform: uppercase;
-  color: var(--fg-inverse-3);
+  color: var(--hero-fg-3);
 }
 
 .home-section {

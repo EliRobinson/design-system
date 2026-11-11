@@ -3,10 +3,12 @@
  *
  * `design-system-docs/` mirrors the tokens package by symlink: four stylesheets
  * at its root and all thirteen files under `fonts/` point into
- * `packages/tokens/src/`. `cpSync(from, to, { recursive: true, dereference:
- * true })` handles the first group and not the second — `dereference` decides
- * how the *copy root* is treated, and links met during the recursive walk are
- * recreated as links, rewritten to absolute, machine-specific targets.
+ * `packages/tokens/src/`. On Node 24, `cpSync(from, to, { recursive: true,
+ * dereference: true })` handles the first group and not the second —
+ * `dereference` decides how the *copy root* is treated, and links met during
+ * the recursive walk are recreated as links, rewritten to absolute,
+ * machine-specific targets. Node 26 follows them; `copyTree` does not depend
+ * on which Node it runs on.
  *
  * That is invisible on the build machine (the targets exist, so reading and
  * hashing them both succeed) and fatal in the tarball: `npm pack` drops a

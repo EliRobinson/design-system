@@ -15,7 +15,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 export const LOCKFILES = [
   ['pnpm-lock.yaml', 'pnpm'],
@@ -106,35 +106,43 @@ function collectPnpmBlocks(source, entries) {
   }
 }
 
-function parsePnpmLock(text) {
+function parsePnpmLock(text, importer = '.') {
   const document = parseYamlMaps(text);
   const entries = [];
 
   // The root importer is where a single-package repo's direct dependencies
-  // live in v6+. Older lockfiles put them at the top level instead.
-  collectPnpmBlocks(document.importers?.['.'] ?? document, entries);
+  // live in v6+. Older lockfiles put them at the top level instead. A
+  // workspace member has an importer of its own, keyed by its path from the
+  // lockfile's directory; the root's dependencies are not the member's.
+  const source = document.importers?.[importer] ?? (importer === '.' ? document : null);
+  collectPnpmBlocks(source, entries);
 
   return entries;
 }
 
-function parseNpmLock(text) {
+function parseNpmLock(text, importer = '.') {
   const document = JSON.parse(text);
-  const entries = [];
+  const found = new Map();
+  // A workspace member can hold its own copy, which wins over the hoisted one
+  // for code inside the member.
+  const memberPrefix = importer === '.' ? null : `${importer}/`;
 
   for (const [path, record] of Object.entries(document.packages ?? {})) {
-    // Only the top-level install: `node_modules/x/node_modules/y` is a nested
+    const inMember = memberPrefix !== null && path.startsWith(memberPrefix);
+    const local = inMember ? path.slice(memberPrefix.length) : path;
+    // Only a top-level install: `node_modules/x/node_modules/y` is a nested
     // copy resolved for someone else, and the root importer key is `''`.
-    if (!path.startsWith('node_modules/')) continue;
-    if (path.indexOf('node_modules/', 1) !== -1) continue;
+    if (!local.startsWith('node_modules/')) continue;
+    if (local.indexOf('node_modules/', 1) !== -1) continue;
     // A workspace member is linked, not installed — it has no resolved version.
     if (record?.link) continue;
 
-    entries.push({
-      name: path.slice('node_modules/'.length),
-      spec: null,
-      version: normalizeVersion(record?.version),
-    });
+    const name = local.slice('node_modules/'.length);
+    if (!inMember && found.has(name)) continue;
+    found.set(name, { name, spec: null, version: normalizeVersion(record?.version) });
   }
+
+  const entries = [...found.values()];
 
   for (const [name, record] of Object.entries(document.dependencies ?? {})) {
     entries.push({ name, spec: null, version: normalizeVersion(record?.version) });
@@ -192,39 +200,90 @@ function parseYarnLock(text) {
   return entries;
 }
 
+// Only pnpm keeps a per-member section; npm and yarn list every workspace
+// member's hoisted install once at the root, so they ignore `importer`.
 const PARSERS = { pnpm: parsePnpmLock, npm: parseNpmLock, yarn: parseYarnLock };
 
 /**
  * @param {string} text lockfile contents
  * @param {'pnpm'|'npm'|'yarn'} kind
+ * @param {string} [importer] pnpm only: the workspace member to read, as a path
+ *   from the lockfile's directory. Defaults to the root.
  * @returns {{kind: string, entries: Array<{name: string, spec: string|null, version: string|null}>}}
  */
-export function parseLockfile(text, kind) {
-  return { kind, entries: PARSERS[kind](text) };
-}
-
-/** The lockfile in this directory, or null. Order decides which wins when a
- *  repo has more than one, matching how the install command is chosen. */
-export function findLockfile(cwd) {
-  for (const [filename, kind] of LOCKFILES) {
-    const path = join(cwd, filename);
-    if (existsSync(path)) return { path, kind };
-  }
-  return null;
+export function parseLockfile(text, kind, importer) {
+  return { kind, entries: PARSERS[kind](text, importer) };
 }
 
 /**
- * Reads and parses this directory's lockfile. A lockfile that cannot be read or
+ * Whether the lockfile in `dir` governs the project `importer` below it. A
+ * lockfile in the project's own directory always does. One further up does only
+ * when it lists the project as a workspace member; a stray lockfile in an
+ * unrelated ancestor must not be read as this project's.
+ */
+function governs({ path, kind, dir }, importer) {
+  if (importer === '.') return true;
+  try {
+    if (kind === 'pnpm')
+      return Boolean(parseYamlMaps(readFileSync(path, 'utf-8')).importers?.[importer]);
+    if (kind === 'npm') return importer in (JSON.parse(readFileSync(path, 'utf-8')).packages ?? {});
+    // yarn lists no members itself; the workspace root's package.json does.
+    return Boolean(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf-8')).workspaces);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The nearest lockfile at or above `cwd` that governs it, or null. Walks up the
+ * way an install does, so a workspace member finds the lockfile at its root.
+ * Within one directory the order decides which wins when a repo has more than
+ * one, matching how the install command is chosen. `dir` is where it was found
+ * and `importer` is `cwd` relative to it (`.` at the root).
+ */
+export function findLockfile(cwd) {
+  const start = resolve(cwd);
+  let dir = start;
+  for (;;) {
+    const importer = relative(dir, start).split(sep).join('/') || '.';
+    for (const [filename, kind] of LOCKFILES) {
+      const path = join(dir, filename);
+      const found = { path, kind, dir, importer };
+      if (existsSync(path) && governs(found, importer)) return found;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+/**
+ * Whether `path` is `dir` itself or inside it. Drift is only meaningful for an
+ * install this lockfile governs: a copy found in an ancestor above the
+ * lockfile's directory belongs to some other project.
+ */
+export function isWithin(dir, path) {
+  const from = relative(dir, path);
+  return from !== '..' && !from.startsWith(`..${sep}`) && !isAbsolute(from);
+}
+
+/**
+ * Reads and parses the nearest lockfile. A lockfile that cannot be read or
  * understood yields null — the same answer as no lockfile at all, which every
  * caller already handles by falling back to the declared range. Failing the
  * whole command over it would be worse than reporting against the range.
+ *
+ * The result carries `dir`, the directory the lockfile lives in.
  */
 export function readLockfile(cwd) {
   const found = findLockfile(cwd);
   if (!found) return null;
 
   try {
-    return parseLockfile(readFileSync(found.path, 'utf-8'), found.kind);
+    return {
+      ...parseLockfile(readFileSync(found.path, 'utf-8'), found.kind, found.importer),
+      dir: found.dir,
+    };
   } catch {
     return null;
   }

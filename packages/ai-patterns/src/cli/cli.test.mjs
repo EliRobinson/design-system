@@ -26,7 +26,8 @@ import {
 } from '@elirobinson/tokens/token-stylesheets';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { findPackageDir, loadInventory } from './discovery.mjs';
+import { findPackageDir } from '../package-lookup.mjs';
+import { loadInventory } from './discovery.mjs';
 import { mergeBlock } from './init.mjs';
 import { run } from './run.mjs';
 

@@ -29,7 +29,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { REACT_PKG, TOKENS_PKG } from '../cli/discovery.mjs';
+import { REACT_PKG, TOKENS_PKG } from '../package-lookup.mjs';
 import { DLX } from '../artifacts/llms.mjs';
 import { buildReferenceSkill, REFERENCE_INPUTS, SOURCE_KINDS } from '../artifacts/reference.mjs';
 import { SKILL_DIRS } from '../artifacts/skills.mjs';

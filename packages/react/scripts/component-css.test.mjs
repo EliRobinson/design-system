@@ -449,7 +449,7 @@ describe('the form-control font reset in tokens.css', () => {
 describe("the row controls' error outline", () => {
   /* Same specificity as the :focus-visible rule, so only source order lets
      the focus ring win on a focused invalid control. */
-  for (const block of ['ds-checkbox', 'ds-switch']) {
+  for (const block of ['ds-checkbox', 'ds-switch', 'ds-radio-group']) {
     it(`${block}: paints --status-danger and sits before the focus rule`, () => {
       const sheet = SHEETS.find(({ css }) => css.includes(`.${block}--error`));
       const list = rules(sheet.css);
@@ -461,4 +461,17 @@ describe("the row controls' error outline", () => {
       expect(error).toBeLessThan(focus);
     });
   }
+});
+
+describe("the slider's error outline", () => {
+  it('paints --status-danger and sits before the focus rule', () => {
+    const sheet = SHEETS.find(({ css }) => css.includes('.ds-slider__input--error'));
+    const list = rules(sheet.css);
+    const error = list.findIndex((r) => r.selector === '.ds-slider__input--error');
+    const focus = list.findIndex((r) => r.selector === '.ds-slider__input:focus-visible');
+
+    expect(error).toBeGreaterThanOrEqual(0);
+    expect(list[error].body).toContain('var(--status-danger)');
+    expect(error).toBeLessThan(focus);
+  });
 });

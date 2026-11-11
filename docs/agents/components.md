@@ -201,14 +201,14 @@ That last sentence is a check, not advice. `component-css.test.mjs` sweeps every
   `aria-required`) to spread onto that control. Do not nest `Input` inside `FormField` —
   `Input` already renders its own label and message region, so wrapping it produces
   duplicate labels.
-- `Input`, `Textarea`, `Select`, `FormField`, `Checkbox` and `Switch` all render their
+- `Input`, `Textarea`, `Select`, `FormField`, `Checkbox`, `Switch`, `RadioGroup` and `Slider` all render their
   error with `role="alert"`, in a slot of its own so a hint turning into an error mounts
-  a fresh live region. All six get the message slots and the `aria-describedby` and
+  a fresh live region. All of them get the message slots and the `aria-describedby` and
   `aria-invalid` wiring from the internal `lib/useFieldMessage`, which takes one options
   object (`FieldMessageOptions`). A new labelled control uses the
   hook, never its own copy: a consumer should never have to render the error themselves
-  to get it announced. A field with no control of its own (a list, a group) uses the
-  public `FieldError` atom, which renders the hook's error slot.
+  to get it announced. A field with no control of its own (a list, a custom group) uses the
+  public `FieldError` atom (`RadioGroup` takes `error` itself), which renders the hook's error slot.
 - `FormField`'s `labelAside` is the label row's slot. It is a sibling of the `<label>`,
   so `label` stays a `string` and stays the accessible name — the same `label: string`
   every labelled control in this library takes.
@@ -399,8 +399,8 @@ as the register.
 | DropdownMenu, Popover, Tooltip, Sheet, Toast             | Overlay primitives — portal positioning, keyboard nav, aria-live toasts                                                                                          |
 | Avatar, Breadcrumb, Checkbox, Switch, Skeleton, Progress | Styled per tokens; check UI kits for context                                                                                                                     |
 | Eyebrow, RuleLink                                        | Marketing typography primitives from ui_kits                                                                                                                     |
-| RadioGroup                                               | `RadioGroup` / `RadioGroupItem` — context-based group, native radios                                                                                             |
-| Slider                                                   | `Slider` — labelled native `<input type="range">`                                                                                                                |
+| RadioGroup                                               | `RadioGroup` / `RadioGroupItem` — context-based group, native radios; `error` goes on the group                                                                  |
+| Slider                                                   | `Slider` — labelled native `<input type="range">`; `error` like `Input`                                                                                          |
 | Pagination                                               | `Pagination` — page-button list, `aria-current="page"`                                                                                                           |
 | Accordion                                                | `Accordion` — compound, configurable heading level                                                                                                               |
 | Calendar / Date Picker                                   | `DatePicker` — popover date grid, ARIA `grid`/`row`/`columnheader`/`gridcell`                                                                                    |

@@ -20,7 +20,8 @@ import { DLX } from '../../artifacts/llms.mjs';
 import { checkRecordDrift, RECORD_PATH, REGENERATE_ARTIFACTS } from '../../resync/artifacts.mjs';
 import { positionAt } from '../../resync/scan.mjs';
 import { compareVersions, parseVersion } from '../../resync/semver.mjs';
-import { cssVariables, REACT_PKG, readFile, TOKENS_PKG } from '../discovery.mjs';
+import { REACT_PKG, readFile, TOKENS_PKG } from '../../package-lookup.mjs';
+import { cssVariables } from '../discovery.mjs';
 import { declarations, DS_STYLESHEETS } from './scan.mjs';
 
 /**

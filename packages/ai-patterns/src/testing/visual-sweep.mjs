@@ -323,21 +323,29 @@ export async function waitForStablePixels(page, { expect, fullPage = false, time
 
    Retried here and only here. These captures are the settle loop's own probes,
    compared with each other and then thrown away, so repeating one cannot hide
-   a wrong pixel; the shot that is compared against a baseline is
-   `toHaveScreenshot`'s and is not touched. The match is the one message, not
-   any error, and the count is three, so a closed page or a page that really
-   cannot be captured still fails on the first or third try. A short pause sits
-   between tries so a retry does not land in the same gap. */
-const CAPTURE_ATTEMPTS = 3;
+   a wrong pixel. The shot compared against a baseline is `toHaveScreenshot`'s,
+   and it needs no retry from us: Playwright's matcher already catches this
+   error, logs "failed to take screenshot", and tries again until its own
+   timeout (`expectScreenshot` in playwright-core). A pixel mismatch is
+   that matcher's verdict, so nothing here can ever retry one.
+
+   The gap can outlast three tries 100ms apart. #320 is that case:
+   /components/dropdown-menu · dark failed all three settle probes in one
+   ~300ms window (PR #319, compare (docs-wide 2/4)), and passed on a re-run.
+   So the pauses grow, like the settle poll's own intervals, giving the
+   compositor about 1.5s in all. The match is still the one message, not any
+   error, so a closed page fails on its first try, and a page that really
+   cannot be captured still fails, on the fifth. */
+const CAPTURE_RETRY_PAUSES = Object.freeze([100, 200, 400, 800]);
 
 async function captureForSettle(page, { fullPage }) {
-  for (let attempt = 1; ; attempt++) {
+  for (let attempt = 0; ; attempt++) {
     try {
       return await page.screenshot({ animations: 'disabled', fullPage });
     } catch (error) {
       const transient = /Unable to capture screenshot/.test(String(error?.message));
-      if (!transient || attempt >= CAPTURE_ATTEMPTS) throw error;
-      await page.waitForTimeout(100);
+      if (!transient || attempt >= CAPTURE_RETRY_PAUSES.length) throw error;
+      await page.waitForTimeout(CAPTURE_RETRY_PAUSES[attempt]);
     }
   }
 }

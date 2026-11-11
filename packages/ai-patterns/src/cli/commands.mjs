@@ -5,19 +5,10 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { PATTERNS_PKG, REACT_PKG, readFile, TOKENS_PKG } from '../package-lookup.mjs';
 import { renderVoice } from '../voice/render.mjs';
 import { resolveVoicePack } from '../voice/resolve.mjs';
-import {
-  cssClasses,
-  cssVariables,
-  loadDials,
-  PATTERNS_PKG,
-  REACT_PKG,
-  readFile,
-  TOKENS_PKG,
-  typeClasses,
-  walk,
-} from './discovery.mjs';
+import { cssClasses, cssVariables, loadDials, typeClasses, walk } from './discovery.mjs';
 
 const REPO = 'https://github.com/EliRobinson/design-system';
 

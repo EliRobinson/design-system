@@ -39,7 +39,33 @@ function gamma(channel) {
   return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
 }
 
-const OKLCH_PATTERN = /oklch\(\s*([\d.]+)%\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%?))?\s*\)/;
+/* The one calc() the neutral ramp uses: a product of two literals,
+   `calc(0.008 * 1.6)`. It is written once, here, and both the parser and
+   `flattenCalc` are built from it. Anything richer is not evaluated, so this
+   cannot quietly become a calc() engine that disagrees with a browser. */
+const CALC_PRODUCT = String.raw`calc\(\s*[\d.]+\s*\*\s*[\d.]+\s*\)`;
+const NUM = String.raw`(?:[\d.]+|${CALC_PRODUCT})`;
+const OKLCH_PATTERN = new RegExp(
+  String.raw`oklch\(\s*(${NUM})%\s+(${NUM})\s+(${NUM})(?:\s*\/\s*([\d.]+%?))?\s*\)`,
+);
+
+/**
+ * Replace each `calc(a * b)` in a value with its product.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+export function flattenCalc(value) {
+  return value.replace(new RegExp(CALC_PRODUCT, 'g'), (calc) => {
+    const [a, b] = calc.match(/[\d.]+/g).map(Number);
+    return `${Number((a * b).toFixed(6))}`;
+  });
+}
+
+function evalNumber(raw) {
+  return Number(flattenCalc(raw));
+}
+
 const HEX_PATTERN = /#([0-9a-f]{6})\b/i;
 const WHOLE_HEX = new RegExp(`^${HEX_PATTERN.source}$`, 'i');
 
@@ -79,7 +105,11 @@ export function parseColor(value) {
   }
   const oklch = value.match(OKLCH_PATTERN);
   if (oklch) {
-    const linear = oklchToLinearSrgb(Number(oklch[1]) / 100, Number(oklch[2]), Number(oklch[3]));
+    const linear = oklchToLinearSrgb(
+      evalNumber(oklch[1]) / 100,
+      evalNumber(oklch[2]),
+      evalNumber(oklch[3]),
+    );
     return {
       r: gamma(linear.r),
       g: gamma(linear.g),
@@ -184,9 +214,15 @@ export function contrastRatio(foreground, background) {
 
 /**
  * @param {number} ratio
+ * @param {'text' | 'non-text'} [kind] non-text (SC 1.4.11: borders, icons,
+ *   focus rings) is graded against 3:1 alone. "Large only" is a text concept,
+ *   so a non-text 3:1 is a plain pass.
  * @returns {AaVerdict}
  */
-export function aaVerdict(ratio) {
+export function aaVerdict(ratio, kind = 'text') {
+  if (kind === 'non-text') {
+    return ratio >= 3 ? 'AA' : 'fails AA';
+  }
   if (ratio >= 4.5) {
     return 'AA';
   }

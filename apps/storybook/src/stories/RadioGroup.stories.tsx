@@ -19,3 +19,14 @@ export const Default: Story = {
     </RadioGroup>
   ),
 };
+
+export const WithError: Story = {
+  args: { name: 'plan-error', error: 'Choose a plan to continue.', children: null },
+  render: (args) => (
+    <RadioGroup {...args} aria-label="Plan">
+      <RadioGroupItem value="free" label="Free" />
+      <RadioGroupItem value="pro" label="Pro" />
+      <RadioGroupItem value="enterprise" label="Enterprise" />
+    </RadioGroup>
+  ),
+};

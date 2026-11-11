@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { detect, findDrift, findScopedDependencies, readInstalledVersion } from './detect.mjs';
+import { detect, findDrift, findScopedDependencies } from './detect.mjs';
 
 function makeRepo(packageJson, installed = {}, locked = null) {
   const dir = mkdtempSync(join(tmpdir(), 'ds-resync-'));
@@ -52,26 +52,30 @@ describe('findScopedDependencies', () => {
   });
 });
 
-describe('readInstalledVersion', () => {
+describe('detect, installed version', () => {
   it('reads the resolved version from node_modules', () => {
     const dir = makeRepo(
       { dependencies: { '@elirobinson/react': '^1.0.0' } },
       { '@elirobinson/react': '1.1.0' },
     );
-    expect(readInstalledVersion(dir, '@elirobinson/react')).toBe('1.1.0');
+    expect(detect(dir).packages[0].installedVersion).toBe('1.1.0');
   });
 
-  it('returns null when the package is not installed', () => {
+  it('is null when the package is not installed', () => {
     const dir = makeRepo({ dependencies: { '@elirobinson/react': '^1.0.0' } });
-    expect(readInstalledVersion(dir, '@elirobinson/react')).toBeNull();
+    expect(detect(dir).packages[0].installedVersion).toBeNull();
   });
 
   it('finds a package that only a parent node_modules holds', () => {
     const root = makeRepo({ workspaces: ['packages/*'] }, { '@elirobinson/react': '1.1.0' });
     const member = join(root, 'packages', 'app');
     mkdirSync(member, { recursive: true });
+    writeFileSync(
+      join(member, 'package.json'),
+      JSON.stringify({ dependencies: { '@elirobinson/react': '^1.0.0' } }),
+    );
 
-    expect(readInstalledVersion(member, '@elirobinson/react')).toBe('1.1.0');
+    expect(detect(member).packages[0].installedVersion).toBe('1.1.0');
   });
 });
 
@@ -93,6 +97,60 @@ describe('detect, from a workspace member', () => {
   });
 });
 
+describe('detect, with a lockfile above the project', () => {
+  it('reads a workspace member from the root lockfile and counts drift against the root install', () => {
+    const root = makeRepo({ workspaces: ['packages/*'] }, { '@elirobinson/react': '1.1.0' });
+    writeFileSync(
+      join(root, 'pnpm-lock.yaml'),
+      [
+        'importers:',
+        '  .:',
+        '    dependencies:',
+        "      '@elirobinson/react':",
+        '        version: 9.9.9',
+        '  packages/app:',
+        '    dependencies:',
+        "      '@elirobinson/react':",
+        '        version: 1.3.0',
+        '',
+      ].join('\n'),
+    );
+    const member = join(root, 'packages', 'app');
+    mkdirSync(member, { recursive: true });
+    writeFileSync(
+      join(member, 'package.json'),
+      JSON.stringify({ dependencies: { '@elirobinson/react': '^1.0.0' } }),
+    );
+
+    const { packages } = detect(member);
+
+    expect(packages[0].lockedVersion).toBe('1.3.0');
+    expect(findDrift(packages)).toEqual([
+      { name: '@elirobinson/react', locked: '1.3.0', installed: '1.1.0' },
+    ]);
+  });
+
+  it('reports no drift when the only install is an ancestor of the lockfile', () => {
+    const outer = makeRepo({}, { '@elirobinson/react': '1.1.0' });
+    const project = join(outer, 'apps', 'site');
+    mkdirSync(project, { recursive: true });
+    writeFileSync(
+      join(project, 'package.json'),
+      JSON.stringify({ dependencies: { '@elirobinson/react': '^1.0.0' } }),
+    );
+    writeFileSync(
+      join(project, 'pnpm-lock.yaml'),
+      "importers:\n  .:\n    dependencies:\n      '@elirobinson/react':\n        version: 1.3.0\n",
+    );
+
+    const { packages } = detect(project);
+
+    expect(packages[0].installedVersion).toBe('1.1.0');
+    expect(packages[0].lockedVersion).toBe('1.3.0');
+    expect(findDrift(packages)).toEqual([]);
+  });
+});
+
 describe('detect', () => {
   it('pairs declared ranges with installed and locked versions', () => {
     const dir = makeRepo(
@@ -109,6 +167,7 @@ describe('detect', () => {
         declaredRange: '^1.0.0',
         field: 'dependencies',
         installedVersion: '1.1.0',
+        installedUnderLock: true,
         lockedVersion: '1.1.0',
       },
       {
@@ -116,6 +175,7 @@ describe('detect', () => {
         declaredRange: '^0.2.0',
         field: 'dependencies',
         installedVersion: null,
+        installedUnderLock: false,
         lockedVersion: null,
       },
     ]);

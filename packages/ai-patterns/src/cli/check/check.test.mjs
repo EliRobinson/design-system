@@ -20,13 +20,8 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  findPackageDir,
-  REACT_PKG,
-  TOKEN_STYLESHEETS,
-  TOKENS_PKG,
-  versionOf,
-} from '../discovery.mjs';
+import { findPackageDir, REACT_PKG, TOKENS_PKG, versionOf } from '../../package-lookup.mjs';
+import { TOKEN_STYLESHEETS } from '../discovery.mjs';
 import { run } from '../run.mjs';
 import { declarations } from './scan.mjs';
 import { FIXED_IN, isOlder, TRAPS } from './traps.mjs';
