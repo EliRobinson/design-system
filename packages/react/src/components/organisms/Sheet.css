@@ -61,21 +61,27 @@
   gap: var(--space-1);
 }
 
-.ds-sheet__title {
+/* #367: scoped to (0,2,0) so host typography cannot reach in. See Dialog.css. */
+.ds-sheet .ds-sheet__title {
+  border: 0;
   color: var(--fg);
   font-family: var(--font-sans);
   font-size: var(--fs-lg);
   font-weight: var(--fw-semibold);
   letter-spacing: var(--tr-tight);
+  line-height: var(--lh-snug);
   margin: 0;
+  padding: 0;
 }
 
-.ds-sheet__description {
+.ds-sheet .ds-sheet__description {
   color: var(--fg-2);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
+  letter-spacing: normal;
   line-height: var(--lh-normal);
   margin: 0;
+  padding: 0;
 }
 
 .ds-sheet__footer {

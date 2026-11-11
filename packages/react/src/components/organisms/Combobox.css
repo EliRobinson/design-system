@@ -7,12 +7,16 @@
   width: 100%;
 }
 
+/* #368: `top` and `inset-inline` pin the list under the input. Without them
+   it sat at its static position, which in a flex root is the root's start,
+   over the input. */
 .ds-combobox__list {
   position: absolute;
+  top: 100%;
+  inset-inline: 0;
   z-index: var(--z-overlay);
   margin: var(--space-1) 0 0;
   padding: var(--space-1) 0;
-  width: 100%;
   overflow-y: auto;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
@@ -45,10 +49,13 @@
   font-weight: var(--fw-medium);
 }
 
-.ds-combobox__empty {
+/* #367: a <p>, so scoped under the root to outrank a host `.prose p`. */
+.ds-combobox .ds-combobox__empty {
+  margin: 0;
   padding: var(--space-3);
   color: var(--fg-3);
   font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
 }
 
 /* Forced colors (Windows High Contrast) drops background and box-shadow, so
