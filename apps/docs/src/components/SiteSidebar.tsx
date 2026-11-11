@@ -16,17 +16,19 @@ export function SiteNav({ sections }: { sections: SidebarSection[] }) {
   const pathname = usePathname();
 
   return (
-    <NavigationMenu
-      aria-label="Documentation"
-      currentPath={pathname}
-      // Section titles are headings, not pages -- no href, so NavigationMenu
-      // renders them as inert labels. Giving one its first page's href made
-      // that page's section header render as current alongside the page.
-      items={sections.map((section) => ({
-        label: section.title,
-        items: section.pages.map((page) => ({ label: page.title, href: page.href })),
-      }))}
-    />
+    <div className="site-nav">
+      <NavigationMenu
+        aria-label="Documentation"
+        currentPath={pathname}
+        // Section titles are headings, not pages -- no href, so NavigationMenu
+        // renders them as inert labels. Giving one its first page's href made
+        // that page's section header render as current alongside the page.
+        items={sections.map((section) => ({
+          label: section.title,
+          items: section.pages.map((page) => ({ label: page.title, href: page.href })),
+        }))}
+      />
+    </div>
   );
 }
 
