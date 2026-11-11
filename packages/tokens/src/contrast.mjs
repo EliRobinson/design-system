@@ -19,7 +19,7 @@
  * as a CSS parser.
  */
 
-import { contrastRatio } from './color.mjs';
+import { contrastRatio, flattenCalc } from './color.mjs';
 
 /** The palettes palettes.css defines. */
 export const PALETTES = ['ember', 'slate', 'miltinson', 'miltinson-tech', 'steady'];
@@ -281,17 +281,7 @@ export function combinationValues(sources, combination) {
   return new Map([...declared].map(([name, value]) => [name, flattenCalc(resolve(value))]));
 }
 
-/* `oklch(62% calc(0.008 * 1.6) 252)` is what the neutral ramp resolves to once
-   the dials are substituted, and color.mjs parses numbers, not expressions.
-   Only the one form the ramp uses is evaluated — a multiplication of two
-   literals — so this cannot quietly become a general calc() engine that
-   disagrees with a browser about anything more interesting. */
-export function flattenCalc(value) {
-  return value.replace(
-    /calc\(\s*([\d.]+)\s*\*\s*([\d.]+)\s*\)/g,
-    (_, a, b) => `${Number((Number(a) * Number(b)).toFixed(6))}`,
-  );
-}
+export { flattenCalc };
 
 /**
  * The values of one theme under the default palette.

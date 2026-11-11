@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { aaVerdict, colorsIn, contrastRatio, parseColor, toHex } from './color.mjs';
+import { parseTokensCss } from './parse-tokens-css.mjs';
+import { readTokenStylesheets } from './token-stylesheets.mjs';
 
 /* The shape the neutral ramp resolves to once --n-mult is substituted. */
 const INK_500 = 'oklch(55% calc(0.008 * 1) 247)';
@@ -41,5 +43,26 @@ describe('aaVerdict', () => {
     expect(aaVerdict(3.0, 'non-text')).toBe('AA');
     expect(aaVerdict(3.9, 'non-text')).toBe('AA');
     expect(aaVerdict(2.9, 'non-text')).toBe('fails AA');
+  });
+});
+
+describe('the shipped stylesheets', () => {
+  it('give every ink step and --fg-3 a hex value', () => {
+    const tokens = parseTokensCss(readTokenStylesheets());
+    const names = new Set(tokens.filter((t) => t.name.startsWith('--ink-')).map((t) => t.name));
+    names.add('--fg-3');
+    expect(names.size).toBeGreaterThan(5);
+    for (const name of names) {
+      const token = tokens.filter((t) => t.name === name).pop();
+      expect(toHex(token.resolved), name).toMatch(/^#[0-9a-f]{6}$/);
+    }
+  });
+});
+
+describe('brand checksum', () => {
+  it('amber on ink-1000 is about 8.7:1', () => {
+    const ratio = contrastRatio('oklch(72.5% 0.175 65)', '#000000');
+    expect(ratio).toBeGreaterThan(8.2);
+    expect(ratio).toBeLessThan(9.2);
   });
 });
