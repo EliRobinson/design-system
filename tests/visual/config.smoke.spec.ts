@@ -16,9 +16,9 @@ import { expect, test } from './fixtures';
    really disabled produce baselines that pass on the machine that generated
    them and flake everywhere else. */
 
-/* An infinite spin, the shape Spinner and Skeleton use. This is the case the
-   reduced-motion clamp in tokens.css cannot settle: clamping an infinite
-   animation's duration to 0.01ms makes it cycle faster, not stop.
+/* An infinite spin, the shape Spinner and Skeleton use. The reduced-motion
+   clamp in tokens.css plays a loop once (0.01ms, one iteration), but only
+   under that preference, so the config has to settle loops on its own.
 
    The two-tone gradient is what makes rotation visible — a solid fill would
    render identically at every angle and the assertions below would hold
