@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { detect, findDrift, findScopedDependencies, readInstalledVersion } from './detect.mjs';
+import { detect, findDrift, findScopedDependencies } from './detect.mjs';
 
 function makeRepo(packageJson, installed = {}, locked = null) {
   const dir = mkdtempSync(join(tmpdir(), 'ds-resync-'));
@@ -52,26 +52,30 @@ describe('findScopedDependencies', () => {
   });
 });
 
-describe('readInstalledVersion', () => {
+describe('detect, installed version', () => {
   it('reads the resolved version from node_modules', () => {
     const dir = makeRepo(
       { dependencies: { '@elirobinson/react': '^1.0.0' } },
       { '@elirobinson/react': '1.1.0' },
     );
-    expect(readInstalledVersion(dir, '@elirobinson/react')).toBe('1.1.0');
+    expect(detect(dir).packages[0].installedVersion).toBe('1.1.0');
   });
 
-  it('returns null when the package is not installed', () => {
+  it('is null when the package is not installed', () => {
     const dir = makeRepo({ dependencies: { '@elirobinson/react': '^1.0.0' } });
-    expect(readInstalledVersion(dir, '@elirobinson/react')).toBeNull();
+    expect(detect(dir).packages[0].installedVersion).toBeNull();
   });
 
   it('finds a package that only a parent node_modules holds', () => {
     const root = makeRepo({ workspaces: ['packages/*'] }, { '@elirobinson/react': '1.1.0' });
     const member = join(root, 'packages', 'app');
     mkdirSync(member, { recursive: true });
+    writeFileSync(
+      join(member, 'package.json'),
+      JSON.stringify({ dependencies: { '@elirobinson/react': '^1.0.0' } }),
+    );
 
-    expect(readInstalledVersion(member, '@elirobinson/react')).toBe('1.1.0');
+    expect(detect(member).packages[0].installedVersion).toBe('1.1.0');
   });
 });
 

@@ -24,10 +24,6 @@ import {
   versionOf,
 } from '../package-lookup.mjs';
 
-// The package names live in package-lookup.mjs, which resync/ shares; re-exported
-// so the cli/ modules keep one import for them.
-export { PATTERNS_PKG, REACT_PKG, TOKENS_PKG };
-
 /** The directory this CLI ships from, if it really is the ai-patterns package. */
 function ownPackageRoot(selfDir) {
   const root = selfDir ?? join(dirname(fileURLToPath(import.meta.url)), '..', '..');

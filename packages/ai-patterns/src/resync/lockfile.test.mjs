@@ -262,7 +262,10 @@ describe('readLockfile', () => {
 
 describe('readLockfile, walking up', () => {
   it('finds the lockfile of an ancestor directory and records where it was', () => {
-    const root = repoWith('package-lock.json', NPM_V3);
+    const root = repoWith(
+      'package-lock.json',
+      JSON.stringify({ packages: { '': {}, 'packages/app': {} } }),
+    );
     const member = join(root, 'packages', 'app');
     mkdirSync(member, { recursive: true });
 
@@ -279,5 +282,35 @@ describe('readLockfile, walking up', () => {
     writeFileSync(join(member, 'yarn.lock'), YARN_CLASSIC);
 
     expect(readLockfile(member).kind).toBe('yarn');
+  });
+});
+
+describe('readLockfile, ancestors that do not govern the project', () => {
+  const member = (root) => {
+    const dir = join(root, 'apps', 'site');
+    mkdirSync(dir, { recursive: true });
+    return dir;
+  };
+
+  it('ignores a stray npm lockfile that does not list the project', () => {
+    expect(readLockfile(member(repoWith('package-lock.json', NPM_V3)))).toBeNull();
+  });
+
+  it('ignores a pnpm lockfile that does not list the project as an importer', () => {
+    expect(readLockfile(member(repoWith('pnpm-lock.yaml', PNPM_V9)))).toBeNull();
+  });
+
+  it("reads an npm member's own nested copy over the hoisted one", () => {
+    const lock = JSON.stringify({
+      packages: {
+        '': {},
+        'apps/site': {},
+        'node_modules/@elirobinson/react': { version: '1.0.0' },
+        'apps/site/node_modules/@elirobinson/react': { version: '1.4.0' },
+      },
+    });
+    const dir = member(repoWith('package-lock.json', lock));
+
+    expect(lockedVersionFor(readLockfile(dir), '@elirobinson/react', '^1.0.0')).toBe('1.4.0');
   });
 });

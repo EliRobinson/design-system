@@ -8,7 +8,7 @@
 import { statSync } from 'node:fs';
 
 import { readRecord } from '../../resync/artifacts.mjs';
-import { REACT_PKG, TOKENS_PKG } from '../discovery.mjs';
+import { REACT_PKG, TOKENS_PKG } from '../../package-lookup.mjs';
 import { DS_STYLESHEETS, scanRepo, scriptImports } from './scan.mjs';
 import { TRAPS } from './traps.mjs';
 
