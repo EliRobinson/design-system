@@ -17,7 +17,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { findPackageDir } from '../cli/discovery.mjs';
+import { findPackageDir } from '../package-lookup.mjs';
 import { SCOPE } from './detect.mjs';
 import { compareVersions, parseVersion } from './semver.mjs';
 

@@ -21,7 +21,7 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { findPackageDir, REACT_PKG, TOKENS_PKG } from '../cli/discovery.mjs';
+import { REACT_PKG, readInstalled, TOKENS_PKG } from '../package-lookup.mjs';
 
 /** Resolves an exported subpath of an installed package through its own
  *  exports map, the way an import in the consuming repo would. */
@@ -31,16 +31,6 @@ export function resolveIn(root, specifier) {
 
 async function importIn(root, specifier) {
   return import(pathToFileURL(resolveIn(root, specifier)).href);
-}
-
-/** `{ root, version }` for an installed package, or null when not installed.
- *  Throws when its package.json cannot be read. */
-function installed(cwd, name) {
-  const root = findPackageDir(name, [cwd]);
-  if (!root) return null;
-  const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
-  if (!version) throw new Error(`${name} has no version in ${join(root, 'package.json')}`);
-  return { root, version };
 }
 
 /**
@@ -60,8 +50,8 @@ function installed(cwd, name) {
 export async function readInstalledSources(cwd) {
   let react = null;
   try {
-    react = installed(cwd, REACT_PKG);
-    const tokens = installed(cwd, TOKENS_PKG);
+    react = readInstalled(cwd, REACT_PKG);
+    const tokens = readInstalled(cwd, TOKENS_PKG);
     const missing = [
       !react && `${REACT_PKG} is not installed`,
       !tokens && `${TOKENS_PKG} is not installed`,

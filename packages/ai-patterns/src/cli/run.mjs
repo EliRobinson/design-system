@@ -7,7 +7,8 @@ import { installCommand } from '../resync/apply.mjs';
 import { detect, findDrift } from '../resync/detect.mjs';
 import { runCheck } from './check/check.mjs';
 import * as commands from './commands.mjs';
-import { loadEnvironment, PATTERNS_PKG, REACT_PKG, TOKENS_PKG, versionOf } from './discovery.mjs';
+import { versionOf } from '../package-lookup.mjs';
+import { loadEnvironment, PATTERNS_PKG, REACT_PKG, TOKENS_PKG } from './discovery.mjs';
 import { installAgents, installVoice } from './init.mjs';
 
 const HANDLERS = {

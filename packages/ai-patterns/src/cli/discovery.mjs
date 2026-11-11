@@ -10,64 +10,28 @@
 //   2. Degrades gracefully. A missing package produces an instruction naming
 //      what to install, not a stack trace.
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
+import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-export const REACT_PKG = '@elirobinson/react';
-export const TOKENS_PKG = '@elirobinson/tokens';
-export const PATTERNS_PKG = '@elirobinson/ai-patterns';
+import {
+  findPackageDir,
+  PATTERNS_PKG,
+  REACT_PKG,
+  readFile,
+  readJson,
+  TOKENS_PKG,
+  versionOf,
+} from '../package-lookup.mjs';
 
-/**
- * Walk up from each origin looking for node_modules/<name>.
- *
- * cwd comes first: the CLI runs from a consumer's project root, and that is the
- * install the consumer means. The module's own location is the fallback, which
- * is what finds the package under pnpm's nested store layout.
- */
-export function findPackageDir(name, origins = defaultOrigins()) {
-  const segments = name.split('/');
-
-  for (const origin of origins) {
-    let dir = origin;
-    for (;;) {
-      const candidate = join(dir, 'node_modules', ...segments);
-      if (existsSync(join(candidate, 'package.json'))) return candidate;
-      const parent = resolve(dir, '..');
-      if (parent === dir) break;
-      dir = parent;
-    }
-  }
-
-  return null;
-}
-
-function defaultOrigins() {
-  return [process.cwd(), dirname(fileURLToPath(import.meta.url))];
-}
+// The package names live in package-lookup.mjs, which resync/ shares; re-exported
+// so the cli/ modules keep one import for them.
+export { PATTERNS_PKG, REACT_PKG, TOKENS_PKG };
 
 /** The directory this CLI ships from, if it really is the ai-patterns package. */
 function ownPackageRoot(selfDir) {
   const root = selfDir ?? join(dirname(fileURLToPath(import.meta.url)), '..', '..');
   return readJson(join(root, 'package.json'))?.name === PATTERNS_PKG ? root : null;
-}
-
-export function readFile(path) {
-  return path && existsSync(path) ? readFileSync(path, 'utf8') : null;
-}
-
-export function readJson(path) {
-  const raw = readFile(path);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-export function versionOf(packageDir) {
-  return readJson(packageDir && join(packageDir, 'package.json'))?.version ?? null;
 }
 
 /** Every file under dir with the given extension, at any depth. */

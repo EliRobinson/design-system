@@ -29,7 +29,7 @@ import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
 import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { Linter } from 'eslint';
 
-import { findPackageDir } from '../cli/discovery.mjs';
+import { findPackageDir } from '../package-lookup.mjs';
 
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
