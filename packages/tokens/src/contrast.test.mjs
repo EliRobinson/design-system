@@ -201,6 +201,9 @@ describe('foreground/fill pairs', () => {
        while the other three are white, which is exactly the kind of asymmetry
        a component gets wrong by hand. */
     ...STATES.map((state) => [`--status-${state}-on`, `--status-${state}`, 4.5]),
+    // Destructive Button's hover and press fills carry the same label.
+    ['--status-danger-on', '--status-danger-hover', 4.5],
+    ['--status-danger-on', '--status-danger-press', 4.5],
     /* Status text goes everywhere body text goes — a status cell in a zebra
        table, a nested card, an inset well — so it is measured everywhere body
        text is. Clearing 4.5:1 against --bg says nothing about --surface-3,
@@ -315,6 +318,8 @@ describe('status and data colours do not move with the palette', () => {
       `--status-${state}-tint-edge`,
     ]),
     '--status-warning-border',
+    '--status-danger-hover',
+    '--status-danger-press',
     ...Array.from({ length: 8 }, (_, i) => `--chart-${i + 1}`),
   ];
 

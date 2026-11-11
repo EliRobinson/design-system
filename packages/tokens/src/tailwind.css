@@ -220,6 +220,8 @@
      --status-*-on is the token measured against the fill it is drawn on, and
      it is 5.17 / 11.22 / 5.41 / 5.06 in all four combinations. */
   --color-destructive: var(--status-danger);
+  --color-destructive-hover: var(--status-danger-hover);
+  --color-destructive-press: var(--status-danger-press);
   --color-destructive-foreground: var(--status-danger-on);
   --color-destructive-ink: var(--status-danger-fg);
   --color-destructive-tint: var(--status-danger-tint);
