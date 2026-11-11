@@ -101,7 +101,7 @@
 }
 .ds-button--destructive:active {
   background-color: var(--status-danger-press);
-  color: var(--status-danger-on); /* 7.60:1 light, 4.54:1 dark */
+  color: var(--status-danger-on); /* 7.85:1 light, 4.54:1 dark */
   transform: translateY(1px);
 }
 
@@ -143,7 +143,6 @@
 .ds-button:disabled {
   background-color: var(--bg-muted);
   border-color: transparent;
-  box-shadow: none;
   color: var(--fg-disabled);
   cursor: not-allowed;
   transform: none;
@@ -154,7 +153,6 @@
 .ds-button--disabled:active,
 .ds-button:disabled:active {
   background-color: var(--bg-muted);
-  box-shadow: none;
   color: var(--fg-disabled);
   transform: none;
 }

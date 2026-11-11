@@ -77,11 +77,16 @@ const BUTTON_CSS = read('src', 'components', 'atoms', 'Button.css');
  * removed — the substitution a browser makes when the pointer is over it.
  */
 function resolveColor(element, state) {
+  return resolveProperty(element, state, 'color');
+}
+
+/** The same cascade walk for any property; `color` holds the winning value. */
+function resolveProperty(element, state, property) {
   let winner = null;
   let winning = { layered: true, specificity: [-1, -1, -1] };
 
   for (const { rule, layered } of styleRules(document.styleSheets)) {
-    if (!rule.style?.color) continue;
+    if (!rule.style?.getPropertyValue(property)) continue;
     for (const part of rule.selectorText.split(',')) {
       const selector = part.trim();
       const withoutState = state === null ? selector : selector.replaceAll(`:${state}`, '');
@@ -92,7 +97,7 @@ function resolveColor(element, state) {
       const candidate = { layered, specificity: specificity(selector) };
       if (compare(candidate, winning) >= 0) {
         winning = candidate;
-        winner = { selector, layered, color: rule.style.color };
+        winner = { selector, layered, color: rule.style.getPropertyValue(property) };
       }
     }
   }
@@ -237,6 +242,21 @@ describe('every <a class="ds-button ds-button--*"> label clears its threshold', 
       }
     }
   });
+
+  /* The table above is only a measurement if Button.css paints the fills it
+     names. Checked for every variant that declares its own fill in each
+     state; secondary and ghost rest on `transparent`, so the page shows. */
+  for (const { modifier, fills } of VARIANTS.filter(({ modifier }) =>
+    ['primary', 'accent', 'destructive', 'disabled'].includes(modifier),
+  )) {
+    for (const [state, label] of STATES) {
+      it(`--${modifier} ${label} paints var(${fills[label]})`, () => {
+        const anchor = anchors.get(`${modifier}:${COMBINATIONS[0].id}`);
+        const winner = resolveProperty(anchor, state, 'background-color');
+        expect(winner?.color, `${winner?.selector}`).toBe(`var(${fills[label]})`);
+      });
+    }
+  }
 
   for (const { modifier, threshold, fills } of VARIANTS) {
     for (const { id } of COMBINATIONS) {
