@@ -37,9 +37,11 @@ Two things to know before the swap:
 - `Button` defaults to `type="button"`. If a form relied on implicit submit buttons,
   pass `type="submit"` explicitly.
 
-Where you had a shadcn/ui component, the mapping is usually one-to-one — the
-[contributing guide](/guidelines/contributing) carries the full shadcn-to-Miltinson
-table.
+Where you had a shadcn/ui component, the mapping is usually one-to-one. The full
+shadcn-to-Miltinson table ships in `@elirobinson/ai-patterns` as
+`@elirobinson/ai-patterns/migrate/adopt/shadcn.md`, and in the `ds-migrate` skill that
+`ds-resync artifacts --write` installs. It is checked against the components the package
+ships, so it is current for the version you have installed.
 
 ## Step 2 — move style values onto tokens
 

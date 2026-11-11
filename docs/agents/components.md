@@ -392,38 +392,33 @@ default. Which components read it is derivable
 (`grep -r 'var(--product-' packages/react/src`), so treat that sentence as a pointer, not
 as the register.
 
-## shadcn → Miltinson mapping reference
+## shadcn → Miltinson mapping
 
-| shadcn component                                         | Miltinson equivalent / notes                                                                                                                                     |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Badge                                                    | `Badge` — maps to preview tags (default, signal, anchor, solid, outline)                                                                                         |
-| Button                                                   | `Button` — variants are in its prop table; sm/md/lg sizes. `sm` is 36px, a sanctioned dense variant matching shadcn's own `sm` — see "Why `size=\"sm\"` is 36px" |
-| Card                                                     | `Card` + subcomponents — matches preview portfolio cards                                                                                                         |
-| Input, Textarea, Select, Label                           | Form primitives — match `components-fields.html` preview                                                                                                         |
-| Alert                                                    | `Alert` — status tokens for success/warning/danger/info                                                                                                          |
-| Separator                                                | `Separator` — `--border` hairline                                                                                                                                |
-| Tabs                                                     | `Tabs` — ink underline active state                                                                                                                              |
-| Dialog                                                   | `Dialog` — native `<dialog>` with token surfaces                                                                                                                 |
-| DropdownMenu, Popover, Tooltip, Sheet, Toast             | Overlay primitives — portal positioning, keyboard nav, aria-live toasts                                                                                          |
-| Avatar, Breadcrumb, Checkbox, Switch, Skeleton, Progress | Styled per tokens; check UI kits for context                                                                                                                     |
-| Eyebrow, RuleLink                                        | Marketing typography primitives from ui_kits                                                                                                                     |
-| RadioGroup                                               | `RadioGroup` / `RadioGroupItem` — context-based group, native radios; `error` goes on the group                                                                  |
-| Slider                                                   | `Slider` — labelled native `<input type="range">`; `error` like `Input`                                                                                          |
-| Pagination                                               | `Pagination` — page-button list, `aria-current="page"`                                                                                                           |
-| Accordion                                                | `Accordion` — compound, configurable heading level                                                                                                               |
-| Calendar / Date Picker                                   | `DatePicker` — popover date grid, ARIA `grid`/`row`/`columnheader`/`gridcell`                                                                                    |
-| Combobox                                                 | `Combobox` — filterable listbox popup, virtualized option list                                                                                                   |
-| Data Table (TanStack Table recipe)                       | `Table` (paginated) / `VirtualTable` (windowed) — `@tanstack/react-table` row models                                                                             |
-| NavigationMenu                                           | `NavigationMenu` — simplified: always-rendered nested list, no submenu disclosure/triggers                                                                       |
-| Command (cmdk)                                           | `CommandPalette` — built on this repo's `Dialog`, not the `cmdk` library                                                                                         |
-| Kbd (registry component)                                 | `Kbd` — styled `<kbd>`, used for shortcut hints                                                                                                                  |
-| Badge (removable variant)                                | `Chip` — shadcn ships no removable badge; sized to the MUI/shadcn dense scale                                                                                    |
-| Toggle Group                                             | `SegmentedControl` — closest shadcn analog; a primary control, keeps the 44px target                                                                             |
-| Form / FormField (react-hook-form)                       | `FormField` — same render-prop-to-a11y-bundle idea, not bound to react-hook-form                                                                                 |
-| —                                                        | `SearchField`, `Stepper`, `EmptyState`, `Rating`, `VirtualList` — no direct shadcn primitive; local patterns (see "New components" above)                        |
-| —                                                        | `VerdictBadge` — no shadcn primitive; a decision marker carrying a glyph and a word, so the verdict is never colour alone                                        |
-| —                                                        | `StubCard` — no shadcn primitive; a body column beside a perforated stub column, the perforation drawn as a dashed `--border-control`                            |
-| —                                                        | `DecisionCard` — no shadcn primitive; a verdict, its figures, and an action that does not exist when the verdict allows none                                     |
-| —                                                        | `Conversation` from `@elirobinson/ai-elements` — the `role="log"` live region for a conversation. (`ChatThread` here is **deprecated** in favour of it)          |
-| —                                                        | `Message` from `@elirobinson/ai-elements` — one turn, fed a `UIMessage` role. (`ChatMessage` here is **deprecated** in favour of it)                             |
-| —                                                        | `StreamingCaret` — no shadcn primitive; an infinite blink, so it carries its own `prefers-reduced-motion` rule rather than the global clamp                      |
+The mapping lives in one place:
+[`packages/ai-patterns/src/migrate/adopt/shadcn.md`](../../packages/ai-patterns/src/migrate/adopt/shadcn.md).
+Consumers get it as `@elirobinson/ai-patterns/migrate/adopt/shadcn.md` and in the
+`ds-migrate` skill, and `migrate-files.test.mjs` checks every Miltinson name in it against
+`@elirobinson/react/manifest`. Add a row there, not here.
+`shadcn-mapping-single-source.test.mjs` fails if a table with a shadcn column appears
+anywhere else in the repo.
+
+Contributor notes that are not part of the mapping:
+
+- `Button size="sm"` is 36px. That is a sanctioned dense variant that matches shadcn's own
+  `sm`. See "Why `size=\"sm\"` is 36px" above.
+- `Chip` (shadcn has no removable badge) is sized to the MUI/shadcn dense scale.
+  `SegmentedControl` (the closest analog of shadcn's Toggle Group) is a primary control and
+  keeps the 44px target.
+- These have no shadcn primitive. They are local patterns (see "New components" above):
+  - `SearchField`, `Stepper`, `EmptyState`, `Rating`, `VirtualList`.
+  - `VerdictBadge`: a decision marker that carries a glyph and a word, so the verdict is
+    never colour alone.
+  - `StubCard`: a body column beside a perforated stub column. The perforation is a dashed
+    `--border-control`.
+  - `DecisionCard`: a verdict, its figures, and an action that does not exist when the
+    verdict allows none.
+  - `StreamingCaret`: an infinite blink, so it carries its own `prefers-reduced-motion`
+    rule rather than the global clamp.
+- For a conversation, use `Conversation` (the `role="log"` live region) and `Message` (one
+  turn, fed a `UIMessage` role) from `@elirobinson/ai-elements`. `ChatThread` and
+  `ChatMessage` here are **deprecated** in favour of them.
