@@ -14,8 +14,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, extname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { extname, join } from 'node:path';
 
 import {
   Dialog,
@@ -28,8 +27,9 @@ import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { SITE_CSS } from '../../lib/css-source';
+
 const require = createRequire(import.meta.url);
-const SITE_CSS = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'app', 'site.css');
 const DIALOG_CSS = require.resolve('@elirobinson/react/styles/organisms/Dialog.css');
 
 let chromium: typeof import('playwright').chromium | null;
@@ -105,7 +105,7 @@ const ORIGIN = 'https://demo-boundary.test';
 
 type Styles = Record<string, Record<string, string> | null>;
 
-async function computed(): Promise<{ bare: Styles; stage: Styles; prose: Styles }> {
+async function measureBoundary(): Promise<{ bare: Styles; stage: Styles; prose: Styles }> {
   const context = await browser!.newContext();
   try {
     const page = await context.newPage();
@@ -168,19 +168,19 @@ async function computed(): Promise<{ bare: Styles; stage: Styles; prose: Styles 
 }
 
 describeBrowser('a demo stage is a prose boundary', () => {
-  let styles: Awaited<ReturnType<typeof computed>>;
+  let styles: Awaited<ReturnType<typeof measureBoundary>>;
   beforeAll(async () => {
-    styles = await computed();
+    styles = await measureBoundary();
   }, 60_000);
 
-  it('prose restyles plain elements outside the stage (positive control)', async () => {
+  it('prose restyles plain elements outside the stage (positive control)', () => {
     const { bare, prose } = styles;
     for (const selector of PLAIN_TARGETS) {
       expect(prose[selector], selector).not.toEqual(bare[selector]);
     }
   });
 
-  it('nothing inside the stage is restyled by prose', async () => {
+  it('nothing inside the stage is restyled by prose', () => {
     const { bare, stage } = styles;
     for (const selector of TARGETS) {
       expect(bare[selector], `${selector} rendered`).not.toBeNull();

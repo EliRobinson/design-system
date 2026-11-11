@@ -9,17 +9,15 @@ import { DemoBlock } from './DemoBlock';
    function, not rendered, because CodeSnippet is an async server component. */
 describe('DemoBlock', () => {
   it('marks the live stage, and only the stage, as a prose boundary', () => {
-    type Element = ReactElement<{ className?: string; children?: ReactElement[] }>;
-    const figure = DemoBlock({ file: 'combobox/Basic.tsx', children: null }) as Element;
-    const children = figure.props.children as Element[];
-    const byClass = (name: string) =>
-      children.find((child) => child.props.className?.split(' ').includes(name));
-    const stage = byClass('demo-block__stage');
-    const source = byClass('demo-block__source');
+    type Rendered = ReactElement<{ className?: string; children?: ReactElement[] }>;
+    const classes = (node?: Rendered) => node?.props.className?.split(' ') ?? [];
+    const figure = DemoBlock({ file: 'combobox/Basic.tsx', children: null }) as Rendered;
+    const children = figure.props.children as Rendered[];
+    const byClass = (name: string) => children.find((child) => classes(child).includes(name));
 
-    expect(figure.props.className?.split(' ')).not.toContain('not-prose');
-    expect(stage?.props.className?.split(' ')).toContain('not-prose');
+    expect(classes(figure)).not.toContain('not-prose');
+    expect(classes(byClass('demo-block__stage'))).toContain('not-prose');
     // The source panel stays in prose, which styles its code.
-    expect(source?.props.className?.split(' ')).not.toContain('not-prose');
+    expect(classes(byClass('demo-block__source'))).not.toContain('not-prose');
   });
 });
