@@ -30,5 +30,6 @@ micro-interactions — a check mark settling into place — never for panels or 
 - **No bouncy page transitions, no parallax.**
 - **`prefers-reduced-motion` is honored globally** — tokens.css collapses every
   transition and animation to 0.01ms, and plays looping animations once, when the
-  user asks for reduced motion. You get
-  this for free; don't opt out of it.
+  user asks for reduced motion. You get this for free; don't opt out of it. The one exception is
+  an indicator whose job is to show ongoing activity: Spinner swaps its spin for a slow
+  opacity pulse, because a loop that plays once reads as stuck.
