@@ -25,25 +25,9 @@ export const Default: Story = {
     total: { label: 'You pay today', value: '$216' },
     contrast: { label: 'If you wait', value: '$264' },
     caveat: 'The lower rate holds for 14 days, then it goes back to standard pricing.',
+    action: <Button variant="accent">Renew now</Button>,
   },
-  render: () => (
-    <DecisionCard
-      verdict="go"
-      verdictLabel="Worth it"
-      subject="Team plan renewal"
-      headline="Renewing now costs less than waiting."
-      figures={[
-        { label: 'Current rate', value: '$240 / yr' },
-        { label: 'Renewal rate', value: '$216 / yr', kind: 'cash' },
-        { label: 'Locked until', value: 'March 2028' },
-      ]}
-      total={{ label: 'You pay today', value: '$216' }}
-      contrast={{ label: 'If you wait', value: '$264' }}
-      caveat="The lower rate holds for 14 days, then it goes back to standard pricing."
-      action={<Button variant="accent">Renew now</Button>}
-      style={{ maxWidth: 420 }}
-    />
-  ),
+  render: (args) => <DecisionCard {...args} style={{ maxWidth: 420 }} />,
 };
 
 /* There is deliberately no `HeadingLevel` story. `headline` is a real heading
@@ -67,21 +51,7 @@ export const WithoutAction: Story = {
     caveat: 'Eligibility is rechecked on the first of every month.',
     closing: 'I would leave it until August and look again. Nothing to do in the meantime.',
   },
-  render: () => (
-    <DecisionCard
-      verdict="no"
-      verdictLabel="Not yet"
-      subject="Loyalty discount"
-      headline="This account does not qualify yet."
-      figures={[
-        { label: 'Months active', value: '4' },
-        { label: 'Needed', value: '12' },
-      ]}
-      caveat="Eligibility is rechecked on the first of every month."
-      closing="I would leave it until August and look again. Nothing to do in the meantime."
-      style={{ maxWidth: 420 }}
-    />
-  ),
+  render: (args) => <DecisionCard {...args} style={{ maxWidth: 420 }} />,
 };
 
 /* `code` beside the headline and `figureLayout="prose"` together, because
