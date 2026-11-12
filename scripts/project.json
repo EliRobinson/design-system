@@ -8,7 +8,8 @@
       "command": "pnpm run test",
       /* The review-gate tests in agent-hooks/ and the hook tests in git-hooks/
          read config files at the repo root. They belong to no project, so name
-         them here or an edit to one replays a cached pass. */
+         them here or an edit to one replays a cached pass. package-list.test.mjs
+         reads README.md and AGENTS.md at the root the same way. */
       "inputs": [
         "default",
         "^default",
@@ -20,7 +21,9 @@
         "{workspaceRoot}/.gemini/settings.json",
         "{workspaceRoot}/.github/hooks/review-gate.json",
         "{workspaceRoot}/.github/pull_request_template.md",
-        "{workspaceRoot}/.husky/*"
+        "{workspaceRoot}/.husky/*",
+        "{workspaceRoot}/README.md",
+        "{workspaceRoot}/AGENTS.md"
       ],
       "options": {
         "cwd": "scripts"

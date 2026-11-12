@@ -1,6 +1,6 @@
 # Publishing
 
-- Publish `@elirobinson/tokens`, `@elirobinson/react`, and `@elirobinson/ai-patterns` to GitHub Packages via Changesets. Fully automatic — no manual release step.
+- Publish every non-private package in [README.md](../../README.md#packages) to GitHub Packages via Changesets. Fully automatic — no manual release step.
 - **Every PR that touches a published package must include a changeset** (`pnpm changeset`). The `Quality` workflow enforces this with `changeset status --since=origin/<base>` and fails the PR if one is missing.
 - **A breaking change needs a section in `packages/ai-patterns/src/migrate/upgrade.md` in the same PR.** On 0.x, start a breaking `minor` changeset with `**Breaking:**`. The format and the release step are in [AI patterns](ai-patterns.md#migration-patterns).
 - On merge to `main`, `Quality` (~2m) and `Visual` (~9m) both run. `Release` (`.github/workflows/release.yml`) is triggered by **`Visual`** completing — the slower of the two — and its first step asserts, for that same commit, that the `full` sweep job concluded `success` and that a completed `Quality` run did too. Only then does it run `changeset version`, commit the bump straight to `main` as `chore(release): version packages`, publish, and push the resulting git tags — all in one job, one run, no PR to merge. If either check fails, nothing publishes, so neither a broken `main` nor a visual regression can reach the registry.
