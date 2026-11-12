@@ -38,7 +38,7 @@ chosen palette within minutes, and an upgrade is one version bump.
 
 ## Operating Context
 
-- A monorepo of published `@elirobinson/*` packages (the list is in `AGENTS.md`). One of
+- A monorepo of published `@elirobinson/*` packages (the list is in [README.md](README.md#packages)). One of
   them, `@elirobinson/ai-elements`, is vendored from `vercel/ai-elements` and never
   hand-edited.
 - Surfaces inside the repo: the docs site (`apps/docs`), Storybook (`apps/storybook`), the
