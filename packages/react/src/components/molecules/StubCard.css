@@ -17,7 +17,10 @@
   padding: var(--space-5) var(--space-6);
 }
 
-.ds-stub__title {
+/* Text the component renders as a heading, paragraph or list is reset under
+   the root at (0,2,0), so a host `.prose` cannot restyle it (#383). See "Why
+   an overlay title resets at (0,2,0)" in docs/agents/components.md. */
+.ds-stub .ds-stub__title {
   color: var(--fg);
   font-family: var(--font-sans);
   font-size: var(--fs-md);
@@ -25,12 +28,14 @@
   letter-spacing: var(--tr-snug);
   line-height: var(--lh-snug);
   margin: 0;
+  padding: 0;
 }
 
-.ds-stub__items {
+.ds-stub .ds-stub__items {
   display: grid;
   gap: var(--space-2);
   margin: 0;
+  padding: 0;
 }
 
 .ds-stub__item {
@@ -40,24 +45,27 @@
   justify-content: space-between;
 }
 
-.ds-stub__label {
+.ds-stub .ds-stub__label {
   color: var(--fg-3);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
+  font-weight: inherit;
   line-height: var(--lh-normal);
+  margin: 0;
 }
 
-.ds-stub__value {
+.ds-stub .ds-stub__value {
   color: var(--fg);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
   line-height: var(--lh-normal);
   margin: 0;
+  padding: 0;
   text-align: right;
 }
 
-.ds-stub__footnote {
+.ds-stub .ds-stub__footnote {
   color: var(--fg-3);
   font-family: var(--font-sans);
   font-size: var(--fs-xs);
@@ -90,7 +98,7 @@
   text-align: center;
 }
 
-.ds-stub__stub-label {
+.ds-stub .ds-stub__stub-label {
   color: var(--fg-3);
   font-family: var(--font-sans);
   font-size: var(--fs-2xs);
@@ -100,7 +108,7 @@
   text-transform: uppercase;
 }
 
-.ds-stub__stub-value {
+.ds-stub .ds-stub__stub-value {
   color: var(--fg);
   font-family: var(--font-sans);
   font-size: var(--fs-xl);
@@ -110,7 +118,7 @@
   margin: 0;
 }
 
-.ds-stub__stub-caption {
+.ds-stub .ds-stub__stub-caption {
   color: var(--fg-3);
   font-family: var(--font-sans);
   font-size: var(--fs-xs);
