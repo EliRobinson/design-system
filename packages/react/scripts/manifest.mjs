@@ -40,7 +40,8 @@ const SHARED_STYLESHEETS = {
   Textarea: { path: 'atoms/field.css' },
   Select: { path: 'atoms/field.css' },
   Label: { path: 'atoms/field.css' },
-  /* Their sibling sheet draws the row; the error message is .ds-hint--error. */
+  /* Their sibling sheet draws the row; field.css supplies the error message
+     (.ds-hint--error) and the hideLabel rule (.ds-visually-hidden). */
   Checkbox: { path: 'atoms/field.css' },
   Switch: { path: 'atoms/field.css' },
   /* No sheet of its own: it is the .ds-hint--error message. */
