@@ -125,61 +125,9 @@ export function loadVocabulary() {
   return { manifest, tokens, tailwind, components, stylesheets, classes };
 }
 
-/* ------------------------------------------------------------------ */
-/* Markdown → blocks and table cells. */
-
-/* Indented fences count: a code block inside a numbered step is still copied. */
-const FENCE = /^( *)```([^\n]*)\n([\s\S]*?)^\1```$/gm;
+/* Which side of a migration a fenced block is on. Parsing lives in markdown.test-helper.mjs. */
 const SIDES = new Set(['before', 'after']);
 const EXEMPT_LANGUAGES = new Set(['bash', 'sh', 'shell', 'text']);
-
-/** @returns {{ lang: string, side: string | null, code: string, line: number }[]} */
-export function fencedBlocks(markdown) {
-  const blocks = [];
-  for (const match of markdown.matchAll(FENCE)) {
-    const [, indent, info, body] = match;
-    const [lang = '', side = null] = info.trim().split(/\s+/);
-    const line = markdown.slice(0, match.index).split('\n').length;
-    const code = body.replace(new RegExp(`^${indent}`, 'gm'), '');
-    blocks.push({ lang, side, code, line });
-  }
-  return blocks;
-}
-
-function stripFences(markdown) {
-  return markdown.replace(FENCE, '');
-}
-
-function cells(row) {
-  return row
-    .trim()
-    .replace(/^\||\|$/g, '')
-    .split(/(?<!\\)\|/)
-    .map((cell) => cell.trim());
-}
-
-/** Every Markdown table, as header + rows of cells. */
-export function tables(markdown) {
-  const found = [];
-  const lines = stripFences(markdown).split('\n');
-  for (let i = 0; i < lines.length - 1; i += 1) {
-    if (!lines[i].trim().startsWith('|') || !/^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1])) continue;
-    const header = cells(lines[i]);
-    const rows = [];
-    let j = i + 2;
-    while (j < lines.length && lines[j].trim().startsWith('|')) {
-      rows.push({ cells: cells(lines[j]), line: j + 1 });
-      j += 1;
-    }
-    found.push({ header, rows });
-    i = j;
-  }
-  return found;
-}
-
-export function backticked(text) {
-  return [...text.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
-}
 
 /* ------------------------------------------------------------------ */
 /* Checks. Each returns a list of problem strings; empty means clean. */
