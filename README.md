@@ -12,7 +12,7 @@ This list is the source. A test checks it against `packages/*/package.json`.
 - `@elirobinson/ai-patterns` — AI UX patterns, prompt contracts, guardrails, and the `ds` discovery CLI.
 - `@elirobinson/eslint-config` — the statically checkable contracts as a flat ESLint config.
 - `@elirobinson/design-system-mcp` — MCP server that answers design system questions for agents.
-- `create-elirobinson-design-system` — `npx` starter generator.
+- `create-elirobinson-design-system` — `npx` starter generator (private, not published).
 
 ## Quick start
 

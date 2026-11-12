@@ -10,7 +10,8 @@
          read config files at the repo root. They belong to no project, so name
          them here or an edit to one replays a cached pass.
          shadcn-mapping-single-source.test.mjs reads every tracked Markdown file
-         and the ai-patterns Markdown parser (#333). */
+         and the ai-patterns Markdown parser (#333). package-list.test.mjs reads
+         README.md and AGENTS.md; the Markdown globs below cover them. */
       "inputs": [
         "default",
         "^default",

@@ -1,6 +1,6 @@
 # AI Agent Rules
 
-Miltinson Design System monorepo — publishes the packages listed in [README.md](README.md#packages).
+Miltinson Design System monorepo — its packages are listed in [README.md](README.md#packages).
 
 `@elirobinson/ai-elements` is the one package whose source is not ours: it is vendored from `vercel/ai-elements` at a pinned release. Never hand-edit `packages/ai-elements/src/` — see [AI Elements](docs/agents/ai-elements.md).
 
