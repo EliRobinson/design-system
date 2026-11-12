@@ -184,7 +184,7 @@ function componentEntry(componentsDir, packageName, { subpath, analysis }, docs)
   const description = (primary?.description ?? '').trim() || curated[name] || '';
   if (!description) gaps.push('no description available from source JSDoc or curated list');
 
-  const variants = propsType ? variantsFor(declarations, propsType) : [];
+  const variants = propsType ? variantsFor(analysis, propsType) : [];
 
   return {
     name,
@@ -208,7 +208,7 @@ function componentEntry(componentsDir, packageName, { subpath, analysis }, docs)
           name: doc.displayName,
           description: (doc.description ?? '').trim(),
           inherits: inheritsOf(declarations, subProps),
-          props: inSourceUnionOrder(toPropRecords(doc), variantsFor(declarations, subProps)),
+          props: inSourceUnionOrder(toPropRecords(doc), variantsFor(analysis, subProps)),
         };
       }),
     hooks,
