@@ -170,11 +170,13 @@ jobs:
             # pnpm-lock.yaml, nx.json and tsconfig.base.json each already fan
             # out to all nine projects on their own.
             #
-            # Correctly empty, and left that way: README.md and docs/**. A
-            # docs-only pull request SHOULD select nothing and pass green.
+            # Correctly empty, and left that way: docs/**. A docs-only pull
+            # request SHOULD select nothing and pass green. README.md and
+            # AGENTS.md are forced below: scripts:test checks the package list
+            # in them (scripts/package-list.test.mjs).
             # The review-gate config files (see scripts/project.json) are
             # outside the graph too, and scripts:test asserts over them.
-            if printf '%s\n' "$CHANGED" | grep -qE '^(design-system-docs/|templates/|tests/visual/|\.github/workflows/|playwright\.config\.ts$|\.nvmrc$|\.npmrc$|\.agents/skills/review-gate/|\.claude/agents/review-|\.claude/settings\.json$|\.codex/hooks\.json$|\.cursor/hooks\.json$|\.gemini/settings\.json$|\.github/hooks/review-gate\.json$|\.github/pull_request_template\.md$)'; then
+            if printf '%s\n' "$CHANGED" | grep -qE '^(README\.md$|AGENTS\.md$|design-system-docs/|templates/|tests/visual/|\.github/workflows/|playwright\.config\.ts$|\.nvmrc$|\.npmrc$|\.agents/skills/review-gate/|\.claude/agents/review-|\.claude/settings\.json$|\.codex/hooks\.json$|\.cursor/hooks\.json$|\.gemini/settings\.json$|\.github/hooks/review-gate\.json$|\.github/pull_request_template\.md$)'; then
               REASON="a path outside the project graph changed"
             else
               FULL=false
