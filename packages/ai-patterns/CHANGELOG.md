@@ -1,5 +1,11 @@
 # @elirobinson/ai-patterns
 
+## 0.34.8
+
+### Patch Changes
+
+- 54ea2f1: Show `--status-danger-hover` and `--status-danger-press` on the status card and in the Tailwind and plain-CSS migration tables.
+
 ## 0.34.7
 
 ### Patch Changes
