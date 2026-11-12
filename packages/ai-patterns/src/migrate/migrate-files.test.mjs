@@ -244,6 +244,13 @@ describe('the checker catches drift', () => {
     expect(checkCss('.ds-buton { color: var(--fg); }', vocab).join('\n')).toMatch(/\.ds-buton/);
   });
 
+  it('checks a span whose first class carries a variant, and flags a made-up one', () => {
+    expect(checkMappingSpan('hover:bg-destructive-hover', vocab)).toEqual([]);
+    expect(checkMappingSpan('hover:bg-destructive-bogus', vocab).join('\n')).toMatch(
+      /maps no colour/,
+    );
+  });
+
   it('fails a table cell it cannot classify', () => {
     expect(checkMappingSpan('theme.spacing(2)', vocab).join('\n')).toMatch(/not a shape/);
   });
