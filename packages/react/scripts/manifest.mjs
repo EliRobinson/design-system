@@ -89,6 +89,9 @@ function subpathOf(root, path) {
     .join('/');
 }
 
+/** A module's public name is its file's: 'organisms/Dialog' -> 'Dialog'. */
+const moduleName = (subpath) => subpath.split('/').at(-1);
+
 /** 'SegmentedControl' -> 'segmented-control'. */
 function toSlug(name) {
   return name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
@@ -115,7 +118,7 @@ function stylesheetsFor(componentsDir, packageName, subpath, relativeImports) {
     if (existsSync(join(componentsDir, sheet))) paths.add(prefix(sheet));
   }
 
-  const shared = SHARED_STYLESHEETS[subpath.split('/').at(-1)];
+  const shared = SHARED_STYLESHEETS[moduleName(subpath)];
   if (shared) {
     if (existsSync(join(componentsDir, shared.path))) paths.add(prefix(shared.path));
     else gaps.push(`shared stylesheet ${shared.path} is declared but does not exist`);
@@ -164,7 +167,7 @@ function constraintsFor(name, source) {
 
 function componentEntry(componentsDir, packageName, { subpath, analysis }, docs) {
   const segments = subpath.split('/');
-  const name = segments.at(-1);
+  const name = moduleName(subpath);
 
   const { text, values, types, declarations, hooks, relativeImports } = analysis;
   const propsType = types.includes(`${name}Props`) ? `${name}Props` : null;
@@ -218,8 +221,8 @@ function componentEntry(componentsDir, packageName, { subpath, analysis }, docs)
   };
 }
 
-function hookEntry(packageName, { path, subpath, analysis }, usedBy) {
-  const name = subpath.split('/').at(-1);
+function hookEntry(packageName, { subpath, analysis }, usedBy) {
+  const name = moduleName(subpath);
   const { values, types, hooks } = analysis;
   const importSpecifier = `${packageName}/hooks/${subpath}`;
 
@@ -230,14 +233,15 @@ function hookEntry(packageName, { path, subpath, analysis }, usedBy) {
     description: hooks.find((hook) => hook.name === name)?.description || curatedHooks[name] || '',
     exports: values,
     types,
-    usedBy: usedBy(path),
+    usedBy,
   };
 }
 
-/** Every source file under `root`, parsed once, sorted by module subpath. */
-function modulesUnder(root, parsed) {
-  return sourceFiles(root)
-    .map((path) => ({ path, subpath: subpathOf(root, path), analysis: parsed(path) }))
+/** The parsed modules under `root`, sorted by module subpath. */
+function modulesUnder(root, analyses) {
+  return [...analyses]
+    .filter(([path]) => path.startsWith(root + sep))
+    .map(([path, analysis]) => ({ path, subpath: subpathOf(root, path), analysis }))
     .sort((a, b) => a.subpath.localeCompare(b.subpath));
 }
 
@@ -251,13 +255,13 @@ function modulesUnder(root, parsed) {
  * overlay/anchoredOverlay and overlay/modalSurface, and reports Popover,
  * DropdownMenu, Dialog and Sheet, which is where it reaches a consumer.
  *
- * @param {{ path: string, analysis: { valueImports: string[] } }[]} modules every module in src/
+ * @param {Map<string, { valueImports: string[] }>} analyses every module in src/, by path
  * @param {Map<string, string>} named path -> public name, for components and hooks
  * @returns {(path: string) => string[]} sorted names, without duplicates
  */
-function usersByImport(modules, named) {
+function usersByImport(analyses, named) {
   const importers = new Map();
-  for (const { path, analysis } of modules) {
+  for (const [path, analysis] of analyses) {
     for (const target of analysis.valueImports) {
       if (!importers.has(target)) importers.set(target, []);
       importers.get(target).push(path);
@@ -287,7 +291,7 @@ function usersByImport(modules, named) {
  * rule is structural rather than a list of names, so it holds under any layout.
  */
 function isComponent({ subpath, analysis }) {
-  return analysis.values.includes(subpath.split('/').at(-1));
+  return analysis.values.includes(moduleName(subpath));
 }
 
 /**
@@ -299,11 +303,12 @@ export function buildManifest(packageRoot) {
   const srcDir = join(packageRoot, 'src');
   const componentsDir = join(srcDir, 'components');
 
+  // Every file in src/, parsed once: components and hooks are read from it,
+  // and so is the import graph that names each hook's users.
   const analyses = new Map(sourceFiles(srcDir).map((path) => [path, analyzeSource(path)]));
-  const parsed = (path) => analyses.get(path);
 
-  const modules = modulesUnder(componentsDir, parsed).filter(isComponent);
-  const hookModules = modulesUnder(join(srcDir, 'hooks'), parsed).filter(
+  const modules = modulesUnder(componentsDir, analyses).filter(isComponent);
+  const hookModules = modulesUnder(join(srcDir, 'hooks'), analyses).filter(
     (module) => module.analysis.values.length > 0,
   );
   const docsByFile = parseComponentDocs(
@@ -316,17 +321,14 @@ export function buildManifest(packageRoot) {
   );
 
   const named = new Map(
-    [...modules, ...hookModules].map((module) => [module.path, module.subpath.split('/').at(-1)]),
+    [...modules, ...hookModules].map((module) => [module.path, moduleName(module.subpath)]),
   );
-  const usedBy = usersByImport(
-    [...analyses].map(([path, analysis]) => ({ path, analysis })),
-    named,
-  );
-  const hooks = hookModules.map((module) => hookEntry(pkg.name, module, usedBy));
+  const usedBy = usersByImport(analyses, named);
+  const hooks = hookModules.map((module) => hookEntry(pkg.name, module, usedBy(module.path)));
 
   return {
     // Bump when the manifest's own shape changes, so readers can degrade.
-    manifestVersion: 2,
+    manifestVersion: 3,
     package: pkg.name,
     version: pkg.version,
     tiers: [...new Set(components.map((entry) => entry.tier).filter(Boolean))].sort(),

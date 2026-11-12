@@ -88,11 +88,13 @@ Prefer these over re-implementing keyboard behaviour in a component:
 - **`useActiveDescendant`** — the `aria-activedescendant` listbox pattern: DOM
   focus stays on an input while a highlighted option is tracked by id. Owns the
   index-clamping invariant (filtering must never leave the highlight pointing at
-  a removed option). Used by `Combobox` and `CommandPalette`.
+  a removed option).
 - **`useRovingFocus`** — arrow/Home/End traversal for widgets exposing a single
   tab stop. The caller decides what a move _means_ via `onNavigate` (tabs move
-  focus only; radio-style groups also select). Used by `Tabs` and
-  `SegmentedControl`.
+  focus only; radio-style groups also select).
+
+Who uses each hook is read off the imports: see the manifest's `usedBy`, or the
+docs site's hooks page.
 
 Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
 

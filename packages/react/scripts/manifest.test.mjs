@@ -228,6 +228,28 @@ describe('hook usedBy', () => {
       expect.arrayContaining(['Dialog', 'DropdownMenu', 'Popover', 'Sheet']),
     );
     expect(usedBy(manifest, 'useControllableState')).toContain('useDisclosure');
+    // Tooltip imports it directly; the other four reach it through overlay/*.
+    expect(usedBy(manifest, 'useEscapeKey')).toEqual([
+      'Dialog',
+      'DropdownMenu',
+      'Popover',
+      'Sheet',
+      'Tooltip',
+    ]);
+  });
+
+  it('counts a hook re-exported with export *', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/hooks/useBase.ts': hook('useBase'),
+        'src/components/atoms/Field.tsx': `
+          export * from '../../hooks/useBase.js';
+          export const Field = () => null;
+        `,
+      }),
+    );
+
+    expect(usedBy(manifest, 'useBase')).toEqual(['Field']);
   });
 
   it('names direct importers, looks through internal modules, and stops at a hook', () => {
@@ -261,6 +283,14 @@ describe('hook usedBy', () => {
         'src/components/atoms/Pin.tsx': `
           import type { Side } from '../../hooks/useSide.js';
           export const Pin = (props: { side?: Side }) => null;
+        `,
+        'src/components/atoms/Tag.tsx': `
+          import { type Side } from '../../hooks/useSide.js';
+          export const Tag = (props: { side?: Side }) => null;
+        `,
+        'src/components/atoms/Flag.tsx': `
+          export { type Side } from '../../hooks/useSide.js';
+          export const Flag = () => null;
         `,
       }),
     );
