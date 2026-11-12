@@ -10,8 +10,8 @@
 // upgrade gets deleted rather than worked through.
 //
 // One module, both languages, as no-duplicate-token-stylesheet does it: the
-// style-object half is `jsRule`, the stylesheet half is `cssRule`, and they
-// read the same table.
+// style-object and Tailwind half is `jsRule`, the stylesheet half is
+// `cssRule`, and they read the same table, `AXES`.
 //
 // Tailwind classes are read for their arbitrary values (`min-h-[44px]`), which
 // are literals. Scale utilities (`min-h-11`, `outline-2`) are not, and are
@@ -19,9 +19,10 @@
 
 import { jsxAttributeName, propertyName, staticStrings } from './ast-strings.mjs';
 import {
-  DEFAULT_CLASS_NAME_FUNCTIONS,
+  CLASS_NAME_FUNCTIONS_OPTION,
+  arbitraryProperties,
   arbitraryValues,
-  classNameVisitors,
+  classNameReader,
 } from './class-names.mjs';
 import { createCssRule } from './no-hardcoded-css-values.mjs';
 
@@ -82,38 +83,44 @@ function exactLengthAxis(messageId, px) {
 const TARGET = exactLengthAxis('target', TOUCH_TARGET_PX);
 const FOCUS_RING = exactLengthAxis('focusRing', FOCUS_RING_PX);
 
-/** camelCase, as written in a style object; the CSS spelling is derived. */
-const AXIS_BY_JS_PROPERTY = new Map([
-  // The logical sizes are the same decision as the physical ones.
-  ...[
-    'minHeight',
-    'minWidth',
-    'height',
-    'width',
-    'minBlockSize',
-    'minInlineSize',
-    'blockSize',
-    'inlineSize',
-  ].map((property) => [property, TARGET]),
-  ...['outline', 'outlineWidth', 'outlineOffset'].map((property) => [property, FOCUS_RING]),
-]);
-
-const AXIS_BY_CSS_PROPERTY = new Map(
-  [...AXIS_BY_JS_PROPERTY].map(([js, axis]) => [
-    js.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`),
-    axis,
-  ]),
-);
-
 /**
- * The Tailwind utilities that set a property on either axis. `outline-[2px]`
- * is an outline width; `outline-[var(--x)]` and `outline-[red]` are not
- * lengths and never match.
+ * The one table every half reads. `js` is camelCase, as written in a style
+ * object, and the CSS spelling is derived from it. `tailwind` is written out,
+ * because a utility name cannot be derived: `min-h` is `min-height`, and
+ * `size` sets two properties at once. `outline-[2px]` is an outline width;
+ * `outline-[var(--x)]` and `outline-[red]` are not lengths and never match.
  */
-const AXIS_BY_TAILWIND_UTILITY = new Map([
-  ...['min-h', 'min-w', 'h', 'w', 'size'].map((utility) => [utility, TARGET]),
-  ...['outline', 'outline-offset'].map((utility) => [utility, FOCUS_RING]),
-]);
+const AXES = [
+  {
+    axis: TARGET,
+    // The logical sizes are the same decision as the physical ones.
+    js: [
+      'minHeight',
+      'minWidth',
+      'height',
+      'width',
+      'minBlockSize',
+      'minInlineSize',
+      'blockSize',
+      'inlineSize',
+    ],
+    tailwind: ['min-h', 'min-w', 'h', 'w', 'size'],
+  },
+  {
+    axis: FOCUS_RING,
+    js: ['outline', 'outlineWidth', 'outlineOffset'],
+    tailwind: ['outline', 'outline-offset'],
+  },
+];
+
+const tableOf = (names) =>
+  new Map(AXES.flatMap((row) => names(row).map((name) => [name, row.axis])));
+
+const AXIS_BY_JS_PROPERTY = tableOf((row) => row.js);
+const AXIS_BY_CSS_PROPERTY = tableOf((row) =>
+  row.js.map((js) => js.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)),
+);
+const AXIS_BY_TAILWIND_UTILITY = tableOf((row) => row.tailwind);
 
 const MESSAGES = {
   target:
@@ -172,9 +179,7 @@ export const jsRule = {
     schema: [
       {
         type: 'object',
-        properties: {
-          classNameFunctions: { type: 'array', items: { type: 'string' } },
-        },
+        properties: CLASS_NAME_FUNCTIONS_OPTION,
         additionalProperties: false,
       },
     ],
@@ -184,28 +189,32 @@ export const jsRule = {
   create(context) {
     const options = context.options[0] ?? {};
 
-    /** Every arbitrary value on either axis in one className string. */
+    function report(node, axis, token, value) {
+      context.report({ node, messageId: axis.messageId, data: { property: token, value } });
+    }
+
+    /** Every arbitrary value or property on either axis in one className string. */
     function checkClassName(node, className) {
-      for (const { utility, value } of arbitraryValues(className)) {
+      for (const { token, utility, value } of arbitraryValues(className)) {
         // `-outline-offset-[2px]` is Tailwind's negative: the value, negated.
         const negative = utility.startsWith('-');
         const axis = AXIS_BY_TAILWIND_UTILITY.get(negative ? utility.slice(1) : utility);
-        const signed = negative ? `-${value}` : value;
-        if (axis?.matches(signed)) {
-          context.report({
-            node,
-            messageId: axis.messageId,
-            data: { property: `${utility}-[${value.replaceAll(' ', '_')}]`, value },
-          });
-        }
+        // `outline-[length:2px]`: a type hint names what the value is.
+        const bare = value.replace(/^[a-z-]+:/, '');
+        if (axis?.matches(negative ? `-${bare}` : bare)) report(node, axis, token, bare);
+      }
+      // `[min-height:44px]` is the CSS declaration itself.
+      for (const { token, property, value } of arbitraryProperties(className)) {
+        const axis = AXIS_BY_CSS_PROPERTY.get(property);
+        if (axis?.matches(value)) report(node, axis, token, value);
       }
     }
 
+    const classNames = classNameReader({ functions: options.classNameFunctions }, checkClassName);
+
     return {
-      ...classNameVisitors(
-        options.classNameFunctions ?? DEFAULT_CLASS_NAME_FUNCTIONS,
-        checkClassName,
-      ),
+      JSXAttribute: classNames.attribute,
+      CallExpression: classNames.call,
 
       // Every object property, not only JSX `style` ones: a style object
       // defined above the component ships the same literal.

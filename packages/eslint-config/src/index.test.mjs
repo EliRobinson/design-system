@@ -111,15 +111,33 @@ describe('no-hardcoded-design-values: colour', () => {
     expect(results[0].message).toContain('Hardcoded colour');
   });
 
-  it('flags a literal named in a clsx() object key', () => {
+  // It ships at `error`, so reading helper object keys would turn a
+  // consumer's build red on upgrade; no-hardcoded-control-geometry reads them.
+  it('does not read a clsx() object key yet', () => {
     const results = lint(
       `import { clsx } from 'clsx'
-       export const A = ({ on }) => <div className={clsx({ 'bg-[#ff0000]': on, open: on })} />`,
+       export const A = ({ on }) => <div className={clsx({ 'bg-[#ff0000]': on })} />`,
     );
 
-    expect(results).toHaveLength(1);
-    expect(results[0].message).toContain('Hardcoded colour');
+    expect(results).toEqual([]);
   });
+
+  it('names an arbitrary value the way it is written', () => {
+    const [result] = lint('export const A = () => <div className="shadow-[0_4px_12px_#000]" />');
+
+    expect(result.message).toContain('"shadow-[0_4px_12px_#000]"');
+  });
+
+  it.each(['shadow-[0_4px_12px_#000]', 'shadow-[0 4px 12px #000]'])(
+    'matches %j in allow, either spelling',
+    (entry) => {
+      const results = lint('export const A = () => <div className="shadow-[0_4px_12px_#000]" />', {
+        options: { hardcodedValues: { allow: [entry] } },
+      });
+
+      expect(results).toEqual([]);
+    },
+  );
 
   it('reports a doubly-reachable literal once', () => {
     const results = lint(
