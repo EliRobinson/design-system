@@ -12,9 +12,9 @@ const reactSrc = join(repoRoot, 'packages/react/src');
 const docsSrc = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('component manifest', () => {
-  it('covers all 51 components and 7 hooks', () => {
+  it('covers all 51 components and 8 hooks', () => {
     expect(components).toHaveLength(51);
-    expect(hooks).toHaveLength(7);
+    expect(hooks).toHaveLength(8);
   });
 
   it('has unique slugs', () => {
