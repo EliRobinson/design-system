@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { variantClaims } from './description-variants.mjs';
 import { buildManifest } from './manifest.mjs';
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
@@ -125,6 +126,12 @@ describe('buildManifest against this package', () => {
     for (const component of manifest.components) {
       expect(component.description.length, component.name).toBeGreaterThan(0);
     }
+  });
+
+  it('has no description that names or counts its variants', () => {
+    // The variants are in the manifest and the prop table. A description says
+    // what the component is for; it never repeats what the prop table lists.
+    expect(variantClaims(manifest)).toEqual([]);
   });
 
   it('names the constraints a component has to satisfy', () => {
