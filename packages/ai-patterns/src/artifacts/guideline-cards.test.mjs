@@ -69,23 +69,18 @@ describe('completeness against tokens.css', () => {
     expect(html).toContain('var(--anchor-500)');
   });
 
-  it('renders every member of every status state, not just the fill', () => {
+  it('renders every status token tokens.css declares, not just the fill', () => {
     const html = cardAt('colors-status.html');
-    for (const state of ['success', 'warning', 'danger', 'info']) {
-      for (const suffix of ['', '-on', '-fg', '-tint', '-tint-edge']) {
-        expect(html).toContain(`var(--status-${state}${suffix})`);
-      }
+    const declared = tokens
+      .map((token) => token.name)
+      .filter((name) => /^--status-(success|warning|danger|info)(-|$)/.test(name));
+    for (const name of declared) expect(html).toContain(`var(${name})`);
+    expect(chipCount(html)).toBe(declared.length);
+    // The table is what the generator reads, so each row must name a real token.
+    for (const [state, suffixes] of Object.entries(STATUS_EXTRA_MEMBERS)) {
+      for (const suffix of suffixes) expect(declared).toContain(`--status-${state}${suffix}`);
     }
-    /* The members only some states declare (warning's border, danger's hover
-       and press) come from the table, so a new row there is tested for free.
-       A card that showed the fills alone left the rest to be guessed at. */
-    const extras = Object.entries(STATUS_EXTRA_MEMBERS).flatMap(([state, suffixes]) =>
-      suffixes.map((suffix) => `--status-${state}${suffix}`),
-    );
-    expect(extras).toContain('--status-danger-hover');
-    expect(extras).toContain('--status-danger-press');
-    for (const name of extras) expect(html).toContain(`var(${name})`);
-    expect(chipCount(html)).toBe(4 * 5 + extras.length);
+    expect(STATUS_EXTRA_MEMBERS.danger).toEqual(['-hover', '-press']);
   });
 
   it('renders every categorical series plus the chart chrome', () => {

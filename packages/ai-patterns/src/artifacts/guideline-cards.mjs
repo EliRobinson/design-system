@@ -91,9 +91,11 @@ const step = (token, prefix) => token.name.slice(prefix.length);
 const STATUS_STATES = ['success', 'warning', 'danger', 'info'];
 const STATUS_MEMBERS = ['', '-on', '-fg', '-tint', '-tint-edge'];
 
-/** Members only some states declare. Add a row here, not a branch in `statusRow`. */
+/* Members only some states declare. Add a row here, not a branch in `statusRow`. */
 export const STATUS_EXTRA_MEMBERS = {
+  // Deep amber on a pale amber tint has no edge to borrow from the fill, so it declares its own.
   warning: ['-border'],
+  // The fill when hovered or pressed: what `bg-destructive-hover` and `-press` read.
   danger: ['-hover', '-press'],
 };
 
@@ -189,11 +191,7 @@ export function buildGuidelineCards(tokens) {
      Every member of a state is on the card, on one row, so the set is legible
      as a set. */
   const statusRow = (state) => {
-    /* Two states are asymmetric, and STATUS_EXTRA_MEMBERS says how. Warning:
-       deep amber on a pale amber tint has no edge a border can borrow from the
-       fill, so it declares its own, and an outline nobody can see is exactly
-       what the card must not hide. Danger: the hovered and pressed fills a
-       destructive control needs, which `bg-destructive-hover` and `-press` read. */
+    // Extras per state, and why, live in STATUS_EXTRA_MEMBERS.
     const names = [...STATUS_MEMBERS, ...(STATUS_EXTRA_MEMBERS[state] ?? [])].map(
       (suffix) => `--status-${state}${suffix}`,
     );
@@ -218,7 +216,8 @@ export function buildGuidelineCards(tokens) {
       group: 'Colors',
       viewport: '700x420',
       name: 'Status',
-      subtitle: 'Status colours — fill, the ink that goes on it, the tint behind it and its edge',
+      subtitle:
+        'Status colours — fill, the ink on it, the tint behind it and its edge, plus the extras some states add',
       body:
         '<div style="display:grid;gap:18px">' +
         STATUS_STATES.map((state) => statusRow(state)).join('') +

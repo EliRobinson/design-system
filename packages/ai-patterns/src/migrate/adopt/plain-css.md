@@ -55,8 +55,9 @@ different roles: one `#fff` is the page, another is a card on the page.
 
 Each status (`success`, `warning`, `danger`, `info`) has the same five members: the fill,
 `-on`, `-fg`, `-tint`, `-tint-edge`. Warning also has `-border`, because its fill is too
-light to stand alone. Danger also has `-hover` and `-press`, the fill when hovered or pressed. Use only semantic tokens. Never use a raw scale step (`--ink-500`)
-in app code: it does not change with the theme.
+light to stand alone. Danger also has `-hover` and `-press`, the fill when hovered or
+pressed. Use only semantic tokens. Never use a raw scale step (`--ink-500`) in app code:
+it does not change with the theme.
 
 ```css before
 :root {
