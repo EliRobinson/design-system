@@ -114,6 +114,7 @@ Import via the tiered subpath: `@elirobinson/react/components/<tier>/<Name>`.
 - Control edges use `--border-control`, not `--border`/`--border-strong` — enforced by `component-css.test.mjs` here and shipped to consumers as `@elirobinson-css/no-decorative-control-edge`. See [Tokens](tokens.md) for which edges count.
 - Status text uses `--status-*-fg`, status panels `--status-*-tint`; `--status-*` is a fill and two of them cannot carry a label at all.
 - Brand amber that a user reads is `--accent-ink`, not `--accent` (2.53:1).
+- **A description never names or counts its variants.** A component's JSDoc (or its fallback in `packages/react/scripts/component-descriptions.json`) says what the component is for. The manifest's `variants` and the docs prop table already list the values, so a prose copy goes stale when a value is added. `description-variants.mjs` enforces this in the manifest test.
 - **Colour is never the only signal for a state.** Pair it with a glyph, shape, label or border — see SC 1.4.1 in [Tokens](tokens.md).
 
 #### Why `size="sm"` is 36px

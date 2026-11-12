@@ -18,8 +18,12 @@ anywhere in this repo**, and nothing here edits `packages/ai-elements/src/`.
 
 `app/ai-theme/` is **verbatim** and is in `.prettierignore` for the same reason
 `packages/ai-elements/src` is: these six files are authored in the design handoff and
-re-landed whole, so formatting them turns the next drop into an unreadable diff. Edits go
-to the handoff, not here. `ai-theme-bundler-fixups.css` is ours and is formatted.
+re-landed whole, so formatting them turns the next drop into an unreadable diff. They are
+linted, though: the root `eslint.config.mjs` holds them to `@elirobinson/eslint-config/css`
+(#340). Focus rings take `var(--focus-ring-width)` and `var(--focus-ring-offset)`, and an
+inset ring is `calc(var(--focus-ring-width) * -1)`. A re-landed drop must keep those token
+references and the `eslint-disable-next-line` reasons, or `pnpm lint` fails. Send the same
+edits to the handoff. `ai-theme-bundler-fixups.css` is ours and is formatted.
 
 ## Import order
 

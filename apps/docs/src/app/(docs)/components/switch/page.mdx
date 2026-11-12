@@ -7,6 +7,7 @@ import Basic from '@/components/demos/switch/Basic';
 import States from '@/components/demos/switch/States';
 import Controlled from '@/components/demos/switch/Controlled';
 import WithError from '@/components/demos/switch/WithError';
+import HiddenLabel from '@/components/demos/switch/HiddenLabel';
 
 export const metadata = { title: 'Switch' };
 
@@ -28,6 +29,10 @@ of a form that gets submitted together.
   <States />
 </DemoBlock>
 
+`disabled` works as it does on a native input: the control can't be focused or changed, and
+it takes the muted disabled style, checked or not. It also applies inside a disabled
+`<fieldset>`.
+
 ## Controlled
 
 Under the hood it's still a checkbox — `checked` and `onChange` work exactly as they
@@ -35,6 +40,16 @@ would on a plain `<input type="checkbox">`.
 
 <DemoBlock file="switch/Controlled.tsx">
   <Controlled />
+</DemoBlock>
+
+## Hidden label
+
+Pass `hideLabel` when visible text nearby already names the control, such as a table row
+or a toolbar. The label is hidden from sight only. It stays in the DOM and is still the
+accessible name, so `label` is still required.
+
+<DemoBlock file="switch/HiddenLabel.tsx">
+  <HiddenLabel />
 </DemoBlock>
 
 ## With an error
@@ -64,6 +79,7 @@ after the row, not inside a wrapper, so in a flex or grid parent it is its own i
 - Setting `error` sets `aria-invalid="true"` on the input and adds the error's id to
   `aria-describedby`, after any id you pass yourself. The message sits outside the
   `<label>`, so it never becomes part of the accessible name.
+- With `hideLabel`, the label stays the accessible name; only the sight of it is hidden.
 - The ref forwards to the underlying `<input>`.
 
 <DoDont

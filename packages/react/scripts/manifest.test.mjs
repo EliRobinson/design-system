@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { variantClaims } from './description-variants.mjs';
 import { buildManifest } from './manifest.mjs';
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
@@ -96,7 +97,7 @@ describe('buildManifest against this package', () => {
     });
   });
 
-  it('lists field.css for the row controls whose error message it styles', () => {
+  it('lists field.css for the row controls: it styles their error message and hideLabel', () => {
     for (const name of ['Checkbox', 'Switch']) {
       expect(byName(name).stylesheetPaths).toEqual([
         `@elirobinson/react/styles/atoms/${name}.css`,
@@ -125,6 +126,11 @@ describe('buildManifest against this package', () => {
     for (const component of manifest.components) {
       expect(component.description.length, component.name).toBeGreaterThan(0);
     }
+  });
+
+  it('has no description that names or counts its variants', () => {
+    // See description-variants.mjs.
+    expect(variantClaims(manifest)).toEqual([]);
   });
 
   it('names the constraints a component has to satisfy', () => {
@@ -173,6 +179,17 @@ describe('buildManifest against this package', () => {
     expect(byName('Accordion').variants).toEqual([
       { prop: 'headingLevel', type: 'AccordionHeadingLevel', values: [1, 2, 3, 4, 5, 6] },
     ]);
+  });
+
+  it('resolves a variant union imported from another module', () => {
+    expect(byName('Tooltip').variants).toEqual([
+      { prop: 'side', type: null, values: ['top', 'bottom', 'left', 'right'] },
+    ]);
+    expect(byName('DecisionCard').variants).toContainEqual({
+      prop: 'verdict',
+      type: null,
+      values: ['go', 'no', 'hold'],
+    });
   });
 
   it('lists every value a compound component exports', () => {
@@ -273,6 +290,96 @@ describe('props-type resolution', () => {
     expect(manifest.components[0].variants).toEqual([
       { prop: 'size', type: null, values: ['sm', 'lg'] },
     ]);
+  });
+
+  it('follows a relative import to the module that declares the union', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/hooks/useSide.ts': `export type Side = 'top' | 'bottom';`,
+        'src/components/atoms/Pin.tsx': `
+          import type { Side } from '../../hooks/useSide.js';
+          export type PinProps = { side?: Side };
+          export const Pin = (props: PinProps) => null;
+        `,
+      }),
+    );
+
+    expect(manifest.components[0].variants).toEqual([
+      { prop: 'side', type: null, values: ['top', 'bottom'] },
+    ]);
+  });
+
+  it('follows a renamed import and one re-export to the union', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/lib/edge.ts': `export type Edge = 'start' | 'end';`,
+        'src/lib/index.ts': `export type { Edge as Side } from './edge';`,
+        'src/components/atoms/Pin.tsx': `
+          import type { Side as PinSide } from '../../lib';
+          export type PinProps = { side?: PinSide };
+          export const Pin = (props: PinProps) => null;
+        `,
+      }),
+    );
+
+    expect(manifest.components[0].variants).toEqual([
+      { prop: 'side', type: null, values: ['start', 'end'] },
+    ]);
+  });
+
+  it('names an imported alias only when the component module re-exports it', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/hooks/useSide.ts': `export type Side = 'top' | 'bottom';`,
+        'src/components/atoms/Pin.tsx': `
+          import type { Side } from '../../hooks/useSide.js';
+          export type { Side };
+          export type PinProps = { side?: Side };
+          export const Pin = (props: PinProps) => null;
+        `,
+      }),
+    );
+
+    expect(manifest.components[0].variants).toEqual([
+      { prop: 'side', type: 'Side', values: ['top', 'bottom'] },
+    ]);
+  });
+
+  it('stops after one re-export, and on a re-export cycle', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/lib/edge.ts': `export type Edge = 'start' | 'end';`,
+        'src/lib/middle.ts': `export type { Edge } from './edge';`,
+        'src/lib/outer.ts': `export type { Edge } from './middle';`,
+        'src/lib/a.ts': `export type { Loop } from './b';`,
+        'src/lib/b.ts': `export type { Loop } from './a';`,
+        'src/components/atoms/Pin.tsx': `
+          import type { Edge } from '../../lib/outer.js';
+          import type { Loop } from '../../lib/a.js';
+          export type PinProps = { side?: Edge; loop?: Loop };
+          export const Pin = (props: PinProps) => null;
+        `,
+      }),
+    );
+
+    expect(manifest.components[0].variants).toEqual([]);
+  });
+
+  it('ignores an imported name it cannot resolve to a literal union', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/lib/size.ts': `export type Size = number;`,
+        'src/components/atoms/Pin.tsx': `
+          import type { Size } from '../../lib/size.js';
+          import type { Missing } from './nowhere.js';
+          import type { Side } from 'some-package';
+          export type PinProps = { size?: Size; gone?: Missing; side?: Side };
+          export const Pin = (props: PinProps) => null;
+        `,
+      }),
+    );
+
+    expect(manifest.components[0].variants).toEqual([]);
   });
 
   it('ignores props whose type is not a literal union', () => {

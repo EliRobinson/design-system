@@ -1,5 +1,11 @@
 # @elirobinson/react
 
+## 3.11.3
+
+### Patch Changes
+
+- 928bbc4: Share one browser test helper across the package's browser suites (#335). Test-only; no consumer change.
+
 ## 3.11.2
 
 ### Patch Changes

@@ -60,7 +60,7 @@ const { browser, describeBrowser } = await bootBrowser('host typography');
 function load({ body, host = '' }, probe, arg) {
   return inPage(
     browser,
-    { sheets: SHEETS, head: `<style>${host}</style>`, body, viewport: VIEWPORT },
+    { sheets: SHEETS, head: `<style>${host}</style>`, body, context: { viewport: VIEWPORT } },
     probe,
     arg,
   );
