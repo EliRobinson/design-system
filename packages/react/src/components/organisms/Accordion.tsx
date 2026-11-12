@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, MouseEventHandler } from 'react';
-import { createContext, forwardRef, useContext, useId, useState } from 'react';
+import { createContext, forwardRef, useContext, useId } from 'react';
 
+import { useControllableState } from '../../hooks/useControllableState.js';
 import { cn } from '../../lib/cn.js';
 import { Mark } from '../../lib/marks.js';
 
@@ -108,9 +109,17 @@ export const Accordion = forwardRef<HTMLDivElement, AccordionProps>(function Acc
   ref,
 ) {
   const baseId = useId();
-  const [internalValues, setInternalValues] = useState<string[]>(() => toArray(defaultValue));
-  const isControlled = value !== undefined;
-  const openValues = isControlled ? toArray(value) : internalValues;
+  const [openValues, setOpenValues] = useControllableState<string[]>({
+    value: value === undefined ? undefined : toArray(value),
+    defaultValue: () => toArray(defaultValue),
+    onChange: (next) => {
+      if (type === 'multiple') {
+        (onValueChange as ((value: string[]) => void) | undefined)?.(next);
+      } else {
+        (onValueChange as ((value: string) => void) | undefined)?.(next[0] ?? '');
+      }
+    },
+  });
   const safeHeadingLevel = resolveHeadingLevel(headingLevel);
 
   const toggle = (itemValue: string) => {
@@ -124,15 +133,7 @@ export const Accordion = forwardRef<HTMLDivElement, AccordionProps>(function Acc
           ? []
           : [itemValue];
 
-    if (!isControlled) {
-      setInternalValues(next);
-    }
-
-    if (type === 'multiple') {
-      (onValueChange as ((value: string[]) => void) | undefined)?.(next);
-    } else {
-      (onValueChange as ((value: string) => void) | undefined)?.(next[0] ?? '');
-    }
+    setOpenValues(next);
   };
 
   return (
