@@ -7,6 +7,8 @@ import Basic from '@/components/demos/switch/Basic';
 import States from '@/components/demos/switch/States';
 import Controlled from '@/components/demos/switch/Controlled';
 import WithError from '@/components/demos/switch/WithError';
+import HiddenLabel from '@/components/demos/switch/HiddenLabel';
+import Disabled from '@/components/demos/switch/Disabled';
 
 export const metadata = { title: 'Switch' };
 
@@ -35,6 +37,25 @@ would on a plain `<input type="checkbox">`.
 
 <DemoBlock file="switch/Controlled.tsx">
   <Controlled />
+</DemoBlock>
+
+## Hidden label
+
+Pass `hideLabel` for a switch with no visible text, such as one in a table row or a toolbar. The label is hidden from sight only. It stays in the DOM, so it
+is still the input's accessible name and screen readers still announce it. `label` is
+still required.
+
+<DemoBlock file="switch/HiddenLabel.tsx">
+  <HiddenLabel />
+</DemoBlock>
+
+## Disabled
+
+`disabled` works as it does on a native input: the control can't be focused or changed, and
+it takes the muted disabled style, checked or not.
+
+<DemoBlock file="switch/Disabled.tsx">
+  <Disabled />
 </DemoBlock>
 
 ## With an error
