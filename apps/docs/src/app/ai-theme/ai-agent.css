@@ -66,7 +66,7 @@
 }
 
 .ds-ai-reasoning__trigger:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -136,8 +136,8 @@
 }
 
 .ds-ai-tool__header:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-offset));
 }
 
 /* The tool's name, verbatim from the SDK — a symbol, so mono, and not
@@ -286,7 +286,7 @@
 }
 
 .ds-ai-sources__trigger:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -338,8 +338,8 @@
 }
 
 .ds-ai-source__title:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .ds-ai-source__host {
@@ -386,7 +386,7 @@
 }
 
 .ds-ai-cite:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -779,8 +779,8 @@
 }
 
 .ds-ai-confirm__btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .ds-ai-confirm__btn:active {
@@ -876,8 +876,8 @@
 }
 
 .ds-ai-branch__btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* Disabled at the ends of the range. --fg-disabled (4.85:1), not --fg-4:

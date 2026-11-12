@@ -136,7 +136,7 @@ export default tseslint.config(
   // `eslint-disable-next-line` with its reason, next to the value. The geometry
   // rule ships to consumers as a warning; here it is clean, so it errors.
   ...designSystemCss({
-    files: ['packages/react/src/**/*.css'],
+    files: ['packages/react/src/**/*.css', 'apps/docs/src/app/ai-theme/**/*.css'],
     controlGeometry: { severity: 'error' },
   }),
   // The one rule that IS pointed at the vendored tree, and the reason
