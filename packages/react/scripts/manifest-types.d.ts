@@ -80,6 +80,12 @@ export type HookRecord = {
   description: string;
   exports: string[];
   types: string[];
+  /**
+   * The components and hooks that use this hook, read off the import graph of
+   * src/. An internal module in between (an overlay helper) is looked through
+   * to the components that import it. Sorted.
+   */
+  usedBy: string[];
 };
 
 export type Manifest = {

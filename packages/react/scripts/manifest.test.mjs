@@ -218,6 +218,57 @@ describe('buildManifest against this package', () => {
   });
 });
 
+describe('hook usedBy', () => {
+  const hook = (name, body = '') => `${body}\nexport function ${name}() {}`;
+  const usedBy = (manifest, name) => manifest.hooks.find((entry) => entry.name === name).usedBy;
+
+  it("names this package's overlays through the internal modules they share", () => {
+    const manifest = buildManifest(packageRoot);
+    expect(usedBy(manifest, 'useDisclosure')).toEqual(
+      expect.arrayContaining(['Dialog', 'DropdownMenu', 'Popover', 'Sheet']),
+    );
+    expect(usedBy(manifest, 'useControllableState')).toContain('useDisclosure');
+  });
+
+  it('names direct importers, looks through internal modules, and stops at a hook', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/hooks/useBase.ts': hook('useBase'),
+        'src/hooks/useWrap.ts': hook('useWrap', `import { useBase } from './useBase.js';`),
+        'src/components/organisms/shared/surface.tsx': `
+          import { useWrap } from '../../../hooks/useWrap.js';
+          export const openSurface = () => useWrap();
+        `,
+        'src/components/organisms/Dialog.tsx': `
+          import { openSurface } from './shared/surface.js';
+          export const Dialog = () => openSurface();
+        `,
+        'src/components/atoms/Field.tsx': `
+          import { useBase } from '../../hooks/useBase.js';
+          export const Field = () => useBase();
+        `,
+      }),
+    );
+
+    expect(usedBy(manifest, 'useBase')).toEqual(['Field', 'useWrap']);
+    expect(usedBy(manifest, 'useWrap')).toEqual(['Dialog']);
+  });
+
+  it('does not count a type-only import as a use', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/hooks/useSide.ts': hook('useSide', `export type Side = 'top' | 'bottom';`),
+        'src/components/atoms/Pin.tsx': `
+          import type { Side } from '../../hooks/useSide.js';
+          export const Pin = (props: { side?: Side }) => null;
+        `,
+      }),
+    );
+
+    expect(usedBy(manifest, 'useSide')).toEqual([]);
+  });
+});
+
 describe('layout-agnosticism', () => {
   const button = `
     export type ButtonVariant = 'primary' | 'ghost';
