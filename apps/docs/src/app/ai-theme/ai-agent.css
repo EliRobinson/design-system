@@ -815,11 +815,16 @@
 }
 
 .ds-ai-confirm__btn--danger:hover,
-.ds-ai-confirm__btn--danger:focus,
+.ds-ai-confirm__btn--danger:focus {
+  background: var(--status-danger-hover);
+  border-color: var(--status-danger-hover);
+  color: var(--status-danger-on); /* >= 4.5:1, asserted in ai-agent.test.ts */
+}
+
 .ds-ai-confirm__btn--danger:active {
-  background: var(--status-danger-fg);
-  border-color: var(--status-danger-fg);
-  color: var(--status-danger-on); /* 7.54:1 — hover raises contrast */
+  background: var(--status-danger-press);
+  border-color: var(--status-danger-press);
+  color: var(--status-danger-on);
 }
 
 /* Answered. The decision stays in the transcript, greyed but readable at
