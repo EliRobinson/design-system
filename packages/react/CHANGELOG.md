@@ -1,5 +1,15 @@
 # @elirobinson/react
 
+## 3.14.0
+
+### Minor Changes
+
+- da7a894: The manifest's hook records gain `usedBy`: the components and hooks that use each hook, read off the import graph of `src/`. An internal helper between them, such as an overlay module, is looked through to the components that import it. The docs site's hooks page now takes its "Used by" lines from this field instead of a hand-kept list.
+
+### Patch Changes
+
+- 0222fc0: Card, EmptyState, DecisionCard, StubCard, Alert, Toast, Pagination and Breadcrumb keep their own type and list styles inside a host `.prose`. Their headings, paragraphs, description lists and lists now reset under the component root at (0,2,0), as Dialog and Sheet already do. Alert and Toast render their title and description as `div`s, which no host rule reaches, so nothing changes for them today; they get the same reset in case they ever render a heading or paragraph. A consumer that restyled one of these elements with a single class (for example `.ds-card__title`) now needs the root too (`.ds-card .ds-card__title`).
+
 ## 3.13.0
 
 ### Minor Changes
