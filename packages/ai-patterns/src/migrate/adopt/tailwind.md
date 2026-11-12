@@ -45,6 +45,8 @@ names do. Swap by role, not by hue: ask what the colour is for.
 | `bg-yellow-50 text-yellow-800`       | `bg-warning-tint text-warning-ink`                 | Warning panel                                              |
 | `bg-blue-50 text-blue-700` (info)    | `bg-info-tint text-info-ink`                       | Info panel                                                 |
 | `bg-red-600 text-white`              | `bg-destructive text-destructive-foreground`       | Filled danger                                              |
+| `hover:bg-red-700`                   | `hover:bg-destructive-hover`                       | Filled danger, hovered                                     |
+| `active:bg-red-800`                  | `active:bg-destructive-press`                      | Filled danger, pressed                                     |
 | `focus:ring-blue-500`                | `ring-ring`                                        | Only if you draw a ring; the token sheet already draws one |
 
 Then delete every `dark:` colour variant. The bridge's names flip on `data-theme="dark"`

@@ -424,7 +424,7 @@ const SPAN_KINDS = [
     (span, vocab) =>
       vocab.components.has(span) ? [] : [`${span} is not exported by @elirobinson/react`],
   ],
-  [/^[a-z][\w-]*(?:\s+[a-z!][\w:/!-]*)*$/, checkUtilities],
+  [/^[a-z][\w:-]*(?:\s+[a-z!][\w:/!-]*)*$/, checkUtilities],
 ];
 
 /** Check one backticked span from a Miltinson column. */
