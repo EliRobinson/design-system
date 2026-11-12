@@ -20,15 +20,12 @@ import {
   isExempt,
 } from './value-patterns.mjs';
 import { propertyName, staticStrings } from './ast-strings.mjs';
-
-const DEFAULT_CLASS_NAME_FUNCTIONS = ['cn', 'clsx', 'classnames', 'classNames', 'cva', 'twMerge'];
-
-/** Tailwind arbitrary values: rounded-[8px] -> { utility: 'rounded', value: '8px' } */
-function* arbitraryValues(className) {
-  for (const [, utility, value] of className.matchAll(/([\w-]+)-\[([^\]]+)\]/g)) {
-    yield { utility, value: value.replaceAll('_', ' ') };
-  }
-}
+import {
+  ARBITRARY_VALUE,
+  DEFAULT_CLASS_NAME_FUNCTIONS,
+  arbitraryValues,
+  classNameVisitors,
+} from './class-names.mjs';
 
 const RADIUS_UTILITIES = /^rounded(?:-[a-z]+)?$/;
 const SHADOW_UTILITIES = /^(?:shadow|drop-shadow|inset-shadow|text-shadow)$/;
@@ -102,7 +99,6 @@ export default {
 
   create(context) {
     const options = context.options[0] ?? {};
-    const classNameFunctions = new Set(options.classNameFunctions ?? DEFAULT_CLASS_NAME_FUNCTIONS);
     const allow = new Set(options.allow ?? []);
 
     // A className can be reached twice — once via the JSX attribute and once
@@ -154,7 +150,7 @@ export default {
       }
 
       // A colour literal outside an arbitrary value is still a colour literal.
-      const outsideArbitrary = className.replace(/[\w-]+-\[[^\]]+\]/g, '');
+      const outsideArbitrary = className.replace(ARBITRARY_VALUE, '');
       checkColor(node, outsideArbitrary);
 
       // Read against the untouched string: a palette utility can carry a
@@ -188,28 +184,19 @@ export default {
       }
     }
 
+    const classNames = classNameVisitors(
+      options.classNameFunctions ?? DEFAULT_CLASS_NAME_FUNCTIONS,
+      checkClassName,
+    );
+
     return {
+      ...classNames,
+
       JSXAttribute(node) {
+        classNames.JSXAttribute(node);
         const name = node.name.type === 'JSXIdentifier' ? node.name.name : null;
-
-        if (name === 'className' || name === 'class') {
-          for (const value of staticStrings(node.value)) checkClassName(node, value);
-        } else if (name === 'style' && node.value?.type === 'JSXExpressionContainer') {
+        if (name === 'style' && node.value?.type === 'JSXExpressionContainer') {
           checkStyleObject(node.value.expression);
-        }
-      },
-
-      CallExpression(node) {
-        const callee =
-          node.callee.type === 'Identifier'
-            ? node.callee.name
-            : node.callee.type === 'MemberExpression' && node.callee.property.type === 'Identifier'
-              ? node.callee.property.name
-              : null;
-
-        if (!callee || !classNameFunctions.has(callee)) return;
-        for (const argument of node.arguments) {
-          for (const value of staticStrings(argument)) checkClassName(node, value);
         }
       },
 
