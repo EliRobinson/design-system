@@ -1,4 +1,4 @@
-// README.md "Packages" is the one list of workspace packages. AGENTS.md points
+// README.md "Packages" is the one list of the packages under packages/*. AGENTS.md points
 // to it instead of repeating names, so a new package needs one edit, not two.
 // Private packages (the starter) are listed too, and marked as private.
 
@@ -22,7 +22,7 @@ const readmeBullets = () => {
 };
 
 describe('package list', () => {
-  it('README lists exactly the workspace packages', () => {
+  it('README lists exactly the packages under packages/*', () => {
     expect(
       readmeBullets()
         .map((b) => b.name)
@@ -32,7 +32,7 @@ describe('package list', () => {
 
   it('README marks a package private exactly when package.json does', () => {
     const marked = readmeBullets()
-      .filter((b) => b.text.includes('(private'))
+      .filter((b) => b.text.endsWith('(private, not published).'))
       .map((b) => b.name);
     expect(marked.sort()).toEqual(
       packages
