@@ -175,6 +175,12 @@ describe('buildManifest against this package', () => {
     ]);
   });
 
+  it('resolves a variant union imported from another module', () => {
+    expect(byName('Tooltip').variants).toEqual([
+      { prop: 'side', type: 'AnchoredSide', values: ['top', 'bottom', 'left', 'right'] },
+    ]);
+  });
+
   it('lists every value a compound component exports', () => {
     expect(byName('Card').exports).toEqual([
       'Card',
@@ -273,6 +279,58 @@ describe('props-type resolution', () => {
     expect(manifest.components[0].variants).toEqual([
       { prop: 'size', type: null, values: ['sm', 'lg'] },
     ]);
+  });
+
+  it('follows a relative import to the module that declares the union', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/hooks/useSide.ts': `export type Side = 'top' | 'bottom';`,
+        'src/components/atoms/Pin.tsx': `
+          import type { Side } from '../../hooks/useSide.js';
+          export type PinProps = { side?: Side };
+          export const Pin = (props: PinProps) => null;
+        `,
+      }),
+    );
+
+    expect(manifest.components[0].variants).toEqual([
+      { prop: 'side', type: 'Side', values: ['top', 'bottom'] },
+    ]);
+  });
+
+  it('follows a renamed import and one re-export to the union', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/lib/edge.ts': `export type Edge = 'start' | 'end';`,
+        'src/lib/index.ts': `export type { Edge as Side } from './edge';`,
+        'src/components/atoms/Pin.tsx': `
+          import type { Side as PinSide } from '../../lib';
+          export type PinProps = { side?: PinSide };
+          export const Pin = (props: PinProps) => null;
+        `,
+      }),
+    );
+
+    expect(manifest.components[0].variants).toEqual([
+      { prop: 'side', type: 'PinSide', values: ['start', 'end'] },
+    ]);
+  });
+
+  it('ignores an imported name it cannot resolve to a literal union', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/lib/size.ts': `export type Size = number;`,
+        'src/components/atoms/Pin.tsx': `
+          import type { Size } from '../../lib/size.js';
+          import type { Missing } from './nowhere.js';
+          import type { Side } from 'some-package';
+          export type PinProps = { size?: Size; gone?: Missing; side?: Side };
+          export const Pin = (props: PinProps) => null;
+        `,
+      }),
+    );
+
+    expect(manifest.components[0].variants).toEqual([]);
   });
 
   it('ignores props whose type is not a literal union', () => {
