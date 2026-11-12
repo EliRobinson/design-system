@@ -16,8 +16,8 @@ import {
   MAGIC_DURATION,
   MAGIC_LENGTH,
   axisForJsProperty,
+  isColorExempt,
   isExempt,
-  reportsLiteral,
 } from './value-patterns.mjs';
 import { propertyName, staticStrings } from './ast-strings.mjs';
 
@@ -118,7 +118,7 @@ export default {
     }
 
     function checkColor(node, value) {
-      if (isExempt(value)) return false;
+      if (isColorExempt(value)) return false;
       const hex = value.match(HEX_COLOR);
       if (hex) {
         report(node, 'color', hex[0]);
@@ -141,7 +141,8 @@ export default {
         if (RADIUS_UTILITIES.test(utility) && MAGIC_LENGTH.test(value)) {
           report(node, 'radius', `${utility}-[${value}]`);
         } else if (SHADOW_UTILITIES.test(utility) && MAGIC_LENGTH.test(value)) {
-          report(node, 'shadow', `${utility}-[${value}]`);
+          // A system colour exempts a shadow, as it does in a stylesheet.
+          if (!isColorExempt(value)) report(node, 'shadow', `${utility}-[${value}]`);
         } else if (
           DURATION_UTILITIES.test(utility) &&
           (MAGIC_DURATION.test(value) || value.includes('cubic-bezier'))
@@ -168,9 +169,9 @@ export default {
     function checkStyleProperty(node, name, value) {
       // No branch order to get wrong — the property has one axis, and the axis
       // brings its own exemption, test and message. A shadow carrying a colour
-      // is a shadow. Axes owned by no-hardcoded-control-geometry are left to it.
+      // is a shadow.
       const axis = axisForJsProperty(name);
-      if (reportsLiteral(axis, 'design', value)) {
+      if (axis && !axis.exempt(value) && axis.matches(value)) {
         report(node, axis.messageId, axis.highlight(value));
       }
     }
@@ -215,7 +216,7 @@ export default {
       // Style objects living outside JSX still ship the same literal.
       Property(node) {
         const name = propertyName(node);
-        if (!name || axisForJsProperty(name)?.rule !== 'design') return;
+        if (!name || !axisForJsProperty(name)) return;
         if (node.value.type !== 'Literal' || typeof node.value.value !== 'string') return;
         checkStyleProperty(node.value, name, node.value.value);
       },

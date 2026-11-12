@@ -74,7 +74,7 @@ those tokens existed has one of those literals, so it ships at `warn` and does n
 
 ```js
 ...designSystem({ controlGeometry: { severity: 'error' } });
-...designSystemCss({ controlGeometrySeverity: 'error' });
+...designSystemCss({ controlGeometry: { severity: 'error' } });
 ```
 
 ### `no-duplicate-token-stylesheet` always ships at `warn`
@@ -109,12 +109,12 @@ import designSystemCss from '@elirobinson/eslint-config/css';
 export default [...designSystem(), ...designSystemCss()];
 ```
 
-| Option                    | Default        | What it does                                                                                                       |
-| ------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `files`                   | `['**/*.css']` | Which stylesheets to lint.                                                                                         |
-| `ignores`                 | `[]`           | Stylesheets that _define_ values rather than consume them — your own token layer, vendored third-party CSS.        |
-| `severity`                | `'error'`      | Severity for every rule in this config except `no-hardcoded-control-geometry` and `no-duplicate-token-stylesheet`. |
-| `controlGeometrySeverity` | `'warn'`       | Severity for `no-hardcoded-control-geometry`. See [above](#no-hardcoded-control-geometry-ships-at-warn).           |
+| Option            | Default        | What it does                                                                                                                           |
+| ----------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `files`           | `['**/*.css']` | Which stylesheets to lint.                                                                                                             |
+| `ignores`         | `[]`           | Stylesheets that _define_ values rather than consume them — your own token layer, vendored third-party CSS.                            |
+| `severity`        | `'error'`      | Severity for every rule in this config except `no-hardcoded-control-geometry` and `no-duplicate-token-stylesheet`.                     |
+| `controlGeometry` | `{}`           | Just a `severity` for `no-hardcoded-control-geometry`, `'warn'` by default. See [above](#no-hardcoded-control-geometry-ships-at-warn). |
 
 Point `ignores` at any sheet that legitimately declares literals. A token file that is
 linted as if it were a consumer of tokens fails on every line it exists to write.

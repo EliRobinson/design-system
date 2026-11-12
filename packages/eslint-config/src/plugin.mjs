@@ -2,7 +2,7 @@
 // can register the rules themselves instead of taking the whole config.
 
 import { jsRule as noDuplicateTokenStylesheet } from './rules/no-duplicate-token-stylesheet.mjs';
-import noHardcodedControlGeometry from './rules/no-hardcoded-control-geometry.mjs';
+import { jsRule as noHardcodedControlGeometry } from './rules/no-hardcoded-control-geometry.mjs';
 import noHardcodedDesignValues from './rules/no-hardcoded-design-values.mjs';
 import noPaddedUiCopy from './rules/no-padded-ui-copy.mjs';
 

@@ -1,7 +1,8 @@
 // The stylesheet halves of no-hardcoded-design-values,
-// no-hardcoded-control-geometry and no-duplicate-token-stylesheet, and three contracts that are a shape rather
-// than a value and have no JS counterpart — no-underlined-control-label,
-// no-decorative-control-edge and no-mismatched-status-foreground.
+// no-hardcoded-control-geometry and no-duplicate-token-stylesheet, and three
+// contracts that are a shape rather than a value and have no JS counterpart —
+// no-underlined-control-label, no-decorative-control-edge and
+// no-mismatched-status-foreground.
 //
 // Kept in its own entry point because it needs @eslint/css, which registers a
 // second ESLint language. Importing '@elirobinson/eslint-config' never loads
@@ -19,7 +20,8 @@ import css from '@eslint/css';
 
 import { rule as decorativeControlEdge } from './rules/no-decorative-control-edge.mjs';
 import { cssRule as duplicateTokenStylesheet } from './rules/no-duplicate-token-stylesheet.mjs';
-import { cssGeometryRule, cssRule } from './rules/no-hardcoded-css-values.mjs';
+import { cssRule as controlGeometry } from './rules/no-hardcoded-control-geometry.mjs';
+import { cssRule } from './rules/no-hardcoded-css-values.mjs';
 import { rule as mismatchedStatusForeground } from './rules/no-mismatched-status-foreground.mjs';
 import { rule as underlinedControlLabel } from './rules/no-underlined-control-label.mjs';
 
@@ -28,7 +30,7 @@ export const plugin = {
   rules: {
     'no-decorative-control-edge': decorativeControlEdge,
     'no-duplicate-token-stylesheet': duplicateTokenStylesheet,
-    'no-hardcoded-control-geometry': cssGeometryRule,
+    'no-hardcoded-control-geometry': controlGeometry,
     'no-hardcoded-design-values': cssRule,
     'no-mismatched-status-foreground': mismatchedStatusForeground,
     'no-underlined-control-label': underlinedControlLabel,
@@ -41,18 +43,16 @@ export const plugin = {
  * @param {string[]} [options.ignores] stylesheets that define values rather
  *   than consume them (your own token layer, vendored CSS)
  * @param {'error' | 'warn'} [options.severity]
- * @param {'error' | 'warn' | 'off'} [options.controlGeometrySeverity] for
+ * @param {{ severity?: 'error' | 'warn' | 'off' }} [options.controlGeometry] for
  *   no-hardcoded-control-geometry, which ships as a warning and does not
- *   follow `severity`: raise it once your stylesheets are clean.
+ *   follow `severity`: raise it once your stylesheets are clean. The same
+ *   shape as designSystem()'s option of the same name.
  * @returns {import('eslint').Linter.Config[]}
  */
 export function designSystemCss(options = {}) {
-  const {
-    files = ['**/*.css'],
-    ignores = [],
-    severity = 'error',
-    controlGeometrySeverity = 'warn',
-  } = options;
+  const { files = ['**/*.css'], ignores = [], severity = 'error', controlGeometry = {} } = options;
+
+  const { severity: controlGeometrySeverity = 'warn' } = controlGeometry;
 
   return [
     {
