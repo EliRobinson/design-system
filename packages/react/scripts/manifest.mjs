@@ -40,7 +40,8 @@ const SHARED_STYLESHEETS = {
   Textarea: { path: 'atoms/field.css' },
   Select: { path: 'atoms/field.css' },
   Label: { path: 'atoms/field.css' },
-  /* Their sibling sheet draws the row; the error message is .ds-hint--error. */
+  /* Their sibling sheet draws the row; field.css supplies the error message
+     (.ds-hint--error) and the hideLabel rule (.ds-visually-hidden). */
   Checkbox: { path: 'atoms/field.css' },
   Switch: { path: 'atoms/field.css' },
   /* No sheet of its own: it is the .ds-hint--error message. */
@@ -184,7 +185,7 @@ function componentEntry(componentsDir, packageName, { subpath, analysis }, docs)
   const description = (primary?.description ?? '').trim() || curated[name] || '';
   if (!description) gaps.push('no description available from source JSDoc or curated list');
 
-  const variants = propsType ? variantsFor(declarations, propsType) : [];
+  const variants = propsType ? variantsFor(analysis, propsType) : [];
 
   return {
     name,
@@ -208,7 +209,7 @@ function componentEntry(componentsDir, packageName, { subpath, analysis }, docs)
           name: doc.displayName,
           description: (doc.description ?? '').trim(),
           inherits: inheritsOf(declarations, subProps),
-          props: inSourceUnionOrder(toPropRecords(doc), variantsFor(declarations, subProps)),
+          props: inSourceUnionOrder(toPropRecords(doc), variantsFor(analysis, subProps)),
         };
       }),
     hooks,

@@ -70,20 +70,6 @@
   font-size: var(--fs-sm);
 }
 
-/* Visually hidden, still announced. The row keeps its 44px height and the
-   label its hit area; the text just draws nothing. */
-.ds-switch__label--hidden {
-  border: 0;
-  clip-path: inset(50%);
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  padding: 0;
-  position: absolute;
-  white-space: nowrap;
-  width: 1px;
-}
-
 /* Disabled, its own or a disabled fieldset's: :disabled matches both. The look
    uses Button's tokens, and --fg-disabled keeps the label at 4.5:1. */
 .ds-switch:has(.ds-switch__input:disabled),

@@ -11,7 +11,7 @@
  * because of that, untouched.
  *
  * This rule exists for the residue the bridge cannot reach, which is exactly
- * two things:
+ * three things:
  *
  *   1. Literal colours. `text-zinc-500`, `bg-red-100 dark:bg-red-900/30`,
  *      `text-white`, `bg-black/50`. These are Tailwind's own palette, not a
@@ -30,7 +30,16 @@
  *      `bg-surface-2` — the first substitute `tailwind.css` names in note 1,
  *      and the one whose foreground is plain `--fg` in both themes.
  *
- * Both are strictly local rewrites of class tokens inside string literals. No
+ *   3. Unmeasured alpha on a status fill. `hover:bg-destructive/90` and
+ *      `dark:bg-destructive/60` are already token-backed, so the bridge and the
+ *      lint rule both pass them, but the alpha is nobody's measurement. Hover
+ *      becomes the solid `bg-destructive-hover`; the dark dim is dropped,
+ *      because the token fill is themed and its `-on` is measured at full
+ *      strength. Unlike the two above, this kind has NO lint backstop: a new
+ *      `hover:bg-destructive/70` upstream survives into `src/` and nothing fails.
+ *      The tests in `scripts/ai-elements-skin.test.mjs` pin the entries.
+ *
+ * All three are strictly local rewrites of class tokens inside string literals. No
  * geometry is touched: not a width, height, padding, gap, min-size or hit area.
  *
  * Anything upstream adds later that is NOT in the tables below survives into
@@ -93,6 +102,10 @@ const PAIRS = [
   ['bg-blue-100', 'bg-blue-900/30'],
   ['bg-orange-100', 'bg-orange-900/30'],
   ['bg-gray-100', 'bg-gray-900/30'],
+  // Upstream dims the destructive fill to 60% in dark. The token fill is already
+  // themed and `--status-danger-on` is measured against it at full strength; a
+  // 60% wash is not, and it would also sit over the hover fill.
+  ['bg-destructive', 'bg-destructive/60'],
   ['text-red-600', 'text-red-400'],
   ['text-red-700', 'text-red-400'],
   ['text-green-600', 'text-green-400'],
@@ -129,6 +142,14 @@ const LITERALS = {
   'bg-green-500': 'bg-success',
   'bg-red-500': 'bg-destructive',
   'border-red-400/30': 'border-destructive/30',
+
+  // Destructive hover. Upstream darkens the fill with an alpha (`/90`, `/80`),
+  // which no one measured. `--status-danger-hover` is a solid fill with
+  // `--status-danger-on` at 4.5:1 or better on it in every palette and theme.
+  // The `hover:` stays in the key so a resting `bg-destructive/80` is never
+  // turned into a hover colour; `[a&]:hover:` and the like keep their prefix.
+  'hover:bg-destructive/90': 'hover:bg-destructive-hover',
+  'hover:bg-destructive/80': 'hover:bg-destructive-hover',
 
   // Quiet panels and badges: the tint, with the ink measured against it.
   'bg-red-50': 'bg-destructive-tint',
@@ -214,10 +235,13 @@ const GUARDED = [
 
 const PAIR_PATTERNS = PAIRS.map(([light, dark]) => ({
   light,
+  // The light half must be the whole, unprefixed class: neither `hover:` before
+  // it nor an alpha after it, so `hover:bg-destructive/90` is not the page fill
+  // and its `dark:` sibling is not a duplicate of it.
   // Bounded to the span already, so `[^\n]` is enough; non-greedy so the first
   // `dark:` half wins rather than the last.
   pattern: new RegExp(
-    String.raw`(?<![\w-])(${light})(?![\w-])([^\n]*?)\s+dark:${dark}(?![\w-])`,
+    String.raw`(?<![\w:-])(${light})(?![\w/-])([^\n]*?)\s+dark:${dark}(?![\w-])`,
     'g',
   ),
 }));

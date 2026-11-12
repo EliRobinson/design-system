@@ -7,6 +7,7 @@ import Basic from '@/components/demos/checkbox/Basic';
 import States from '@/components/demos/checkbox/States';
 import Controlled from '@/components/demos/checkbox/Controlled';
 import WithError from '@/components/demos/checkbox/WithError';
+import HiddenLabel from '@/components/demos/checkbox/HiddenLabel';
 
 export const metadata = { title: 'Checkbox' };
 
@@ -30,6 +31,10 @@ be true at once.
   <States />
 </DemoBlock>
 
+`disabled` works as it does on a native input: the control can't be focused or changed, and
+the label takes the disabled colour and the row shows a not-allowed cursor. It also
+applies inside a disabled `<fieldset>`.
+
 ## Controlled
 
 `Checkbox` forwards every native input prop, so `checked` and `onChange` work exactly
@@ -37,6 +42,16 @@ like a plain `<input type="checkbox">`.
 
 <DemoBlock file="checkbox/Controlled.tsx">
   <Controlled />
+</DemoBlock>
+
+## Hidden label
+
+Pass `hideLabel` when visible text nearby already names the control, such as a table row
+or a toolbar. The label is hidden from sight only. It stays in the DOM and is still the
+accessible name, so `label` is still required.
+
+<DemoBlock file="checkbox/HiddenLabel.tsx">
+  <HiddenLabel />
 </DemoBlock>
 
 ## With an error
@@ -67,6 +82,8 @@ after the row, not inside a wrapper, so in a flex or grid parent it is its own i
 - Setting `error` sets `aria-invalid="true"` on the input and adds the error's id to
   `aria-describedby`, after any id you pass yourself. The message sits outside the
   `<label>`, so it never becomes part of the accessible name.
+- With `hideLabel`, the label stays the accessible name; only the sight of it is hidden.
+- With `hideLabel` the label text is clipped, so the hit target is only the 18×18 box.
 - The ref forwards to the underlying `<input>`.
 
 <DoDont

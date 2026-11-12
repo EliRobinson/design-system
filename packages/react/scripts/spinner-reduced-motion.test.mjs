@@ -13,17 +13,15 @@
  * StreamingCaret cases below check that loops settle and the caret stays solid.
  *
  * Skipped, loudly, when no browser is available — the same contract as
- * anchored-panel-width and select-intrinsic-width.
+ * `bootBrowser` in browser.test-helper.mjs.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, extname, join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, expect, it } from 'vitest';
 
-/* Reached through the exports map, for the reason component-css.test.mjs gives. */
-import { TOKENS_SRC_DIR } from '@elirobinson/tokens/token-stylesheets';
+import { BROWSER_BUDGET, bootBrowser, inPage } from './browser.test-helper.mjs';
 
 const ATOMS = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'components', 'atoms');
 const STYLESHEETS = {
@@ -32,47 +30,12 @@ const STYLESHEETS = {
   'StreamingCaret.css': join(ATOMS, '..', 'ai', 'StreamingCaret.css'),
 };
 
-/* Same budget, and the same reason, as packages/tokens' browser tests. */
-const BROWSER_BUDGET = 60_000;
-
-/* tokens.css @imports its siblings relatively, so it has to be served from a
-   URL with a directory. Same arrangement as anchored-panel-width. */
-const ORIGIN = 'https://spinner.test';
-
 /* 40 samples 50ms apart is two seconds: more than one full cycle of any calm
    pulse, and long enough that a loop clamped to 0.01ms shows its jumps. */
 const SAMPLES = 40;
 const INTERVAL_MS = 50;
 
-let chromium;
-try {
-  ({ chromium } = await import('playwright'));
-} catch {
-  chromium = null;
-}
-
-let browser;
-let launchError;
-if (chromium) {
-  try {
-    browser = await chromium.launch();
-  } catch (error) {
-    launchError = error;
-  }
-}
-
-afterAll(async () => {
-  await browser?.close();
-}, BROWSER_BUDGET);
-
-const describeBrowser = browser ? describe : describe.skip;
-if (!browser) {
-  console.warn(
-    `Skipping spinner reduced-motion tests: ${
-      chromium ? launchError?.message : 'playwright is not installed'
-    }`,
-  );
-}
+const { browser, describeBrowser } = await bootBrowser('spinner reduced-motion');
 
 /**
  * Open the Spinner (and two controls) under the given motion preference, and
@@ -81,45 +44,21 @@ if (!browser) {
  *
  * @param {'reduce' | 'no-preference'} reducedMotion
  */
-async function sample(reducedMotion) {
-  const context = await browser.newContext({ reducedMotion });
-  const page = await context.newPage();
-
-  await page.route(`${ORIGIN}/**`, async (route) => {
-    const name = new URL(route.request().url()).pathname.slice(1);
-
-    if (name === 'index.html') {
-      return route.fulfill({
-        contentType: 'text/html',
-        body: `<!doctype html><html><head><meta charset="utf-8">
-          <link rel="stylesheet" href="/tokens.css">
-          <link rel="stylesheet" href="/Spinner.css">
-          <link rel="stylesheet" href="/Skeleton.css">
-          <link rel="stylesheet" href="/StreamingCaret.css">
-          <style>
+function sample(reducedMotion) {
+  return inPage(
+    browser,
+    {
+      sheets: STYLESHEETS,
+      head: `<style>
             @keyframes probe { to { opacity: 0.5; } }
             #probe { animation: probe 1s linear infinite; transition: opacity 1s; }
-          </style>
-          </head><body>
-          <span id="spinner" class="ds-spinner ds-spinner--lg" role="status" aria-label="Loading"></span>
+          </style>`,
+      body: `<span id="spinner" class="ds-spinner ds-spinner--lg" role="status" aria-label="Loading"></span>
           <div id="skeleton" class="ds-skeleton"></div>
           <span id="caret" class="ds-streaming-caret"></span>
-          <div id="probe">probe</div>
-          </body></html>`,
-      });
-    }
-
-    const local = STYLESHEETS[name] ?? join(TOKENS_SRC_DIR, name);
-    if (!existsSync(local)) return route.fulfill({ status: 404, body: '' });
-    return route.fulfill({
-      contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
-      body: readFileSync(local),
-    });
-  });
-
-  await page.goto(`${ORIGIN}/index.html`);
-
-  const result = await page.evaluate(
+          <div id="probe">probe</div>`,
+      context: { reducedMotion },
+    },
     async ({ samples, interval }) => {
       const animation = (id) => {
         const style = getComputedStyle(document.getElementById(id));
@@ -152,9 +91,6 @@ async function sample(reducedMotion) {
     },
     { samples: SAMPLES, interval: INTERVAL_MS },
   );
-
-  await context.close();
-  return result;
 }
 
 /** Seconds, from a computed `animation-duration` like `1.68s` or `1e-05s`. */

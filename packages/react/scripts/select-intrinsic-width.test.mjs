@@ -59,16 +59,12 @@
  * change.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, extname, join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { afterAll, describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 
-/* Reached through the exports map rather than by walking up to packages/tokens,
-   for the reason component-css.test.mjs gives: a hand-spelled path into that
-   package is how a reader and the thing it reads come to disagree. */
-import { TOKENS_SRC_DIR } from '@elirobinson/tokens/token-stylesheets';
+import { bootBrowser, inPage } from './browser.test-helper.mjs';
 
 const FIELD_CSS = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -79,38 +75,7 @@ const FIELD_CSS = join(
   'field.css',
 );
 
-/* Same budget, and the same reason, as packages/tokens' browser tests. */
-const BROWSER_BUDGET = 60_000;
-
-let webkit;
-try {
-  ({ webkit } = await import('playwright'));
-} catch {
-  webkit = null;
-}
-
-let browser;
-let launchError;
-if (webkit) {
-  try {
-    browser = await webkit.launch();
-  } catch (error) {
-    launchError = error;
-  }
-}
-
-afterAll(async () => {
-  await browser?.close();
-}, BROWSER_BUDGET);
-
-const describeBrowser = browser ? describe : describe.skip;
-if (!browser) {
-  console.warn(
-    `Skipping <select> intrinsic-width tests: ${
-      webkit ? launchError?.message : 'playwright is not installed'
-    }`,
-  );
-}
+const { browser, describeBrowser } = await bootBrowser('<select> intrinsic-width', 'webkit');
 
 /* A phone-shaped viewport, and an option far wider than it. The string is
    address-shaped because that is what the reporting consumer had in there:
@@ -119,31 +84,17 @@ const VIEWPORT = { width: 350, height: 740 };
 const LONG_OPTION =
   '1247 Northwest Kensington Boulevard, Apartment 14B, Seattle, Washington 98117 — attention Katherine Vandermeer-Rodriguez';
 
-/* tokens.css @imports its siblings relatively, so it has to be fetched from a
-   URL that has a directory -- setContent runs on about:blank, where
-   `./palettes.css` resolves to nothing. Same arrangement as mobile-floor. */
-const ORIGIN = 'https://field.test';
-
 /** Render a Select-shaped document and measure it. `extraCss` is appended last. */
-async function measure({ extraCss = '' } = {}) {
-  const context = await browser.newContext({ viewport: VIEWPORT });
-  const page = await context.newPage();
-
-  await page.route(`${ORIGIN}/**`, async (route) => {
-    const name = new URL(route.request().url()).pathname.slice(1);
-
-    if (name === 'index.html') {
-      return route.fulfill({
-        contentType: 'text/html',
-        /* The markup Select.tsx renders: .ds-field wrapping a <select> that
-           carries both .ds-input and .ds-select. */
-        body: `<!doctype html><html><head><meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <link rel="stylesheet" href="/tokens.css">
-          <link rel="stylesheet" href="/field.css">
-          <style>body { margin: 0 } ${extraCss}</style>
-          </head><body>
-          <main style="padding: 16px">
+function measure({ extraCss = '' } = {}) {
+  return inPage(
+    browser,
+    {
+      sheets: { 'field.css': FIELD_CSS },
+      head: `<meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>body { margin: 0 } ${extraCss}</style>`,
+      /* The markup Select.tsx renders: .ds-field wrapping a <select> that
+         carries both .ds-input and .ds-select. */
+      body: `<main style="padding: 16px">
             <div class="ds-field">
               <label for="s" class="ds-label">Property</label>
               <select id="s" class="ds-input ds-select">
@@ -151,36 +102,18 @@ async function measure({ extraCss = '' } = {}) {
                 <option>${LONG_OPTION}</option>
               </select>
             </div>
-          </main>
-          </body></html>`,
-      });
-    }
-
-    if (name === 'field.css') {
-      return route.fulfill({ contentType: 'text/css', body: readFileSync(FIELD_CSS) });
-    }
-
-    const file = join(TOKENS_SRC_DIR, name);
-    if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
-    return route.fulfill({
-      contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
-      body: readFileSync(file),
-    });
-  });
-
-  await page.goto(`${ORIGIN}/index.html`);
-
-  const measured = await page.evaluate(() => {
-    const select = document.getElementById('s');
-    return {
-      documentScrollWidth: document.documentElement.scrollWidth,
-      documentClientWidth: document.documentElement.clientWidth,
-      selectWidth: Math.round(select.getBoundingClientRect().width),
-    };
-  });
-
-  await context.close();
-  return measured;
+          </main>`,
+      context: { viewport: VIEWPORT },
+    },
+    () => {
+      const select = document.getElementById('s');
+      return {
+        documentScrollWidth: document.documentElement.scrollWidth,
+        documentClientWidth: document.documentElement.clientWidth,
+        selectWidth: Math.round(select.getBoundingClientRect().width),
+      };
+    },
+  );
 }
 
 describeBrowser('a <select> option does not widen the document in WebKit', () => {

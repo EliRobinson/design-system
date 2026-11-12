@@ -63,7 +63,8 @@ const SOURCE_FILES = ['**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'];
  * @param {{ severity?: 'error' | 'warn' | 'off' }} [options.controlGeometry] for
  *   no-hardcoded-control-geometry: its own `severity`, which defaults to
  *   `'warn'` and does not follow `severity` above, for the same reason as the
- *   copy rule's below.
+ *   copy rule's below. It reads the class-name helpers named in
+ *   `hardcodedValues.classNameFunctions`.
  * @param {object} [options.copy] options for no-padded-ui-copy, plus its own
  *   `severity` — it ships as a warning, deliberately, and does not follow the
  *   `severity` above. Every repo that upgrades into this rule has copy written
@@ -83,6 +84,7 @@ export function designSystem(options = {}) {
   } = options;
 
   const { severity: controlGeometrySeverity = 'warn' } = controlGeometry;
+  const { classNameFunctions } = hardcodedValues;
 
   const { severity: copySeverity = 'warn', ...copyOptions } = copy;
 
@@ -101,7 +103,11 @@ export function designSystem(options = {}) {
         // your own config once the repo is clean.
         '@elirobinson/no-duplicate-token-stylesheet': 'warn',
         // `warn` unless raised — the rule's header says why.
-        '@elirobinson/no-hardcoded-control-geometry': controlGeometrySeverity,
+        // It reads the same class-name helpers no-hardcoded-design-values does.
+        '@elirobinson/no-hardcoded-control-geometry': [
+          controlGeometrySeverity,
+          classNameFunctions ? { classNameFunctions } : {},
+        ],
         '@elirobinson/no-hardcoded-design-values': [severity, hardcodedValues],
         '@elirobinson/no-padded-ui-copy': [copySeverity, copyOptions],
       },
