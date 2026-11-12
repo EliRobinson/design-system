@@ -379,8 +379,8 @@
 
 .ds-ai-composer:focus-within {
   border-color: var(--fg-2);
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .ds-ai-composer__field {
@@ -454,8 +454,8 @@
 }
 
 .ds-ai-composer__submit:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .ds-ai-composer__submit:disabled {
@@ -519,8 +519,8 @@
 }
 
 .ds-ai-suggestion:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* ==========================================================================
@@ -557,8 +557,8 @@
 }
 
 .ds-ai-action:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* Colour is never the only channel: a recorded vote keeps the fill *and* is
@@ -592,6 +592,7 @@
    so this class is for the plain-CSS equivalent used in the specimens and
    anywhere motion has to be authored rather than imported. */
 .ds-ai-shimmer {
+  /* eslint-disable-next-line @elirobinson-css/no-hardcoded-design-values -- an ambient loop, not a UI transition; the --dur-* ramp stops at 420ms */
   animation: ds-ai-shimmer 2s linear infinite;
   background: linear-gradient(
       90deg,
@@ -619,6 +620,7 @@
 /* The caret. The only amber in an answer, and the reason amber is described
    as a signal: it marks the one live thing on the page. */
 .ds-ai-caret {
+  /* eslint-disable-next-line @elirobinson-css/no-hardcoded-design-values -- an ambient caret blink, not a UI transition; the --dur-* ramp stops at 420ms */
   animation: ds-ai-blink 1s steps(2, start) infinite;
   background: var(--accent);
   display: inline-block;

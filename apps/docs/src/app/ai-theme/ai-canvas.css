@@ -100,8 +100,8 @@
 }
 
 .ds-ai-node:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* Run states. The strip is on the inline-start edge — a border, so it never
@@ -170,7 +170,7 @@
 /* The keyboard path made visible. Larger offset than elsewhere because the
    port sits on the node's edge and a 2px offset would land inside it. */
 .ds-ai-node__port:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -231,7 +231,7 @@
 }
 
 .ds-ai-canvas-toolbar__btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: -1px;
 }
 
@@ -257,6 +257,7 @@
   align-items: center;
   background: var(--surface);
   border: 0;
+  /* eslint-disable-next-line @elirobinson-css/no-decorative-control-edge -- a seam between stacked buttons in one group; the group's own border is the boundary */
   border-bottom: 1px solid var(--border);
   color: var(--fg-2);
   cursor: pointer;
@@ -278,8 +279,8 @@
 }
 
 .ds-ai-canvas-controls__btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-offset));
 }
 
 /* The zoom readout. Tabular, so the panel does not resize between 90% and
