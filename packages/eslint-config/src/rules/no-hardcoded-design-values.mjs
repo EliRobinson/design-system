@@ -17,6 +17,7 @@ import {
   MAGIC_LENGTH,
   axisForJsProperty,
   isExempt,
+  reportsLiteral,
 } from './value-patterns.mjs';
 import { propertyName, staticStrings } from './ast-strings.mjs';
 
@@ -165,12 +166,13 @@ export default {
 
     /** A style-object property: which axis it belongs to decides the check. */
     function checkStyleProperty(node, name, value) {
-      if (isExempt(value)) return;
-
       // No branch order to get wrong — the property has one axis, and the axis
-      // brings its own test and message. A shadow carrying a colour is a shadow.
+      // brings its own exemption, test and message. A shadow carrying a colour
+      // is a shadow. Axes owned by no-hardcoded-control-geometry are left to it.
       const axis = axisForJsProperty(name);
-      if (axis?.matches(value)) report(node, axis.messageId, axis.highlight(value));
+      if (reportsLiteral(axis, 'design', value)) {
+        report(node, axis.messageId, axis.highlight(value));
+      }
     }
 
     function checkStyleObject(node) {
@@ -213,7 +215,7 @@ export default {
       // Style objects living outside JSX still ship the same literal.
       Property(node) {
         const name = propertyName(node);
-        if (!name || !axisForJsProperty(name)) return;
+        if (!name || axisForJsProperty(name)?.rule !== 'design') return;
         if (node.value.type !== 'Literal' || typeof node.value.value !== 'string') return;
         checkStyleProperty(node.value, name, node.value.value);
       },

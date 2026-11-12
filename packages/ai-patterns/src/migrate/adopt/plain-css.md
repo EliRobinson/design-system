@@ -6,7 +6,8 @@ written in-house. It also covers CSS Modules and Sass, which compile to the same
 
 Do Step 0 of the adopt prompt first (`@elirobinson/ai-patterns/prompts/adopt-system.md`).
 Turn on `@elirobinson/eslint-config/css` early. Its `no-hardcoded-design-values` rule
-lists every literal colour, radius, shadow and duration left, file by file.
+lists every literal colour, radius, shadow and duration left, file by file, and
+`no-hardcoded-control-geometry` lists every raw 44px target and 2px focus ring.
 
 ```css after
 @import '@elirobinson/react/styles.css';

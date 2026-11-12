@@ -2,6 +2,7 @@
 // can register the rules themselves instead of taking the whole config.
 
 import { jsRule as noDuplicateTokenStylesheet } from './rules/no-duplicate-token-stylesheet.mjs';
+import noHardcodedControlGeometry from './rules/no-hardcoded-control-geometry.mjs';
 import noHardcodedDesignValues from './rules/no-hardcoded-design-values.mjs';
 import noPaddedUiCopy from './rules/no-padded-ui-copy.mjs';
 
@@ -9,6 +10,7 @@ export const plugin = {
   meta: { name: '@elirobinson/eslint-config', version: '0.1.0' },
   rules: {
     'no-duplicate-token-stylesheet': noDuplicateTokenStylesheet,
+    'no-hardcoded-control-geometry': noHardcodedControlGeometry,
     'no-hardcoded-design-values': noHardcodedDesignValues,
     'no-padded-ui-copy': noPaddedUiCopy,
   },

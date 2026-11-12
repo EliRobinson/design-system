@@ -120,10 +120,12 @@ export default tseslint.config(
   // We publish these rules; we hold ourselves to them. The component library is
   // the one place `@elirobinson/react` may be authored without importing itself,
   // so only the hardcoded-values half applies here.
-  ...designSystem({ gapFiller: [] }).map((entry) => ({
+  ...designSystem({ gapFiller: [], controlGeometry: { severity: 'error' } }).map((entry) => ({
     ...entry,
     files: ['packages/react/src/**/*.{ts,tsx}'],
     rules: {
+      '@elirobinson/no-hardcoded-control-geometry':
+        entry.rules['@elirobinson/no-hardcoded-control-geometry'],
       '@elirobinson/no-hardcoded-design-values':
         entry.rules['@elirobinson/no-hardcoded-design-values'],
     },
@@ -131,8 +133,12 @@ export default tseslint.config(
   // The stylesheet half of the same bargain. Consumers run
   // `@elirobinson/eslint-config/css` on their CSS; the component library's own
   // stylesheets are held to it too. A value kept raw on purpose carries an
-  // `eslint-disable-next-line` with its reason, next to the value.
-  ...designSystemCss({ files: ['packages/react/src/**/*.css'] }),
+  // `eslint-disable-next-line` with its reason, next to the value. The geometry
+  // rule ships to consumers as a warning; here it is clean, so it errors.
+  ...designSystemCss({
+    files: ['packages/react/src/**/*.css'],
+    controlGeometrySeverity: 'error',
+  }),
   // The one rule that IS pointed at the vendored tree, and the reason
   // VENDORED_ELEMENTS is a per-config ignore rather than a global one.
   //

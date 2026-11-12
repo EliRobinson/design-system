@@ -36,8 +36,42 @@ export const MAGIC_DURATION = /(?:^|[\s(,])\d*\.?\d+m?s\b/;
 // decision anyone can take a token for.
 const TRIVIAL_VALUE = /^(?:0|0px|none|inherit|initial|unset|revert|currentcolor|transparent)$/i;
 
+// The CSS system colours (CSS Color 4). Forced-colors mode paints with these,
+// and the user's OS picks their values, so no token can stand in for one:
+// `box-shadow: inset 0 0 0 1px CanvasText` inside `@media (forced-colors:
+// active)` is the right code, not a hardcoded design value.
+//
+// Matched in their canonical spelling only. CSS keywords are case-insensitive,
+// but `Highlight`, `Mark` and `Canvas` lower-cased are ordinary words — a
+// keyframes name like `highlight` must not exempt the duration beside it — and
+// every reference spells the system colours this way.
+const SYSTEM_COLOR = new RegExp(
+  String.raw`(?<![\w-])(?:${[
+    'AccentColor',
+    'AccentColorText',
+    'ActiveText',
+    'ButtonBorder',
+    'ButtonFace',
+    'ButtonText',
+    'Canvas',
+    'CanvasText',
+    'Field',
+    'FieldText',
+    'GrayText',
+    'Highlight',
+    'HighlightText',
+    'LinkText',
+    'Mark',
+    'MarkText',
+    'SelectedItem',
+    'SelectedItemText',
+    'VisitedText',
+  ].join('|')})(?![\w-])`,
+);
+
 /**
- * A value that already points at a token, or is too trivial to be a decision.
+ * A value that already points at a token, names a system colour, or is too
+ * trivial to be a decision.
  *
  * `var(--x)` is a token reference, and so is Tailwind's `theme(...)`, which
  * resolves against the same scale in a JSX arbitrary value and in the
@@ -53,12 +87,37 @@ const TRIVIAL_VALUE = /^(?:0|0px|none|inherit|initial|unset|revert|currentcolor|
  * @returns {boolean}
  */
 export function isExempt(value) {
-  return value.includes('var(--') || value.includes('theme(') || TRIVIAL_VALUE.test(value.trim());
+  return (
+    value.includes('var(--') ||
+    value.includes('theme(') ||
+    SYSTEM_COLOR.test(value) ||
+    TRIVIAL_VALUE.test(value.trim())
+  );
+}
+
+/** `var(--a, var(--b, 2px))` and `theme(...)`, innermost first, until none are left. */
+function withoutTokenReferences(value) {
+  let previous;
+  let current = value;
+  do {
+    previous = current;
+    current = current.replace(/\b(?:var|theme)\([^()]*\)/g, ' ');
+  } while (current !== previous);
+  return current;
+}
+
+/**
+ * A length literal equal to `px` pixels, signed or not: `44px` but not `144px`.
+ *
+ * @param {number} px
+ */
+function exactLength(px) {
+  return new RegExp(String.raw`(?:^|[\s(,])-?${px}px\b`);
 }
 
 // --- Which property belongs to which axis -----------------------------------
 //
-// One table, four axes, every property listed exactly once. Building the
+// One table, six axes, every property listed exactly once. Building the
 // lookups from it throws on a property listed twice, so "exactly one axis" is a
 // property of the data structure rather than something to remember.
 //
@@ -75,14 +134,27 @@ export function isExempt(value) {
 const DROP_SHADOW = /\bdrop-shadow\s*\(/i;
 
 /**
+ * Which rule owns an axis. `design` is no-hardcoded-design-values, and errors;
+ * `geometry` is no-hardcoded-control-geometry, and ships as a warning. They
+ * share this table so a property still has exactly one axis across both.
+ *
+ * @typedef {'design' | 'geometry'} AxisRule
+ */
+
+/**
  * @typedef {object} Axis
  * @property {string} name
- * @property {string} messageId  Which of the rule's four messages to report.
+ * @property {AxisRule} rule  Which rule reports this axis.
+ * @property {string} messageId  Which of that rule's messages to report.
+ * @property {(value: string) => boolean} exempt  Is this value left alone outright?
  * @property {(value: string) => boolean} matches  Is this value a literal on this axis?
  * @property {(value: string) => string} highlight  The part of the value worth naming.
  */
 
 const IDENTITY = (value) => value;
+
+const TOUCH_TARGET = exactLength(44);
+const FOCUS_RING = exactLength(2);
 
 const AXIS_DEFINITIONS = {
   color: {
@@ -163,6 +235,45 @@ const AXIS_DEFINITIONS = {
       'animationTimingFunction',
     ],
   },
+
+  // --- no-hardcoded-control-geometry ----------------------------------------
+  //
+  // Not every length on these properties: only the one value that has a token.
+  // `width: 40px` is layout; `width: 44px` is `var(--target)` spelled out.
+  //
+  // A token reference elsewhere in the value does not exempt it, unlike the
+  // axes above. `outline: 2px solid var(--focus-ring)` is exactly the shape
+  // the old focus styles had, and the token in it is the colour, not the
+  // width. So the literal is looked for in what is left once every var() and
+  // theme() is taken out — which also lets a fallback, `var(--target, 44px)`,
+  // through, because a fallback is the token's own value.
+
+  target: {
+    rule: 'geometry',
+    messageId: 'target',
+    exempt: (value) => TRIVIAL_VALUE.test(value.trim()),
+    matches: (value) => TOUCH_TARGET.test(withoutTokenReferences(value)),
+    highlight: IDENTITY,
+    properties: [
+      'minHeight',
+      'minWidth',
+      'height',
+      'width',
+      'minBlockSize',
+      'minInlineSize',
+      'blockSize',
+      'inlineSize',
+    ],
+  },
+
+  focusRing: {
+    rule: 'geometry',
+    messageId: 'focusRing',
+    exempt: (value) => TRIVIAL_VALUE.test(value.trim()),
+    matches: (value) => FOCUS_RING.test(withoutTokenReferences(value)),
+    highlight: IDENTITY,
+    properties: ['outline', 'outlineWidth', 'outlineOffset'],
+  },
 };
 
 /** `borderTopLeftRadius` -> `border-top-left-radius`. */
@@ -173,7 +284,7 @@ function kebabCase(property) {
 const BY_JS_PROPERTY = new Map();
 const BY_CSS_PROPERTY = new Map();
 
-/** @type {ReadonlyArray<{ js: string, css: string, axis: string }>} */
+/** @type {ReadonlyArray<{ js: string, css: string, axis: string, rule: AxisRule }>} */
 export const DESIGN_PROPERTIES = Object.freeze(
   Object.entries(AXIS_DEFINITIONS).flatMap(([name, definition]) =>
     definition.properties.map((entry) => {
@@ -186,7 +297,9 @@ export const DESIGN_PROPERTIES = Object.freeze(
       /** @type {Axis} */
       const axis = {
         name,
+        rule: definition.rule ?? 'design',
         messageId: definition.messageId,
+        exempt: definition.exempt ?? isExempt,
         matches: guard
           ? (value) => guard.test(value) && definition.matches(value)
           : definition.matches,
@@ -197,7 +310,7 @@ export const DESIGN_PROPERTIES = Object.freeze(
       BY_JS_PROPERTY.set(js, axis);
       BY_CSS_PROPERTY.set(css, axis);
 
-      return Object.freeze({ js, css, axis: name });
+      return Object.freeze({ js, css, axis: name, rule: axis.rule });
     }),
   ),
 );
@@ -221,3 +334,24 @@ export function axisForJsProperty(property) {
 export function axisForCssProperty(property) {
   return BY_CSS_PROPERTY.get(property) ?? null;
 }
+
+/**
+ * Does `rule` report this value on this axis? The one check both languages
+ * make, once each rule has found a property's axis.
+ *
+ * @param {Axis | null} axis
+ * @param {AxisRule} rule
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function reportsLiteral(axis, rule, value) {
+  return axis?.rule === rule && !axis.exempt(value) && axis.matches(value);
+}
+
+/** The messages for the geometry axes, worded once for both languages. */
+export const CONTROL_GEOMETRY_MESSAGES = {
+  target:
+    'Hardcoded touch target "{{value}}" in `{{property}}`. Use var(--target) (or var(--target-min) / var(--target-lg) for the dense and thumb-zone tiers). Run `pnpm ds tokens target`.',
+  focusRing:
+    'Hardcoded focus ring "{{value}}" in `{{property}}`. Use the focus ring tokens: var(--focus-ring-width) and var(--focus-ring-offset). Run `pnpm ds tokens focus-ring`.',
+};
