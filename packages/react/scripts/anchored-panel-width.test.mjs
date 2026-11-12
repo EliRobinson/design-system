@@ -18,16 +18,13 @@
  * CI image has no browser and this must not be what blocks an unrelated change.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, extname, join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { afterAll, describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 
-/* Reached through the exports map rather than by walking up to packages/tokens,
-   for the reason component-css.test.mjs gives: a hand-spelled path into that
-   package is how a reader and the thing it reads come to disagree. */
-import { TOKENS_SRC_DIR } from '@elirobinson/tokens/token-stylesheets';
+import { bootBrowser, openPage } from './browser.test-helper.mjs';
 
 const DROPDOWN_CSS = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -38,38 +35,7 @@ const DROPDOWN_CSS = join(
   'DropdownMenu.css',
 );
 
-/* Same budget, and the same reason, as packages/tokens' browser tests. */
-const BROWSER_BUDGET = 60_000;
-
-let chromium;
-try {
-  ({ chromium } = await import('playwright'));
-} catch {
-  chromium = null;
-}
-
-let browser;
-let launchError;
-if (chromium) {
-  try {
-    browser = await chromium.launch();
-  } catch (error) {
-    launchError = error;
-  }
-}
-
-afterAll(async () => {
-  await browser?.close();
-}, BROWSER_BUDGET);
-
-const describeBrowser = browser ? describe : describe.skip;
-if (!browser) {
-  console.warn(
-    `Skipping anchored panel width tests: ${
-      chromium ? launchError?.message : 'playwright is not installed'
-    }`,
-  );
-}
+const { browser, describeBrowser } = await bootBrowser('anchored panel width');
 
 /* The reported viewport, and an avatar-sized trigger in its top-right corner.
    1186 is the `left` the positioner wrote in the report; 1240 its right edge. */
@@ -80,23 +46,12 @@ const TRIGGER = { width: 40, right: 1240, left: 1200 };
    pinned at `left: 1186px`, which is all a shrink-to-fit fixed box can take. */
 const CRUSHED_WIDTH = 95;
 
-/* tokens.css @imports its siblings relatively, so it has to be fetched from a
-   URL that has a directory -- setContent runs on about:blank, where
-   `./palettes.css` resolves to nothing. Same arrangement as mobile-floor. */
-const ORIGIN = 'https://anchored.test';
-
 /** Render a menu panel with the given inline geometry and measure it. */
-async function measure(inlineStyle) {
-  const context = await browser.newContext({ viewport: VIEWPORT });
-  const page = await context.newPage();
-
-  await page.route(`${ORIGIN}/**`, async (route) => {
-    const name = new URL(route.request().url()).pathname.slice(1);
-
-    if (name === 'index.html') {
-      return route.fulfill({
-        contentType: 'text/html',
-        body: `<!doctype html><html><head><meta charset="utf-8">
+function measure(inlineStyle) {
+  return openPage(
+    browser,
+    {
+      html: `<!doctype html><html><head><meta charset="utf-8">
           <link rel="stylesheet" href="/tokens.css">
           <link rel="stylesheet" href="/DropdownMenu.css">
           <style>body { margin: 0 }</style>
@@ -107,30 +62,15 @@ async function measure(inlineStyle) {
             <button type="button" class="ds-dropdown__item" role="menuitem">Sign out</button>
           </div>
           </body></html>`,
-      });
-    }
-
-    if (name === 'DropdownMenu.css') {
-      return route.fulfill({ contentType: 'text/css', body: readFileSync(DROPDOWN_CSS) });
-    }
-
-    const file = join(TOKENS_SRC_DIR, name);
-    if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
-    return route.fulfill({
-      contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
-      body: readFileSync(file),
-    });
-  });
-
-  await page.goto(`${ORIGIN}/index.html`);
-
-  const measured = await page.evaluate(() => {
-    const rect = document.getElementById('panel').getBoundingClientRect();
-    return { width: Math.round(rect.width), right: Math.round(rect.right) };
-  });
-
-  await context.close();
-  return measured;
+      files: { 'DropdownMenu.css': DROPDOWN_CSS },
+      context: { viewport: VIEWPORT },
+    },
+    (page) =>
+      page.evaluate(() => {
+        const rect = document.getElementById('panel').getBoundingClientRect();
+        return { width: Math.round(rect.width), right: Math.round(rect.right) };
+      }),
+  );
 }
 
 /** The stylesheet's own floor, read from the sheet rather than restated here. */
