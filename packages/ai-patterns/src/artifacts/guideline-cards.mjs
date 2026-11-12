@@ -91,6 +91,12 @@ const step = (token, prefix) => token.name.slice(prefix.length);
 const STATUS_STATES = ['success', 'warning', 'danger', 'info'];
 const STATUS_MEMBERS = ['', '-on', '-fg', '-tint', '-tint-edge'];
 
+/** Members only some states declare. Add a row here, not a branch in `statusRow`. */
+export const STATUS_EXTRA_MEMBERS = {
+  warning: ['-border'],
+  danger: ['-hover', '-press'],
+};
+
 const PREAMBLE =
   'body{margin:0;padding:20px;background:var(--bg);font-family:var(--font-sans)}' +
   '.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}' +
@@ -183,11 +189,14 @@ export function buildGuidelineCards(tokens) {
      Every member of a state is on the card, on one row, so the set is legible
      as a set. */
   const statusRow = (state) => {
-    const names = STATUS_MEMBERS.map((suffix) => `--status-${state}${suffix}`);
-    /* Warning is the one asymmetric state. Deep amber on a pale amber tint
-       has no edge a border can borrow from the fill, so it declares its own —
-       and an outline nobody can see is exactly what the card must not hide. */
-    if (state === 'warning') names.push('--status-warning-border');
+    /* Two states are asymmetric, and STATUS_EXTRA_MEMBERS says how. Warning:
+       deep amber on a pale amber tint has no edge a border can borrow from the
+       fill, so it declares its own, and an outline nobody can see is exactly
+       what the card must not hide. Danger: the hovered and pressed fills a
+       destructive control needs, which `bg-destructive-hover` and `-press` read. */
+    const names = [...STATUS_MEMBERS, ...(STATUS_EXTRA_MEMBERS[state] ?? [])].map(
+      (suffix) => `--status-${state}${suffix}`,
+    );
     return (
       '<div style="display:grid;gap:6px">' +
       `<span class="lbl">${state}</span>` +

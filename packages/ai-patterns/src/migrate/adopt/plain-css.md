@@ -27,34 +27,35 @@ lists every literal colour, radius, shadow and duration left, file by file, and
 Name the role first, then pick the token. Two hex values that look the same can have
 different roles: one `#fff` is the page, another is a card on the page.
 
-| What the colour is for       | Miltinson                                                 |
-| ---------------------------- | --------------------------------------------------------- |
-| Page background              | `--bg`                                                    |
-| Card, panel, menu background | `--surface`                                               |
-| Raised or hover surface      | `--surface-2`                                             |
-| Quiet band behind content    | `--bg-subtle`                                             |
-| Body text                    | `--fg`                                                    |
-| Secondary text               | `--fg-2`                                                  |
-| Captions and meta            | `--fg-3`                                                  |
-| Disabled control text        | `--fg-disabled`                                           |
-| Divider, card edge           | `--border`                                                |
-| Input or control edge        | `--border-control`                                        |
-| Brand colour, filled         | `--accent`                                                |
-| Text on the brand fill       | `--accent-fg`                                             |
-| Brand colour as text         | `--accent-ink`                                            |
-| Second brand colour          | `--anchor`                                                |
-| Link                         | `--link`                                                  |
-| Link hover                   | `--link-hover`                                            |
-| Error fill / text on it      | `--status-danger` · `--status-danger-on`                  |
-| Error text on the page       | `--status-danger-fg`                                      |
-| Error panel / its edge       | `--status-danger-tint` · `--status-danger-tint-edge`      |
-| Success, warning, info       | `--status-success` · `--status-warning` · `--status-info` |
-| Focus outline                | `--focus-ring`                                            |
-| Modal backdrop               | `--scrim`                                                 |
+| What the colour is for        | Miltinson                                                 |
+| ----------------------------- | --------------------------------------------------------- |
+| Page background               | `--bg`                                                    |
+| Card, panel, menu background  | `--surface`                                               |
+| Raised or hover surface       | `--surface-2`                                             |
+| Quiet band behind content     | `--bg-subtle`                                             |
+| Body text                     | `--fg`                                                    |
+| Secondary text                | `--fg-2`                                                  |
+| Captions and meta             | `--fg-3`                                                  |
+| Disabled control text         | `--fg-disabled`                                           |
+| Divider, card edge            | `--border`                                                |
+| Input or control edge         | `--border-control`                                        |
+| Brand colour, filled          | `--accent`                                                |
+| Text on the brand fill        | `--accent-fg`                                             |
+| Brand colour as text          | `--accent-ink`                                            |
+| Second brand colour           | `--anchor`                                                |
+| Link                          | `--link`                                                  |
+| Link hover                    | `--link-hover`                                            |
+| Error fill / text on it       | `--status-danger` · `--status-danger-on`                  |
+| Error text on the page        | `--status-danger-fg`                                      |
+| Error fill, hovered / pressed | `--status-danger-hover` · `--status-danger-press`         |
+| Error panel / its edge        | `--status-danger-tint` · `--status-danger-tint-edge`      |
+| Success, warning, info        | `--status-success` · `--status-warning` · `--status-info` |
+| Focus outline                 | `--focus-ring`                                            |
+| Modal backdrop                | `--scrim`                                                 |
 
 Each status (`success`, `warning`, `danger`, `info`) has the same five members: the fill,
 `-on`, `-fg`, `-tint`, `-tint-edge`. Warning also has `-border`, because its fill is too
-light to stand alone. Use only semantic tokens. Never use a raw scale step (`--ink-500`)
+light to stand alone. Danger also has `-hover` and `-press`, the fill when hovered or pressed. Use only semantic tokens. Never use a raw scale step (`--ink-500`)
 in app code: it does not change with the theme.
 
 ```css before

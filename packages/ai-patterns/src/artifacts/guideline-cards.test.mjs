@@ -19,7 +19,7 @@ import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
 import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { describe, expect, it } from 'vitest';
 
-import { buildGuidelineCards } from './guideline-cards.mjs';
+import { buildGuidelineCards, STATUS_EXTRA_MEMBERS } from './guideline-cards.mjs';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 const tokenSrc = join(repoRoot, 'packages/tokens/src');
@@ -76,10 +76,16 @@ describe('completeness against tokens.css', () => {
         expect(html).toContain(`var(--status-${state}${suffix})`);
       }
     }
-    /* Warning's own border — the one asymmetric member. A card that showed the
-       fills alone left the ink, the tint and the edge to be guessed at. */
-    expect(html).toContain('var(--status-warning-border)');
-    expect(chipCount(html)).toBe(4 * 5 + 1);
+    /* The members only some states declare (warning's border, danger's hover
+       and press) come from the table, so a new row there is tested for free.
+       A card that showed the fills alone left the rest to be guessed at. */
+    const extras = Object.entries(STATUS_EXTRA_MEMBERS).flatMap(([state, suffixes]) =>
+      suffixes.map((suffix) => `--status-${state}${suffix}`),
+    );
+    expect(extras).toContain('--status-danger-hover');
+    expect(extras).toContain('--status-danger-press');
+    for (const name of extras) expect(html).toContain(`var(${name})`);
+    expect(chipCount(html)).toBe(4 * 5 + extras.length);
   });
 
   it('renders every categorical series plus the chart chrome', () => {
