@@ -96,7 +96,7 @@ describe('buildManifest against this package', () => {
     });
   });
 
-  it('lists field.css for the row controls whose error message it styles', () => {
+  it('lists field.css for the row controls: it styles their error message and hideLabel', () => {
     for (const name of ['Checkbox', 'Switch']) {
       expect(byName(name).stylesheetPaths).toEqual([
         `@elirobinson/react/styles/atoms/${name}.css`,

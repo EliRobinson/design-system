@@ -57,7 +57,7 @@
 
 /* With the text hidden the row would shrink to the 18px box in a shrink-to-fit
    parent. Keep the 44px width the hit area promises. */
-.ds-checkbox:has(.ds-visually-hidden) {
+.ds-checkbox:has(> .ds-checkbox__label.ds-visually-hidden) {
   justify-content: center;
   min-width: var(--target);
 }
