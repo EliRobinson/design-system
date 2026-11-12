@@ -7,52 +7,92 @@
 //
 // The check reads only the built manifest, so it covers both sources a
 // description can come from: source JSDoc and component-descriptions.json.
+// Three things count as a claim:
+//
+//   - one of the component's own variant values, anywhere in its description;
+//   - a list of two or more variant values from any component ("sm/md/lg",
+//     "success, warning, and info"), which is how a name that does not exist
+//     shows up. A lone word from another component's union is left alone:
+//     "primary" or "default" are ordinary English outside their own component;
+//   - a count of a variant prop's values ("three sizes").
 
-/** `three sizes`, `5 variants`: a count goes stale as surely as a list. */
-const COUNTED =
-  /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(?:sizes|variants|tones|orientations|styles|kinds)\b/i;
+const NUMBER = '(?:one|two|three|four|five|six|seven|eight|nine|ten|\\d+)';
 
 const escape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/**
- * Every string value any component gives a prop of this name. Checking a
- * Button description against all `variant` values, not just Button's, is what
- * catches a name that does not exist: `danger` is an Alert variant, so a
- * Button description saying "danger" is caught even though Button has none.
- */
-function vocabularyByProp(components) {
-  const byProp = new Map();
-  for (const component of components) {
-    for (const { prop, values } of component.variants) {
-      const words = byProp.get(prop) ?? new Set();
-      for (const value of values) if (typeof value === 'string') words.add(value);
-      byProp.set(prop, words);
-    }
-  }
-  return byProp;
+const alternation = (words) => [...words].map(escape).join('|');
+
+/** `size` -> `sizes`, `figureLayout` -> `layouts`: how prose counts a prop's values. */
+const pluralOf = (prop) =>
+  `${prop
+    .split(/(?=[A-Z])/)
+    .at(-1)
+    .toLowerCase()}s`;
+
+/** A sub-component's props carry their unions only as a type string. */
+function variantsOfProps(props) {
+  return props.flatMap(({ name, type }) => {
+    const members = type.split(' | ');
+    if (members.length < 2 || !members.every((member) => /^"[^"]*"$/.test(member))) return [];
+    return [{ prop: name, values: members.map((member) => member.slice(1, -1)) }];
+  });
+}
+
+/** Every component and sub-component as `{ name, description, variants }`. */
+function describedRecords(components) {
+  return components.flatMap((component) => [
+    component,
+    ...(component.subComponents ?? []).map((sub) => ({
+      name: `${component.name}.${sub.name}`,
+      description: sub.description,
+      variants: variantsOfProps(sub.props),
+    })),
+  ]);
+}
+
+const stringValues = (variants) =>
+  variants.flatMap(({ values }) =>
+    // An empty literal would compile to `\b\b` and match every description.
+    values.filter((value) => typeof value === 'string' && value !== ''),
+  );
+
+/** Matches in reading order, dropping any that sits inside an earlier one. */
+function outermost(matches) {
+  let end = -1;
+  return matches
+    .sort((a, b) => a.index - b.index || b[0].length - a[0].length)
+    .filter((match) => {
+      if (match.index < end) return false;
+      end = match.index + match[0].length;
+      return true;
+    });
 }
 
 /**
- * @param {{ components: { name: string, description: string,
- *   variants: { prop: string, values: (string | number)[] }[] }[] }} manifest
+ * @param {{ components: (Pick<import('./manifest-types').ComponentRecord,
+ *   'name' | 'description' | 'variants'> &
+ *   Partial<Pick<import('./manifest-types').ComponentRecord, 'subComponents'>>)[] }} manifest
  * @returns {{ component: string, claim: string }[]} each place a description
- *   names a variant value or counts variants, in manifest order
+ *   names or counts variant values, in manifest order
  */
 export function variantClaims(manifest) {
-  const vocabulary = vocabularyByProp(manifest.components);
-  const claims = [];
+  const records = describedRecords(manifest.components);
+  const allVariants = records.flatMap(({ variants }) => variants);
 
-  for (const { name, description, variants } of manifest.components) {
-    const counted = description.match(COUNTED);
-    if (counted) claims.push({ component: name, claim: counted[0] });
+  const nouns = new Set(['variants', 'styles', ...allVariants.map(({ prop }) => pluralOf(prop))]);
+  const counted = new RegExp(`\\b${NUMBER}\\s+(?:${alternation(nouns)})\\b`, 'gi');
 
-    const words = new Set(variants.flatMap(({ prop }) => [...(vocabulary.get(prop) ?? [])]));
-    for (const word of words) {
-      if (new RegExp(`\\b${escape(word)}\\b`, 'i').test(description)) {
-        claims.push({ component: name, claim: word });
-      }
+  const word = `\\b(?:${alternation(new Set(stringValues(allVariants)))})\\b`;
+  const listed = new RegExp(`${word}(?:\\s*(?:/|,|,?\\s+(?:and|or)\\s+)\\s*${word})+`, 'gi');
+
+  return records.flatMap(({ name, description, variants }) => {
+    const found = [...description.matchAll(counted), ...description.matchAll(listed)];
+
+    const own = new Set(stringValues(variants));
+    if (own.size > 0) {
+      found.push(...description.matchAll(new RegExp(`\\b(?:${alternation(own)})\\b`, 'gi')));
     }
-  }
 
-  return claims;
+    return outermost(found).map((match) => ({ component: name, claim: match[0] }));
+  });
 }
