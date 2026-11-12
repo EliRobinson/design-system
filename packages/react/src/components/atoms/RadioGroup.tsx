@@ -1,6 +1,7 @@
 import type { HTMLAttributes, InputHTMLAttributes } from 'react';
-import { createContext, forwardRef, useContext, useEffect, useId, useRef, useState } from 'react';
+import { createContext, forwardRef, useContext, useEffect, useId, useRef } from 'react';
 
+import { useControllableState } from '../../hooks/useControllableState.js';
 import { cn } from '../../lib/cn.js';
 import { useFieldMessage } from '../../lib/useFieldMessage.js';
 
@@ -61,8 +62,6 @@ export const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(function R
   },
   ref,
 ) {
-  const [internalValue, setInternalValue] = useState(defaultValue);
-
   /* `value ?? internalValue` read "controlled but empty" as "uncontrolled",
      so a controlled group could not express "nothing selected" and could not
      be cleared once clicked. Worse, at the first click of a controlled-empty
@@ -70,8 +69,17 @@ export const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(function R
      and the stale copy won every time the parent cleared. Controlledness is a
      property of `value` being passed at all -- `null` for the empty case --
      never of what it currently holds. */
+  // The same rule useControllableState applies; kept here for the warning below.
   const isControlled = value !== undefined;
-  const currentValue = isControlled ? (value ?? undefined) : internalValue;
+  const [selected, setValue] = useControllableState<string | null>({
+    value,
+    defaultValue: defaultValue ?? null,
+    // Narrows the type only: a click always selects a string, and `null` only ever arrives as a prop.
+    onChange: (next) => {
+      if (next !== null) onValueChange?.(next);
+    },
+  });
+  const currentValue = selected ?? undefined;
 
   /* The mode flip above is silent, and `undefined` is exactly what a consumer
      holding `useState<string | undefined>` reaches for to clear a group -- the
@@ -93,13 +101,6 @@ export const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(function R
   }, [isControlled, name]);
 
   const { controlProps, message } = useFieldMessage({ error, ariaDescribedBy });
-
-  const setValue = (next: string) => {
-    if (!isControlled) {
-      setInternalValue(next);
-    }
-    onValueChange?.(next);
-  };
 
   return (
     <RadioGroupContext.Provider value={{ name, value: currentValue, setValue }}>

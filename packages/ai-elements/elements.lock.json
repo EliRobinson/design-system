@@ -221,7 +221,7 @@
     "src/components/speech-input.tsx": {
       "from": "packages/elements/src/speech-input.tsx",
       "upstream": "sha256:25747138c9c41cca6f96caf69faa9ff6e39910dabac534c84eba41cbd9ba54d3",
-      "vendored": "sha256:e23440e0d9246f050038af35eb2147679974f2c6bc40e1779ade1247bda9988c"
+      "vendored": "sha256:c87ad339bea1369b8c71b3d206e18bfb455e7ff59ac63af61a3026a49c537473"
     },
     "src/components/stack-trace.tsx": {
       "from": "packages/elements/src/stack-trace.tsx",
@@ -296,7 +296,7 @@
     "src/ui/badge.tsx": {
       "from": "packages/shadcn-ui/components/ui/badge.tsx",
       "upstream": "sha256:145cf69448e20e027dd99e8e013507279aaa0922c30f63dabb54b75ab15222aa",
-      "vendored": "sha256:9e73cd0ba735883eaf16817d3e3e9d94c128c8608e79fc683bb720366b278a4d"
+      "vendored": "sha256:87b724a7aed1315b69390ff53cc44630ae36dc1157efec9f909f81cd562b8272"
     },
     "src/ui/button-group.tsx": {
       "from": "packages/shadcn-ui/components/ui/button-group.tsx",
@@ -306,7 +306,7 @@
     "src/ui/button.tsx": {
       "from": "packages/shadcn-ui/components/ui/button.tsx",
       "upstream": "sha256:208d8cf515ccd73c1ca0030a11de1ba460a9fcd6c83faafeadc000833790d22e",
-      "vendored": "sha256:f81d436c51dcf44f33e87753add2f5fb508bf0d4a26c8ada90934c5fca0c602e"
+      "vendored": "sha256:573cdf9eee059bbb32f33eaaa0b018ee3946732d382dd5c2df326d501d54dfff"
     },
     "src/ui/card.tsx": {
       "from": "packages/shadcn-ui/components/ui/card.tsx",

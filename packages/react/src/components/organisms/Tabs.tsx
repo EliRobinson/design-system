@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { cn } from '../../lib/cn.js';
+import { useControllableState } from '../../hooks/useControllableState.js';
 import { useRovingFocus } from '../../hooks/useRovingFocus.js';
 
 type TabsContextValue = {
@@ -64,16 +65,13 @@ export function Tabs({
   ...props
 }: TabsProps) {
   const baseId = useId();
-  const [internalValue, setInternalValue] = useState(defaultValue);
+  const [activeTab, setActiveTab] = useControllableState({
+    // `?? undefined` keeps an untyped `value={null}` uncontrolled, as it always was.
+    value: value ?? undefined,
+    defaultValue,
+    onChange: onValueChange,
+  });
   const [tabStopValue, setTabStopValue] = useState<string | null>(null);
-  const activeTab = value ?? internalValue;
-
-  const setActiveTab = (next: string) => {
-    if (value === undefined) {
-      setInternalValue(next);
-    }
-    onValueChange?.(next);
-  };
 
   return (
     <TabsContext.Provider value={{ activeTab, setActiveTab, baseId, tabStopValue }}>

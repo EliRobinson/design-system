@@ -91,6 +91,14 @@ const step = (token, prefix) => token.name.slice(prefix.length);
 const STATUS_STATES = ['success', 'warning', 'danger', 'info'];
 const STATUS_MEMBERS = ['', '-on', '-fg', '-tint', '-tint-edge'];
 
+/* Members only some states declare. Add a row here, not a branch in `statusRow`. */
+export const STATUS_EXTRA_MEMBERS = {
+  // Deep amber on a pale amber tint has no edge to borrow from the fill, so it declares its own.
+  warning: ['-border'],
+  // The fill when hovered or pressed: what `bg-destructive-hover` and `-press` read.
+  danger: ['-hover', '-press'],
+};
+
 const PREAMBLE =
   'body{margin:0;padding:20px;background:var(--bg);font-family:var(--font-sans)}' +
   '.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}' +
@@ -175,7 +183,7 @@ export function buildGuidelineCards(tokens) {
       swatch(token, token.name.replace(/^--/, ''), options),
     );
 
-  /* A status is five tokens, not one. The card that showed only `--status-*`
+  /* A status is a set of tokens, not one. The card that showed only `--status-*`
      was the ink bug in a different family: a designer reading it saw four
      fills and had no way to know that the ink to put on one, the tint behind
      it and the tint's edge were all decided too — so they picked their own,
@@ -183,11 +191,9 @@ export function buildGuidelineCards(tokens) {
      Every member of a state is on the card, on one row, so the set is legible
      as a set. */
   const statusRow = (state) => {
-    const names = STATUS_MEMBERS.map((suffix) => `--status-${state}${suffix}`);
-    /* Warning is the one asymmetric state. Deep amber on a pale amber tint
-       has no edge a border can borrow from the fill, so it declares its own —
-       and an outline nobody can see is exactly what the card must not hide. */
-    if (state === 'warning') names.push('--status-warning-border');
+    const names = [...STATUS_MEMBERS, ...(STATUS_EXTRA_MEMBERS[state] ?? [])].map(
+      (suffix) => `--status-${state}${suffix}`,
+    );
     return (
       '<div style="display:grid;gap:6px">' +
       `<span class="lbl">${state}</span>` +
@@ -209,7 +215,8 @@ export function buildGuidelineCards(tokens) {
       group: 'Colors',
       viewport: '700x420',
       name: 'Status',
-      subtitle: 'Status colours — fill, the ink that goes on it, the tint behind it and its edge',
+      subtitle:
+        'Status colours — fill, the ink on it, the tint behind it and its edge, plus the extras some states add',
       body:
         '<div style="display:grid;gap:18px">' +
         STATUS_STATES.map((state) => statusRow(state)).join('') +

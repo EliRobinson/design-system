@@ -132,11 +132,12 @@ export default tseslint.config(
   })),
   // The stylesheet half of the same bargain. Consumers run
   // `@elirobinson/eslint-config/css` on their CSS; the component library's own
-  // stylesheets are held to it too. A value kept raw on purpose carries an
+  // stylesheets are held to it too, and so are the docs app's AI Elements theme
+  // layers, which ship into the design-system artifact (#340). A value kept raw on purpose carries an
   // `eslint-disable-next-line` with its reason, next to the value. The geometry
   // rule ships to consumers as a warning; here it is clean, so it errors.
   ...designSystemCss({
-    files: ['packages/react/src/**/*.css'],
+    files: ['packages/react/src/**/*.css', 'apps/docs/src/app/ai-theme/**/*.css'],
     controlGeometry: { severity: 'error' },
   }),
   // The one rule that IS pointed at the vendored tree, and the reason

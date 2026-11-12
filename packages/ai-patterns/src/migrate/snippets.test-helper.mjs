@@ -414,6 +414,10 @@ export function checkAfterBlock(block, vocab) {
   return checker(block.code, vocab);
 }
 
+/* One class: optional variants (`hover:`), `!`, an opacity suffix. Starts with a letter or `!`,
+   which keeps it apart from `--tokens` and `<Components>`. */
+const CLASS = String.raw`[a-z!][\w:/!-]*`;
+
 /* What a backticked span in a checked column can be, in the order they are tried. A span
    that is none of these fails, the same way an unlabelled fence does. */
 const SPAN_KINDS = [
@@ -424,7 +428,7 @@ const SPAN_KINDS = [
     (span, vocab) =>
       vocab.components.has(span) ? [] : [`${span} is not exported by @elirobinson/react`],
   ],
-  [/^[a-z][\w-]*(?:\s+[a-z!][\w:/!-]*)*$/, checkUtilities],
+  [new RegExp(`^${CLASS}(?:\\s+${CLASS})*$`), checkUtilities],
 ];
 
 /** Check one backticked span from a Miltinson column. */

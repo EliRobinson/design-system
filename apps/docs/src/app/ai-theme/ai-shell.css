@@ -110,8 +110,8 @@
 }
 
 .ds-ai-thread:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: calc(var(--focus-ring-width) * -1);
 }
 
 .ds-ai-thread[aria-current='page'] {
@@ -153,8 +153,8 @@
 }
 
 .ds-ai-threads__new:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* ==========================================================================
@@ -188,8 +188,8 @@
 }
 
 .ds-ai-model:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .ds-ai-model__chevron {
@@ -230,8 +230,8 @@
 }
 
 .ds-ai-model-option:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: calc(var(--focus-ring-width) * -1);
 }
 
 .ds-ai-model-option__id {
@@ -300,8 +300,8 @@
 }
 
 .ds-ai-stop:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* ==========================================================================
@@ -394,12 +394,13 @@
 }
 
 .ds-ai-notice__btn:hover {
+  /* eslint-disable-next-line @elirobinson-css/no-hardcoded-design-values -- a hover wash relative to the notice's own tone, which changes per variant; no token carries a currentColor alpha */
   background: oklch(from currentColor l c h / 0.08);
 }
 
 .ds-ai-notice__btn:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid currentColor;
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* The retry countdown. Tabular, so "retrying in 9s" does not reflow to 10s

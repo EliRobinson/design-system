@@ -22,7 +22,8 @@ packages/ai-elements/src
 # are authored elsewhere and are re-landed whole when the handoff moves, so a
 # formatting pass here turns the next drop into a diff nobody can read. The
 # imports that wire them are in apps/docs/src/app/elements.css, which IS ours
-# and IS formatted.
+# and IS formatted. They are still linted (eslint.config.mjs, #340): a re-landed
+# drop must keep the focus ring tokens and the eslint-disable reasons.
 apps/docs/src/app/ai-theme
 
 # The design handoff bundle itself — reference material, not our source.

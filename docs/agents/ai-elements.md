@@ -46,7 +46,7 @@ answer to all three dials at runtime. Measured over the pinned release: all 191 
 colour and radius classes the tree uses compile, and every colour declaration they produce
 resolves through a token.
 
-Two things defeat that, and `scripts/ai-elements-patches/skin.mjs` is the whole answer to
+Three things defeat that, and `scripts/ai-elements-patches/skin.mjs` is the whole answer to
 both:
 
 - **Tailwind's own palette.** `text-zinc-500` and `bg-red-100 dark:bg-red-900/30` are
@@ -54,8 +54,12 @@ both:
   flip, a palette flip and a tokens bump unchanged.
 - **shadcn's `--accent`.** Upstream means "subtle hover tint"; this system means Miltinson
   Amber. `hover:bg-accent` is correct upstream and a brand-amber wash here.
+- **Unmeasured alpha on the destructive fill.** `hover:bg-destructive/90` and
+  `dark:bg-destructive/60` already use a token, so nothing flags them, but nobody
+  measured the alpha. Hover becomes `bg-destructive-hover`; the dark dim is dropped.
+  This kind has no lint backstop, so `scripts/ai-elements-skin.test.mjs` pins it.
 
-Anything upstream adds later that the skin's tables do not cover reaches `src/` unchanged
+Any new literal colour that the skin's tables do not cover reaches `src/` unchanged
 and fails `pnpm lint`: `@elirobinson/no-hardcoded-design-values` is pointed at the vendored
 tree from the root ESLint config. That is deliberate — a new literal failing loudly beats a
 broad regex guessing a token for it. The `allow` list there is the pressure valve, and each

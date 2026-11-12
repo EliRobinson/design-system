@@ -35,7 +35,10 @@ export const HOOK_USED_BY: Record<string, string> = {
   useEscapeKey:
     'Used by Tooltip, the anchored overlays and the modal surfaces, so one Escape closes only the topmost layer.',
   useAnchoredPosition: 'Used by Popover, DropdownMenu, and Tooltip.',
-  useDisclosure: 'Used by Dialog, Sheet, Popover, and DropdownMenu.',
+  useDisclosure:
+    'Used by Dialog, Sheet, Popover, and DropdownMenu. A boolean wrapper on useControllableState.',
+  useControllableState:
+    'Used by useDisclosure, Accordion, CommandPalette, RadioGroup, SearchField, and Tabs.',
   useHasMounted:
     'Used by Toaster, PopoverContent, DropdownMenuContent, and TooltipContent to skip their portals during server rendering.',
 };

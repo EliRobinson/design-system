@@ -19,7 +19,7 @@ import { parseTokensCss } from '@elirobinson/tokens/parse-tokens-css';
 import { readTokenStylesheets } from '@elirobinson/tokens/token-stylesheets';
 import { describe, expect, it } from 'vitest';
 
-import { buildGuidelineCards } from './guideline-cards.mjs';
+import { buildGuidelineCards, STATUS_EXTRA_MEMBERS } from './guideline-cards.mjs';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 const tokenSrc = join(repoRoot, 'packages/tokens/src');
@@ -69,17 +69,17 @@ describe('completeness against tokens.css', () => {
     expect(html).toContain('var(--anchor-500)');
   });
 
-  it('renders every member of every status state, not just the fill', () => {
+  it('renders every status token tokens.css declares, not just the fill', () => {
     const html = cardAt('colors-status.html');
-    for (const state of ['success', 'warning', 'danger', 'info']) {
-      for (const suffix of ['', '-on', '-fg', '-tint', '-tint-edge']) {
-        expect(html).toContain(`var(--status-${state}${suffix})`);
-      }
+    const declared = tokens
+      .map((token) => token.name)
+      .filter((name) => /^--status-(success|warning|danger|info)(-|$)/.test(name));
+    for (const name of declared) expect(html).toContain(`var(${name})`);
+    expect(chipCount(html)).toBe(declared.length);
+    // The table is what the generator reads, so each row must name a real token.
+    for (const [state, suffixes] of Object.entries(STATUS_EXTRA_MEMBERS)) {
+      for (const suffix of suffixes) expect(declared).toContain(`--status-${state}${suffix}`);
     }
-    /* Warning's own border — the one asymmetric member. A card that showed the
-       fills alone left the ink, the tint and the edge to be guessed at. */
-    expect(html).toContain('var(--status-warning-border)');
-    expect(chipCount(html)).toBe(4 * 5 + 1);
   });
 
   it('renders every categorical series plus the chart chrome', () => {

@@ -1,6 +1,7 @@
 import type { InputHTMLAttributes } from 'react';
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 
+import { useControllableState } from '../../hooks/useControllableState.js';
 import { cn } from '../../lib/cn.js';
 import { Mark } from '../../lib/marks.js';
 
@@ -17,19 +18,14 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
   { className, value, defaultValue, onValueChange, ...props },
   ref,
 ) {
-  const [internalValue, setInternalValue] = useState(defaultValue ?? '');
-  const isControlled = value !== undefined;
-  const currentValue = isControlled ? value : internalValue;
+  const [currentValue, setValue] = useControllableState({
+    value,
+    defaultValue: defaultValue ?? '',
+    onChange: onValueChange,
+  });
 
   const innerRef = useRef<HTMLInputElement>(null);
   useImperativeHandle(ref, () => innerRef.current as HTMLInputElement, []);
-
-  const setValue = (next: string) => {
-    if (!isControlled) {
-      setInternalValue(next);
-    }
-    onValueChange?.(next);
-  };
 
   return (
     <div className={cn('ds-search-field', className)}>
