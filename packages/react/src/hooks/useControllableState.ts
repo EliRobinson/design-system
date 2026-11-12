@@ -9,7 +9,10 @@ export type UseControllableStateOptions<T> = {
    * selected".
    */
   value?: T;
-  /** Seeds the uncontrolled state, once. A function is called as a lazy initialiser. */
+  /**
+   * Seeds the uncontrolled state, once. A function is called as a lazy
+   * initialiser, as with `useState`, so `T` itself must not be a function.
+   */
   defaultValue: T | (() => T);
   /** Notified of every requested change, controlled or not. */
   onChange?: (value: T) => void;
@@ -48,8 +51,7 @@ export function useControllableState<T>({
   const setValue = useCallback(
     (next: T) => {
       if (!latest.current.isControlled) {
-        // Wrapped so a function-typed T is stored, not called as an updater.
-        setUncontrolledValue(() => next);
+        setUncontrolledValue(next);
       }
       latest.current.onChange?.(next);
     },
