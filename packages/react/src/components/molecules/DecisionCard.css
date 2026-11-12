@@ -20,10 +20,8 @@
   justify-content: space-between;
 }
 
-/* Text the card renders as a heading, paragraph or description list is reset
-   under the root at (0,2,0), so a host `.prose` cannot restyle it (#383). See
-   "Why an overlay title resets at (0,2,0)" in docs/agents/components.md. The
-   modifier rules below that restyle these elements sit at (0,2,0) too and
+/* #383: scoped under the root at (0,2,0); docs/agents/components.md says why.
+   The modifier rules below that restyle these elements sit at (0,2,0) too and
    come later, so they still win. */
 .ds-decision .ds-decision__subject {
   color: var(--fg-3);
@@ -85,14 +83,9 @@
   min-width: 0;
 }
 
-.ds-decision__figures {
+.ds-decision .ds-decision__figures {
   display: grid;
   gap: var(--space-2);
-}
-
-/* Apart from the rule above, so `.ds-decision__figures--prose` keeps its
-   column gap at (0,1,0). */
-.ds-decision .ds-decision__figures {
   margin: 0;
   padding: 0;
 }
@@ -133,7 +126,7 @@
    columns through `subgrid`, so every label shares one column width however
    the sentences wrap. `display: contents` would do the same and throw the
    row's box away with it. */
-.ds-decision__figures--prose {
+.ds-decision .ds-decision__figures--prose {
   column-gap: var(--space-3);
   grid-template-columns: auto 1fr;
 }

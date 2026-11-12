@@ -8,9 +8,7 @@
   gap: var(--space-2);
 }
 
-/* The list and its items are reset under the root at (0,2,0), so a host
-   `.prose` cannot add markers, margins or indents (#383). See "Why an overlay
-   title resets at (0,2,0)" in docs/agents/components.md. */
+/* #383: scoped under the root at (0,2,0); docs/agents/components.md says why. */
 .ds-pagination .ds-pagination__list {
   display: flex;
   gap: var(--space-1);
@@ -63,7 +61,8 @@
   white-space: nowrap;
 }
 
-.ds-pagination--compact > .ds-pagination__list {
+/* (0,3,0), so it beats the root-scoped list rule above whatever the order. */
+.ds-pagination.ds-pagination--compact > .ds-pagination__list {
   display: none;
 }
 

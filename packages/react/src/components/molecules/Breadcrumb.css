@@ -2,9 +2,7 @@
    Breadcrumb
    ========================================================================== */
 
-/* The list and its items are reset under the root at (0,2,0), so a host
-   `.prose` cannot add markers, margins or indents (#383). See "Why an overlay
-   title resets at (0,2,0)" in docs/agents/components.md. */
+/* #383: scoped under the root at (0,2,0); docs/agents/components.md says why. */
 .ds-breadcrumb .ds-breadcrumb__list {
   align-items: center;
   display: flex;
