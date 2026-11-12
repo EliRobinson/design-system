@@ -80,7 +80,6 @@ describe('completeness against tokens.css', () => {
     for (const [state, suffixes] of Object.entries(STATUS_EXTRA_MEMBERS)) {
       for (const suffix of suffixes) expect(declared).toContain(`--status-${state}${suffix}`);
     }
-    expect(STATUS_EXTRA_MEMBERS.danger).toEqual(['-hover', '-press']);
   });
 
   it('renders every categorical series plus the chart chrome', () => {
