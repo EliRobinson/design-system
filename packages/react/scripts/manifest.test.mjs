@@ -129,8 +129,7 @@ describe('buildManifest against this package', () => {
   });
 
   it('has no description that names or counts its variants', () => {
-    // The variants are in the manifest and the prop table. A description says
-    // what the component is for; it never repeats what the prop table lists.
+    // See description-variants.mjs.
     expect(variantClaims(manifest)).toEqual([]);
   });
 
