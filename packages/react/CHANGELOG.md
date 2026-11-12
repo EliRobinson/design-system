@@ -1,5 +1,15 @@
 # @elirobinson/react
 
+## 3.11.2
+
+### Patch Changes
+
+- 06e820c: New rule `no-hardcoded-control-geometry`, in `designSystem()` and `designSystemCss()`: it flags a raw `44px` on a size property (use `var(--target)`) and a raw `2px` outline width or `outline-offset` (use `var(--focus-ring-width)` / `var(--focus-ring-offset)`). A token elsewhere in the value does not hide the literal, so `outline: 2px solid var(--focus-ring)` is caught. It ships at `warn`; raise it with `designSystem({ controlGeometry: { severity: 'error' } })` and `designSystemCss({ controlGeometry: { severity: 'error' } })`.
+
+  `no-hardcoded-design-values` now exempts CSS system colours (`CanvasText`, `Highlight`, `ButtonBorder`, …), so a forced-colors block no longer needs a disable comment. The contracts name the new rule where they said a literal 44px was forbidden.
+
+- 6d783ad: Dialog, Sheet and CommandPalette titles and descriptions, and the CommandPalette and Combobox lists, keep their own styles inside a host `.prose` (Tailwind Typography or any typographic reset). Their resets are now scoped under the component root at (0,2,0), so to override them, match that specificity (for example `.ds-dialog .my-title`). The Dialog and Sheet title now set `line-height: var(--lh-snug)` instead of inheriting the page's. The CommandPalette lists no longer show the browser's default bullets, indent and margins anywhere, and the Combobox empty state sets its own margin and line-height. The Combobox list now opens below its input when the root is a flex container.
+
 ## 3.11.1
 
 ### Patch Changes
