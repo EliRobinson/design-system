@@ -13,11 +13,16 @@
 // style-object half is `jsRule`, the stylesheet half is `cssRule`, and they
 // read the same table.
 //
-// Tailwind classes are not read yet. Scale utilities (`min-h-11`,
-// `outline-2`) are not literals; arbitrary values (`min-h-[44px]`) are, and
-// are #391.
+// Tailwind classes are read for their arbitrary values (`min-h-[44px]`), which
+// are literals. Scale utilities (`min-h-11`, `outline-2`) are not, and are
+// left alone.
 
 import { jsxAttributeName, propertyName, staticStrings } from './ast-strings.mjs';
+import {
+  DEFAULT_CLASS_NAME_FUNCTIONS,
+  arbitraryValues,
+  classNameVisitors,
+} from './class-names.mjs';
 import { createCssRule } from './no-hardcoded-css-values.mjs';
 
 /**
@@ -100,6 +105,16 @@ const AXIS_BY_CSS_PROPERTY = new Map(
   ]),
 );
 
+/**
+ * The Tailwind utilities that set a property on either axis. `outline-[2px]`
+ * is an outline width; `outline-[var(--x)]` and `outline-[red]` are not
+ * lengths and never match.
+ */
+const AXIS_BY_TAILWIND_UTILITY = new Map([
+  ...['min-h', 'min-w', 'h', 'w', 'size'].map((utility) => [utility, TARGET]),
+  ...['outline', 'outline-offset'].map((utility) => [utility, FOCUS_RING]),
+]);
+
 const MESSAGES = {
   target:
     'Hardcoded touch target "{{value}}" in `{{property}}`. Use var(--target) (or var(--target-min) / var(--target-lg) for the dense and thumb-zone tiers). Run `pnpm ds tokens target`.',
@@ -152,14 +167,46 @@ export const jsRule = {
     type: 'problem',
     docs: {
       description:
-        'Disallow a raw 44px touch target or 2px focus ring in a style object; reference --target and the --focus-ring-* tokens instead.',
+        'Disallow a raw 44px touch target or 2px focus ring in a style object or a Tailwind arbitrary value; reference --target and the --focus-ring-* tokens instead.',
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          classNameFunctions: { type: 'array', items: { type: 'string' } },
+        },
+        additionalProperties: false,
+      },
+    ],
     messages: MESSAGES,
   },
 
   create(context) {
+    const options = context.options[0] ?? {};
+
+    /** Every arbitrary value on either axis in one className string. */
+    function checkClassName(node, className) {
+      for (const { utility, value } of arbitraryValues(className)) {
+        // `-outline-offset-[2px]` is Tailwind's negative: the value, negated.
+        const negative = utility.startsWith('-');
+        const axis = AXIS_BY_TAILWIND_UTILITY.get(negative ? utility.slice(1) : utility);
+        const signed = negative ? `-${value}` : value;
+        if (axis?.matches(signed)) {
+          context.report({
+            node,
+            messageId: axis.messageId,
+            data: { property: `${utility}-[${value.replaceAll(' ', '_')}]`, value },
+          });
+        }
+      }
+    }
+
     return {
+      ...classNameVisitors(
+        options.classNameFunctions ?? DEFAULT_CLASS_NAME_FUNCTIONS,
+        checkClassName,
+      ),
+
       // Every object property, not only JSX `style` ones: a style object
       // defined above the component ships the same literal.
       Property(node) {

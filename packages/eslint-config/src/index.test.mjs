@@ -111,6 +111,16 @@ describe('no-hardcoded-design-values: colour', () => {
     expect(results[0].message).toContain('Hardcoded colour');
   });
 
+  it('flags a literal named in a clsx() object key', () => {
+    const results = lint(
+      `import { clsx } from 'clsx'
+       export const A = ({ on }) => <div className={clsx({ 'bg-[#ff0000]': on, open: on })} />`,
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].message).toContain('Hardcoded colour');
+  });
+
   it('reports a doubly-reachable literal once', () => {
     const results = lint(
       `import { cn } from './cn'

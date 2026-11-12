@@ -215,3 +215,108 @@ describe('no-hardcoded-control-geometry', () => {
     expect(css.severity).toBe(2);
   });
 });
+
+// #391: a Tailwind arbitrary value is a literal too, and for a Tailwind
+// consumer it is the likeliest spelling of both. Scale utilities (`min-h-11`,
+// `outline-2`) are not literals and stay out of it.
+describe('no-hardcoded-control-geometry in Tailwind classes', () => {
+  const GEOMETRY = 'no-hardcoded-control-geometry';
+  const geometryOf = (code, options) =>
+    lint(`export const A = () => (${code})`, { options }).filter((result) =>
+      result.ruleId?.endsWith(GEOMETRY),
+    );
+
+  it.each([
+    ['min-h-[44px]', 'var(--target)'],
+    ['min-w-[44px]', 'var(--target)'],
+    ['h-[44px]', 'var(--target)'],
+    ['w-[44px]', 'var(--target)'],
+    ['size-[44px]', 'var(--target)'],
+    ['outline-[2px]', 'focus ring tokens'],
+    ['outline-offset-[2px]', 'focus ring tokens'],
+    // A negative utility is the inset ring, spelled the Tailwind way.
+    ['-outline-offset-[2px]', 'focus ring tokens'],
+    ['outline-offset-[-2px]', 'focus ring tokens'],
+    ['focus-visible:outline-[2px]', 'focus ring tokens'],
+    ['[&_svg]:size-[44px]', 'var(--target)'],
+    ['min-h-[44PX]', 'var(--target)'],
+    ['outline-[2px_solid_var(--focus-ring)]', 'focus ring tokens'],
+  ])('flags %s', (className, flagged) => {
+    const results = geometryOf(`<div className="flex ${className}" />`);
+
+    expect(messagesOf(results)).toHaveLength(1);
+    expect(results[0].message).toContain(flagged);
+    expect(results[0].message).toContain(`in \`${className.replace(/^.*:/, '')}\``);
+  });
+
+  it('reports the same message a style object gets', () => {
+    const [fromClass] = geometryOf('<div className="min-h-[44px]" />');
+    const [fromStyle] = geometryOf('<div style={{ minHeight: "44px" }} />');
+
+    expect(fromClass.message.replace(/`[^`]*`/, '')).toBe(fromStyle.message.replace(/`[^`]*`/, ''));
+  });
+
+  it.each([
+    'min-h-[var(--target)]',
+    'size-[var(--target-min)]',
+    'outline-[var(--focus-ring-width)]',
+    'outline-offset-[var(--focus-ring-offset,2px)]',
+    'min-h-target',
+    'min-h-11',
+    'outline-2',
+    'outline-offset-2',
+    'w-[144px]',
+    'h-[24px]',
+    'p-[44px]',
+    'border-[2px]',
+    'outline-[1px]',
+    'max-h-[44px]',
+  ])('leaves %s alone', (className) => {
+    expect(geometryOf(`<div className="${className}" />`)).toEqual([]);
+  });
+
+  it.each([
+    ['cn', 'cn("flex", "min-h-[44px]")'],
+    ['clsx', 'clsx({ "min-h-[44px]": true })'],
+    ['classnames', 'classnames("min-h-[44px]")'],
+    ['classNames', 'classNames("min-h-[44px]")'],
+    ['twMerge', 'twMerge("min-h-[44px]")'],
+    ['a member call', 'utils.cn("min-h-[44px]")'],
+    ['a conditional', 'cn(open ? "min-h-[44px]" : "min-h-0")'],
+  ])('reads %s inside className', (_, call) => {
+    expect(geometryOf(`<div className={${call}} />`)).toHaveLength(1);
+  });
+
+  it('reads cva variants outside JSX', () => {
+    const results = lint(
+      'export const button = cva("inline-flex", { variants: { size: { md: "min-h-[44px]" }, width: { lg: "w-[44px]" } } })',
+    ).filter((result) => result.ruleId?.endsWith(GEOMETRY));
+
+    expect(results).toHaveLength(2);
+  });
+
+  it('reads a template literal and the class attribute', () => {
+    expect(geometryOf('<div className={`flex ${x} min-h-[44px]`} />')).toHaveLength(1);
+    expect(geometryOf('<div class="outline-[2px]" />')).toHaveLength(1);
+  });
+
+  it('reports a class reached through both the attribute and a call once', () => {
+    expect(geometryOf('<div className={cn("min-h-[44px]")} />')).toHaveLength(1);
+  });
+
+  it('leaves a function that is not a class-name helper alone', () => {
+    expect(geometryOf('<div title={format("min-h-[44px]")} />')).toEqual([]);
+  });
+
+  it('follows hardcodedValues.classNameFunctions', () => {
+    const code = '<div className={tw("min-h-[44px]")} />';
+
+    expect(geometryOf(code)).toEqual([]);
+    expect(geometryOf(code, { hardcodedValues: { classNameFunctions: ['tw'] } })).toHaveLength(1);
+  });
+
+  it('is still a warning', () => {
+    const [result] = geometryOf('<div className="min-h-[44px]" />', { severity: 'error' });
+    expect(result.severity).toBe(1);
+  });
+});
