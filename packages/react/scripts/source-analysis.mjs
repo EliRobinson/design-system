@@ -205,6 +205,23 @@ export function inheritsOf(declarations, propsTypeName) {
   return bases.length > 0 ? bases.map(typeText).join(' & ') : null;
 }
 
+/**
+ * `import type { X }`, or `import { type X, type Y }` with no value beside the
+ * types. A bare `import './x'` has no clause and is a value edge.
+ */
+function isTypeOnlyImport(clause) {
+  if (!clause) return false;
+  if (clause.isTypeOnly) return true;
+  const bindings = clause.namedBindings;
+  return (
+    !clause.name &&
+    bindings !== undefined &&
+    ts.isNamedImports(bindings) &&
+    bindings.elements.length > 0 &&
+    bindings.elements.every((element) => element.isTypeOnly)
+  );
+}
+
 const HOOK_NAME = /^use[A-Z]/;
 
 /**
@@ -273,7 +290,7 @@ export function analyzeSource(path) {
       // Sibling modules only, on purpose: manifest.mjs looks for a stylesheet
       // beside the component. `isRelative` (which also takes `../`) is for names.
       if (specifier.startsWith('./')) relativeImports.push(specifier);
-      noteValueImport(specifier, statement.importClause?.isTypeOnly);
+      noteValueImport(specifier, isTypeOnlyImport(statement.importClause));
       const bindings = statement.importClause?.namedBindings;
       if (bindings && ts.isNamedImports(bindings)) noteLinks(specifier, bindings.elements);
       continue;
@@ -297,6 +314,17 @@ export function analyzeSource(path) {
       continue;
     }
 
+    // `export * from './x'` re-exports values too, unless it is `export type *`.
+    if (
+      ts.isExportDeclaration(statement) &&
+      !statement.exportClause &&
+      statement.moduleSpecifier &&
+      ts.isStringLiteral(statement.moduleSpecifier)
+    ) {
+      noteValueImport(statement.moduleSpecifier.text, statement.isTypeOnly);
+      continue;
+    }
+
     // `export type { ColumnDef } from './table/core'` and friends.
     if (ts.isExportDeclaration(statement) && statement.exportClause) {
       if (ts.isNamedExports(statement.exportClause)) {
@@ -305,7 +333,11 @@ export function analyzeSource(path) {
         }
         if (statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier)) {
           noteLinks(statement.moduleSpecifier.text, statement.exportClause.elements);
-          noteValueImport(statement.moduleSpecifier.text, statement.isTypeOnly);
+          noteValueImport(
+            statement.moduleSpecifier.text,
+            statement.isTypeOnly ||
+              statement.exportClause.elements.every((element) => element.isTypeOnly),
+          );
         }
       }
     }

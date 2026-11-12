@@ -15,22 +15,25 @@ export default function HooksPage() {
         organisms share. They're exported so a composite widget you build yourself can inherit the
         same contracts instead of re-implementing them — prefer these over hand-rolled key handlers.
       </p>
-      {hooks.map((hook) => (
-        <section key={hook.name}>
-          <h2 id={hook.name.toLowerCase()}>{hook.name}</h2>
-          <CodeSnippet
-            code={`import { ${hook.name} } from '${hook.importSpecifier}';`}
-            lang="tsx"
-          />
-          {hook.description
-            .split(/\n\n+/)
-            .slice(0, 3)
-            .map((paragraph) => (
-              <p key={paragraph.slice(0, 24)}>{paragraph.replace(/\n/g, ' ')}</p>
-            ))}
-          {hookUsage(hook) && <p>{hookUsage(hook)}</p>}
-        </section>
-      ))}
+      {hooks.map((hook) => {
+        const usage = hookUsage(hook);
+        return (
+          <section key={hook.name}>
+            <h2 id={hook.name.toLowerCase()}>{hook.name}</h2>
+            <CodeSnippet
+              code={`import { ${hook.name} } from '${hook.importSpecifier}';`}
+              lang="tsx"
+            />
+            {hook.description
+              .split(/\n\n+/)
+              .slice(0, 3)
+              .map((paragraph) => (
+                <p key={paragraph.slice(0, 24)}>{paragraph.replace(/\n/g, ' ')}</p>
+              ))}
+            {usage && <p>{usage}</p>}
+          </section>
+        );
+      })}
     </>
   );
 }

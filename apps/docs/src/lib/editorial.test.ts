@@ -39,8 +39,8 @@ describe('hook usage lines', () => {
   });
 
   it('puts the editorial note after the derived users', () => {
-    expect(hookUsage({ name: 'useDisclosure', usedBy: ['Dialog', 'Popover', 'Sheet'] })).toBe(
-      'Used by Dialog, Popover, and Sheet. A boolean wrapper on useControllableState.',
+    expect(hookUsage({ name: 'useHasMounted', usedBy: ['Popover', 'Toast', 'Tooltip'] })).toBe(
+      'Used by Popover, Toast, and Tooltip. Each one skips its portal during server rendering.',
     );
   });
 
