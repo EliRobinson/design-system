@@ -1,5 +1,13 @@
 # @elirobinson/react
 
+## 3.11.4
+
+### Patch Changes
+
+- 70b8890: Component descriptions in `@elirobinson/react/manifest` no longer list variant values or count them. Avatar, Badge, Button, Spinner, Alert and Separator had prose copies of their variant unions, which went stale when a value was added; Card and EmptyState listed their parts and props the same way. The values stay in each component's `variants`, `props` and `subComponents`. Rating's description is reworded so it no longer reads as a variant name. A test now fails if a description, or a sub-component's, names its own variant values, lists variant values from any component, or counts them.
+- 112d8cb: The component manifest now lists a variant whose union comes from a relative import. `Tooltip` lists `side` and `DecisionCard` lists `verdict`, each with its values. Their `type` is null, because neither component's module exports the alias.
+- cfc0096: Share one `.ds-visually-hidden` rule in `field.css` for Switch and Checkbox hidden labels. The `--hidden` label modifier classes are gone.
+
 ## 3.11.3
 
 ### Patch Changes
