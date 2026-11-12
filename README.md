@@ -253,7 +253,7 @@ Run `pnpm ds --version` in a consuming app for the versions it actually has inst
 
 ## Distribution
 
-Library packages (`@elirobinson/tokens`, `@elirobinson/react`, `@elirobinson/ai-patterns`, `@elirobinson/eslint-config`) are published to the [GitHub Packages npm registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry).
+Every non-private package in [Packages](#packages) is published to the [GitHub Packages npm registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry).
 
 1. Push to `main` with a changeset to open/update the release PR.
 2. Merge the release PR to bump versions, publish packages, and generate GitHub releases.

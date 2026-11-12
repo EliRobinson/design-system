@@ -11,7 +11,9 @@
          them here or an edit to one replays a cached pass.
          shadcn-mapping-single-source.test.mjs reads every tracked Markdown file
          and the ai-patterns Markdown parser (#333). package-list.test.mjs reads
-         README.md and AGENTS.md; the Markdown globs below cover them. */
+         README.md, AGENTS.md and every package.json under packages; the Markdown
+         globs and the package.json line below cover them (^default misses
+         design-system-mcp and the starter). */
       "inputs": [
         "default",
         "^default",
@@ -24,6 +26,7 @@
         "{workspaceRoot}/.github/hooks/review-gate.json",
         "{workspaceRoot}/.github/pull_request_template.md",
         "{workspaceRoot}/.husky/*",
+        "{workspaceRoot}/packages/*/package.json",
         "{workspaceRoot}/**/*.md",
         "{workspaceRoot}/**/*.mdx",
         "{workspaceRoot}/packages/ai-patterns/src/migrate/markdown.test-helper.mjs"
