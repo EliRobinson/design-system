@@ -17,8 +17,8 @@ import { expect, test } from './fixtures';
    them and flake everywhere else. */
 
 /* An infinite spin, the shape Spinner and Skeleton use. The reduced-motion
-   clamp in tokens.css plays a loop once (0.01ms, one iteration), but only
-   under that preference, so the config has to settle loops on its own.
+   clamp in tokens.css does not cover it everywhere, so the config has to settle
+   loops on its own (see the `animations` note in visual-config.mjs).
 
    The two-tone gradient is what makes rotation visible — a solid fill would
    render identically at every angle and the assertions below would hold

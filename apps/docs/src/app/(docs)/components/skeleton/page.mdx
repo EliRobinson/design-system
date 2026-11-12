@@ -46,7 +46,7 @@ inherited `HTMLAttributes<HTMLDivElement>`.
   carries `role="status"`.
 - The pulse animation respects `prefers-reduced-motion` — not through a per-component
   check, but because the design tokens stylesheet flattens all animation and transition
-  durations to 0.01ms and plays loops once, globally, when that preference is set.
+  durations and settles loops globally when that preference is set (see Motion under Foundations).
 
 <DoDont
   do={[

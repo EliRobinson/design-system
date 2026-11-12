@@ -187,11 +187,11 @@ export function defineVisualConfig(overrides = {}, guard = {}) {
         /* Fast-forwards finite animations to their end state and cancels
            infinite ones to their first frame. The second half is what matters:
            a spinner or skeleton loops forever, so without this it samples an
-           arbitrary frame. Do not rely on a reduced-motion media block for
-           this: tokens.css does clamp the duration to 0.01ms and the iteration
-           count to 1, so a loop plays once and rests, but that only holds when
-           the page has the preference set and the clamp loaded. This setting
-           makes the capture deterministic either way. */
+           arbitrary frame. Do not rely on a reduced-motion
+           media block for this: the clamp in tokens.css settles loops, but
+           only when the page has that preference, the stylesheet is loaded and
+           no component opts out (Spinner keeps an infinite pulse). This
+           setting makes the capture deterministic either way. */
         animations: 'disabled',
 
         /* Zero tolerance on *how wrong a pixel may be*, a small budget on *how
