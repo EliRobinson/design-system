@@ -15,7 +15,11 @@
   padding: var(--space-6) var(--space-6) 0;
 }
 
-.ds-card__title {
+/* Text the component renders as a heading, paragraph or list is reset under
+   the root at (0,2,0), so a host `.prose` cannot restyle it (#383). See "Why
+   an overlay title resets at (0,2,0)" in docs/agents/components.md. */
+.ds-card .ds-card__title {
+  border: 0;
   color: var(--fg);
   font-family: var(--font-sans);
   font-size: var(--fs-lg);
@@ -23,14 +27,17 @@
   letter-spacing: var(--tr-tight);
   line-height: var(--lh-tight);
   margin: 0;
+  padding: 0;
 }
 
-.ds-card__description {
+.ds-card .ds-card__description {
   color: var(--fg-2);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
+  letter-spacing: normal;
   line-height: var(--lh-normal);
   margin: 0;
+  padding: 0;
 }
 
 .ds-card__content {

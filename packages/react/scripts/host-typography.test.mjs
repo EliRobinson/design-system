@@ -1,4 +1,4 @@
-/* Overlay titles and lists keep their own styles inside a host `.prose`, and
+/* Component titles, paragraphs and lists keep their own styles inside a host `.prose`, and
  * the Combobox list opens below its input whatever layout the root is given.
  *
  * #367: host typography beat the component. The docs' `.prose h2` is (0,1,1)
@@ -8,6 +8,12 @@
  * resets do the same. This renders the real components, mounts each one twice
  * (bare, and inside a hostile `.prose` loaded AFTER the component sheets, the
  * worst order), and asserts the two compute the same.
+ *
+ * #383: the same leak in every other component that renders a heading,
+ * paragraph or list (Card, EmptyState, DecisionCard, StubCard, Pagination,
+ * Breadcrumb). Alert and Toast render their title and description as `div`s,
+ * which no host element rule reaches; they are cases so a later move to a
+ * heading or paragraph keeps the reset.
  *
  * #368: `.ds-combobox__list` was `position: absolute` with no `top`, so it sat
  * at its static position. In a flex-column root that is the root's top, over
@@ -25,6 +31,19 @@ import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it } from 'vitest';
 
+import { Alert } from '../src/components/molecules/Alert.tsx';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from '../src/components/molecules/Breadcrumb.tsx';
+import { Card, CardDescription, CardHeader, CardTitle } from '../src/components/molecules/Card.tsx';
+import { DecisionCard } from '../src/components/molecules/DecisionCard.tsx';
+import { EmptyState } from '../src/components/molecules/EmptyState.tsx';
+import { Pagination } from '../src/components/molecules/Pagination.tsx';
+import { StubCard } from '../src/components/molecules/StubCard.tsx';
 import { Combobox } from '../src/components/organisms/Combobox.tsx';
 import { CommandPalette } from '../src/components/organisms/CommandPalette.tsx';
 import {
@@ -41,6 +60,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '../src/components/organisms/Sheet.tsx';
+import { Toast, ToastDescription, ToastTitle } from '../src/components/organisms/Toast.tsx';
 
 import { bootBrowser, inPage } from './browser.test-helper.mjs';
 
@@ -51,6 +71,15 @@ const SHEETS = {
   'CommandPalette.css': join(COMPONENTS, 'organisms', 'CommandPalette.css'),
   'Combobox.css': join(COMPONENTS, 'organisms', 'Combobox.css'),
   'SearchField.css': join(COMPONENTS, 'molecules', 'SearchField.css'),
+  'Card.css': join(COMPONENTS, 'molecules', 'Card.css'),
+  'EmptyState.css': join(COMPONENTS, 'molecules', 'EmptyState.css'),
+  'DecisionCard.css': join(COMPONENTS, 'molecules', 'DecisionCard.css'),
+  'VerdictBadge.css': join(COMPONENTS, 'molecules', 'VerdictBadge.css'),
+  'StubCard.css': join(COMPONENTS, 'molecules', 'StubCard.css'),
+  'Alert.css': join(COMPONENTS, 'molecules', 'Alert.css'),
+  'Toast.css': join(COMPONENTS, 'organisms', 'Toast.css'),
+  'Pagination.css': join(COMPONENTS, 'molecules', 'Pagination.css'),
+  'Breadcrumb.css': join(COMPONENTS, 'molecules', 'Breadcrumb.css'),
 };
 const VIEWPORT = { width: 1024, height: 768 };
 
@@ -75,12 +104,15 @@ const HOSTS = {
      (0,1,1), which outrank a single class. Kept hostile and apart from the
      real file, so it stays a worst case whatever the docs do. */
   docs: `
-    .prose h2 {
+    .prose h2, .prose h3 {
       font-size: 32px; font-weight: 800; line-height: 1.9; letter-spacing: 0.1em;
       margin: 40px 0 12px; padding-top: 16px; border-top: 1px solid red; color: red;
     }
     .prose p, .prose ul, .prose ol { line-height: 2.2; margin: 0 0 16px; }
     .prose li { margin-bottom: 4px; }
+    .prose dl { margin: 0 0 16px; }
+    .prose dt { font-weight: 800; margin-top: 12px; }
+    .prose dd { margin: 0 0 8px 24px; }
   `,
   /* The shape of @tailwindcss/typography: (0,1,0), and list markers on. */
   tailwind: `
@@ -91,7 +123,16 @@ const HOSTS = {
     .prose :where(ul)${NOT} {
       list-style-type: disc; margin-top: 1.25em; margin-bottom: 1.25em; padding-inline-start: 1.625em;
     }
+    .prose :where(ol)${NOT} {
+      list-style-type: decimal; margin-top: 1.25em; margin-bottom: 1.25em; padding-inline-start: 1.625em;
+    }
     .prose :where(li)${NOT} { margin-top: 0.5em; margin-bottom: 0.5em; padding-inline-start: 0.375em; }
+    .prose :where(h3)${NOT} {
+      font-size: 1.25em; font-weight: 600; line-height: 1.6; margin-top: 1.6em; margin-bottom: 0.6em; color: red;
+    }
+    .prose :where(dl)${NOT} { margin-top: 1.25em; margin-bottom: 1.25em; }
+    .prose :where(dt)${NOT} { font-weight: 600; margin-top: 1.25em; color: red; }
+    .prose :where(dd)${NOT} { margin-top: 0.5em; padding-inline-start: 1.625em; }
   `,
 };
 
@@ -188,6 +229,102 @@ const CASES = {
     markup: COMBOBOX_OPEN,
     targets: ['.ds-combobox__list', '.ds-combobox__empty'],
   },
+  /* #383: the same reset, for every other component that renders a heading,
+     paragraph or list. */
+  Card: {
+    markup: renderToStaticMarkup(
+      h(
+        Card,
+        null,
+        h(CardHeader, null, h(CardTitle, null, 'Plan'), h(CardDescription, null, 'Monthly')),
+      ),
+    ),
+    targets: ['.ds-card__title', '.ds-card__description'],
+  },
+  EmptyState: {
+    markup: renderToStaticMarkup(
+      h(EmptyState, { title: 'No results', description: 'Try another search' }),
+    ),
+    targets: ['.ds-empty-state__title', '.ds-empty-state__description'],
+  },
+  DecisionCard: {
+    markup: renderToStaticMarkup(
+      h(DecisionCard, {
+        verdict: 'go',
+        verdictLabel: 'Go',
+        subject: 'Lease',
+        headline: 'Sign the lease',
+        figures: [{ id: 'rent', label: 'Rent', value: '$1,200' }],
+        total: { label: 'Total', value: '$14,400' },
+        contrast: { label: 'Last year', value: '$13,900' },
+        caveat: 'Rent rises in March.',
+        closing: 'Decide by Friday.',
+      }),
+    ),
+    targets: [
+      '.ds-decision__subject',
+      '.ds-decision__headline',
+      '.ds-decision__figures',
+      '.ds-decision__figure-label',
+      '.ds-decision__figure-value',
+      '.ds-decision__total',
+      '.ds-decision__contrast',
+      '.ds-decision__caveat',
+      '.ds-decision__closing',
+    ],
+  },
+  StubCard: {
+    markup: renderToStaticMarkup(
+      h(StubCard, {
+        title: 'Flight',
+        items: [{ label: 'Seat', value: '14C' }],
+        footnote: 'Boarding closes early.',
+        stubLabel: 'Gate',
+        stubValue: 'B12',
+        stubCaption: 'Terminal 2',
+      }),
+    ),
+    targets: [
+      '.ds-stub__title',
+      '.ds-stub__items',
+      '.ds-stub__label',
+      '.ds-stub__value',
+      '.ds-stub__footnote',
+      '.ds-stub__stub-label',
+      '.ds-stub__stub-value',
+      '.ds-stub__stub-caption',
+    ],
+  },
+  Alert: {
+    markup: renderToStaticMarkup(h(Alert, { title: 'Saved' }, 'Your changes are live.')),
+    targets: ['.ds-alert__title', '.ds-alert__description'],
+  },
+  Toast: {
+    markup: renderToStaticMarkup(
+      h(Toast, null, h(ToastTitle, null, 'Copied'), h(ToastDescription, null, 'Link copied')),
+    ),
+    targets: ['.ds-toast__title', '.ds-toast__description'],
+  },
+  Pagination: {
+    markup: renderToStaticMarkup(h(Pagination, { page: 2, pageCount: 9, onPageChange: noop })),
+    targets: ['.ds-pagination__list', '.ds-pagination__list > li', '.ds-pagination__gap'],
+  },
+  Breadcrumb: {
+    markup: renderToStaticMarkup(
+      h(
+        Breadcrumb,
+        null,
+        h(
+          BreadcrumbList,
+          null,
+          h(BreadcrumbItem, null, h(BreadcrumbLink, { href: '/' }, 'Home')),
+          h(BreadcrumbSeparator, null),
+          h(BreadcrumbItem, null, h(BreadcrumbLink, { current: true }, 'Docs')),
+        ),
+      ),
+    ),
+    targets: ['.ds-breadcrumb__list', '.ds-breadcrumb__item'],
+  },
 };
 
 /** Computed PROPERTIES for each target, in a bare root and in a `.prose` root. */
@@ -214,7 +351,7 @@ function twoRoots(markup) {
   return `<div id="bare">${markup}</div><div id="prose" class="prose">${markup}</div>`;
 }
 
-describeBrowser('components keep their own type and list styles inside .prose (#367)', () => {
+describeBrowser('components keep their own type and list styles inside .prose (#367, #383)', () => {
   for (const [hostName, host] of Object.entries(HOSTS)) {
     /* The positive control: a plain h2 and ul really are restyled by this host,
        so a pass below is the component winning, not the fixture missing. */

@@ -208,9 +208,17 @@ describe('the assistant avatar mark is legible on its own circle, in both themes
  * ------------------------------------------------------------------------ */
 
 describe('the caveat reads as body copy on the card, in both themes', () => {
-  const text = systemToken('molecules/DecisionCard.css', '.ds-decision__caveat', 'color');
+  const text = systemToken(
+    'molecules/DecisionCard.css',
+    '.ds-decision .ds-decision__caveat',
+    'color',
+  );
   const surface = systemToken('molecules/DecisionCard.css', '.ds-decision', 'background');
-  const rule = systemToken('molecules/DecisionCard.css', '.ds-decision__caveat', 'border-left');
+  const rule = systemToken(
+    'molecules/DecisionCard.css',
+    '.ds-decision .ds-decision__caveat',
+    'border-left',
+  );
 
   for (const { id } of COMBINATIONS) {
     it(`${id}: caveat text ${text} on ${surface} clears 4.5:1 (SC 1.4.3)`, () => {
