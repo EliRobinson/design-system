@@ -38,9 +38,8 @@ click, works with middle-click and cmd-click, and needs no JavaScript.
 
 `md` and `lg` keep the 44×44px minimum touch target. `sm` is 36px tall on purpose: it is
 a dense control, measured against the 24×24px WCAG 2.2 AA floor (SC 2.5.8) instead of
-44×44. Use `sm` for compact toolbars and table rows. Keep `md` or `lg` for the main
-action on a screen. The reasoning is in "Why `size="sm"` is 36px" in
-`docs/agents/components.md`.
+44×44. That keeps `sm` a real size, not a font-size variant of `md`. Use `sm` for compact
+toolbars and table rows, and `md` or `lg` for the main action on a screen.
 
 <DemoBlock file="button/Sizes.tsx">
   <Sizes />
@@ -79,7 +78,7 @@ action on a screen. The reasoning is in "Why `size="sm"` is 36px" in
     'Use a Button for navigation — style a link instead.',
     'Disable a submit button to signal a validation error — show the error and keep it clickable.',
     'Stack multiple accent buttons in one section; amber is a signal, not a fill.',
-    'Shrink the hit area below 44×44px — density comes from the visible control, not the target.',
+    'Use size="sm" for the main action on a screen — it is a dense 36px control; keep md or lg at 44×44px or larger.',
   ]}
 />
 
