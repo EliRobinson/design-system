@@ -523,6 +523,224 @@ describe('the JS and CSS rules agree about which axis a property belongs to', ()
   });
 });
 
+// The raw values #330 took out of the react CSS: a 44px touch target and a 2px
+// focus ring. Each has a token now, so a literal is a regression waiting to
+// happen, in our components and in a consumer's. They are their own rule
+// rather than two more axes of no-hardcoded-design-values because they ship as
+// a warning: every app that predates the tokens has `min-height: 44px`
+// somewhere, and a rule that red-builds a consumer on upgrade gets deleted.
+describe('no-hardcoded-control-geometry', () => {
+  const GEOMETRY = 'no-hardcoded-control-geometry';
+  const geometryOf = (results) => results.filter((result) => result.ruleId?.endsWith(GEOMETRY));
+
+  it.each([
+    {
+      what: 'a 44px min-height is a touch target',
+      js: '<div style={{ minHeight: "44px" }} />',
+      css: 'a { min-height: 44px; }',
+      flagged: 'var(--target)',
+    },
+    {
+      what: 'a 44px min-width is a touch target',
+      js: '<div style={{ minWidth: "44px" }} />',
+      css: 'a { min-width: 44px; }',
+      flagged: 'var(--target)',
+    },
+    {
+      what: 'a 44px height is a touch target',
+      js: '<div style={{ height: "44px" }} />',
+      css: 'a { height: 44px; }',
+      flagged: 'var(--target)',
+    },
+    {
+      what: 'a 44px width is a touch target',
+      js: '<div style={{ width: "44px" }} />',
+      css: 'a { width: 44px; }',
+      flagged: 'var(--target)',
+    },
+    {
+      what: 'a logical size is the same decision as a physical one',
+      js: '<div style={{ minBlockSize: "44px" }} />',
+      css: 'a { min-block-size: 44px; }',
+      flagged: 'var(--target)',
+    },
+    {
+      // A token elsewhere in the value does not excuse the literal: this is
+      // the exact shape the old focus styles had.
+      what: 'a 2px outline width is a focus ring, even beside a token colour',
+      js: '<div style={{ outline: "2px solid var(--focus-ring)" }} />',
+      css: 'a { outline: 2px solid var(--focus-ring); }',
+      flagged: 'focus ring tokens',
+    },
+    {
+      what: 'a 2px outline-width is a focus ring',
+      js: '<div style={{ outlineWidth: "2px" }} />',
+      css: 'a { outline-width: 2px; }',
+      flagged: 'focus ring tokens',
+    },
+    {
+      what: 'a 2px outline-offset is a focus ring',
+      js: '<div style={{ outlineOffset: "2px" }} />',
+      css: 'a { outline-offset: 2px; }',
+      flagged: 'focus ring tokens',
+    },
+    {
+      what: 'an inset ring is the same offset, negated',
+      js: '<div style={{ outlineOffset: "-2px" }} />',
+      css: 'a { outline-offset: -2px; }',
+      flagged: 'focus ring tokens',
+    },
+    {
+      what: 'the target token',
+      js: '<div style={{ minHeight: "var(--target)" }} />',
+      css: 'a { min-height: var(--target); }',
+      flagged: null,
+    },
+    {
+      // react CSS writes the fallback out; it is the token's own value.
+      what: 'a literal that is only a var() fallback',
+      js: '<div style={{ outline: "var(--focus-ring-width, 2px) solid var(--focus-ring)" }} />',
+      css: 'a { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); }',
+      flagged: null,
+    },
+    {
+      what: 'the offset token, fallback and all',
+      js: '<div style={{ outlineOffset: "var(--focus-ring-offset, 2px)" }} />',
+      css: 'a { outline-offset: var(--focus-ring-offset, 2px); }',
+      flagged: null,
+    },
+    {
+      what: 'a 1px forced-colors outline is not a focus ring',
+      js: '<div style={{ outline: "1px solid CanvasText" }} />',
+      css: 'a { outline: 1px solid CanvasText; }',
+      flagged: null,
+    },
+    {
+      what: 'a size that is not a target size',
+      js: '<div style={{ width: "40px", height: "24px" }} />',
+      css: 'a { width: 40px; height: 24px; }',
+      flagged: null,
+    },
+    {
+      what: '144px is not 44px',
+      js: '<div style={{ width: "144px" }} />',
+      css: 'a { width: 144px; }',
+      flagged: null,
+    },
+    {
+      what: 'a property off both axes',
+      js: '<div style={{ padding: "44px", borderWidth: "2px" }} />',
+      css: 'a { padding: 44px; border-width: 2px; }',
+      flagged: null,
+    },
+  ])('$what', ({ js, css, flagged }) => {
+    const jsResults = geometryOf(lint(`export const A = () => (${js})`));
+    const cssResults = geometryOf(lintCss(css));
+
+    if (flagged) {
+      expect(messagesOf(jsResults)).toHaveLength(1);
+      expect(messagesOf(cssResults)).toHaveLength(1);
+      expect(jsResults[0].message).toContain(flagged);
+      expect(cssResults[0].message).toContain(flagged);
+    } else {
+      expect(messagesOf(jsResults)).toEqual([]);
+      expect(messagesOf(cssResults)).toEqual([]);
+    }
+  });
+
+  it('reads a unitless number in a style object as the px React renders', () => {
+    const results = geometryOf(
+      lint('export const A = () => <div style={{ minHeight: 44, outlineOffset: 2 }} />'),
+    );
+
+    expect(results).toHaveLength(2);
+  });
+
+  it('leaves a number outside a style attribute alone, a DOMRect mock say', () => {
+    expect(
+      geometryOf(lint('export const rect = { top: 0, left: 0, width: 60, height: 44 }')),
+    ).toEqual([]);
+  });
+
+  it('does not double-report as no-hardcoded-design-values', () => {
+    expect(rulesOf(lintCss('a { min-height: 44px; }'))).toEqual([`@elirobinson-css/${GEOMETRY}`]);
+    expect(rulesOf(lint('export const A = () => <div style={{ minHeight: "44px" }} />'))).toEqual([
+      `@elirobinson/${GEOMETRY}`,
+    ]);
+  });
+
+  it('ships as a warning in both configs, whatever `severity` says', () => {
+    const [js] = lint('export const A = () => <div style={{ minHeight: "44px" }} />', {
+      options: { severity: 'error' },
+    });
+    const [css] = lintCss('a { min-height: 44px; }', { options: { severity: 'error' } });
+
+    expect(js.severity).toBe(1);
+    expect(css.severity).toBe(1);
+  });
+
+  it('can be raised to an error', () => {
+    const [js] = lint('export const A = () => <div style={{ minHeight: "44px" }} />', {
+      options: { controlGeometry: { severity: 'error' } },
+    });
+    const [css] = lintCss('a { min-height: 44px; }', {
+      options: { controlGeometrySeverity: 'error' },
+    });
+
+    expect(js.severity).toBe(2);
+    expect(css.severity).toBe(2);
+  });
+});
+
+// A system colour is what forced-colors mode paints with. It has no token and
+// cannot have one — the user's OS picks it — so a shadow or colour that names
+// one is not a hardcoded design value. Every forced-colors block used to need a
+// disable comment for it.
+describe('CSS system colours are exempt', () => {
+  it.each([
+    {
+      what: 'a forced-colors ring',
+      js: '<div style={{ boxShadow: "inset 0 0 0 1px CanvasText" }} />',
+      css: 'a { box-shadow: inset 0 0 0 1px CanvasText; }',
+    },
+    {
+      what: 'a highlight shadow',
+      js: '<div style={{ boxShadow: "0 0 0 2px Highlight" }} />',
+      css: 'a { box-shadow: 0 0 0 2px Highlight; }',
+    },
+    {
+      what: 'a shadow in a Tailwind arbitrary value',
+      js: '<div className="shadow-[inset_0_0_0_1px_ButtonBorder]" />',
+      css: 'a { box-shadow: inset 0 0 0 1px ButtonBorder; }',
+    },
+  ])('$what', ({ js, css }) => {
+    expect(messagesOf(lint(`export const A = () => (${js})`))).toEqual([]);
+    expect(messagesOf(lintCss(css))).toEqual([]);
+  });
+
+  it('still flags the same shadow with a literal colour', () => {
+    expect(lintCss('a { box-shadow: inset 0 0 0 1px #000; }')).toHaveLength(1);
+  });
+
+  it.each([
+    'CanvasText',
+    'Canvas',
+    'Highlight',
+    'HighlightText',
+    'ButtonText',
+    'GrayText',
+    'AccentColor',
+    'Mark',
+  ])('isExempt knows %s', (keyword) => {
+    expect(isExempt(`inset 0 0 0 1px ${keyword}`)).toBe(true);
+  });
+
+  it('does not take a word that merely contains one', () => {
+    expect(isExempt('0 4px 12px rgba(0,0,0,.1) /* MarkedUp */')).toBe(false);
+    expect(isExempt('0 4px 12px --Highlight-ish')).toBe(false);
+  });
+});
+
 describe('no-padded-ui-copy', () => {
   const copyOf = (results) => results.filter((r) => r.ruleId === '@elirobinson/no-padded-ui-copy');
 

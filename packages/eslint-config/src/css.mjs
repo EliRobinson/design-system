@@ -1,5 +1,5 @@
-// The stylesheet halves of no-hardcoded-design-values and
-// no-duplicate-token-stylesheet, and three contracts that are a shape rather
+// The stylesheet halves of no-hardcoded-design-values,
+// no-hardcoded-control-geometry and no-duplicate-token-stylesheet, and three contracts that are a shape rather
 // than a value and have no JS counterpart — no-underlined-control-label,
 // no-decorative-control-edge and no-mismatched-status-foreground.
 //
@@ -19,7 +19,7 @@ import css from '@eslint/css';
 
 import { rule as decorativeControlEdge } from './rules/no-decorative-control-edge.mjs';
 import { cssRule as duplicateTokenStylesheet } from './rules/no-duplicate-token-stylesheet.mjs';
-import { cssRule } from './rules/no-hardcoded-css-values.mjs';
+import { cssGeometryRule, cssRule } from './rules/no-hardcoded-css-values.mjs';
 import { rule as mismatchedStatusForeground } from './rules/no-mismatched-status-foreground.mjs';
 import { rule as underlinedControlLabel } from './rules/no-underlined-control-label.mjs';
 
@@ -28,6 +28,7 @@ export const plugin = {
   rules: {
     'no-decorative-control-edge': decorativeControlEdge,
     'no-duplicate-token-stylesheet': duplicateTokenStylesheet,
+    'no-hardcoded-control-geometry': cssGeometryRule,
     'no-hardcoded-design-values': cssRule,
     'no-mismatched-status-foreground': mismatchedStatusForeground,
     'no-underlined-control-label': underlinedControlLabel,
@@ -40,10 +41,18 @@ export const plugin = {
  * @param {string[]} [options.ignores] stylesheets that define values rather
  *   than consume them (your own token layer, vendored CSS)
  * @param {'error' | 'warn'} [options.severity]
+ * @param {'error' | 'warn' | 'off'} [options.controlGeometrySeverity] for
+ *   no-hardcoded-control-geometry, which ships as a warning and does not
+ *   follow `severity`: raise it once your stylesheets are clean.
  * @returns {import('eslint').Linter.Config[]}
  */
 export function designSystemCss(options = {}) {
-  const { files = ['**/*.css'], ignores = [], severity = 'error' } = options;
+  const {
+    files = ['**/*.css'],
+    ignores = [],
+    severity = 'error',
+    controlGeometrySeverity = 'warn',
+  } = options;
 
   return [
     {
@@ -56,6 +65,8 @@ export function designSystemCss(options = {}) {
         '@elirobinson-css/no-decorative-control-edge': severity,
         // Always `warn` — see the same rule in index.mjs.
         '@elirobinson-css/no-duplicate-token-stylesheet': 'warn',
+        // `warn` by default — see the same rule in index.mjs.
+        '@elirobinson-css/no-hardcoded-control-geometry': controlGeometrySeverity,
         '@elirobinson-css/no-hardcoded-design-values': severity,
         '@elirobinson-css/no-mismatched-status-foreground': severity,
         '@elirobinson-css/no-underlined-control-label': severity,

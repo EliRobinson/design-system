@@ -60,6 +60,10 @@ const SOURCE_FILES = ['**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'];
  * @param {string[]} [options.files] override which files the config applies to
  * @param {'error' | 'warn'} [options.severity]
  * @param {object} [options.hardcodedValues] options for no-hardcoded-design-values
+ * @param {object} [options.controlGeometry] options for
+ *   no-hardcoded-control-geometry: just its own `severity`, which defaults to
+ *   `'warn'` and does not follow `severity` above, for the same reason as the
+ *   copy rule's below.
  * @param {object} [options.copy] options for no-padded-ui-copy, plus its own
  *   `severity` — it ships as a warning, deliberately, and does not follow the
  *   `severity` above. Every repo that upgrades into this rule has copy written
@@ -74,8 +78,11 @@ export function designSystem(options = {}) {
     files = SOURCE_FILES,
     severity = 'error',
     hardcodedValues = {},
+    controlGeometry = {},
     copy = {},
   } = options;
+
+  const { severity: controlGeometrySeverity = 'warn' } = controlGeometry;
 
   const { severity: copySeverity = 'warn', ...copyOptions } = copy;
 
@@ -93,6 +100,10 @@ export function designSystem(options = {}) {
         // rule that red-builds a consumer on upgrade gets deleted. Raise it in
         // your own config once the repo is clean.
         '@elirobinson/no-duplicate-token-stylesheet': 'warn',
+        // Always `warn` unless raised: a raw 44px target or 2px focus ring is
+        // in every app that predates the tokens, and a rule that red-builds a
+        // consumer on upgrade gets deleted.
+        '@elirobinson/no-hardcoded-control-geometry': controlGeometrySeverity,
         '@elirobinson/no-hardcoded-design-values': [severity, hardcodedValues],
         '@elirobinson/no-padded-ui-copy': [copySeverity, copyOptions],
       },

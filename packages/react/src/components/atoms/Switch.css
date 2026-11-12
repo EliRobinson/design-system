@@ -23,7 +23,8 @@
   height: 24px;
   position: relative;
   transition: background-color var(--dur-fast) var(--ease-out);
-  width: 44px; /* the track's drawn width, not a hit area: the row's min-height is */
+  /* eslint-disable-next-line @elirobinson-css/no-hardcoded-control-geometry -- the track's drawn width, not a hit area: the row's min-height is */
+  width: 44px;
 }
 
 /* The knob is --bg, not a fixed white: on a dark theme a white knob sat on a

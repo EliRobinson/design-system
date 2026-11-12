@@ -28,13 +28,14 @@ export default [
 Returns flat config objects: one carrying the rules, plus a second that relaxes the direct
 primitive ban inside the gap-filler globs.
 
-| Option            | Default                     | What it does                                                                                     |
-| ----------------- | --------------------------- | ------------------------------------------------------------------------------------------------ |
-| `gapFiller`       | `['**/components/ui/**']`   | Globs where a sanctioned gap-filler lives — see below                                            |
-| `files`           | all JS/TS source extensions | Which files the config applies to                                                                |
-| `severity`        | `'error'`                   | Severity for every rule **except** the copy rule and `no-duplicate-token-stylesheet` — see below |
-| `hardcodedValues` | `{}`                        | Options forwarded to `no-hardcoded-design-values`                                                |
-| `copy`            | `{}`                        | Options forwarded to `no-padded-ui-copy`, plus its own `severity`                                |
+| Option            | Default                     | What it does                                                                                                                      |
+| ----------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `gapFiller`       | `['**/components/ui/**']`   | Globs where a sanctioned gap-filler lives — see below                                                                             |
+| `files`           | all JS/TS source extensions | Which files the config applies to                                                                                                 |
+| `severity`        | `'error'`                   | Severity for every rule **except** the copy rule, `no-hardcoded-control-geometry` and `no-duplicate-token-stylesheet` — see below |
+| `hardcodedValues` | `{}`                        | Options forwarded to `no-hardcoded-design-values`                                                                                 |
+| `controlGeometry` | `{}`                        | Just a `severity` for `no-hardcoded-control-geometry`, `'warn'` by default — see below                                            |
+| `copy`            | `{}`                        | Options forwarded to `no-padded-ui-copy`, plus its own `severity`                                                                 |
 
 `gapFiller` names where shadcn/ui output (or its equivalent) lives. Direct primitive
 imports are allowed there and every other ban still applies; pass `[]` to drop the second
@@ -62,6 +63,19 @@ That protection is for the upgrade, which happens once. **Raise it to `'error'` 
 the repo lints clean under it** — at `warn` the rule observes that the copy is clean, at
 `error` it keeps it that way. It is a line in the **Definition of Done for UI work** that
 `pnpm ds patterns` prints. `'off'` also works, if a repo has decided against the rule.
+
+### `no-hardcoded-control-geometry` ships at `warn`
+
+The rule flags a raw `44px` on a size property (`min-height`, `width`, `min-block-size`,
+…) and a raw `2px` outline width or `outline-offset`, which have tokens: `var(--target)`
+and `var(--focus-ring-width)` / `var(--focus-ring-offset)`. Nearly every app written before
+those tokens existed has one of those literals, so it ships at `warn` and does not inherit
+`severity`. Raise it once the repo is clean:
+
+```js
+...designSystem({ controlGeometry: { severity: 'error' } });
+...designSystemCss({ controlGeometrySeverity: 'error' });
+```
 
 ### `no-duplicate-token-stylesheet` always ships at `warn`
 
@@ -95,11 +109,12 @@ import designSystemCss from '@elirobinson/eslint-config/css';
 export default [...designSystem(), ...designSystemCss()];
 ```
 
-| Option     | Default        | What it does                                                                                                |
-| ---------- | -------------- | ----------------------------------------------------------------------------------------------------------- |
-| `files`    | `['**/*.css']` | Which stylesheets to lint.                                                                                  |
-| `ignores`  | `[]`           | Stylesheets that _define_ values rather than consume them — your own token layer, vendored third-party CSS. |
-| `severity` | `'error'`      | Severity for every rule in this config except `no-duplicate-token-stylesheet`, which is always `warn`.      |
+| Option                    | Default        | What it does                                                                                                       |
+| ------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `files`                   | `['**/*.css']` | Which stylesheets to lint.                                                                                         |
+| `ignores`                 | `[]`           | Stylesheets that _define_ values rather than consume them — your own token layer, vendored third-party CSS.        |
+| `severity`                | `'error'`      | Severity for every rule in this config except `no-hardcoded-control-geometry` and `no-duplicate-token-stylesheet`. |
+| `controlGeometrySeverity` | `'warn'`       | Severity for `no-hardcoded-control-geometry`. See [above](#no-hardcoded-control-geometry-ships-at-warn).           |
 
 Point `ignores` at any sheet that legitimately declares literals. A token file that is
 linted as if it were a consumer of tokens fails on every line it exists to write.
@@ -126,6 +141,7 @@ second, separate one, because those rules run under the CSS language.
 
 ## What this config cannot check
 
-Touch targets, visible focus, and contrast are settled by a browser, not by a parser. They
+Whether a control's hit area really is 44x44, whether focus is visible, and contrast are
+settled by a browser, not by a parser — the lint only sees that a token was used. They
 ship as Playwright helpers in `@elirobinson/ai-patterns/testing/playwright`, and
 `pnpm ds contracts` marks which constraints land on which side.
