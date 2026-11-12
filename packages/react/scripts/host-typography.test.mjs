@@ -1,5 +1,6 @@
-/* Component titles, paragraphs and lists keep their own styles inside a host `.prose`, and
- * the Combobox list opens below its input whatever layout the root is given.
+/* Component titles, paragraphs and lists keep their own styles inside a host
+ * `.prose`, and the Combobox list opens below its input whatever layout the
+ * root is given.
  *
  * #367: host typography beat the component. The docs' `.prose h2` is (0,1,1)
  * and `.ds-dialog__title` was (0,1,0), so every Dialog and CommandPalette
@@ -65,22 +66,26 @@ import { Toast, ToastDescription, ToastTitle } from '../src/components/organisms
 import { bootBrowser, inPage } from './browser.test-helper.mjs';
 
 const COMPONENTS = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'components');
-const SHEETS = {
-  'Dialog.css': join(COMPONENTS, 'organisms', 'Dialog.css'),
-  'Sheet.css': join(COMPONENTS, 'organisms', 'Sheet.css'),
-  'CommandPalette.css': join(COMPONENTS, 'organisms', 'CommandPalette.css'),
-  'Combobox.css': join(COMPONENTS, 'organisms', 'Combobox.css'),
-  'SearchField.css': join(COMPONENTS, 'molecules', 'SearchField.css'),
-  'Card.css': join(COMPONENTS, 'molecules', 'Card.css'),
-  'EmptyState.css': join(COMPONENTS, 'molecules', 'EmptyState.css'),
-  'DecisionCard.css': join(COMPONENTS, 'molecules', 'DecisionCard.css'),
-  'VerdictBadge.css': join(COMPONENTS, 'molecules', 'VerdictBadge.css'),
-  'StubCard.css': join(COMPONENTS, 'molecules', 'StubCard.css'),
-  'Alert.css': join(COMPONENTS, 'molecules', 'Alert.css'),
-  'Toast.css': join(COMPONENTS, 'organisms', 'Toast.css'),
-  'Pagination.css': join(COMPONENTS, 'molecules', 'Pagination.css'),
-  'Breadcrumb.css': join(COMPONENTS, 'molecules', 'Breadcrumb.css'),
+/* The sheets every case needs, by tier. */
+const SHEET_NAMES = {
+  organisms: ['Dialog', 'Sheet', 'CommandPalette', 'Combobox', 'Toast'],
+  molecules: [
+    'SearchField',
+    'Card',
+    'EmptyState',
+    'DecisionCard',
+    'VerdictBadge',
+    'StubCard',
+    'Alert',
+    'Pagination',
+    'Breadcrumb',
+  ],
 };
+const SHEETS = Object.fromEntries(
+  Object.entries(SHEET_NAMES).flatMap(([tier, names]) =>
+    names.map((name) => [`${name}.css`, join(COMPONENTS, tier, `${name}.css`)]),
+  ),
+);
 const VIEWPORT = { width: 1024, height: 768 };
 
 const { browser, describeBrowser } = await bootBrowser('host typography');
@@ -273,6 +278,28 @@ const CASES = {
       '.ds-decision__closing',
     ],
   },
+  /* The coded headline and the prose figure layout: modifiers that restyle
+     reset elements. */
+  'DecisionCard, coded': {
+    markup: renderToStaticMarkup(
+      h(DecisionCard, {
+        verdict: 'hold',
+        verdictLabel: 'Hold',
+        code: 'D-12',
+        headline: 'Wait a week',
+        figureLayout: 'prose',
+        figures: [{ id: 'why', label: 'Why', value: 'Prices drop after the sale.' }],
+      }),
+    ),
+    targets: [
+      '.ds-decision__headline',
+      '.ds-decision__code',
+      '.ds-decision__headline-text',
+      '.ds-decision__figures',
+      '.ds-decision__figure-label',
+      '.ds-decision__figure-value',
+    ],
+  },
   StubCard: {
     markup: renderToStaticMarkup(
       h(StubCard, {
@@ -411,6 +438,49 @@ describeBrowser('components keep their own type and list styles inside .prose (#
     expect(styles.dialogDescription['font-size']).toBe(styles.sm);
     expect(styles.sheetTitle).toEqual(styles.dialogTitle);
     expect(styles.sheetDescription).toEqual(styles.dialogDescription);
+  });
+
+  /* The DecisionCard modifiers tie the root-scoped base rules at (0,2,0) and
+     win only on source order. A swap would match bare and prose alike, so
+     this pins what each modifier paints. */
+  it('DecisionCard modifiers still restyle the figures they own', async () => {
+    const body =
+      CASES.DecisionCard.markup +
+      `<div id="prose-layout">${CASES['DecisionCard, coded'].markup}</div>` +
+      '<span id="tr-normal" style="letter-spacing: var(--tr-normal)"></span>' +
+      '<span id="fs-md" style="font-size: var(--fs-md); font-weight: var(--fw-semibold)"></span>' +
+      '<span id="fs-xs" style="font-size: var(--fs-xs); color: var(--fg-3)"></span>' +
+      '<span id="fs-2xs" style="font-size: var(--fs-2xs); font-family: var(--font-mono)"></span>';
+    const read = await load({ body }, () => {
+      const style = (selector) => {
+        const s = getComputedStyle(document.querySelector(selector));
+        return {
+          size: s.fontSize,
+          weight: s.fontWeight,
+          color: s.color,
+          family: s.fontFamily,
+          tracking: s.letterSpacing,
+        };
+      };
+      return {
+        total: style('.ds-decision__total .ds-decision__figure-label'),
+        contrast: style('.ds-decision__contrast .ds-decision__figure-label'),
+        prose: style('#prose-layout .ds-decision__figure-label'),
+        coded: style('#prose-layout .ds-decision__headline'),
+        trNormal: style('#tr-normal'),
+        md: style('#fs-md'),
+        xs: style('#fs-xs'),
+        xxs: style('#fs-2xs'),
+      };
+    });
+
+    expect(read.total.size).toBe(read.md.size);
+    expect(read.total.weight).toBe(read.md.weight);
+    expect(read.contrast.size).toBe(read.xs.size);
+    expect(read.contrast.color).toBe(read.xs.color);
+    expect(read.prose.size).toBe(read.xxs.size);
+    expect(read.prose.family).toBe(read.xxs.family);
+    expect(read.coded.tracking).toBe(read.trNormal.tracking);
   });
 
   it('lists carry no markers, bare or inside .prose', async () => {

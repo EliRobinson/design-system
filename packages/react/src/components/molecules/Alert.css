@@ -10,10 +10,8 @@
   padding: var(--space-4) var(--space-5);
 }
 
-/* Root-scoped at (0,2,0) like every text-bearing component (#383), so the
-   title and description keep their type if they ever render as a heading or
-   paragraph. See "Why an overlay title resets at (0,2,0)" in
-   docs/agents/components.md. */
+/* #383: scoped under the root at (0,2,0), in case these ever render a heading
+   or paragraph; docs/agents/components.md says why. */
 .ds-alert .ds-alert__title {
   font-family: var(--font-sans);
   font-size: var(--fs-sm);

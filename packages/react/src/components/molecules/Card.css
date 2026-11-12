@@ -15,9 +15,7 @@
   padding: var(--space-6) var(--space-6) 0;
 }
 
-/* Text the component renders as a heading, paragraph or list is reset under
-   the root at (0,2,0), so a host `.prose` cannot restyle it (#383). See "Why
-   an overlay title resets at (0,2,0)" in docs/agents/components.md. */
+/* #383: scoped under the root at (0,2,0); docs/agents/components.md says why. */
 .ds-card .ds-card__title {
   border: 0;
   color: var(--fg);
@@ -34,7 +32,7 @@
   color: var(--fg-2);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
-  letter-spacing: normal;
+  letter-spacing: inherit;
   line-height: var(--lh-normal);
   margin: 0;
   padding: 0;
