@@ -3,7 +3,7 @@ import { forwardRef, useCallback, useEffect, useId, useMemo, useRef } from 'reac
 
 import type { UseDisclosureOptions } from '../../../hooks/useDisclosure.js';
 import { useDisclosure } from '../../../hooks/useDisclosure.js';
-import { EscapeLayerProvider, useEscapeKey } from '../../../hooks/useEscapeKey.js';
+import { EscapeLayerProvider, useNativeEscapeLayer } from '../../../hooks/useEscapeKey.js';
 import { cn } from '../../../lib/cn.js';
 import { useMergedRef } from '../../../lib/useMergedRef.js';
 
@@ -113,7 +113,7 @@ export const ModalSurface = forwardRef<HTMLDialogElement, ModalSurfaceProps>(fun
   // the stack stops a layer opened before it, now underneath, from closing on
   // the same keypress, and lets a layer opened inside it cancel the keydown
   // so the dialog stays open.
-  const escapeLayer = useEscapeKey(null, open);
+  const escapeLayer = useNativeEscapeLayer(open);
 
   useEffect(() => {
     const dialog = dialogRef.current;

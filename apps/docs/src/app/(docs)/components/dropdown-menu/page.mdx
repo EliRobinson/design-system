@@ -89,8 +89,8 @@ when the submission does not need the form to survive the click.
   `DropdownMenuItem` is `role="menuitem"`, each checkbox item `menuitemcheckbox` and each radio
   item `menuitemradio`, inside a `role="group"`. The trigger carries `aria-haspopup="menu"`,
   `aria-expanded`, and `aria-controls`.
-- `Escape` closes the menu from anywhere on the page — a document-level listener, active only
-  while the menu is open. Clicking anywhere outside the trigger or the menu content also closes
+- `Escape` closes the menu from anywhere on the page while it is the topmost open layer, and
+  returns focus to the trigger. An open tooltip inside it closes first. Clicking anywhere outside the trigger or the menu content also closes
   it.
 - Opening the menu moves focus to the first item that can be chosen, as the WAI-ARIA menu button
   pattern has it. `ArrowDown` on the trigger opens it the same way; `ArrowUp` opens it on the

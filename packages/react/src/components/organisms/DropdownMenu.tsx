@@ -6,15 +6,7 @@ import type {
   MutableRefObject,
   ReactNode,
 } from 'react';
-import {
-  createContext,
-  forwardRef,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import { createContext, forwardRef, useContext, useEffect, useMemo, useRef } from 'react';
 
 import { cn } from '../../lib/cn.js';
 import { Mark } from '../../lib/marks.js';
@@ -65,8 +57,6 @@ type OpenEdge = 'first' | 'last';
 type DropdownMenuContextValue = AnchoredOverlayContextValue & {
   /** Set by the trigger just before it opens the menu; read once on open. */
   openEdgeRef: MutableRefObject<OpenEdge>;
-  /** Close and hand focus back to the trigger. */
-  closeToTrigger: () => void;
 };
 
 const DropdownMenuContext = createContext<DropdownMenuContextValue | null>(null);
@@ -131,7 +121,7 @@ export function DropdownMenu({
 }: DropdownMenuProps) {
   const overlay = useAnchoredOverlay({ open, defaultOpen, onOpenChange });
   const openEdgeRef = useRef<OpenEdge>('first');
-  const { open: isOpen, onOpenChange: setOpen, triggerRef, contentRef } = overlay;
+  const { open: isOpen, contentRef } = overlay;
 
   // Focus moves in on the closed → open change only. A menu that starts open
   // (a story, a test, a controlled consumer restoring state) did not just
@@ -147,15 +137,7 @@ export function DropdownMenu({
     wasOpen.current = isOpen;
   }, [isOpen, contentRef]);
 
-  const closeToTrigger = useCallback(() => {
-    triggerRef.current?.focus();
-    setOpen(false);
-  }, [setOpen, triggerRef]);
-
-  const context = useMemo(
-    () => ({ ...overlay, openEdgeRef, closeToTrigger }),
-    [overlay, closeToTrigger],
-  );
+  const context = useMemo(() => ({ ...overlay, openEdgeRef }), [overlay]);
 
   return <DropdownMenuContext.Provider value={context}>{children}</DropdownMenuContext.Provider>;
 }

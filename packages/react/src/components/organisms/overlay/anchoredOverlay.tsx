@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, RefObject } from 'react';
-import { forwardRef, useId, useMemo, useRef } from 'react';
+import { forwardRef, useCallback, useId, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 import type { AnchoredPositionOptions } from '../../../hooks/useAnchoredPosition.js';
@@ -27,6 +27,8 @@ export type AnchoredOverlayContextValue = {
   contentId: string;
   /** This overlay's place on the dismissal stack, parent to what opens inside it. */
   escapeLayer: EscapeLayer;
+  /** Close and hand focus back to the trigger. */
+  closeToTrigger: () => void;
 };
 
 export type AnchoredOverlayOptions = UseDisclosureOptions;
@@ -52,19 +54,32 @@ export function useAnchoredOverlay({
   const { open, setOpen } = useDisclosure({ open: controlledOpen, defaultOpen, onOpenChange });
 
   useClickOutside([triggerRef, contentRef], () => setOpen(false), open);
+  const closeToTrigger = useCallback(() => {
+    triggerRef.current?.focus();
+    setOpen(false);
+  }, [setOpen]);
   const escapeLayer = useEscapeKey(() => {
     // Focus inside the panel would fall to <body> when it unmounts. The
     // trigger is where it came from, and the panel is portalled to the end of
     // <body>, so nothing in the tab order leads back otherwise.
     if (contentRef.current?.contains(document.activeElement)) {
-      triggerRef.current?.focus();
+      closeToTrigger();
+    } else {
+      setOpen(false);
     }
-    setOpen(false);
   }, open);
 
   return useMemo(
-    () => ({ open, onOpenChange: setOpen, triggerRef, contentRef, contentId, escapeLayer }),
-    [open, setOpen, contentId, escapeLayer],
+    () => ({
+      open,
+      onOpenChange: setOpen,
+      triggerRef,
+      contentRef,
+      contentId,
+      escapeLayer,
+      closeToTrigger,
+    }),
+    [open, setOpen, contentId, escapeLayer, closeToTrigger],
   );
 }
 

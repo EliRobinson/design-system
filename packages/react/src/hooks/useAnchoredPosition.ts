@@ -31,12 +31,10 @@ const GAP = 4;
 
 const OPPOSITE_ALIGN: Record<Align, Align> = { start: 'end', end: 'start', center: 'center' };
 
-const OPPOSITE: Record<AnchoredSide, AnchoredSide> = {
-  top: 'bottom',
-  bottom: 'top',
-  left: 'right',
-  right: 'left',
-};
+/** An end of an axis: `start` is nearer the viewport's origin. */
+type Edge = 'start' | 'end';
+
+const OPPOSITE_EDGE: Record<Edge, Edge> = { start: 'end', end: 'start' };
 
 /**
  * The inline `min-width` for a start/end-aligned panel.
@@ -95,6 +93,8 @@ type Axis = {
   /** The edge nearer the viewport's origin, and the one further from it. */
   start: 'left' | 'top';
   end: 'right' | 'bottom';
+  /** The other axis: the cross axis of a panel whose main axis this is. */
+  cross: () => Axis;
   size: 'width' | 'height';
   viewport: 'innerWidth' | 'innerHeight';
   translate: 'translateX' | 'translateY';
@@ -106,6 +106,7 @@ const X: Axis = {
   size: 'width',
   viewport: 'innerWidth',
   translate: 'translateX',
+  cross: () => Y,
 };
 const Y: Axis = {
   start: 'top',
@@ -113,6 +114,15 @@ const Y: Axis = {
   size: 'height',
   viewport: 'innerHeight',
   translate: 'translateY',
+  cross: () => X,
+};
+
+/** The main axis each side hangs the panel along, and which end of it. */
+const SIDE: Record<AnchoredSide, { axis: Axis; edge: Edge }> = {
+  top: { axis: Y, edge: 'start' },
+  bottom: { axis: Y, edge: 'end' },
+  left: { axis: X, edge: 'start' },
+  right: { axis: X, edge: 'end' },
 };
 
 /**
@@ -120,13 +130,7 @@ const Y: Axis = {
  * shifted into view, and releases the other edge to `auto`: a fixed box given
  * both is stretched between them rather than sized by its content.
  */
-function pin(
-  content: HTMLElement,
-  axis: Axis,
-  edge: 'start' | 'end',
-  offset: number,
-  size: number,
-) {
+function pin(content: HTMLElement, axis: Axis, edge: Edge, offset: number, size: number) {
   const released = edge === 'start' ? axis.end : axis.start;
   content.style[axis[edge]] = `${shiftIntoView(offset, size, window[axis.viewport])}px`;
   content.style[released] = 'auto';
@@ -140,7 +144,7 @@ function pin(
 function placeOnMainAxis(
   content: HTMLElement,
   axis: Axis,
-  edge: 'start' | 'end',
+  edge: Edge,
   rect: DOMRect,
   panel: DOMRect,
 ) {
@@ -279,26 +283,25 @@ export function useAnchoredPosition(
       /* Read before any write of geometry. Both boxes are measured up front,
          and measuring them after writing offsets would read back what this
          pass had just set. */
-      const beside = side === 'left' || side === 'right';
-      const main = beside ? X : Y;
-      const cross = beside ? Y : X;
-      const room: Record<AnchoredSide, number> = {
-        top: rect.top - GAP,
-        bottom: window.innerHeight - rect.bottom - GAP,
-        left: rect.left - GAP,
-        right: window.innerWidth - rect.right - GAP,
+      const { axis: main, edge } = SIDE[side];
+      const cross = main.cross();
+      /* Room along the main axis beyond the trigger's start edge or end edge,
+         less the gap, keyed by the edge the panel hangs off. */
+      const room: Record<Edge, number> = {
+        start: rect[main.start] - GAP,
+        end: window[main.viewport] - rect[main.end] - GAP,
       };
 
       /* Room along the cross axis, measured from the trigger's start edge
          forwards or its end edge backwards, keyed by the alignment that uses it. */
-      const alignRoom: Record<'start' | 'end', number> = {
+      const alignRoom: Record<Edge, number> = {
         start: window[cross.viewport] - rect[cross.start],
         end: rect[cross.end],
       };
 
       if (!flippedSide.current) {
-        const preferred = room[side];
-        const opposite = room[OPPOSITE[side]];
+        const preferred = room[edge];
+        const opposite = room[OPPOSITE_EDGE[edge]];
         const size = panel[main.size];
         /* Only worth flipping if the other side is actually better. A panel
            that fits nowhere stays where it was asked to go. */
@@ -316,17 +319,16 @@ export function useAnchoredPosition(
 
       /* `flippedAlign` only ever latches on a start/end panel, so the centred
          case needs no guard here. */
-      const effectiveSide: AnchoredSide = flippedSide.current ? OPPOSITE[side] : side;
+      const effectiveEdge = flippedSide.current ? OPPOSITE_EDGE[edge] : edge;
       const effectiveAlign: Align = flippedAlign.current ? OPPOSITE_ALIGN[align] : align;
 
       content.style.zIndex = zIndex;
 
-      const mainEdge = effectiveSide === 'bottom' || effectiveSide === 'right' ? 'end' : 'start';
-      placeOnMainAxis(content, main, mainEdge, rect, panel);
+      placeOnMainAxis(content, main, effectiveEdge, rect, panel);
       placeOnCrossAxis(content, cross, effectiveAlign, rect, panel);
       // The menu/listbox shape: at least as wide as its trigger. Beside the
       // trigger the cross axis is vertical, so there is no width to match.
-      if (!beside && effectiveAlign !== 'center') {
+      if (cross === X && effectiveAlign !== 'center') {
         content.style.minWidth = minWidthFor(rect.width);
       }
 
