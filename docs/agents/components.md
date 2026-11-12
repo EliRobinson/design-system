@@ -391,18 +391,16 @@ The mapping lives in one place:
 Consumers get it as `@elirobinson/ai-patterns/migrate/adopt/shadcn.md` and in the
 `ds-migrate` skill, and `migrate-files.test.mjs` checks every Miltinson name in it against
 `@elirobinson/react/manifest`. Add a row there, not here.
-`shadcn-mapping-single-source.test.mjs` fails if a table with a shadcn column appears
-anywhere else in the repo.
+`scripts/shadcn-mapping-single-source.test.mjs` fails if a table with a shadcn column
+appears anywhere else in the repo.
 
 Contributor notes that are not part of the mapping:
 
 - `Button size="sm"` is 36px. That is a sanctioned dense variant that matches shadcn's own
   `sm`. See "Why `size=\"sm\"` is 36px" above.
-- `Chip` (shadcn has no removable badge) is sized to the MUI/shadcn dense scale.
-  `SegmentedControl` (the closest analog of shadcn's Toggle Group) is a primary control and
-  keeps the 44px target.
 - These have no shadcn primitive. They are local patterns (see "New components" above):
   - `SearchField`, `Stepper`, `EmptyState`, `Rating`, `VirtualList`.
+  - `Eyebrow`, `RuleLink`: marketing typography primitives from the UI kits.
   - `VerdictBadge`: a decision marker that carries a glyph and a word, so the verdict is
     never colour alone.
   - `StubCard`: a body column beside a perforated stub column. The perforation is a dashed

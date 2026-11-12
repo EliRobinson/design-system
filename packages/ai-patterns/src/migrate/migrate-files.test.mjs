@@ -12,19 +12,17 @@ import { fileURLToPath } from 'node:url';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { backticked, fencedBlocks, tables } from './markdown.test-helper.mjs';
 import {
-  backticked,
   checkAfterBlock,
   checkJsx,
   checkMappingSpan,
   checkCss,
   checkUtilities,
   EXEMPT_LANGUAGES,
-  fencedBlocks,
   loadVocabulary,
   nearestOnScale,
   SIDES,
-  tables,
 } from './snippets.test-helper.mjs';
 import { migrateSkillFiles, SKILL_DIRS } from '../artifacts/skills.mjs';
 

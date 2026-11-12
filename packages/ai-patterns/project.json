@@ -39,9 +39,7 @@
          cached pass. "default" and "^default" are what Nx uses when a target
          names no inputs, so they are restated here.
          upgrade-coverage.test.mjs reads every package's CHANGELOG.md and the
-         pending changesets (#334), and most of those are no edge either.
-         shadcn-mapping-single-source.test.mjs reads every tracked Markdown file in
-         the repo, so a second shadcn mapping table anywhere reruns it (#333). */
+         pending changesets (#334), and most of those are no edge either. */
       "inputs": [
         "default",
         "^default",
@@ -49,9 +47,7 @@
         "{workspaceRoot}/apps/docs/src/app/ai-theme/**",
         "{workspaceRoot}/apps/docs/src/app/ai-theme-*.css",
         "{workspaceRoot}/.changeset/*.md",
-        "{workspaceRoot}/packages/*/CHANGELOG.md",
-        "{workspaceRoot}/**/*.md",
-        "{workspaceRoot}/**/*.mdx"
+        "{workspaceRoot}/packages/*/CHANGELOG.md"
       ]
     }
   },
