@@ -229,7 +229,7 @@ export function DropdownMenuContent({
   ...props
 }: DropdownMenuContentProps) {
   const context = useDropdownMenuContext();
-  const { contentRef, triggerRef, closeToTrigger } = context;
+  const { contentRef, closeToTrigger } = context;
 
   return (
     <AnchoredOverlayContent
@@ -250,13 +250,6 @@ export function DropdownMenuContent({
       }}
       onKeyDown={(event) => {
         onKeyDown?.(event);
-        if (event.key === 'Escape') {
-          // Not skippable: useAnchoredOverlay's document listener closes the
-          // menu whatever a consumer's handler did, so focus has to come back
-          // either way or it would fall to <body>.
-          triggerRef.current?.focus();
-          return;
-        }
         if (event.defaultPrevented) {
           return;
         }

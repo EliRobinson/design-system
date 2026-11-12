@@ -87,6 +87,103 @@ function shiftIntoView(offset: number, size: number, viewport: number) {
 }
 
 /**
+ * One screen axis, named so the placement below is written once for both. A
+ * top/bottom panel runs its main axis along `Y` and its cross axis along `X`;
+ * a left/right panel is the transpose.
+ */
+type Axis = {
+  /** The edge nearer the viewport's origin, and the one further from it. */
+  start: 'left' | 'top';
+  end: 'right' | 'bottom';
+  size: 'width' | 'height';
+  viewport: 'innerWidth' | 'innerHeight';
+  translate: 'translateX' | 'translateY';
+};
+
+const X: Axis = {
+  start: 'left',
+  end: 'right',
+  size: 'width',
+  viewport: 'innerWidth',
+  translate: 'translateX',
+};
+const Y: Axis = {
+  start: 'top',
+  end: 'bottom',
+  size: 'height',
+  viewport: 'innerHeight',
+  translate: 'translateY',
+};
+
+/**
+ * Pins one edge of the panel `offset` in from the same edge of the viewport,
+ * shifted into view, and releases the other edge to `auto`: a fixed box given
+ * both is stretched between them rather than sized by its content.
+ */
+function pin(
+  content: HTMLElement,
+  axis: Axis,
+  edge: 'start' | 'end',
+  offset: number,
+  size: number,
+) {
+  const released = edge === 'start' ? axis.end : axis.start;
+  content.style[axis[edge]] = `${shiftIntoView(offset, size, window[axis.viewport])}px`;
+  content.style[released] = 'auto';
+}
+
+/**
+ * Hangs the panel a gap off the trigger's `edge` along the main axis. Off the
+ * end edge (`bottom`, `right`) its start edge is pinned; off the start edge
+ * (`top`, `left`) its end edge is, measured back from the viewport.
+ */
+function placeOnMainAxis(
+  content: HTMLElement,
+  axis: Axis,
+  edge: 'start' | 'end',
+  rect: DOMRect,
+  panel: DOMRect,
+) {
+  const size = panel[axis.size];
+  if (edge === 'end') {
+    pin(content, axis, 'start', rect[axis.end] + GAP, size);
+  } else {
+    pin(content, axis, 'end', window[axis.viewport] - rect[axis.start] + GAP, size);
+  }
+}
+
+/** Lines the panel up with the trigger along the cross axis. */
+function placeOnCrossAxis(
+  content: HTMLElement,
+  axis: Axis,
+  align: Align,
+  rect: DOMRect,
+  panel: DOMRect,
+) {
+  const size = panel[axis.size];
+  if (align === 'center') {
+    /* Shifting is stated in terms of the edge that is on screen or not, so the
+       centre is taken apart into a start edge, shifted, and put back together:
+       the translate is still what does the centring. */
+    const centred = rect[axis.start] + rect[axis.size] / 2;
+    const shifted = shiftIntoView(centred - size / 2, size, window[axis.viewport]);
+    content.style[axis.start] = `${shifted + size / 2}px`;
+    content.style[axis.end] = 'auto';
+    content.style.transform = `${axis.translate}(-50%)`;
+    return;
+  }
+  if (align === 'end') {
+    // Measured back from the same viewport size the main axis measures
+    // against: a classic scrollbar makes `innerWidth` a few pixels generous,
+    // and one consistent frame is worth more than two subtly different ones.
+    pin(content, axis, 'end', window[axis.viewport] - rect[axis.end], size);
+  } else {
+    pin(content, axis, 'start', rect[axis.start], size);
+  }
+  content.style.transform = '';
+}
+
+/**
  * Positions a floating panel against its trigger with `position: fixed`, and
  * keeps it there while the page scrolls or the window resizes.
  *
@@ -182,36 +279,27 @@ export function useAnchoredPosition(
       /* Read before any write of geometry. Both boxes are measured up front,
          and measuring them after writing offsets would read back what this
          pass had just set. */
-      const roomBelow = window.innerHeight - rect.bottom - GAP;
-      const roomAbove = rect.top - GAP;
-      const roomRight = window.innerWidth - rect.right - GAP;
-      const roomLeft = rect.left - GAP;
-      const roomFromLeft = window.innerWidth - rect.left;
-      const roomFromRight = rect.right;
-      const roomFromTop = window.innerHeight - rect.top;
-      const roomFromBottom = rect.bottom;
-
-      /* A top/bottom panel runs its main axis vertically and its cross axis
-         horizontally; a left/right panel is the transpose. The flip decisions below are
-         written once against those two axes; the writes further down are not. */
       const beside = side === 'left' || side === 'right';
+      const main = beside ? X : Y;
+      const cross = beside ? Y : X;
       const room: Record<AnchoredSide, number> = {
-        top: roomAbove,
-        bottom: roomBelow,
-        left: roomLeft,
-        right: roomRight,
+        top: rect.top - GAP,
+        bottom: window.innerHeight - rect.bottom - GAP,
+        left: rect.left - GAP,
+        right: window.innerWidth - rect.right - GAP,
       };
 
       /* Room along the cross axis, measured from the trigger's start edge
          forwards or its end edge backwards, keyed by the alignment that uses it. */
-      const alignRoom: Record<'start' | 'end', number> = beside
-        ? { start: roomFromTop, end: roomFromBottom }
-        : { start: roomFromLeft, end: roomFromRight };
+      const alignRoom: Record<'start' | 'end', number> = {
+        start: window[cross.viewport] - rect[cross.start],
+        end: rect[cross.end],
+      };
 
       if (!flippedSide.current) {
         const preferred = room[side];
         const opposite = room[OPPOSITE[side]];
-        const size = beside ? panel.width : panel.height;
+        const size = panel[main.size];
         /* Only worth flipping if the other side is actually better. A panel
            that fits nowhere stays where it was asked to go. */
         flippedSide.current = size > preferred && size <= opposite;
@@ -222,7 +310,7 @@ export function useAnchoredPosition(
       if (align !== 'center' && !flippedAlign.current) {
         const preferred = alignRoom[align];
         const opposite = alignRoom[align === 'start' ? 'end' : 'start'];
-        const size = beside ? panel.height : panel.width;
+        const size = panel[cross.size];
         flippedAlign.current = size > preferred && size <= opposite;
       }
 
@@ -233,76 +321,13 @@ export function useAnchoredPosition(
 
       content.style.zIndex = zIndex;
 
-      if (beside) {
-        // The main axis is horizontal: one edge is pinned a gap off the trigger.
-        if (effectiveSide === 'right') {
-          content.style.left = `${shiftIntoView(rect.right + GAP, panel.width, window.innerWidth)}px`;
-          content.style.right = 'auto';
-        } else {
-          const pinned = window.innerWidth - rect.left + GAP;
-          content.style.right = `${shiftIntoView(pinned, panel.width, window.innerWidth)}px`;
-          content.style.left = 'auto';
-        }
-
-        // The cross axis is vertical, and `align` reads as top/centre/bottom.
-        if (effectiveAlign === 'center') {
-          const centred = rect.top + rect.height / 2;
-          const shifted = shiftIntoView(
-            centred - panel.height / 2,
-            panel.height,
-            window.innerHeight,
-          );
-          content.style.top = `${shifted + panel.height / 2}px`;
-          content.style.bottom = 'auto';
-          content.style.transform = 'translateY(-50%)';
-        } else if (effectiveAlign === 'end') {
-          const pinned = window.innerHeight - rect.bottom;
-          content.style.bottom = `${shiftIntoView(pinned, panel.height, window.innerHeight)}px`;
-          content.style.top = 'auto';
-          content.style.transform = '';
-        } else {
-          content.style.top = `${shiftIntoView(rect.top, panel.height, window.innerHeight)}px`;
-          content.style.bottom = 'auto';
-          content.style.transform = '';
-        }
-      } else {
-        // Exactly one horizontal edge is ever pinned. The other is released to
-        // `auto`, because a fixed box given both a left and a right is
-        // stretched between them rather than sized by its content.
-        if (effectiveAlign === 'center') {
-          /* Shifting is stated in terms of the edge that is on screen or not, so
-             the centre is taken apart into a left edge, shifted, and put back
-             together — `translateX(-50%)` is still what does the centring. */
-          const centred = rect.left + rect.width / 2;
-          const shifted = shiftIntoView(centred - panel.width / 2, panel.width, window.innerWidth);
-          content.style.left = `${shifted + panel.width / 2}px`;
-          content.style.right = 'auto';
-          content.style.transform = 'translateX(-50%)';
-        } else if (effectiveAlign === 'end') {
-          // Measured back from the same viewport width the `bottom` case below
-          // measures against, for the same reason: a classic scrollbar makes
-          // `window.innerWidth` a few pixels generous, and one consistent frame
-          // is worth more here than two subtly different ones.
-          const pinned = window.innerWidth - rect.right;
-          content.style.right = `${shiftIntoView(pinned, panel.width, window.innerWidth)}px`;
-          content.style.left = 'auto';
-          content.style.minWidth = minWidthFor(rect.width);
-          content.style.transform = '';
-        } else {
-          content.style.left = `${shiftIntoView(rect.left, panel.width, window.innerWidth)}px`;
-          content.style.right = 'auto';
-          content.style.minWidth = minWidthFor(rect.width);
-          content.style.transform = '';
-        }
-
-        if (effectiveSide === 'bottom') {
-          content.style.top = `${shiftIntoView(rect.bottom + GAP, panel.height, window.innerHeight)}px`;
-          content.style.bottom = 'auto';
-        } else {
-          const pinned = window.innerHeight - rect.top + GAP;
-          content.style.bottom = `${shiftIntoView(pinned, panel.height, window.innerHeight)}px`;
-          content.style.top = 'auto';
-        }
+      const mainEdge = effectiveSide === 'bottom' || effectiveSide === 'right' ? 'end' : 'start';
+      placeOnMainAxis(content, main, mainEdge, rect, panel);
+      placeOnCrossAxis(content, cross, effectiveAlign, rect, panel);
+      // The menu/listbox shape: at least as wide as its trigger. Beside the
+      // trigger the cross axis is vertical, so there is no width to match.
+      if (!beside && effectiveAlign !== 'center') {
+        content.style.minWidth = minWidthFor(rect.width);
       }
 
       /* The one case no offset can rescue, so the only case that gets a clamp.

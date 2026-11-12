@@ -3,6 +3,7 @@ import { forwardRef, useCallback, useEffect, useId, useMemo, useRef } from 'reac
 
 import type { UseDisclosureOptions } from '../../../hooks/useDisclosure.js';
 import { useDisclosure } from '../../../hooks/useDisclosure.js';
+import { EscapeLayerProvider, useEscapeKey } from '../../../hooks/useEscapeKey.js';
 import { cn } from '../../../lib/cn.js';
 import { useMergedRef } from '../../../lib/useMergedRef.js';
 
@@ -108,6 +109,11 @@ export const ModalSurface = forwardRef<HTMLDialogElement, ModalSurfaceProps>(fun
   const setRefs = useMergedRef<HTMLDialogElement>(dialogRef, ref);
   const { open, onOpenChange, titleId, descriptionId } = context;
   const captureOpener = useFocusReturnOnUnmount(dialogRef);
+  // The browser closes a modal <dialog> on Escape itself. Holding a place on
+  // the stack stops a layer opened before it, now underneath, from closing on
+  // the same keypress, and lets a layer opened inside it cancel the keydown
+  // so the dialog stays open.
+  const escapeLayer = useEscapeKey(null, open);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -145,7 +151,9 @@ export const ModalSurface = forwardRef<HTMLDialogElement, ModalSurfaceProps>(fun
       }}
       {...props}
     >
-      <div className={innerClassName}>{children}</div>
+      <div className={innerClassName}>
+        <EscapeLayerProvider value={escapeLayer}>{children}</EscapeLayerProvider>
+      </div>
     </dialog>
   );
 });
