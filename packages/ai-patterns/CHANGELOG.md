@@ -1,5 +1,12 @@
 # @elirobinson/ai-patterns
 
+## 0.34.6
+
+### Patch Changes
+
+- b5b4861: Correct a comment in the visual config that said the reduced-motion clamp cannot settle loops. It plays them once.
+- 1cc5195: `migrate/adopt/shadcn.md` is now the one shadcn → Miltinson component mapping. It gains the rows only the old contributor table had (`Chip`, `Combobox`, `NavigationMenu`, `SegmentedControl`, `Kbd`, `FormField`, `VirtualTable`), `Slider` gets its own row (a native range input with a number value, not Radix's array), and the shared row now names each component it maps. A repo test fails if a second shadcn mapping table appears anywhere else.
+
 ## 0.34.5
 
 ### Patch Changes
