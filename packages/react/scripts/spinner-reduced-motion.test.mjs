@@ -13,7 +13,7 @@
  * StreamingCaret cases below check that loops settle and the caret stays solid.
  *
  * Skipped, loudly, when no browser is available — the same contract as
- * anchored-panel-width and select-intrinsic-width.
+ * `bootBrowser` in browser.test-helper.mjs.
  */
 
 import { dirname, join } from 'node:path';
@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 import { beforeAll, expect, it } from 'vitest';
 
-import { BROWSER_BUDGET, bootBrowser, openPage } from './browser.test-helper.mjs';
+import { BROWSER_BUDGET, bootBrowser, inPage } from './browser.test-helper.mjs';
 
 const ATOMS = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'components', 'atoms');
 const STYLESHEETS = {
@@ -45,61 +45,51 @@ const { browser, describeBrowser } = await bootBrowser('spinner reduced-motion')
  * @param {'reduce' | 'no-preference'} reducedMotion
  */
 function sample(reducedMotion) {
-  return openPage(
+  return inPage(
     browser,
     {
-      html: `<!doctype html><html><head><meta charset="utf-8">
-          <link rel="stylesheet" href="/tokens.css">
-          <link rel="stylesheet" href="/Spinner.css">
-          <link rel="stylesheet" href="/Skeleton.css">
-          <link rel="stylesheet" href="/StreamingCaret.css">
-          <style>
+      sheets: STYLESHEETS,
+      head: `<style>
             @keyframes probe { to { opacity: 0.5; } }
             #probe { animation: probe 1s linear infinite; transition: opacity 1s; }
-          </style>
-          </head><body>
-          <span id="spinner" class="ds-spinner ds-spinner--lg" role="status" aria-label="Loading"></span>
+          </style>`,
+      body: `<span id="spinner" class="ds-spinner ds-spinner--lg" role="status" aria-label="Loading"></span>
           <div id="skeleton" class="ds-skeleton"></div>
           <span id="caret" class="ds-streaming-caret"></span>
-          <div id="probe">probe</div>
-          </body></html>`,
-      files: STYLESHEETS,
+          <div id="probe">probe</div>`,
       context: { reducedMotion },
     },
-    (page) =>
-      page.evaluate(
-        async ({ samples, interval }) => {
-          const animation = (id) => {
-            const style = getComputedStyle(document.getElementById(id));
-            return {
-              name: style.animationName,
-              duration: style.animationDuration,
-              iterations: style.animationIterationCount,
-              transition: style.transitionDuration,
-            };
-          };
+    async ({ samples, interval }) => {
+      const animation = (id) => {
+        const style = getComputedStyle(document.getElementById(id));
+        return {
+          name: style.animationName,
+          duration: style.animationDuration,
+          iterations: style.animationIterationCount,
+          transition: style.transitionDuration,
+        };
+      };
 
-          const spinner = document.getElementById('spinner');
-          const readings = [];
-          for (let i = 0; i < samples; i += 1) {
-            const style = getComputedStyle(spinner);
-            readings.push({ transform: style.transform, opacity: Number(style.opacity) });
-            await new Promise((resolve) => setTimeout(resolve, interval));
-          }
+      const spinner = document.getElementById('spinner');
+      const readings = [];
+      for (let i = 0; i < samples; i += 1) {
+        const style = getComputedStyle(spinner);
+        readings.push({ transform: style.transform, opacity: Number(style.opacity) });
+        await new Promise((resolve) => setTimeout(resolve, interval));
+      }
 
-          return {
-            spinner: animation('spinner'),
-            skeleton: animation('skeleton'),
-            probe: animation('probe'),
-            caret: {
-              ...animation('caret'),
-              opacity: getComputedStyle(document.getElementById('caret')).opacity,
-            },
-            readings,
-          };
+      return {
+        spinner: animation('spinner'),
+        skeleton: animation('skeleton'),
+        probe: animation('probe'),
+        caret: {
+          ...animation('caret'),
+          opacity: getComputedStyle(document.getElementById('caret')).opacity,
         },
-        { samples: SAMPLES, interval: INTERVAL_MS },
-      ),
+        readings,
+      };
+    },
+    { samples: SAMPLES, interval: INTERVAL_MS },
   );
 }
 

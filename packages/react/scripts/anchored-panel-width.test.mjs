@@ -14,7 +14,7 @@
  * in a browser. Change one and the other must move with it.
  *
  * Skipped, loudly, when no browser is available — the same contract as
- * select-intrinsic-width.mjs and packages/tokens' link-cascade tests. The bare
+ * `bootBrowser` in browser.test-helper.mjs and packages/tokens' link-cascade tests. The bare
  * CI image has no browser and this must not be what blocks an unrelated change.
  */
 
@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 
 import { expect, it } from 'vitest';
 
-import { bootBrowser, openPage } from './browser.test-helper.mjs';
+import { bootBrowser, inPage } from './browser.test-helper.mjs';
 
 const DROPDOWN_CSS = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -48,28 +48,22 @@ const CRUSHED_WIDTH = 95;
 
 /** Render a menu panel with the given inline geometry and measure it. */
 function measure(inlineStyle) {
-  return openPage(
+  return inPage(
     browser,
     {
-      html: `<!doctype html><html><head><meta charset="utf-8">
-          <link rel="stylesheet" href="/tokens.css">
-          <link rel="stylesheet" href="/DropdownMenu.css">
-          <style>body { margin: 0 }</style>
-          </head><body>
-          <div id="panel" class="ds-dropdown__content" role="menu" style="${inlineStyle}">
+      sheets: { 'DropdownMenu.css': DROPDOWN_CSS },
+      head: '<style>body { margin: 0 }</style>',
+      body: `<div id="panel" class="ds-dropdown__content" role="menu" style="${inlineStyle}">
             <div class="ds-dropdown__label">Account</div>
             <button type="button" class="ds-dropdown__item" role="menuitem">Account settings</button>
             <button type="button" class="ds-dropdown__item" role="menuitem">Sign out</button>
-          </div>
-          </body></html>`,
-      files: { 'DropdownMenu.css': DROPDOWN_CSS },
+          </div>`,
       context: { viewport: VIEWPORT },
     },
-    (page) =>
-      page.evaluate(() => {
-        const rect = document.getElementById('panel').getBoundingClientRect();
-        return { width: Math.round(rect.width), right: Math.round(rect.right) };
-      }),
+    () => {
+      const rect = document.getElementById('panel').getBoundingClientRect();
+      return { width: Math.round(rect.width), right: Math.round(rect.right) };
+    },
   );
 }
 

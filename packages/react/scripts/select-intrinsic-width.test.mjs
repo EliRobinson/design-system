@@ -64,7 +64,7 @@ import { fileURLToPath } from 'node:url';
 
 import { expect, it } from 'vitest';
 
-import { bootBrowser, openPage } from './browser.test-helper.mjs';
+import { bootBrowser, inPage } from './browser.test-helper.mjs';
 
 const FIELD_CSS = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -86,18 +86,15 @@ const LONG_OPTION =
 
 /** Render a Select-shaped document and measure it. `extraCss` is appended last. */
 function measure({ extraCss = '' } = {}) {
-  return openPage(
+  return inPage(
     browser,
     {
+      sheets: { 'field.css': FIELD_CSS },
+      head: `<meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>body { margin: 0 } ${extraCss}</style>`,
       /* The markup Select.tsx renders: .ds-field wrapping a <select> that
          carries both .ds-input and .ds-select. */
-      html: `<!doctype html><html><head><meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <link rel="stylesheet" href="/tokens.css">
-          <link rel="stylesheet" href="/field.css">
-          <style>body { margin: 0 } ${extraCss}</style>
-          </head><body>
-          <main style="padding: 16px">
+      body: `<main style="padding: 16px">
             <div class="ds-field">
               <label for="s" class="ds-label">Property</label>
               <select id="s" class="ds-input ds-select">
@@ -105,20 +102,17 @@ function measure({ extraCss = '' } = {}) {
                 <option>${LONG_OPTION}</option>
               </select>
             </div>
-          </main>
-          </body></html>`,
-      files: { 'field.css': FIELD_CSS },
+          </main>`,
       context: { viewport: VIEWPORT },
     },
-    (page) =>
-      page.evaluate(() => {
-        const select = document.getElementById('s');
-        return {
-          documentScrollWidth: document.documentElement.scrollWidth,
-          documentClientWidth: document.documentElement.clientWidth,
-          selectWidth: Math.round(select.getBoundingClientRect().width),
-        };
-      }),
+    () => {
+      const select = document.getElementById('s');
+      return {
+        documentScrollWidth: document.documentElement.scrollWidth,
+        documentClientWidth: document.documentElement.clientWidth,
+        selectWidth: Math.round(select.getBoundingClientRect().width),
+      };
+    },
   );
 }
 

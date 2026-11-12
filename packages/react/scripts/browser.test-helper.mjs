@@ -1,7 +1,7 @@
 /* The browser bootstrap for this package's cascade and layout suites. Not a
  * published module: the `.test-helper.mjs` suffix matches neither Vitest's
- * include glob nor the package's `files`. It is this package's copy of
- * packages/tokens/src/browser.test-helper.mjs, plus component sheets. Every
+ * include glob nor the package's `files`. It has the same contract as
+ * packages/tokens/src/browser.test-helper.mjs, and adds component sheets. Every
  * browser suite in this folder boots through it.
  *
  * Why a real browser: jsdom has no layout and resolves a tie by source order
@@ -20,17 +20,11 @@ export const BROWSER_BUDGET = 60_000;
 /* tokens.css @imports its siblings relatively, so it has to be fetched from a
    URL that has a directory: on about:blank, `./palettes.css` resolves to
    nothing. */
-export const ORIGIN = 'https://react.test';
+const ORIGIN = 'https://react.test';
 
-const CONTENT_TYPES = {
-  '.css': 'text/css',
-  '.woff2': 'font/woff2',
-  '.woff': 'font/woff',
-  '.ttf': 'font/ttf',
-  '.otf': 'font/otf',
-  '.svg': 'image/svg+xml',
-  '.json': 'application/json',
-};
+/* Only what the routes serve: tokens' stylesheets and fonts. Anything else is
+   sent as plain bytes. */
+const CONTENT_TYPES = { '.css': 'text/css', '.woff2': 'font/woff2' };
 
 /**
  * Bring up a browser for the calling suite and register its teardown. Await it
@@ -83,6 +77,12 @@ export async function bootBrowser(label, engine = 'chromium') {
  * @param {(page: import('playwright').Page) => Promise<any>} run
  */
 export async function openPage(browser, { origin = ORIGIN, html, files = {}, context = {} }, run) {
+  /* A file the caller named must exist: a 404 here would quietly measure a
+     page without its component sheet. Only the tokens folder falls back to 404. */
+  for (const file of Object.values(files)) {
+    if (!existsSync(file)) throw new Error(`browser test helper: missing file ${file}`);
+  }
+
   const browserContext = await browser.newContext(context);
   try {
     const page = await browserContext.newPage();
@@ -113,11 +113,11 @@ export async function openPage(browser, { origin = ORIGIN, html, files = {}, con
  * the page with `arg`.
  *
  * @param {import('playwright').Browser} browser
- * @param {{ sheets?: Record<string, string>, head?: string, body: string, viewport?: { width: number, height: number } }} page
+ * @param {{ sheets?: Record<string, string>, head?: string, body: string, context?: import('playwright').BrowserContextOptions }} page
  * @param {(arg: any) => any} probe
  * @param {any} [arg]
  */
-export async function inPage(browser, { sheets = {}, head = '', body, viewport }, probe, arg) {
+export async function inPage(browser, { sheets = {}, head = '', body, context }, probe, arg) {
   const links = Object.keys(sheets)
     .map((sheet) => `<link rel="stylesheet" href="/${sheet}">`)
     .join('');
@@ -128,7 +128,7 @@ export async function inPage(browser, { sheets = {}, head = '', body, viewport }
             <link rel="stylesheet" href="/tokens.css">${links}${head}
             </head><body>${body}</body></html>`,
       files: sheets,
-      context: viewport ? { viewport } : {},
+      context,
     },
     (page) => page.evaluate(probe, arg),
   );
