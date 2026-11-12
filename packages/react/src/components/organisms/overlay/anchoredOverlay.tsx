@@ -7,7 +7,8 @@ import { useAnchoredPosition } from '../../../hooks/useAnchoredPosition.js';
 import { useClickOutside } from '../../../hooks/useClickOutside.js';
 import type { UseDisclosureOptions } from '../../../hooks/useDisclosure.js';
 import { useDisclosure } from '../../../hooks/useDisclosure.js';
-import { useEscapeKey } from '../../../hooks/useEscapeKey.js';
+import type { EscapeLayer } from '../../../hooks/useEscapeKey.js';
+import { EscapeLayerProvider, useEscapeKey } from '../../../hooks/useEscapeKey.js';
 import { useHasMounted } from '../../../hooks/useHasMounted.js';
 import { useMergedRef } from '../../../lib/useMergedRef.js';
 
@@ -24,6 +25,8 @@ export type AnchoredOverlayContextValue = {
   triggerRef: RefObject<HTMLButtonElement | null>;
   contentRef: RefObject<HTMLDivElement | null>;
   contentId: string;
+  /** This overlay's place on the dismissal stack, parent to what opens inside it. */
+  escapeLayer: EscapeLayer;
 };
 
 export type AnchoredOverlayOptions = UseDisclosureOptions;
@@ -49,11 +52,19 @@ export function useAnchoredOverlay({
   const { open, setOpen } = useDisclosure({ open: controlledOpen, defaultOpen, onOpenChange });
 
   useClickOutside([triggerRef, contentRef], () => setOpen(false), open);
-  useEscapeKey(() => setOpen(false), open);
+  const escapeLayer = useEscapeKey(() => {
+    // Focus inside the panel would fall to <body> when it unmounts. The
+    // trigger is where it came from, and the panel is portalled to the end of
+    // <body>, so nothing in the tab order leads back otherwise.
+    if (contentRef.current?.contains(document.activeElement)) {
+      triggerRef.current?.focus();
+    }
+    setOpen(false);
+  }, open);
 
   return useMemo(
-    () => ({ open, onOpenChange: setOpen, triggerRef, contentRef, contentId }),
-    [open, setOpen, contentId],
+    () => ({ open, onOpenChange: setOpen, triggerRef, contentRef, contentId, escapeLayer }),
+    [open, setOpen, contentId, escapeLayer],
   );
 }
 
@@ -123,7 +134,7 @@ export function AnchoredOverlayContent({
 
   return createPortal(
     <div ref={overlay.contentRef} id={overlay.contentId} {...props}>
-      {children}
+      <EscapeLayerProvider value={overlay.escapeLayer}>{children}</EscapeLayerProvider>
     </div>,
     document.body,
   );
