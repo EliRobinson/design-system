@@ -93,6 +93,10 @@ const PAIRS = [
   ['bg-blue-100', 'bg-blue-900/30'],
   ['bg-orange-100', 'bg-orange-900/30'],
   ['bg-gray-100', 'bg-gray-900/30'],
+  // Upstream dims the destructive fill to 60% in dark. The token fill is already
+  // themed and `--status-danger-on` is measured against it at full strength
+  // (5.06:1 dark); a 60% wash is not, and it would also sit over the hover fill.
+  ['bg-destructive', 'bg-destructive/60'],
   ['text-red-600', 'text-red-400'],
   ['text-red-700', 'text-red-400'],
   ['text-green-600', 'text-green-400'],
@@ -129,6 +133,13 @@ const LITERALS = {
   'bg-green-500': 'bg-success',
   'bg-red-500': 'bg-destructive',
   'border-red-400/30': 'border-destructive/30',
+
+  // Destructive hover. Upstream darkens the fill with an alpha (`/90`, `/80`),
+  // which no one measured. `--status-danger-hover` is a solid fill with
+  // `--status-danger-on` at 4.5:1 or better on it in every palette and theme.
+  // The variant prefix (`hover:`, `[a&]:hover:`) is outside the token and stays.
+  'bg-destructive/90': 'bg-destructive-hover',
+  'bg-destructive/80': 'bg-destructive-hover',
 
   // Quiet panels and badges: the tint, with the ink measured against it.
   'bg-red-50': 'bg-destructive-tint',
