@@ -36,8 +36,11 @@ click, works with middle-click and cmd-click, and needs no JavaScript.
 
 ## Sizes
 
-All three sizes keep the 44×44px minimum touch target — the smaller sizes shrink the
-visible control, not the hit area.
+`md` and `lg` keep the 44×44px minimum touch target. `sm` is 36px tall on purpose: it is
+a dense control, measured against the 24×24px WCAG 2.2 AA floor (SC 2.5.8) instead of
+44×44. Use `sm` for compact toolbars and table rows. Keep `md` or `lg` for the main
+action on a screen. The reasoning is in "Why `size="sm"` is 36px" in
+`docs/agents/components.md`.
 
 <DemoBlock file="button/Sizes.tsx">
   <Sizes />
