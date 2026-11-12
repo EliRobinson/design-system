@@ -1,10 +1,10 @@
 import type { KeyboardEvent, ReactNode } from 'react';
-import { forwardRef, useCallback, useEffect, useId, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useId, useRef } from 'react';
 
 import { cn } from '../../lib/cn.js';
-import { useLatest } from '../../lib/useLatest.js';
 import { useMergedRef } from '../../lib/useMergedRef.js';
 import { useActiveDescendant } from '../../hooks/useActiveDescendant.js';
+import { useControllableState } from '../../hooks/useControllableState.js';
 import { Kbd } from '../atoms/Kbd.js';
 import { SearchField } from '../molecules/SearchField.js';
 import { Dialog, DialogContent, DialogTitle } from './Dialog.js';
@@ -108,20 +108,13 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
     const listId = `${baseId}-list`;
     const text = { ...DEFAULT_LABELS, ...labels };
 
-    const [ownQuery, setOwnQuery] = useState('');
-    const isControlled = controlledQuery !== undefined;
-    const query = isControlled ? controlledQuery : ownQuery;
+    const [query, setQuery] = useControllableState({
+      value: controlledQuery,
+      defaultValue: '',
+      onChange: onQueryChange,
+    });
     const queryRef = useRef(query);
     queryRef.current = query;
-    const onQueryChangeRef = useLatest(onQueryChange);
-
-    const setQuery = useCallback(
-      (next: string) => {
-        setOwnQuery(next);
-        onQueryChangeRef.current?.(next);
-      },
-      [onQueryChangeRef],
-    );
 
     // A single ref prop can only point one direction, but both this
     // component (to focus the input on open) and a consumer (via the
@@ -154,14 +147,13 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
     // SearchField.test.tsx for the permanent test covering that contract.
     useEffect(() => {
       if (open) {
-        setOwnQuery('');
         if (queryRef.current !== '') {
-          onQueryChangeRef.current?.('');
+          setQuery('');
         }
         setActiveIndex(0);
         inputRef.current?.focus();
       }
-    }, [open, setActiveIndex, onQueryChangeRef]);
+    }, [open, setActiveIndex, setQuery]);
 
     // Focus stays on the input at all times; the active item is tracked via
     // aria-activedescendant rather than moving DOM focus into the list.

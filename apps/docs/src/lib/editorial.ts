@@ -34,7 +34,10 @@ export const HOOK_USED_BY: Record<string, string> = {
   useClickOutside: 'Used by the anchored overlays — Popover, DropdownMenu, Combobox, DatePicker.',
   useEscapeKey: 'Used by the anchored overlays alongside useClickOutside.',
   useAnchoredPosition: 'Used by Popover, DropdownMenu, and Tooltip.',
-  useDisclosure: 'Used by Dialog, Sheet, Popover, and DropdownMenu.',
+  useDisclosure:
+    'Used by Dialog, Sheet, Popover, and DropdownMenu. A boolean wrapper on useControllableState.',
+  useControllableState:
+    'Used by useDisclosure, Accordion, CommandPalette, RadioGroup, SearchField, and Tabs.',
   useHasMounted:
     'Used by Toaster, PopoverContent, DropdownMenuContent, and TooltipContent to skip their portals during server rendering.',
 };
