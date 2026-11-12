@@ -183,7 +183,7 @@ export function buildGuidelineCards(tokens) {
       swatch(token, token.name.replace(/^--/, ''), options),
     );
 
-  /* A status is five tokens, not one. The card that showed only `--status-*`
+  /* A status is a set of tokens, not one. The card that showed only `--status-*`
      was the ink bug in a different family: a designer reading it saw four
      fills and had no way to know that the ink to put on one, the tint behind
      it and the tint's edge were all decided too — so they picked their own,
@@ -191,7 +191,6 @@ export function buildGuidelineCards(tokens) {
      Every member of a state is on the card, on one row, so the set is legible
      as a set. */
   const statusRow = (state) => {
-    // Extras per state, and why, live in STATUS_EXTRA_MEMBERS.
     const names = [...STATUS_MEMBERS, ...(STATUS_EXTRA_MEMBERS[state] ?? [])].map(
       (suffix) => `--status-${state}${suffix}`,
     );

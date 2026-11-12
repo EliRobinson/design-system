@@ -414,11 +414,12 @@ export function checkAfterBlock(block, vocab) {
   return checker(block.code, vocab);
 }
 
-/* What a backticked span in a checked column can be, in the order they are tried. A span
-   that is none of these fails, the same way an unlabelled fence does. */
 /* One class: optional variants (`hover:`), `!`, an opacity suffix. Starts with a letter or `!`,
    which keeps it apart from `--tokens` and `<Components>`. */
 const CLASS = String.raw`[a-z!][\w:/!-]*`;
+
+/* What a backticked span in a checked column can be, in the order they are tried. A span
+   that is none of these fails, the same way an unlabelled fence does. */
 const SPAN_KINDS = [
   [/^--[a-z]/, checkTokens],
   [/^@elirobinson\//, (span) => (resolves(span) ? [] : [`${span} does not resolve`])],
