@@ -401,6 +401,18 @@ describe('CommandPalette', () => {
       expect(screen.getByRole('listbox')).not.toHaveAttribute('aria-busy', 'true');
     });
 
+    it('reports the open-time reset to a controlled parent holding a query, on every open', () => {
+      const onQueryChange = vi.fn();
+      const props = { onOpenChange: vi.fn(), commands, query: 'abc', onQueryChange };
+      const { rerender } = render(<CommandPalette open {...props} />);
+      expect(onQueryChange).toHaveBeenCalledExactlyOnceWith('');
+
+      rerender(<CommandPalette open={false} {...props} />);
+      rerender(<CommandPalette open {...props} />);
+      expect(onQueryChange).toHaveBeenCalledTimes(2);
+      expect(onQueryChange).toHaveBeenLastCalledWith('');
+    });
+
     it('does not report the open-time reset to a controlled parent when already empty', () => {
       const onQueryChange = vi.fn();
       render(

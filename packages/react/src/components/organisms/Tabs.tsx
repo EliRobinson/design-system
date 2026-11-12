@@ -66,7 +66,8 @@ export function Tabs({
 }: TabsProps) {
   const baseId = useId();
   const [activeTab, setActiveTab] = useControllableState({
-    value,
+    // `?? undefined` keeps an untyped `value={null}` uncontrolled, as it always was.
+    value: value ?? undefined,
     defaultValue,
     onChange: onValueChange,
   });

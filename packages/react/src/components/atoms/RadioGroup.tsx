@@ -69,13 +69,14 @@ export const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(function R
      and the stale copy won every time the parent cleared. Controlledness is a
      property of `value` being passed at all -- `null` for the empty case --
      never of what it currently holds. */
+  // The same rule useControllableState applies; kept here for the warning below.
   const isControlled = value !== undefined;
-  const [selected, setValue] = useControllableState<string | null | undefined>({
+  const [selected, setValue] = useControllableState<string | null>({
     value,
-    defaultValue,
-    // The group only ever selects a string; `null` and `undefined` arrive as props, never from a click.
+    defaultValue: defaultValue ?? null,
+    // Narrows the type only: a click always selects a string, and `null` only ever arrives as a prop.
     onChange: (next) => {
-      if (typeof next === 'string') onValueChange?.(next);
+      if (next !== null) onValueChange?.(next);
     },
   });
   const currentValue = selected ?? undefined;

@@ -2,6 +2,7 @@ import type { KeyboardEvent, ReactNode } from 'react';
 import { forwardRef, useCallback, useEffect, useId, useRef } from 'react';
 
 import { cn } from '../../lib/cn.js';
+import { useLatest } from '../../lib/useLatest.js';
 import { useMergedRef } from '../../lib/useMergedRef.js';
 import { useActiveDescendant } from '../../hooks/useActiveDescendant.js';
 import { useControllableState } from '../../hooks/useControllableState.js';
@@ -113,8 +114,7 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
       defaultValue: '',
       onChange: onQueryChange,
     });
-    const queryRef = useRef(query);
-    queryRef.current = query;
+    const queryRef = useLatest(query);
 
     // A single ref prop can only point one direction, but both this
     // component (to focus the input on open) and a consumer (via the
