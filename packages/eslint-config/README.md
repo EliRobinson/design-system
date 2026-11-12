@@ -70,7 +70,7 @@ The rule flags a raw `44px` on a size property (`min-height`, `width`, `min-bloc
 …) and a raw `2px` outline width or `outline-offset`, which have tokens: `var(--target)`
 and `var(--focus-ring-width)` / `var(--focus-ring-offset)`. It reads style objects,
 stylesheets, and Tailwind arbitrary values in `className` and the class-name helpers
-(`min-h-[44px]`, `size-[44px]`, `outline-[2px]`, `outline-offset-[2px]`); the helpers are
+(`min-h-[44px]`, `size-[44px]`, `outline-[2px]`, `outline-offset-[2px]`, `[min-height:44px]`); the helpers are
 the ones `hardcodedValues.classNameFunctions` names. Scale utilities (`min-h-11`,
 `outline-2`) and `min-h-target` are not literals and pass. Nearly every app written before
 those tokens existed has one of those literals, so it ships at `warn` and does not inherit

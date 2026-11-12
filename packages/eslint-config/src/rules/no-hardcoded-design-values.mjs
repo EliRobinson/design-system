@@ -19,12 +19,12 @@ import {
   isColorExempt,
   isExempt,
 } from './value-patterns.mjs';
-import { propertyName, staticStrings } from './ast-strings.mjs';
+import { jsxAttributeName, propertyName, staticStrings } from './ast-strings.mjs';
 import {
-  ARBITRARY_VALUE,
-  DEFAULT_CLASS_NAME_FUNCTIONS,
+  CLASS_NAME_FUNCTIONS_OPTION,
   arbitraryValues,
-  classNameVisitors,
+  classNameReader,
+  withoutArbitraryValues,
 } from './class-names.mjs';
 
 const RADIUS_UTILITIES = /^rounded(?:-[a-z]+)?$/;
@@ -79,7 +79,7 @@ export default {
       {
         type: 'object',
         properties: {
-          classNameFunctions: { type: 'array', items: { type: 'string' } },
+          ...CLASS_NAME_FUNCTIONS_OPTION,
           allow: { type: 'array', items: { type: 'string' } },
         },
         additionalProperties: false,
@@ -101,12 +101,17 @@ export default {
     const options = context.options[0] ?? {};
     const allow = new Set(options.allow ?? []);
 
-    // A className can be reached twice — once via the JSX attribute and once
-    // via the cn() call inside it. Report each finding once.
+    // A string in a JSX `style` object is reached twice — by checkStyleObject
+    // from the attribute and by the Property visitor. Report each finding once.
     const reported = new Set();
 
-    function report(node, messageId, value) {
-      if (allow.has(value)) return;
+    /**
+     * `spelled` is the same finding spelled with spaces for underscores, the
+     * way this rule reported an arbitrary value before it reported the class
+     * as written; an `allow` entry in either spelling still matches.
+     */
+    function report(node, messageId, value, spelled = value) {
+      if (allow.has(value) || allow.has(spelled)) return;
       const key = `${node.range?.[0]}:${node.range?.[1]}:${messageId}:${value}`;
       if (reported.has(key)) return;
       reported.add(key);
@@ -131,26 +136,27 @@ export default {
     function checkClassName(node, className) {
       // The utility decides which axis a value belongs to, so a shadow with an
       // rgba() in it is reported as a shadow rather than as a stray colour.
-      for (const { utility, value } of arbitraryValues(className)) {
+      for (const { token, utility, value } of arbitraryValues(className)) {
         if (isExempt(value)) continue;
+        const spelled = `${utility}-[${value}]`;
 
         if (RADIUS_UTILITIES.test(utility) && MAGIC_LENGTH.test(value)) {
-          report(node, 'radius', `${utility}-[${value}]`);
+          report(node, 'radius', token, spelled);
         } else if (SHADOW_UTILITIES.test(utility) && MAGIC_LENGTH.test(value)) {
           // A system colour exempts a shadow, as it does in a stylesheet.
-          if (!isColorExempt(value)) report(node, 'shadow', `${utility}-[${value}]`);
+          if (!isColorExempt(value)) report(node, 'shadow', token, spelled);
         } else if (
           DURATION_UTILITIES.test(utility) &&
           (MAGIC_DURATION.test(value) || value.includes('cubic-bezier'))
         ) {
-          report(node, 'duration', `${utility}-[${value}]`);
+          report(node, 'duration', token, spelled);
         } else {
           checkColor(node, value);
         }
       }
 
       // A colour literal outside an arbitrary value is still a colour literal.
-      const outsideArbitrary = className.replace(ARBITRARY_VALUE, '');
+      const outsideArbitrary = withoutArbitraryValues(className);
       checkColor(node, outsideArbitrary);
 
       // Read against the untouched string: a palette utility can carry a
@@ -184,18 +190,20 @@ export default {
       }
     }
 
-    const classNames = classNameVisitors(
-      options.classNameFunctions ?? DEFAULT_CLASS_NAME_FUNCTIONS,
+    // Object keys stay unread here for now: this rule ships at `error`, and
+    // reading `clsx({ 'bg-[#fff]': on })` would turn a consumer's build red on
+    // upgrade. #409 tracks it.
+    const classNames = classNameReader(
+      { functions: options.classNameFunctions, objectKeys: false },
       checkClassName,
     );
 
     return {
-      ...classNames,
+      CallExpression: classNames.call,
 
       JSXAttribute(node) {
-        classNames.JSXAttribute(node);
-        const name = node.name.type === 'JSXIdentifier' ? node.name.name : null;
-        if (name === 'style' && node.value?.type === 'JSXExpressionContainer') {
+        classNames.attribute(node);
+        if (jsxAttributeName(node) === 'style' && node.value?.type === 'JSXExpressionContainer') {
           checkStyleObject(node.value.expression);
         }
       },
