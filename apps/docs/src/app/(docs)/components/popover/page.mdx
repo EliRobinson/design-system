@@ -39,8 +39,9 @@ There's no `PopoverClose` — unlike `Dialog`, closing programmatically means ca
 - `PopoverContent` renders `role="dialog"`, portaled to `document.body`. This is a
   **non-modal** dialog role: nothing calls `showModal()`, there's no focus trap, and the rest
   of the page stays interactive — the opposite of `Dialog`.
-- `Escape` closes it from anywhere (a document-level listener, the same `useEscapeKey` hook
-  `DropdownMenu` uses), and clicking outside the trigger or content closes it too.
+- `Escape` closes it from anywhere while it is the topmost open layer (the same `useEscapeKey`
+  dismissal stack `DropdownMenu`, `Tooltip` and `Dialog` use), and returns focus to the trigger
+  if focus was inside. Clicking outside the trigger or content closes it too.
 - No initial-focus management: opening the popover doesn't move DOM focus into
   `PopoverContent`. Focus stays wherever it was — typically the trigger, since activating it
   doesn't blur it. If your content includes interactive elements a fully keyboard-driven flow

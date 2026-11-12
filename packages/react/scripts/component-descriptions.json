@@ -3,7 +3,7 @@
   "hooks": {
     "useAnchoredPosition": "Fixed-position layout for a floating panel relative to its trigger, above or below, kept inside the viewport.",
     "useClickOutside": "Calls back when a pointer-down lands outside the given refs — the dismissal half of every overlay.",
-    "useEscapeKey": "Calls back on Escape keydown while enabled — shared dismissal behavior for overlays."
+    "useEscapeKey": "Puts an overlay on the shared dismissal stack while enabled; Escape calls back only the topmost layer."
   },
   "Avatar": "Image avatar with initials fallback, in sm/md/lg sizes.",
   "Badge": "Small status label — default, signal, anchor, solid, and outline variants.",

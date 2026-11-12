@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { stubViewportLayout } from '../../../test/viewport.js';
-import { Dialog, DialogContent, DialogTitle } from '../Dialog.js';
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '../Dialog.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,6 +83,33 @@ describe('Escape closes only the topmost layer', () => {
     expect(pressEscape()).toBe(false);
     expect(screen.queryByText('Panel')).not.toBeInTheDocument();
     expect(pressEscape()).toBe(true);
+  });
+
+  it('leaves a tooltip opened before a dialog alone and lets the dialog close', async () => {
+    // An icon button with a tooltip that opens a dialog: the pointer stays on
+    // the trigger, so the tooltip is still open under the modal.
+    const user = userEvent.setup();
+    render(
+      <Dialog>
+        <Tooltip>
+          <TooltipTrigger>
+            <DialogTrigger>Open</DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Open settings</TooltipContent>
+        </Tooltip>
+        <DialogContent>
+          <DialogTitle>Settings</DialogTitle>
+        </DialogContent>
+      </Dialog>,
+    );
+
+    await user.hover(screen.getByRole('button', { name: 'Open' }));
+    expect(await screen.findByRole('tooltip')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument();
+
+    expect(pressEscape()).toBe(true);
+    expect(screen.getByRole('tooltip', { hidden: true })).toBeInTheDocument();
   });
 
   it('closes a tooltip inside a menu without moving focus out of the menu', async () => {

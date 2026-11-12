@@ -32,7 +32,8 @@ export const HOOK_USED_BY: Record<string, string> = {
   useActiveDescendant: 'Used by Combobox and CommandPalette.',
   useRovingFocus: 'Used by Tabs and SegmentedControl.',
   useClickOutside: 'Used by the anchored overlays — Popover, DropdownMenu, Combobox, DatePicker.',
-  useEscapeKey: 'Used by the anchored overlays alongside useClickOutside.',
+  useEscapeKey:
+    'Used by Tooltip, the anchored overlays and the modal surfaces, so one Escape closes only the topmost layer.',
   useAnchoredPosition: 'Used by Popover, DropdownMenu, and Tooltip.',
   useDisclosure: 'Used by Dialog, Sheet, Popover, and DropdownMenu.',
   useHasMounted:
