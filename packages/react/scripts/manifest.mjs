@@ -218,7 +218,7 @@ function componentEntry(componentsDir, packageName, { subpath, analysis }, docs)
   };
 }
 
-function hookEntry(packageName, { subpath, analysis }) {
+function hookEntry(packageName, { path, subpath, analysis }, usedBy) {
   const name = subpath.split('/').at(-1);
   const { values, types, hooks } = analysis;
   const importSpecifier = `${packageName}/hooks/${subpath}`;
@@ -230,14 +230,54 @@ function hookEntry(packageName, { subpath, analysis }) {
     description: hooks.find((hook) => hook.name === name)?.description || curatedHooks[name] || '',
     exports: values,
     types,
+    usedBy: usedBy(path),
   };
 }
 
 /** Every source file under `root`, parsed once, sorted by module subpath. */
-function modulesUnder(root) {
+function modulesUnder(root, parsed) {
   return sourceFiles(root)
-    .map((path) => ({ path, subpath: subpathOf(root, path), analysis: analyzeSource(path) }))
+    .map((path) => ({ path, subpath: subpathOf(root, path), analysis: parsed(path) }))
     .sort((a, b) => a.subpath.localeCompare(b.subpath));
+}
+
+/**
+ * Who uses a module, by name: the components and hooks that import it, read
+ * off the import graph of src/ so the answer cannot drift from the code.
+ *
+ * Only components and hooks are named, because they are the only modules a
+ * reader can look up. An internal module in between (organisms/overlay/*,
+ * lib/*) is looked through to whoever imports it: useDisclosure is imported by
+ * overlay/anchoredOverlay and overlay/modalSurface, and reports Popover,
+ * DropdownMenu, Dialog and Sheet, which is where it reaches a consumer.
+ *
+ * @param {{ path: string, analysis: { valueImports: string[] } }[]} modules every module in src/
+ * @param {Map<string, string>} named path -> public name, for components and hooks
+ * @returns {(path: string) => string[]} sorted names, without duplicates
+ */
+function usersByImport(modules, named) {
+  const importers = new Map();
+  for (const { path, analysis } of modules) {
+    for (const target of analysis.valueImports) {
+      if (!importers.has(target)) importers.set(target, []);
+      importers.get(target).push(path);
+    }
+  }
+
+  return (path) => {
+    const names = new Set();
+    const seen = new Set([path]);
+    const queue = [path];
+    while (queue.length > 0) {
+      for (const importer of importers.get(queue.shift()) ?? []) {
+        if (seen.has(importer)) continue;
+        seen.add(importer);
+        if (named.has(importer)) names.add(named.get(importer));
+        else queue.push(importer);
+      }
+    }
+    return [...names].sort((a, b) => a.localeCompare(b));
+  };
 }
 
 /**
@@ -259,7 +299,13 @@ export function buildManifest(packageRoot) {
   const srcDir = join(packageRoot, 'src');
   const componentsDir = join(srcDir, 'components');
 
-  const modules = modulesUnder(componentsDir).filter(isComponent);
+  const analyses = new Map(sourceFiles(srcDir).map((path) => [path, analyzeSource(path)]));
+  const parsed = (path) => analyses.get(path);
+
+  const modules = modulesUnder(componentsDir, parsed).filter(isComponent);
+  const hookModules = modulesUnder(join(srcDir, 'hooks'), parsed).filter(
+    (module) => module.analysis.values.length > 0,
+  );
   const docsByFile = parseComponentDocs(
     modules.map((module) => module.path),
     join(packageRoot, 'tsconfig.json'),
@@ -269,9 +315,14 @@ export function buildManifest(packageRoot) {
     componentEntry(componentsDir, pkg.name, module, docsByFile.get(module.path) ?? []),
   );
 
-  const hooks = modulesUnder(join(srcDir, 'hooks'))
-    .map((module) => hookEntry(pkg.name, module))
-    .filter((entry) => entry.exports.length > 0);
+  const named = new Map(
+    [...modules, ...hookModules].map((module) => [module.path, module.subpath.split('/').at(-1)]),
+  );
+  const usedBy = usersByImport(
+    [...analyses].map(([path, analysis]) => ({ path, analysis })),
+    named,
+  );
+  const hooks = hookModules.map((module) => hookEntry(pkg.name, module, usedBy));
 
   return {
     // Bump when the manifest's own shape changes, so readers can degrade.

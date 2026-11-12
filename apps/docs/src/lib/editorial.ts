@@ -26,19 +26,20 @@ export const ELEMENTS_TIER_INTRO: Record<string, string> = {
   lib: 'The helpers the tree shares.',
 };
 
-/* Which components consume each hook — usage prose, sourced from
-   docs/agents/components.md and the component imports themselves. */
-export const HOOK_USED_BY: Record<string, string> = {
-  useActiveDescendant: 'Used by Combobox and CommandPalette.',
-  useRovingFocus: 'Used by Tabs and SegmentedControl.',
-  useClickOutside: 'Used by the anchored overlays — Popover, DropdownMenu, Combobox, DatePicker.',
-  useEscapeKey:
-    'Used by Tooltip, the anchored overlays and the modal surfaces, so one Escape closes only the topmost layer.',
-  useAnchoredPosition: 'Used by Popover, DropdownMenu, and Tooltip.',
-  useDisclosure:
-    'Used by Dialog, Sheet, Popover, and DropdownMenu. A boolean wrapper on useControllableState.',
-  useControllableState:
-    'Used by useDisclosure, Accordion, CommandPalette, RadioGroup, SearchField, and Tabs.',
-  useHasMounted:
-    'Used by Toaster, PopoverContent, DropdownMenuContent, and TooltipContent to skip their portals during server rendering.',
+/* Why a hook's users use it — judgment the import graph cannot supply. Who
+   uses it is not written here: the manifest derives each hook's `usedBy` from
+   the imports in packages/react/src, and hookUsage() puts the two together. A
+   hook with nothing to add has no entry. */
+export const HOOK_NOTES: Record<string, string> = {
+  useEscapeKey: 'They share one layer stack, so one Escape closes only the topmost layer.',
+  useDisclosure: 'A boolean wrapper on useControllableState.',
+  useHasMounted: 'Each one skips its portal during server rendering.',
 };
+
+const listFormat = new Intl.ListFormat('en', { type: 'conjunction' });
+
+/** The hooks page's usage line: the derived users, then the editorial note. */
+export function hookUsage(hook: { name: string; usedBy: string[] }): string {
+  const users = hook.usedBy.length > 0 ? `Used by ${listFormat.format(hook.usedBy)}.` : '';
+  return [users, HOOK_NOTES[hook.name]].filter(Boolean).join(' ');
+}

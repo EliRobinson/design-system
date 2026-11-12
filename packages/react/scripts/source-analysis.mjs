@@ -218,6 +218,7 @@ const HOOK_NAME = /^use[A-Z]/;
  *   declarations: Map<string, ts.Declaration>,
  *   hooks: { name: string, description: string }[],
  *   relativeImports: string[],
+ *   valueImports: string[],
  *   nameSources: Map<string, { specifier: string, name: string }>,
  *   path: string,
  * }}
@@ -236,6 +237,15 @@ export function analyzeSource(path) {
   const types = [];
   const hooks = [];
   const relativeImports = [];
+  // Resolved paths of the relative modules this file takes values from, by
+  // import or re-export. Type-only edges are left out: importing a hook's
+  // options type is not using the hook.
+  const valueImports = new Set();
+  const noteValueImport = (specifier, typeOnly) => {
+    if (typeOnly || !isRelative(specifier)) return;
+    const resolved = resolveModule(path, specifier);
+    if (resolved) valueImports.add(resolved);
+  };
   const declarations = new Map();
   // Name -> the relative module it comes from and its name there. Covers both
   // names this file imports (`import { A as B } from './x'` maps B) and names
@@ -263,6 +273,7 @@ export function analyzeSource(path) {
       // Sibling modules only, on purpose: manifest.mjs looks for a stylesheet
       // beside the component. `isRelative` (which also takes `../`) is for names.
       if (specifier.startsWith('./')) relativeImports.push(specifier);
+      noteValueImport(specifier, statement.importClause?.isTypeOnly);
       const bindings = statement.importClause?.namedBindings;
       if (bindings && ts.isNamedImports(bindings)) noteLinks(specifier, bindings.elements);
       continue;
@@ -294,10 +305,21 @@ export function analyzeSource(path) {
         }
         if (statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier)) {
           noteLinks(statement.moduleSpecifier.text, statement.exportClause.elements);
+          noteValueImport(statement.moduleSpecifier.text, statement.isTypeOnly);
         }
       }
     }
   }
 
-  return { text, values, types, declarations, hooks, relativeImports, nameSources, path };
+  return {
+    text,
+    values,
+    types,
+    declarations,
+    hooks,
+    relativeImports,
+    valueImports: [...valueImports],
+    nameSources,
+    path,
+  };
 }

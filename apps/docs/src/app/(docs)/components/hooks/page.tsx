@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { CodeSnippet } from '../../../../components/docs/CodeSnippet';
-import { HOOK_USED_BY } from '../../../../lib/editorial';
+import { hookUsage } from '../../../../lib/editorial';
 import { hooks } from '../../../../lib/manifest';
 
 export const metadata: Metadata = { title: 'Interaction hooks' };
@@ -28,7 +28,7 @@ export default function HooksPage() {
             .map((paragraph) => (
               <p key={paragraph.slice(0, 24)}>{paragraph.replace(/\n/g, ' ')}</p>
             ))}
-          {HOOK_USED_BY[hook.name] && <p>{HOOK_USED_BY[hook.name]}</p>}
+          {hookUsage(hook) && <p>{hookUsage(hook)}</p>}
         </section>
       ))}
     </>
