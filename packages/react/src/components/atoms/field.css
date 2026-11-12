@@ -7,6 +7,20 @@
   gap: var(--space-2);
 }
 
+/* Visually hidden, still announced. Shared by every hidden label: the text
+   draws nothing, the element stays in the accessibility tree. */
+.ds-visually-hidden {
+  border: 0;
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
 .ds-label {
   color: var(--fg);
   font-family: var(--font-sans);

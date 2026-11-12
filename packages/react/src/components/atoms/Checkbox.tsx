@@ -44,9 +44,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
           {...controlProps}
           {...props}
         />
-        <span className={cn('ds-checkbox__label', hideLabel && 'ds-checkbox__label--hidden')}>
-          {label}
-        </span>
+        <span className={cn('ds-checkbox__label', hideLabel && 'ds-visually-hidden')}>{label}</span>
       </label>
       {/* A sibling, not a wrapper: see useFieldMessage. */}
       {message}

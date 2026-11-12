@@ -43,9 +43,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(function Switch(
           {...controlProps}
           {...props}
         />
-        <span className={cn('ds-switch__label', hideLabel && 'ds-switch__label--hidden')}>
-          {label}
-        </span>
+        <span className={cn('ds-switch__label', hideLabel && 'ds-visually-hidden')}>{label}</span>
       </label>
       {/* A sibling, not a wrapper: see useFieldMessage. */}
       {message}
