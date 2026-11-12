@@ -818,7 +818,7 @@
 .ds-ai-confirm__btn--danger:focus {
   background: var(--status-danger-hover);
   border-color: var(--status-danger-hover);
-  color: var(--status-danger-on); /* >= 4.5:1, asserted in ai-agent.test.ts */
+  color: var(--status-danger-on); /* >= 4.5:1, asserted in src/lib/ai-confirm-danger-contrast.test.ts */
 }
 
 .ds-ai-confirm__btn--danger:active {
