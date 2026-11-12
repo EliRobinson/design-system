@@ -4,10 +4,14 @@ Nx-based monorepo for reusable design system libraries and project scaffolding.
 
 ## Packages
 
+This list is the source. A test checks it against `packages/*/package.json`.
+
 - `@elirobinson/tokens` — CSS and JSON design tokens.
 - `@elirobinson/react` — Accessible React components bound to Miltinson tokens.
+- `@elirobinson/ai-elements` — AI Elements chat and canvas components, vendored from `vercel/ai-elements`.
 - `@elirobinson/ai-patterns` — AI UX patterns, prompt contracts, guardrails, and the `ds` discovery CLI.
 - `@elirobinson/eslint-config` — the statically checkable contracts as a flat ESLint config.
+- `@elirobinson/design-system-mcp` — MCP server that answers design system questions for agents.
 - `create-elirobinson-design-system` — `npx` starter generator.
 
 ## Quick start
