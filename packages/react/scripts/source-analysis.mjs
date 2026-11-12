@@ -14,8 +14,7 @@
 // Anything that needs resolved types — a full prop table with inherited DOM
 // attributes, defaults, and per-prop JSDoc — comes from prop-docs.mjs instead.
 
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
 
 import ts from 'typescript';
 
@@ -103,17 +102,17 @@ function signaturesOf(typeNode, declarations, seen = new Set()) {
 
 const isRelative = (specifier) => specifier.startsWith('./') || specifier.startsWith('../');
 
-const isFile = (path) => existsSync(path) && statSync(path).isFile();
+const RESOLUTION = {
+  moduleResolution: ts.ModuleResolutionKind.Bundler,
+  module: ts.ModuleKind.ESNext,
+};
 
-/** The source file a relative specifier names, the way TypeScript's bundler resolution finds it. */
+/** The source file a relative specifier names, by TypeScript's own bundler resolution. */
 function resolveModule(fromPath, specifier) {
-  const base = resolve(dirname(fromPath), specifier);
-  const stem = base.replace(/\.[cm]?jsx?$/, '');
-  const candidates =
-    stem === base
-      ? [base, `${base}.ts`, `${base}.tsx`, join(base, 'index.ts'), join(base, 'index.tsx')]
-      : [`${stem}.ts`, `${stem}.tsx`, base];
-  return candidates.find(isFile) ?? null;
+  return (
+    ts.resolveModuleName(specifier, fromPath, RESOLUTION, ts.sys).resolvedModule
+      ?.resolvedFileName ?? null
+  );
 }
 
 /** Files an imported name may cross: the import itself, then one re-export. */
@@ -136,7 +135,7 @@ function unionNamed(analysis, name, hops = 0) {
   const local = localUnion(analysis.declarations, name);
   if (local) return local;
 
-  const link = analysis.typeImports.get(name);
+  const link = analysis.nameSources.get(name);
   if (!link || hops >= MAX_HOPS) return null;
 
   const target = resolveModule(analysis.path, link.specifier);
@@ -146,9 +145,12 @@ function unionNamed(analysis, name, hops = 0) {
 /**
  * Variant-shaped props of a props type: any prop whose type is a union of
  * literals, whether written inline (`size?: 'sm' | 'md'`) or behind an alias
- * (`variant?: ButtonVariant`), local or imported from a relative module. The
- * alias name, as this file spells it, is reported when there is one so
- * consumers can import the union type itself.
+ * (`variant?: ButtonVariant`), local or imported from a relative module.
+ *
+ * `type` names the alias only when the component's own module declares or
+ * exports it, so a consumer can import it from the component's subpath. An
+ * alias imported from elsewhere and not re-exported (Tooltip's `AnchoredSide`)
+ * reports `type: null`, like an inline union.
  *
  * @param {ReturnType<typeof analyzeSource>} analysis
  * @param {string} propsTypeName
@@ -171,7 +173,8 @@ export function variantsFor(analysis, propsTypeName) {
     if (ts.isTypeReferenceNode(typeNode)) {
       const aliasName = typeNode.typeName.getText();
       const values = unionNamed(analysis, aliasName);
-      if (values) variants.push({ prop: name, type: aliasName, values });
+      const importable = declarations.has(aliasName) || analysis.types.includes(aliasName);
+      if (values) variants.push({ prop: name, type: importable ? aliasName : null, values });
     }
   }
 
@@ -215,7 +218,7 @@ const HOOK_NAME = /^use[A-Z]/;
  *   declarations: Map<string, ts.Declaration>,
  *   hooks: { name: string, description: string }[],
  *   relativeImports: string[],
- *   typeImports: Map<string, { specifier: string, name: string }>,
+ *   nameSources: Map<string, { specifier: string, name: string }>,
  *   path: string,
  * }}
  */
@@ -234,13 +237,15 @@ export function analyzeSource(path) {
   const hooks = [];
   const relativeImports = [];
   const declarations = new Map();
-  // Local name -> where it comes from, for names imported or re-exported from a
-  // relative module. `import { A as B } from './x'` maps B to A in ./x.
-  const typeImports = new Map();
+  // Name -> the relative module it comes from and its name there. Covers both
+  // names this file imports (`import { A as B } from './x'` maps B) and names
+  // it re-exports (`export { A as B } from './x'` maps B, which this file never
+  // binds). Value and type imports alike: syntax alone cannot tell them apart.
+  const nameSources = new Map();
   const noteLinks = (specifier, elements) => {
     if (!isRelative(specifier)) return;
     for (const element of elements) {
-      typeImports.set(element.name.text, {
+      nameSources.set(element.name.text, {
         specifier,
         name: (element.propertyName ?? element.name).text,
       });
@@ -255,6 +260,8 @@ export function analyzeSource(path) {
   for (const statement of source.statements) {
     if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
       const specifier = statement.moduleSpecifier.text;
+      // Sibling modules only, on purpose: manifest.mjs looks for a stylesheet
+      // beside the component. `isRelative` (which also takes `../`) is for names.
       if (specifier.startsWith('./')) relativeImports.push(specifier);
       const bindings = statement.importClause?.namedBindings;
       if (bindings && ts.isNamedImports(bindings)) noteLinks(specifier, bindings.elements);
@@ -292,5 +299,5 @@ export function analyzeSource(path) {
     }
   }
 
-  return { text, values, types, declarations, hooks, relativeImports, typeImports, path };
+  return { text, values, types, declarations, hooks, relativeImports, nameSources, path };
 }

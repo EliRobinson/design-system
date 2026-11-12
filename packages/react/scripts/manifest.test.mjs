@@ -177,8 +177,13 @@ describe('buildManifest against this package', () => {
 
   it('resolves a variant union imported from another module', () => {
     expect(byName('Tooltip').variants).toEqual([
-      { prop: 'side', type: 'AnchoredSide', values: ['top', 'bottom', 'left', 'right'] },
+      { prop: 'side', type: null, values: ['top', 'bottom', 'left', 'right'] },
     ]);
+    expect(byName('DecisionCard').variants).toContainEqual({
+      prop: 'verdict',
+      type: null,
+      values: ['go', 'no', 'hold'],
+    });
   });
 
   it('lists every value a compound component exports', () => {
@@ -294,7 +299,7 @@ describe('props-type resolution', () => {
     );
 
     expect(manifest.components[0].variants).toEqual([
-      { prop: 'side', type: 'Side', values: ['top', 'bottom'] },
+      { prop: 'side', type: null, values: ['top', 'bottom'] },
     ]);
   });
 
@@ -312,8 +317,46 @@ describe('props-type resolution', () => {
     );
 
     expect(manifest.components[0].variants).toEqual([
-      { prop: 'side', type: 'PinSide', values: ['start', 'end'] },
+      { prop: 'side', type: null, values: ['start', 'end'] },
     ]);
+  });
+
+  it('names an imported alias only when the component module re-exports it', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/hooks/useSide.ts': `export type Side = 'top' | 'bottom';`,
+        'src/components/atoms/Pin.tsx': `
+          import type { Side } from '../../hooks/useSide.js';
+          export type { Side };
+          export type PinProps = { side?: Side };
+          export const Pin = (props: PinProps) => null;
+        `,
+      }),
+    );
+
+    expect(manifest.components[0].variants).toEqual([
+      { prop: 'side', type: 'Side', values: ['top', 'bottom'] },
+    ]);
+  });
+
+  it('stops after one re-export, and on a re-export cycle', () => {
+    const manifest = buildManifest(
+      fixture({
+        'src/lib/edge.ts': `export type Edge = 'start' | 'end';`,
+        'src/lib/middle.ts': `export type { Edge } from './edge';`,
+        'src/lib/outer.ts': `export type { Edge } from './middle';`,
+        'src/lib/a.ts': `export type { Loop } from './b';`,
+        'src/lib/b.ts': `export type { Loop } from './a';`,
+        'src/components/atoms/Pin.tsx': `
+          import type { Edge } from '../../lib/outer.js';
+          import type { Loop } from '../../lib/a.js';
+          export type PinProps = { side?: Edge; loop?: Loop };
+          export const Pin = (props: PinProps) => null;
+        `,
+      }),
+    );
+
+    expect(manifest.components[0].variants).toEqual([]);
   });
 
   it('ignores an imported name it cannot resolve to a literal union', () => {
