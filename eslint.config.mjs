@@ -137,7 +137,7 @@ export default tseslint.config(
   // rule ships to consumers as a warning; here it is clean, so it errors.
   ...designSystemCss({
     files: ['packages/react/src/**/*.css'],
-    controlGeometrySeverity: 'error',
+    controlGeometry: { severity: 'error' },
   }),
   // The one rule that IS pointed at the vendored tree, and the reason
   // VENDORED_ELEMENTS is a per-config ignore rather than a global one.
