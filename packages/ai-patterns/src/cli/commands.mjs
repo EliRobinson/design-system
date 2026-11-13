@@ -8,7 +8,14 @@ import { join } from 'node:path';
 import { PATTERNS_PKG, REACT_PKG, readFile, TOKENS_PKG } from '../package-lookup.mjs';
 import { renderVoice } from '../voice/render.mjs';
 import { resolveVoicePack } from '../voice/resolve.mjs';
-import { cssClasses, cssVariables, loadDials, typeClasses, walk } from './discovery.mjs';
+import {
+  cssClasses,
+  cssVariables,
+  loadColorsIn,
+  loadDials,
+  typeClasses,
+  walk,
+} from './discovery.mjs';
 
 const REPO = 'https://github.com/EliRobinson/design-system';
 
@@ -263,14 +270,14 @@ function tokenRows(api, entry, nameWidth, labelWidth) {
    this command, so it has to answer. */
 const COLOUR_FILTERS = new Set(['color', 'colour']);
 
-/* CSS colour keywords the tokens package's colour grammar does not read, but
+/* CSS colour keywords that the tokens package's `colorsIn` does not read, but
    that a token can still resolve to (`--link-on-fill: currentColor`). */
 const COLOUR_KEYWORDS = new Set(['currentcolor', 'transparent']);
 
 /**
- * True when the whole value is one colour. Read with the installed tokens'
- * own `colorsIn`, so a colour is whatever that package measures as one. A
- * value that only contains a colour (a box-shadow) is not a colour token.
+ * True when the whole value is one colour: one colour the installed tokens'
+ * `colorsIn` reads, or a CSS colour keyword. A value that only contains a
+ * colour (a box-shadow) is not a colour token.
  */
 function isColourValue(colorsIn, value) {
   const trimmed = value.trim();
@@ -279,30 +286,56 @@ function isColourValue(colorsIn, value) {
   return found.length === 1 && found[0] === trimmed;
 }
 
+function predatesColours(env, filter) {
+  const version = env.versions[TOKENS_PKG];
+  return [
+    `${TOKENS_PKG}@${version ?? '(unknown)'} has no colour reader, so \`ds tokens ${filter}\` cannot`,
+    `  tell which tokens are colours. Upgrade it: pnpm add ${TOKENS_PKG}@latest`,
+  ].join('\n');
+}
+
+/**
+ * The one `ds tokens` filter, for both readers below. A filter matches a
+ * token by a substring of its name or of any of its values; `color` and
+ * `colour` also match every token whose value is a colour.
+ *
+ * @returns {((name: string, values: string[]) => boolean) | null} null when
+ *   the filter is a colour filter and the installed tokens has no `colorsIn`
+ */
+function tokenFilter(filter, colorsIn) {
+  const byColour = COLOUR_FILTERS.has(filter);
+  if (byColour && !colorsIn) return null;
+
+  return (name, values) =>
+    !filter ||
+    name.includes(filter) ||
+    values.some((value) => value.includes(filter)) ||
+    (byColour && values.some((value) => isColourValue(colorsIn, value)));
+}
+
 export async function tokens(env, filter) {
   if (!env.tokenStylesheets) return fail(installHint(TOKENS_PKG));
 
-  const loaded = await loadDials(env);
-  if (!loaded) return tokensOfDefaultCombination(env, filter);
+  const matches = tokenFilter(filter, await loadColorsIn(env));
+  if (!matches) return fail(predatesColours(env, filter));
 
-  const { dials: api, sources, platformCss, colorsIn } = loaded;
+  const loaded = await loadDials(env);
+  if (!loaded) return tokensOfDefaultCombination(env, filter, matches);
+
+  const { dials: api, sources, platformCss } = loaded;
 
   /* One filter over every value a token has, not just the default one: a token
      whose slate value is the only place a colour appears would otherwise be
      unfindable by that colour, which is the same class of miss as printing one
      combination out of four. */
-  const allValues = ({ values, platforms }) => [
-    ...values.map(({ value }) => value).filter(Boolean),
-    ...platforms.map(({ value }) => value),
-  ];
-  const byColour = colorsIn && COLOUR_FILTERS.has(filter);
-  const matches = (entry) =>
-    !filter ||
-    entry.name.includes(filter) ||
-    allValues(entry).some((value) => value.includes(filter)) ||
-    (byColour && allValues(entry).some((value) => isColourValue(colorsIn, value)));
-
-  const entries = api.tokenDials(sources, { platformCss }).filter(matches);
+  const entries = api
+    .tokenDials(sources, { platformCss })
+    .filter(({ name, values, platforms }) =>
+      matches(name, [
+        ...values.map(({ value }) => value).filter(Boolean),
+        ...platforms.map(({ value }) => value),
+      ]),
+    );
   if (!entries.length) return fail(`No tokens match "${filter}".`);
 
   const nameWidth = Math.max(...entries.map(({ name }) => name.length));
@@ -315,7 +348,9 @@ export async function tokens(env, filter) {
     [
       ...entries.flatMap((entry) => tokenRows(api, entry, nameWidth, labelWidth)),
       '',
-      ...(byColour ? [`"${filter}" lists every token whose value is a colour.`] : []),
+      ...(COLOUR_FILTERS.has(filter)
+        ? [`"${filter}" also lists every token whose value is a colour.`]
+        : []),
       `An unlabelled value is the same in all ${api.COMBINATIONS.length} combinations; a labelled one names its own.`,
       `The default combination is ${api.defaultCombinationId()} — what a root element with no attributes`,
       'renders — and `ds dials` is the map of the attributes that select the rest.',
@@ -334,9 +369,9 @@ export async function tokens(env, filter) {
  * that "as far as it goes" is on screen rather than inferred from values that
  * look complete.
  */
-function tokensOfDefaultCombination(env, filter) {
-  const variables = cssVariables(env.tokenStylesheets).filter(
-    ({ name, value }) => !filter || name.includes(filter) || value.includes(filter),
+function tokensOfDefaultCombination(env, filter, matches) {
+  const variables = cssVariables(env.tokenStylesheets).filter(({ name, value }) =>
+    matches(name, [value]),
   );
 
   if (!variables.length) return fail(`No tokens match "${filter}".`);

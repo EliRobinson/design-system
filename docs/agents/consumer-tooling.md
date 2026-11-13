@@ -134,12 +134,12 @@ consumer who cannot query them is a consumer who writes them into their own docs
 a third palette makes every copy wrong at once and nothing fails. So the roster ships as
 data, and every surface reads it rather than restating it:
 
-| Surface                           | Answers                                                         |
-| --------------------------------- | --------------------------------------------------------------- |
-| `ds dials`                        | The three dials, the combinations, and what moves on a platform |
-| `ds tokens [filter]`              | A token's value in every combination it differs in              |
-| MCP `get_dials` / `search_tokens` | The same, for an agent mid-task                                 |
-| `@elirobinson/tokens/dials`       | The roster as a module, for anything that generates             |
+| Surface                           | Answers                                                                             |
+| --------------------------------- | ----------------------------------------------------------------------------------- |
+| `ds dials`                        | The three dials, the combinations, and what moves on a platform                     |
+| `ds tokens [filter]`              | A token's value in every combination it differs in; `color` lists the colour tokens |
+| MCP `get_dials` / `search_tokens` | The same, for an agent mid-task                                                     |
+| `@elirobinson/tokens/dials`       | The roster as a module, for anything that generates                                 |
 
 One list exists, in `packages/tokens/src/contrast.mjs`, and `dials.mjs` re-exports it.
 Adding a palette means a block in `palettes.css` and an entry in that list; every surface

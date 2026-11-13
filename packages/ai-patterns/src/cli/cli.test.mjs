@@ -515,6 +515,29 @@ describe('ds tokens color', () => {
   it('takes the British spelling too', async () => {
     expect(await colourNames('colour')).toEqual(await colourNames('color'));
   });
+
+  /* A tokens package from before the dial roster still has color.mjs from
+     some releases on, and the colour filter runs on its one combination. */
+  it('lists colours from a tokens package that predates the dial roster', async () => {
+    const root = consumer({
+      '@elirobinson/tokens': {
+        'package.json': { name: '@elirobinson/tokens', version: '0.11.0' },
+        'src/tokens.css': TOKENS_CSS,
+        'src/color.mjs': readFileSync(join(TOKENS_DIR, 'src', 'color.mjs'), 'utf8'),
+      },
+    });
+    const { text, exitCode } = await run(['tokens', 'color'], at(root));
+    expect(exitCode).toBe(0);
+    expect(printedTokens(text)).toEqual(['--bg']);
+  });
+
+  it('asks for an upgrade, not "No tokens match", when tokens has no colour reader', async () => {
+    const { text, exitCode } = await run(['tokens', 'color'], at(tieredConsumer()));
+    expect(exitCode).toBe(1);
+    expect(text).not.toContain('No tokens match');
+    expect(text).toContain('has no colour reader');
+    expect(text).toContain('pnpm add @elirobinson/tokens@latest');
+  });
 });
 
 describe('ds tokens across the combinations', () => {
