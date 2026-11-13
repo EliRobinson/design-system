@@ -409,7 +409,12 @@ const CASES = {
         ),
       ),
     ),
-    targets: ['.ds-breadcrumb__list', '.ds-breadcrumb__item'],
+    targets: [
+      '.ds-breadcrumb__list',
+      '.ds-breadcrumb__item',
+      'a.ds-breadcrumb__link',
+      '.ds-breadcrumb__link--current',
+    ],
   },
   /* #414: the three the #383 review gate found. Stepper's root is its own
      `ol`; Accordion's heading is the default `headingLevel`, an h3. */

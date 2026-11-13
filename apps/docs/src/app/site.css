@@ -164,7 +164,9 @@
   box-shadow: none; /* the component's hover ring (#354) is not part of the docs sidebar */
 }
 
-.site-nav .ds-navigation-menu__link--active {
+/* Outranks the component's root-scoped active rule (0,2,0, #423) whatever
+   order the two sheets load in. */
+.site-nav .ds-navigation-menu .ds-navigation-menu__link--active {
   color: var(--fg);
   font-weight: var(--fw-medium);
   background: var(--bg-subtle);

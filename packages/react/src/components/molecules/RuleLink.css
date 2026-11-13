@@ -7,11 +7,9 @@
   /* The rule under the label is the component's whole identity — fixed at
      --ink-1000 it was a black line on a black page. */
   border-bottom: 1px solid var(--fg);
-  color: var(--fg);
   display: inline-flex;
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
   gap: var(--space-2);
   /* A standalone call-to-action link, so the 44px rule applies. 18px of hit
      area above the 24px line box and the 2px holding the rule off it comes to
@@ -30,6 +28,14 @@
   margin-top: -18px;
   padding-bottom: 2px;
   padding-top: 18px;
+}
+
+/* #423: the reset a host `.prose a` reaches for, at (0,2,0). The root is the
+   link itself, so it repeats its own class, as Stepper does. The hover rule
+   below ties it and wins on order. */
+.ds-rule-link.ds-rule-link {
+  color: var(--fg);
+  font-weight: var(--fw-medium);
   text-decoration: none;
 }
 
