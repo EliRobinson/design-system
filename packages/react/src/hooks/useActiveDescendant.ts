@@ -1,8 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { MouseEvent } from 'react';
 
-import { useLatest } from '../lib/useLatest.js';
-
 export type ActiveDescendantOptions = {
   /** How many options are currently selectable (i.e. after filtering). */
   count: number;
@@ -51,6 +49,13 @@ export type ActiveDescendant = {
 
 type Stored = { index: number; key: string | undefined };
 
+/** The first option, following no key. */
+const TOP: Stored = { index: 0, key: undefined };
+
+function optionId(baseId: string, index: number): string {
+  return `${baseId}-option-${index}`;
+}
+
 /**
  * Where the stored highlight sits in the current options. A stored key that
  * is still present wins over the stored index; a stored key that is gone falls
@@ -97,11 +102,7 @@ export function useActiveDescendant({
   onSelect,
   keys,
 }: ActiveDescendantOptions): ActiveDescendant {
-  const [stored, setStored] = useState<Stored>({ index: 0, key: undefined });
-  // Read at event time, so a caller that rebuilds `keys` every render does
-  // not churn the callbacks below (CommandPalette's open effect depends on
-  // `resetActive`).
-  const keysRef = useLatest(keys);
+  const [stored, setStored] = useState<Stored>(TOP);
 
   // A key that left the options is dropped, not kept for later: the highlight
   // now holds the first option. Kept, it would jump back to that option if a
@@ -109,37 +110,41 @@ export function useActiveDescendant({
   // during render is React's pattern for state derived from props; the guard
   // makes it run once.
   if (keys && stored.key !== undefined && !keys.includes(stored.key)) {
-    setStored({ index: 0, key: undefined });
+    setStored(TOP);
   }
 
   const activeIndex = resolveIndex(stored, count, keys);
-  const activeId = activeIndex >= 0 ? `${baseId}-option-${activeIndex}` : undefined;
+  const activeId = activeIndex >= 0 ? optionId(baseId, activeIndex) : undefined;
 
+  // `keys` comes from this render's closure, never from a ref: a ref written
+  // in an effect can still hold the previous render's keys when an event
+  // fires, and pairing them with this render's `count` picks the wrong key.
+  // The cost is that these two change identity whenever a caller rebuilds
+  // `keys`; `resetActive` reads no keys, so it stays stable for effects.
   const setActiveIndex = useCallback(
-    (index: number) => setStored({ index, key: keysRef.current?.[index] }),
-    [keysRef],
+    (index: number) => setStored({ index, key: keys?.[index] }),
+    [keys],
   );
 
-  const resetActive = useCallback(() => setStored({ index: 0, key: undefined }), []);
+  const resetActive = useCallback(() => setStored(TOP), []);
 
   const moveActive = useCallback(
     (delta: number) => {
       setStored((current) => {
         if (count === 0) {
-          return { index: 0, key: undefined };
+          return TOP;
         }
-        const currentKeys = keysRef.current;
-        const clampedCurrent = resolveIndex(current, count, currentKeys);
+        const clampedCurrent = resolveIndex(current, count, keys);
         const next = Math.max(0, Math.min(count - 1, clampedCurrent + delta));
-        return { index: next, key: currentKeys?.[next] };
+        return { index: next, key: keys?.[next] };
       });
     },
-    [count, keysRef],
+    [count, keys],
   );
 
   const getOptionProps = useCallback(
     (index: number): ActiveOptionProps => ({
-      id: `${baseId}-option-${index}`,
+      id: optionId(baseId, index),
       role: 'option',
       'aria-selected': index === activeIndex,
       tabIndex: -1,
