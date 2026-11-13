@@ -46,17 +46,19 @@
   display: flex;
   align-items: center;
   min-height: var(--target);
-  padding: 0 var(--space-3);
   border-radius: var(--radius-sm);
-  font-size: var(--fs-sm);
 }
 
 /* #423: the reset a host `.prose a` reaches for, at (0,2,0). The hover and
    active rules below tie it and win on order. */
 .ds-navigation-menu .ds-navigation-menu__link {
+  margin: 0;
+  padding: 0 var(--space-3);
   border: 0;
   color: var(--fg-2);
+  font-size: var(--fs-sm);
   font-weight: inherit;
+  letter-spacing: inherit;
   text-decoration: none;
 }
 

@@ -30,6 +30,7 @@
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
   font-weight: inherit;
+  letter-spacing: inherit;
   text-decoration: none;
 }
 
@@ -51,8 +52,9 @@
    The 5px of horizontal overhang a side sits inside the 8px gap to the
    separator, so a crumb still cannot reach a neighbour's centre, which is what
    the hit-area contract actually states. The current-page crumb is a <span>,
-   not a control, so it is deliberately left out. */
-a.ds-breadcrumb__link {
+   not a control, so it is deliberately left out. Scoped under the root
+   (0,2,1), so a host `.prose a` padding cannot take the hit area away (#423). */
+.ds-breadcrumb a.ds-breadcrumb__link {
   margin: -11px -5px;
   padding: 11px 5px;
 }

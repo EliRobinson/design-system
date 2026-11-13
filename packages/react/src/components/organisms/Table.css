@@ -6,10 +6,9 @@
 
 /* #423: scoped under the wrapper root, so a host `.prose table`, `th` or `td`
    cannot restyle it; docs/agents/components.md says why. Each rule sets what
-   a host table rule reaches for: margin, line-height, row rules and cell
-   alignment. */
-/* `:where(table)` keeps VirtualTable's `div` root out and adds nothing to the
-   specificity: every rule here is (0,2,0). */
+   a host table rule reaches for: margin, size, line-height, row rules and
+   cell alignment. `:where(table)` keeps VirtualTable's `div` root out and
+   adds nothing to the specificity: every rule here is (0,2,0). */
 .ds-table-wrapper :where(table).ds-table {
   width: 100%;
   margin: 0;
@@ -25,6 +24,8 @@
 .ds-table-wrapper .ds-table :where(th, td) {
   vertical-align: middle;
   padding: var(--space-2) var(--space-3);
+  font-size: inherit;
+  line-height: inherit;
 }
 
 .ds-table-wrapper .ds-table :where(th) {
@@ -35,6 +36,7 @@
 }
 
 .ds-table-wrapper .ds-table :where(td) {
+  text-align: start;
   border-bottom: 1px solid var(--border);
   color: var(--fg);
   font-weight: inherit;
