@@ -47,7 +47,8 @@
         "{workspaceRoot}/apps/docs/src/app/ai-theme/**",
         "{workspaceRoot}/apps/docs/src/app/ai-theme-*.css",
         "{workspaceRoot}/.changeset/*.md",
-        "{workspaceRoot}/packages/*/CHANGELOG.md"
+        "{workspaceRoot}/packages/*/CHANGELOG.md",
+        "{workspaceRoot}/tests/support/**"
       ]
     }
   },

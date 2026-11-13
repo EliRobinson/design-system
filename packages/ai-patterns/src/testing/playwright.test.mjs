@@ -33,7 +33,7 @@ import {
 const resolveFrom = createRequire(import.meta.url);
 const shippedCss = (specifier) => readFileSync(resolveFrom.resolve(specifier), 'utf8');
 
-const { browser, describeBrowser } = await bootBrowser('browser contract tests');
+const { browser, describeBrowser } = await bootBrowser('browser contract');
 
 describe('argument handling', () => {
   it('rejects anything that is not a Playwright page', async () => {

@@ -14,8 +14,11 @@ import { extname, join } from 'node:path';
 import { TOKENS_SRC_DIR } from '@elirobinson/tokens/token-stylesheets';
 import { afterAll, describe } from 'vitest';
 
-/* Same budget, and the same reason, as packages/tokens' browser tests. */
-export const BROWSER_BUDGET = 60_000;
+import { BROWSER_BUDGET, bootBrowser as bootShared } from '../../../tests/support/boot-browser.mjs';
+
+/* The launch guard, the teardown budget and the reasoning behind both live in
+   the repo's one shared bootstrap, tests/support/boot-browser.mjs (#402). */
+export { BROWSER_BUDGET };
 
 /* tokens.css @imports its siblings relatively, so it has to be fetched from a
    URL that has a directory: on about:blank, `./palettes.css` resolves to
@@ -27,42 +30,18 @@ const ORIGIN = 'https://react.test';
 const CONTENT_TYPES = { '.css': 'text/css', '.woff2': 'font/woff2' };
 
 /**
- * Bring up a browser for the calling suite and register its teardown. Await it
- * at a test file's top level. `describeBrowser` is `describe.skip` when no
- * browser came up, so a bare CI image skips loudly rather than fails.
+ * The shared bootstrap, bound to this package's own Vitest and Playwright.
+ * Await it at a test file's top level.
  *
  * @param {string} label names the suite in the skip warning
  * @param {'chromium' | 'webkit' | 'firefox'} [engine] which browser to launch
  */
-export async function bootBrowser(label, engine = 'chromium') {
-  let browserType = null;
-  try {
-    browserType = (await import('playwright'))[engine];
-  } catch {
-    browserType = null;
-  }
-
-  let browser = null;
-  let launchError;
-  if (browserType) {
-    try {
-      browser = await browserType.launch();
-    } catch (error) {
-      launchError = error;
-    }
-  }
-
-  afterAll(async () => {
-    await browser?.close();
-  }, BROWSER_BUDGET);
-
-  if (!browser) {
-    console.warn(
-      `Skipping ${label} tests: ${browserType ? launchError?.message : 'playwright is not installed'}`,
-    );
-  }
-
-  return { browser, describeBrowser: browser ? describe : describe.skip };
+export function bootBrowser(label, engine = 'chromium') {
+  return bootShared(label, {
+    vitest: { afterAll, describe },
+    playwright: () => import('playwright'),
+    engine,
+  });
 }
 
 /**

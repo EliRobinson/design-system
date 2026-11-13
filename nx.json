@@ -105,8 +105,16 @@
        means the next such project does not have to remember.
        The cost is that a project's `build` no longer runs beside its `test`; it
        runs before it. Both targets are cached, so a rerun pays nothing. */
+    /* `inputs` adds one file no project owns: tests/support/ holds the
+       browser bootstrap that tokens, react, ai-patterns and docs suites all
+       import by relative path (#402). An edit there changes what those suites
+       do, and no import edge tells Nx so. It is on the default rather than on
+       the four, so a fifth suite that starts using it cannot forget the line.
+       A project.json that lists its own `inputs` replaces this list, so
+       ai-patterns and scripts restate it. */
     "test": {
       "dependsOn": ["^build", "build"],
+      "inputs": ["default", "^default", "{workspaceRoot}/tests/support/**"],
       "cache": true
     },
     "lint": {

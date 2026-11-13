@@ -9,7 +9,7 @@
  * one level up, so a pass is the boundary holding, not the sheet missing.
  *
  * Needs a real cascade, so it runs in a browser, and skips loudly without one:
- * the same contract as the browser tests in packages/react/scripts.
+ * it boots through the repo's shared tests/support/boot-browser.mjs.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -27,40 +27,16 @@ import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { bootBrowser } from '../../../../../tests/support/boot-browser.mjs';
 import { SITE_CSS } from '../../lib/css-source';
 
 const require = createRequire(import.meta.url);
 const DIALOG_CSS = require.resolve('@elirobinson/react/styles/organisms/Dialog.css');
 
-let chromium: typeof import('playwright').chromium | null;
-try {
-  ({ chromium } = await import('playwright'));
-} catch {
-  chromium = null;
-}
-
-let browser: import('playwright').Browser | undefined;
-let launchError: unknown;
-if (chromium) {
-  try {
-    browser = await chromium.launch();
-  } catch (error) {
-    launchError = error;
-  }
-}
-
-afterAll(async () => {
-  await browser?.close();
-}, 60_000);
-
-const describeBrowser = browser ? describe : describe.skip;
-if (!browser) {
-  console.warn(
-    `Skipping demo boundary tests: ${
-      chromium ? (launchError as Error)?.message : 'playwright is not installed'
-    }`,
-  );
-}
+const { browser, describeBrowser } = await bootBrowser('demo boundary', {
+  vitest: { afterAll, describe },
+  playwright: () => import('playwright'),
+});
 
 const DIALOG = renderToStaticMarkup(
   h(Dialog, {

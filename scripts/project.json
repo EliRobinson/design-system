@@ -29,7 +29,8 @@
         "{workspaceRoot}/packages/*/package.json",
         "{workspaceRoot}/**/*.md",
         "{workspaceRoot}/**/*.mdx",
-        "{workspaceRoot}/packages/ai-patterns/src/migrate/markdown.test-helper.mjs"
+        "{workspaceRoot}/packages/ai-patterns/src/migrate/markdown.test-helper.mjs",
+        "{workspaceRoot}/tests/support/**"
       ],
       "options": {
         "cwd": "scripts"
