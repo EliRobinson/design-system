@@ -10,8 +10,18 @@
   border-bottom: 1px solid var(--border);
 }
 
-.ds-accordion__heading {
+/* #414: scoped under the root at (0,2,0), so a host `.prose h3` cannot
+   restyle whichever heading `headingLevel` renders; docs/agents/components.md
+   says why. The trigger sets its own type, so the heading only inherits. */
+.ds-accordion .ds-accordion__heading {
   margin: 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
 }
 
 .ds-accordion__trigger {

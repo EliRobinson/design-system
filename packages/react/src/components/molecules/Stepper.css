@@ -2,14 +2,20 @@
    Stepper
    ========================================================================== */
 
-.ds-stepper {
+/* #414: at (0,2,0), so a host `.prose ol` or `.prose li` cannot restyle the
+   list; docs/agents/components.md says why. The root is the `ol` itself, so
+   it repeats its own class to reach (0,2,0). */
+.ds-stepper.ds-stepper {
   display: flex;
   list-style: none;
   margin: 0;
   padding: 0;
+  line-height: inherit;
 }
 
-.ds-stepper__step {
+.ds-stepper .ds-stepper__step {
+  margin: 0;
+  padding: 0;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -66,11 +72,12 @@
    row. A screen query, not a container query: a size container loses its
    own content width, so a stepper in a flex row would collapse to 0 wide. */
 @media (max-width: 30rem) {
-  .ds-stepper {
+  .ds-stepper.ds-stepper {
     flex-direction: column;
   }
 
-  .ds-stepper__step {
+  /* (0,2,0), the same as the base rule it overrides. */
+  .ds-stepper .ds-stepper__step {
     flex: none;
     display: grid;
     /* 24px is the marker's width. */

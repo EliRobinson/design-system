@@ -16,6 +16,8 @@
  * which no host element rule reaches; they are cases so a later move to a
  * heading or paragraph keeps the reset.
  *
+ * #414: Stepper, NavigationMenu and Accordion, which #383 missed.
+ *
  * #368: `.ds-combobox__list` was `position: absolute` with no `top`, so it sat
  * at its static position. In a flex-column root that is the root's top, over
  * the input. This measures the list against the input in a real layout.
@@ -44,7 +46,14 @@ import { Card, CardDescription, CardHeader, CardTitle } from '../src/components/
 import { DecisionCard } from '../src/components/molecules/DecisionCard.tsx';
 import { EmptyState } from '../src/components/molecules/EmptyState.tsx';
 import { Pagination } from '../src/components/molecules/Pagination.tsx';
+import { Stepper } from '../src/components/molecules/Stepper.tsx';
 import { StubCard } from '../src/components/molecules/StubCard.tsx';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '../src/components/organisms/Accordion.tsx';
 import { Combobox } from '../src/components/organisms/Combobox.tsx';
 import { CommandPalette } from '../src/components/organisms/CommandPalette.tsx';
 import {
@@ -54,6 +63,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../src/components/organisms/Dialog.tsx';
+import { NavigationMenu } from '../src/components/organisms/NavigationMenu.tsx';
 import {
   Sheet,
   SheetContent,
@@ -68,7 +78,15 @@ import { bootBrowser, inPage } from './browser.test-helper.mjs';
 const COMPONENTS = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'components');
 /* The sheets every case needs, by tier. */
 const SHEET_NAMES = {
-  organisms: ['Dialog', 'Sheet', 'CommandPalette', 'Combobox', 'Toast'],
+  organisms: [
+    'Dialog',
+    'Sheet',
+    'CommandPalette',
+    'Combobox',
+    'Toast',
+    'NavigationMenu',
+    'Accordion',
+  ],
   molecules: [
     'SearchField',
     'Card',
@@ -79,6 +97,7 @@ const SHEET_NAMES = {
     'Alert',
     'Pagination',
     'Breadcrumb',
+    'Stepper',
   ],
 };
 const SHEETS = Object.fromEntries(
@@ -352,6 +371,47 @@ const CASES = {
     ),
     targets: ['.ds-breadcrumb__list', '.ds-breadcrumb__item'],
   },
+  /* #414: the three the #383 review gate found. Stepper's root is its own
+     `ol`; Accordion's heading is the default `headingLevel`, an h3. */
+  Stepper: {
+    markup: renderToStaticMarkup(
+      h(Stepper, { steps: [{ label: 'Cart' }, { label: 'Pay' }], activeStep: 1 }),
+    ),
+    targets: ['.ds-stepper', '.ds-stepper__step', '.ds-stepper__label'],
+  },
+  NavigationMenu: {
+    markup: renderToStaticMarkup(
+      h(NavigationMenu, {
+        currentPath: '/tokens',
+        items: [
+          { label: 'Foundations', items: [{ label: 'Tokens', href: '/tokens' }] },
+          { label: 'Home', href: '/' },
+        ],
+      }),
+    ),
+    targets: [
+      '.ds-navigation-menu__list',
+      '.ds-navigation-menu__list > li',
+      '.ds-navigation-menu__label',
+      '.ds-navigation-menu__list .ds-navigation-menu__list',
+      '.ds-navigation-menu__link',
+    ],
+  },
+  Accordion: {
+    markup: renderToStaticMarkup(
+      h(
+        Accordion,
+        { defaultValue: 'a' },
+        h(
+          AccordionItem,
+          { value: 'a' },
+          h(AccordionTrigger, null, 'Shipping'),
+          h(AccordionContent, null, 'Two days'),
+        ),
+      ),
+    ),
+    targets: ['.ds-accordion__heading', '.ds-accordion__trigger', '.ds-accordion__content'],
+  },
 };
 
 /** Computed PROPERTIES for each target, in a bare root and in a `.prose` root. */
@@ -378,122 +438,125 @@ function twoRoots(markup) {
   return `<div id="bare">${markup}</div><div id="prose" class="prose">${markup}</div>`;
 }
 
-describeBrowser('components keep their own type and list styles inside .prose (#367, #383)', () => {
-  for (const [hostName, host] of Object.entries(HOSTS)) {
-    /* The positive control: a plain h2 and ul really are restyled by this host,
+describeBrowser(
+  'components keep their own type and list styles inside .prose (#367, #383, #414)',
+  () => {
+    for (const [hostName, host] of Object.entries(HOSTS)) {
+      /* The positive control: a plain h2 and ul really are restyled by this host,
        so a pass below is the component winning, not the fixture missing. */
-    it(`${hostName}: the host fixture restyles a plain h2 and ul`, async () => {
-      const { bare, prose } = await load(
-        { body: twoRoots('<h2>Plain</h2><ul><li>Plain</li></ul>'), host },
-        readStyles,
-        { targets: ['h2', 'ul'], properties: PROPERTIES },
-      );
-      expect(prose.h2).not.toEqual(bare.h2);
-      expect(prose.ul).not.toEqual(bare.ul);
-    });
-
-    for (const [name, { markup, targets }] of Object.entries(CASES)) {
-      it(`${hostName}: ${name} computes the same inside .prose`, async () => {
-        const { bare, prose } = await load({ body: twoRoots(markup), host }, readStyles, {
-          targets,
-          properties: PROPERTIES,
-        });
-        for (const selector of targets) {
-          expect(bare[selector], `${selector} rendered`).not.toBeNull();
-          expect(prose[selector], `${name} ${selector}`).toEqual(bare[selector]);
-        }
+      it(`${hostName}: the host fixture restyles a plain h2 and ul`, async () => {
+        const { bare, prose } = await load(
+          { body: twoRoots('<h2>Plain</h2><ul><li>Plain</li></ul>'), host },
+          readStyles,
+          { targets: ['h2', 'ul'], properties: PROPERTIES },
+        );
+        expect(prose.h2).not.toEqual(bare.h2);
+        expect(prose.ul).not.toEqual(bare.ul);
       });
-    }
-  }
 
-  /* The comparisons above are relative: a reset lost from both roots would
+      for (const [name, { markup, targets }] of Object.entries(CASES)) {
+        it(`${hostName}: ${name} computes the same inside .prose`, async () => {
+          const { bare, prose } = await load({ body: twoRoots(markup), host }, readStyles, {
+            targets,
+            properties: PROPERTIES,
+          });
+          for (const selector of targets) {
+            expect(bare[selector], `${selector} rendered`).not.toBeNull();
+            expect(prose[selector], `${name} ${selector}`).toEqual(bare[selector]);
+          }
+        });
+      }
+    }
+
+    /* The comparisons above are relative: a reset lost from both roots would
      still match. This pins the bare values to the system's own sizes, and
      Dialog and Sheet to each other, since the two sheets restate one block. */
-  it('titles and descriptions sit at the system sizes, the same in Dialog and Sheet', async () => {
-    const body =
-      CASES.Dialog.markup +
-      CASES.Sheet.markup +
-      '<span id="fs-lg" style="font-size: var(--fs-lg)"></span>' +
-      '<span id="fs-sm" style="font-size: var(--fs-sm)"></span>';
-    const styles = await load(
-      { body },
-      (properties) => {
-        const read = (selector) => {
-          const style = getComputedStyle(document.querySelector(selector));
-          return Object.fromEntries(properties.map((p) => [p, style.getPropertyValue(p)]));
-        };
-        return {
-          dialogTitle: read('.ds-dialog__title'),
-          sheetTitle: read('.ds-sheet__title'),
-          dialogDescription: read('.ds-dialog__description'),
-          sheetDescription: read('.ds-sheet__description'),
-          lg: read('#fs-lg')['font-size'],
-          sm: read('#fs-sm')['font-size'],
-        };
-      },
-      PROPERTIES,
-    );
+    it('titles and descriptions sit at the system sizes, the same in Dialog and Sheet', async () => {
+      const body =
+        CASES.Dialog.markup +
+        CASES.Sheet.markup +
+        '<span id="fs-lg" style="font-size: var(--fs-lg)"></span>' +
+        '<span id="fs-sm" style="font-size: var(--fs-sm)"></span>';
+      const styles = await load(
+        { body },
+        (properties) => {
+          const read = (selector) => {
+            const style = getComputedStyle(document.querySelector(selector));
+            return Object.fromEntries(properties.map((p) => [p, style.getPropertyValue(p)]));
+          };
+          return {
+            dialogTitle: read('.ds-dialog__title'),
+            sheetTitle: read('.ds-sheet__title'),
+            dialogDescription: read('.ds-dialog__description'),
+            sheetDescription: read('.ds-sheet__description'),
+            lg: read('#fs-lg')['font-size'],
+            sm: read('#fs-sm')['font-size'],
+          };
+        },
+        PROPERTIES,
+      );
 
-    expect(styles.dialogTitle['font-size']).toBe(styles.lg);
-    expect(styles.dialogDescription['font-size']).toBe(styles.sm);
-    expect(styles.sheetTitle).toEqual(styles.dialogTitle);
-    expect(styles.sheetDescription).toEqual(styles.dialogDescription);
-  });
-
-  /* The DecisionCard modifiers tie the root-scoped base rules at (0,2,0) and
-     win only on source order. A swap would match bare and prose alike, so
-     this pins what each modifier paints. */
-  it('DecisionCard modifiers still restyle the figures they own', async () => {
-    const body =
-      CASES.DecisionCard.markup +
-      `<div id="prose-layout">${CASES['DecisionCard, coded'].markup}</div>` +
-      '<span id="tr-normal" style="letter-spacing: var(--tr-normal)"></span>' +
-      '<span id="fs-md" style="font-size: var(--fs-md); font-weight: var(--fw-semibold)"></span>' +
-      '<span id="fs-xs" style="font-size: var(--fs-xs); color: var(--fg-3)"></span>' +
-      '<span id="fs-2xs" style="font-size: var(--fs-2xs); font-family: var(--font-mono)"></span>';
-    const read = await load({ body }, () => {
-      const style = (selector) => {
-        const s = getComputedStyle(document.querySelector(selector));
-        return {
-          size: s.fontSize,
-          weight: s.fontWeight,
-          color: s.color,
-          family: s.fontFamily,
-          tracking: s.letterSpacing,
-        };
-      };
-      return {
-        total: style('.ds-decision__total .ds-decision__figure-label'),
-        contrast: style('.ds-decision__contrast .ds-decision__figure-label'),
-        prose: style('#prose-layout .ds-decision__figure-label'),
-        coded: style('#prose-layout .ds-decision__headline'),
-        trNormal: style('#tr-normal'),
-        md: style('#fs-md'),
-        xs: style('#fs-xs'),
-        xxs: style('#fs-2xs'),
-      };
+      expect(styles.dialogTitle['font-size']).toBe(styles.lg);
+      expect(styles.dialogDescription['font-size']).toBe(styles.sm);
+      expect(styles.sheetTitle).toEqual(styles.dialogTitle);
+      expect(styles.sheetDescription).toEqual(styles.dialogDescription);
     });
 
-    expect(read.total.size).toBe(read.md.size);
-    expect(read.total.weight).toBe(read.md.weight);
-    expect(read.contrast.size).toBe(read.xs.size);
-    expect(read.contrast.color).toBe(read.xs.color);
-    expect(read.prose.size).toBe(read.xxs.size);
-    expect(read.prose.family).toBe(read.xxs.family);
-    expect(read.coded.tracking).toBe(read.trNormal.tracking);
-  });
+    /* The DecisionCard modifiers tie the root-scoped base rules at (0,2,0) and
+     win only on source order. A swap would match bare and prose alike, so
+     this pins what each modifier paints. */
+    it('DecisionCard modifiers still restyle the figures they own', async () => {
+      const body =
+        CASES.DecisionCard.markup +
+        `<div id="prose-layout">${CASES['DecisionCard, coded'].markup}</div>` +
+        '<span id="tr-normal" style="letter-spacing: var(--tr-normal)"></span>' +
+        '<span id="fs-md" style="font-size: var(--fs-md); font-weight: var(--fw-semibold)"></span>' +
+        '<span id="fs-xs" style="font-size: var(--fs-xs); color: var(--fg-3)"></span>' +
+        '<span id="fs-2xs" style="font-size: var(--fs-2xs); font-family: var(--font-mono)"></span>';
+      const read = await load({ body }, () => {
+        const style = (selector) => {
+          const s = getComputedStyle(document.querySelector(selector));
+          return {
+            size: s.fontSize,
+            weight: s.fontWeight,
+            color: s.color,
+            family: s.fontFamily,
+            tracking: s.letterSpacing,
+          };
+        };
+        return {
+          total: style('.ds-decision__total .ds-decision__figure-label'),
+          contrast: style('.ds-decision__contrast .ds-decision__figure-label'),
+          prose: style('#prose-layout .ds-decision__figure-label'),
+          coded: style('#prose-layout .ds-decision__headline'),
+          trNormal: style('#tr-normal'),
+          md: style('#fs-md'),
+          xs: style('#fs-xs'),
+          xxs: style('#fs-2xs'),
+        };
+      });
 
-  it('lists carry no markers, bare or inside .prose', async () => {
-    const { bare, prose } = await load(
-      { body: twoRoots(CASES.CommandPalette.markup), host: HOSTS.tailwind },
-      readStyles,
-      { targets: PALETTE_LISTS, properties: ['list-style-type'] },
-    );
-    for (const styles of [bare, prose]) {
-      for (const value of Object.values(styles)) expect(value['list-style-type']).toBe('none');
-    }
-  });
-});
+      expect(read.total.size).toBe(read.md.size);
+      expect(read.total.weight).toBe(read.md.weight);
+      expect(read.contrast.size).toBe(read.xs.size);
+      expect(read.contrast.color).toBe(read.xs.color);
+      expect(read.prose.size).toBe(read.xxs.size);
+      expect(read.prose.family).toBe(read.xxs.family);
+      expect(read.coded.tracking).toBe(read.trNormal.tracking);
+    });
+
+    it('lists carry no markers, bare or inside .prose', async () => {
+      const { bare, prose } = await load(
+        { body: twoRoots(CASES.CommandPalette.markup), host: HOSTS.tailwind },
+        readStyles,
+        { targets: PALETTE_LISTS, properties: ['list-style-type'] },
+      );
+      for (const styles of [bare, prose]) {
+        for (const value of Object.values(styles)) expect(value['list-style-type']).toBe('none');
+      }
+    });
+  },
+);
 
 /** Where the open list sits against the input, in the given root layout. */
 function measureList(rootStyle) {
