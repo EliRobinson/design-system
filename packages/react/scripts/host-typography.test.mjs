@@ -27,12 +27,13 @@
  * anchored-panel-width.test.mjs.
  */
 
-import { dirname, join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { Alert } from '../src/components/molecules/Alert.tsx';
 import {
@@ -131,9 +132,10 @@ const HOSTS = {
     .prose h2, .prose h3 {
       font-size: 32px; font-weight: 800; line-height: 1.9; letter-spacing: 0.1em;
       margin: 40px 0 12px; padding-top: 16px; border-top: 1px solid red; color: red;
+      font-family: Georgia, serif;
     }
     .prose p, .prose ul, .prose ol { line-height: 2.2; margin: 0 0 16px; }
-    .prose li { margin-bottom: 4px; }
+    .prose li { margin-bottom: 4px; line-height: 1.75; }
     .prose dl { margin: 0 0 16px; }
     .prose dt { font-weight: 800; margin-top: 12px; }
     .prose dd { margin: 0 0 8px 24px; }
@@ -162,6 +164,7 @@ const HOSTS = {
 
 /* Every property a host's heading, paragraph or list rule reaches for. */
 const PROPERTIES = [
+  'font-family',
   'font-size',
   'font-weight',
   'line-height',
@@ -414,6 +417,32 @@ const CASES = {
   },
 };
 
+/* #414: three components were missed because joining CASES was a rule in a
+   doc. Every component file that renders a heading, paragraph or list (or
+   picks a heading from `headingLevel`) must name a case, so the next one
+   fails here instead. Runs without a browser. */
+const TEXT_ELEMENT = /<(h[1-6]|p|ul|ol|dl)[\s>]|headingLevel/;
+
+function textBearingComponents() {
+  return readdirSync(COMPONENTS, { recursive: true })
+    .filter((file) => /\.tsx$/.test(file) && !/\.(test|stories)\.tsx$/.test(file))
+    .filter((file) => TEXT_ELEMENT.test(readFileSync(join(COMPONENTS, file), 'utf8')))
+    .map((file) => basename(file, '.tsx'))
+    .sort();
+}
+
+describe('every text-bearing component is a host-typography case (#414)', () => {
+  it('finds the components it sweeps', () => {
+    expect(textBearingComponents()).toContain('Stepper');
+  });
+
+  it('each one has a CASES entry', () => {
+    const names = Object.keys(CASES).map((key) => key.split(',')[0]);
+    const missing = textBearingComponents().filter((name) => !names.includes(name));
+    expect(missing, 'add these to CASES').toEqual([]);
+  });
+});
+
 /** Computed PROPERTIES for each target, in a bare root and in a `.prose` root. */
 function readStyles({ targets, properties }) {
   const read = (root) =>
@@ -438,125 +467,142 @@ function twoRoots(markup) {
   return `<div id="bare">${markup}</div><div id="prose" class="prose">${markup}</div>`;
 }
 
-describeBrowser(
-  'components keep their own type and list styles inside .prose (#367, #383, #414)',
-  () => {
-    for (const [hostName, host] of Object.entries(HOSTS)) {
-      /* The positive control: a plain h2 and ul really are restyled by this host,
+describeBrowser('components keep their own type and list styles inside .prose (#367, #383)', () => {
+  for (const [hostName, host] of Object.entries(HOSTS)) {
+    /* The positive control: a plain h2 and ul really are restyled by this host,
        so a pass below is the component winning, not the fixture missing. */
-      it(`${hostName}: the host fixture restyles a plain h2 and ul`, async () => {
-        const { bare, prose } = await load(
-          { body: twoRoots('<h2>Plain</h2><ul><li>Plain</li></ul>'), host },
-          readStyles,
-          { targets: ['h2', 'ul'], properties: PROPERTIES },
-        );
-        expect(prose.h2).not.toEqual(bare.h2);
-        expect(prose.ul).not.toEqual(bare.ul);
-      });
+    it(`${hostName}: the host fixture restyles a plain h2 and ul`, async () => {
+      const { bare, prose } = await load(
+        { body: twoRoots('<h2>Plain</h2><ul><li>Plain</li></ul>'), host },
+        readStyles,
+        { targets: ['h2', 'ul'], properties: PROPERTIES },
+      );
+      expect(prose.h2).not.toEqual(bare.h2);
+      expect(prose.ul).not.toEqual(bare.ul);
+    });
 
-      for (const [name, { markup, targets }] of Object.entries(CASES)) {
-        it(`${hostName}: ${name} computes the same inside .prose`, async () => {
-          const { bare, prose } = await load({ body: twoRoots(markup), host }, readStyles, {
-            targets,
-            properties: PROPERTIES,
-          });
-          for (const selector of targets) {
-            expect(bare[selector], `${selector} rendered`).not.toBeNull();
-            expect(prose[selector], `${name} ${selector}`).toEqual(bare[selector]);
-          }
+    for (const [name, { markup, targets }] of Object.entries(CASES)) {
+      it(`${hostName}: ${name} computes the same inside .prose`, async () => {
+        const { bare, prose } = await load({ body: twoRoots(markup), host }, readStyles, {
+          targets,
+          properties: PROPERTIES,
         });
-      }
+        for (const selector of targets) {
+          expect(bare[selector], `${selector} rendered`).not.toBeNull();
+          expect(prose[selector], `${name} ${selector}`).toEqual(bare[selector]);
+        }
+      });
     }
+  }
 
-    /* The comparisons above are relative: a reset lost from both roots would
+  /* The comparisons above are relative: a reset lost from both roots would
      still match. This pins the bare values to the system's own sizes, and
      Dialog and Sheet to each other, since the two sheets restate one block. */
-    it('titles and descriptions sit at the system sizes, the same in Dialog and Sheet', async () => {
-      const body =
-        CASES.Dialog.markup +
-        CASES.Sheet.markup +
-        '<span id="fs-lg" style="font-size: var(--fs-lg)"></span>' +
-        '<span id="fs-sm" style="font-size: var(--fs-sm)"></span>';
-      const styles = await load(
-        { body },
-        (properties) => {
-          const read = (selector) => {
-            const style = getComputedStyle(document.querySelector(selector));
-            return Object.fromEntries(properties.map((p) => [p, style.getPropertyValue(p)]));
-          };
-          return {
-            dialogTitle: read('.ds-dialog__title'),
-            sheetTitle: read('.ds-sheet__title'),
-            dialogDescription: read('.ds-dialog__description'),
-            sheetDescription: read('.ds-sheet__description'),
-            lg: read('#fs-lg')['font-size'],
-            sm: read('#fs-sm')['font-size'],
-          };
-        },
-        PROPERTIES,
-      );
-
-      expect(styles.dialogTitle['font-size']).toBe(styles.lg);
-      expect(styles.dialogDescription['font-size']).toBe(styles.sm);
-      expect(styles.sheetTitle).toEqual(styles.dialogTitle);
-      expect(styles.sheetDescription).toEqual(styles.dialogDescription);
-    });
-
-    /* The DecisionCard modifiers tie the root-scoped base rules at (0,2,0) and
-     win only on source order. A swap would match bare and prose alike, so
-     this pins what each modifier paints. */
-    it('DecisionCard modifiers still restyle the figures they own', async () => {
-      const body =
-        CASES.DecisionCard.markup +
-        `<div id="prose-layout">${CASES['DecisionCard, coded'].markup}</div>` +
-        '<span id="tr-normal" style="letter-spacing: var(--tr-normal)"></span>' +
-        '<span id="fs-md" style="font-size: var(--fs-md); font-weight: var(--fw-semibold)"></span>' +
-        '<span id="fs-xs" style="font-size: var(--fs-xs); color: var(--fg-3)"></span>' +
-        '<span id="fs-2xs" style="font-size: var(--fs-2xs); font-family: var(--font-mono)"></span>';
-      const read = await load({ body }, () => {
-        const style = (selector) => {
-          const s = getComputedStyle(document.querySelector(selector));
-          return {
-            size: s.fontSize,
-            weight: s.fontWeight,
-            color: s.color,
-            family: s.fontFamily,
-            tracking: s.letterSpacing,
-          };
+  it('titles and descriptions sit at the system sizes, the same in Dialog and Sheet', async () => {
+    const body =
+      CASES.Dialog.markup +
+      CASES.Sheet.markup +
+      '<span id="fs-lg" style="font-size: var(--fs-lg)"></span>' +
+      '<span id="fs-sm" style="font-size: var(--fs-sm)"></span>';
+    const styles = await load(
+      { body },
+      (properties) => {
+        const read = (selector) => {
+          const style = getComputedStyle(document.querySelector(selector));
+          return Object.fromEntries(properties.map((p) => [p, style.getPropertyValue(p)]));
         };
         return {
-          total: style('.ds-decision__total .ds-decision__figure-label'),
-          contrast: style('.ds-decision__contrast .ds-decision__figure-label'),
-          prose: style('#prose-layout .ds-decision__figure-label'),
-          coded: style('#prose-layout .ds-decision__headline'),
-          trNormal: style('#tr-normal'),
-          md: style('#fs-md'),
-          xs: style('#fs-xs'),
-          xxs: style('#fs-2xs'),
+          dialogTitle: read('.ds-dialog__title'),
+          sheetTitle: read('.ds-sheet__title'),
+          dialogDescription: read('.ds-dialog__description'),
+          sheetDescription: read('.ds-sheet__description'),
+          lg: read('#fs-lg')['font-size'],
+          sm: read('#fs-sm')['font-size'],
         };
-      });
+      },
+      PROPERTIES,
+    );
 
-      expect(read.total.size).toBe(read.md.size);
-      expect(read.total.weight).toBe(read.md.weight);
-      expect(read.contrast.size).toBe(read.xs.size);
-      expect(read.contrast.color).toBe(read.xs.color);
-      expect(read.prose.size).toBe(read.xxs.size);
-      expect(read.prose.family).toBe(read.xxs.family);
-      expect(read.coded.tracking).toBe(read.trNormal.tracking);
+    expect(styles.dialogTitle['font-size']).toBe(styles.lg);
+    expect(styles.dialogDescription['font-size']).toBe(styles.sm);
+    expect(styles.sheetTitle).toEqual(styles.dialogTitle);
+    expect(styles.sheetDescription).toEqual(styles.dialogDescription);
+  });
+
+  /* #414: the nested-list indent ties the root-scoped list reset at (0,2,0)
+     and wins only on source order. Losing it would match bare and prose
+     alike, so this pins it. */
+  it('NavigationMenu still indents a nested list', async () => {
+    const body =
+      CASES.NavigationMenu.markup +
+      '<span id="space-4" style="padding-left: var(--space-4)"></span>';
+    const read = await load({ body }, () => ({
+      nested: getComputedStyle(
+        document.querySelector('.ds-navigation-menu__list .ds-navigation-menu__list'),
+      ).paddingLeft,
+      top: getComputedStyle(document.querySelector('.ds-navigation-menu__list')).paddingLeft,
+      space4: getComputedStyle(document.getElementById('space-4')).paddingLeft,
+    }));
+
+    expect(read.top).toBe('0px');
+    expect(read.nested).toBe(read.space4);
+    expect(read.nested).not.toBe('0px');
+  });
+
+  /* The DecisionCard modifiers tie the root-scoped base rules at (0,2,0) and
+     win only on source order. A swap would match bare and prose alike, so
+     this pins what each modifier paints. */
+  it('DecisionCard modifiers still restyle the figures they own', async () => {
+    const body =
+      CASES.DecisionCard.markup +
+      `<div id="prose-layout">${CASES['DecisionCard, coded'].markup}</div>` +
+      '<span id="tr-normal" style="letter-spacing: var(--tr-normal)"></span>' +
+      '<span id="fs-md" style="font-size: var(--fs-md); font-weight: var(--fw-semibold)"></span>' +
+      '<span id="fs-xs" style="font-size: var(--fs-xs); color: var(--fg-3)"></span>' +
+      '<span id="fs-2xs" style="font-size: var(--fs-2xs); font-family: var(--font-mono)"></span>';
+    const read = await load({ body }, () => {
+      const style = (selector) => {
+        const s = getComputedStyle(document.querySelector(selector));
+        return {
+          size: s.fontSize,
+          weight: s.fontWeight,
+          color: s.color,
+          family: s.fontFamily,
+          tracking: s.letterSpacing,
+        };
+      };
+      return {
+        total: style('.ds-decision__total .ds-decision__figure-label'),
+        contrast: style('.ds-decision__contrast .ds-decision__figure-label'),
+        prose: style('#prose-layout .ds-decision__figure-label'),
+        coded: style('#prose-layout .ds-decision__headline'),
+        trNormal: style('#tr-normal'),
+        md: style('#fs-md'),
+        xs: style('#fs-xs'),
+        xxs: style('#fs-2xs'),
+      };
     });
 
-    it('lists carry no markers, bare or inside .prose', async () => {
-      const { bare, prose } = await load(
-        { body: twoRoots(CASES.CommandPalette.markup), host: HOSTS.tailwind },
-        readStyles,
-        { targets: PALETTE_LISTS, properties: ['list-style-type'] },
-      );
-      for (const styles of [bare, prose]) {
-        for (const value of Object.values(styles)) expect(value['list-style-type']).toBe('none');
-      }
-    });
-  },
-);
+    expect(read.total.size).toBe(read.md.size);
+    expect(read.total.weight).toBe(read.md.weight);
+    expect(read.contrast.size).toBe(read.xs.size);
+    expect(read.contrast.color).toBe(read.xs.color);
+    expect(read.prose.size).toBe(read.xxs.size);
+    expect(read.prose.family).toBe(read.xxs.family);
+    expect(read.coded.tracking).toBe(read.trNormal.tracking);
+  });
+
+  it('lists carry no markers, bare or inside .prose', async () => {
+    const { bare, prose } = await load(
+      { body: twoRoots(CASES.CommandPalette.markup), host: HOSTS.tailwind },
+      readStyles,
+      { targets: PALETTE_LISTS, properties: ['list-style-type'] },
+    );
+    for (const styles of [bare, prose]) {
+      for (const value of Object.values(styles)) expect(value['list-style-type']).toBe('none');
+    }
+  });
+});
 
 /** Where the open list sits against the input, in the given root layout. */
 function measureList(rootStyle) {

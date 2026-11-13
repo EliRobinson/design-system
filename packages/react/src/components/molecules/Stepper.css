@@ -4,9 +4,13 @@
 
 /* #414: at (0,2,0), so a host `.prose ol` or `.prose li` cannot restyle the
    list; docs/agents/components.md says why. The root is the `ol` itself, so
-   it repeats its own class to reach (0,2,0). */
-.ds-stepper.ds-stepper {
+   it repeats its own class to reach (0,2,0). Only the reset is doubled: the
+   layout stays at one class, so a consumer `className` can still change it. */
+.ds-stepper {
   display: flex;
+}
+
+.ds-stepper.ds-stepper {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -16,6 +20,8 @@
 .ds-stepper .ds-stepper__step {
   margin: 0;
   padding: 0;
+  line-height: inherit;
+  letter-spacing: inherit;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -72,7 +78,7 @@
    row. A screen query, not a container query: a size container loses its
    own content width, so a stepper in a flex row would collapse to 0 wide. */
 @media (max-width: 30rem) {
-  .ds-stepper.ds-stepper {
+  .ds-stepper {
     flex-direction: column;
   }
 
