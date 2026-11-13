@@ -148,7 +148,7 @@
   color: var(--fg-3);
 }
 
-.site-nav .ds-navigation-menu__link {
+.site-nav .ds-navigation-menu .ds-navigation-menu__link {
   display: flex;
   align-items: center;
   padding: var(--space-1) var(--space-2);

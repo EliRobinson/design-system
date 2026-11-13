@@ -25,6 +25,7 @@
 
 /* #423: at (0,2,0) too, against a host `.prose a`. */
 .ds-breadcrumb .ds-breadcrumb__link {
+  border: 0;
   color: var(--fg-2);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
