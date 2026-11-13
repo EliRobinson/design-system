@@ -496,8 +496,8 @@ The `tokens-1-container-sm-is-shell-sm` change, for `--container-2xl`: it is now
 ## eslint-config-1-design-values-read-object-keys
 
 - Package: `@elirobinson/eslint-config`
-- Version: `pending`
-- Changeset: `design-values-object-keys-409`
+- Version: `1.0.0`
+- Changeset: `93c7c45`
 - Find: a string key with a colour or arbitrary value inside `cn(`, `clsx(` or another class-name helper, such as `{ 'bg-[#fff]':` or `{ 'text-zinc-500':`
 
 `no-hardcoded-design-values` now reads the string keys of an object passed to a class-name
