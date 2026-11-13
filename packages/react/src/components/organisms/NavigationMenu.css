@@ -2,12 +2,22 @@
    NavigationMenu
    ========================================================================== */
 
-.ds-navigation-menu__list {
+/* #414: scoped under the root at (0,2,0), so a host `.prose ul` or
+   `.prose li` cannot restyle the list; docs/agents/components.md says why.
+   The nested-list indent below ties it and wins on order. */
+.ds-navigation-menu .ds-navigation-menu__list {
   list-style: none;
   margin: 0;
   padding: 0;
+  line-height: inherit;
   display: flex;
   flex-direction: column;
+}
+
+.ds-navigation-menu .ds-navigation-menu__list > li {
+  margin: 0;
+  padding: 0;
+  line-height: inherit;
 }
 
 .ds-navigation-menu__list .ds-navigation-menu__list {
