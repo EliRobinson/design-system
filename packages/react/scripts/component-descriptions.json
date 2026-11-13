@@ -2,7 +2,7 @@
   "$comment": "Fallback one-line purposes merged into dist/manifest.json by scripts/manifest.mjs, used only when the declaration carries no JSDoc description. Every entry here is debt — the description belongs on the declaration, where it cannot drift out of step with the code. Source of phrasing: README.md inventory tables, docs/agents/components.md, and the hook implementations. Never name or count variants here: the manifest's variants and the prop table list them, and the manifest test fails a description that does.",
   "hooks": {
     "useAnchoredPosition": "Fixed-position layout for a floating panel relative to its trigger, above or below, kept inside the viewport.",
-    "useClickOutside": "Calls back when a pointer-down lands outside the given refs — the dismissal half of every overlay.",
+    "useClickOutside": "Calls back when a pointer-down lands outside the given nodes, or outside a dismissal layer and every layer opened within it — the dismissal half of every overlay.",
     "useEscapeKey": "Puts an overlay on the shared dismissal stack while enabled; Escape calls back only the topmost layer."
   },
   "Avatar": "Image avatar with an initials fallback.",

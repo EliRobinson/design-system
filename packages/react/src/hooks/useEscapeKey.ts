@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from 'react';
 import { createContext, createElement, useContext, useEffect, useState } from 'react';
 
+import { containsTarget } from '../lib/containsTarget.js';
 import { useLatest } from '../lib/useLatest.js';
 
 /* One shared dismissal stack (#305). Every open layer — a tooltip, a popover, a
@@ -15,10 +16,14 @@ import { useLatest } from '../lib/useLatest.js';
 declare const escapeLayer: unique symbol;
 
 /**
- * A place on the dismissal stack, as `useEscapeKey` returns it. Opaque: the
- * only thing to do with one is hand it to `EscapeLayerProvider`.
+ * A place on the dismissal stack, as `useEscapeKey` returns it. Opaque: hand
+ * it to `EscapeLayerProvider` to parent what opens inside it, and to
+ * `useClickOutside` to dismiss on a click outside it.
  */
 export type EscapeLayer = { readonly [escapeLayer]: true };
+
+/** The nodes a layer draws, wherever in the DOM they ended up. */
+export type LayerNodes = readonly RefObject<Element | null>[];
 
 /**
  * One entry on the stack. `parent` is the layer this one was rendered inside,
@@ -28,8 +33,7 @@ type Layer = EscapeLayer & {
   readonly parent: Layer | null;
   /** Holds `null` for a layer the browser closes itself (a modal <dialog>). */
   readonly onEscape: RefObject<(() => void) | null>;
-  /** The nodes this layer draws, wherever in the DOM they ended up. */
-  readonly nodes: RefObject<readonly RefObject<Element | null>[]>;
+  readonly nodes: RefObject<LayerNodes>;
 };
 
 const stack: Layer[] = [];
@@ -81,15 +85,17 @@ function remove(layer: Layer) {
 }
 
 /**
- * Whether `target` is inside a layer opened within `layer`, at any depth. A
- * click there is not outside `layer`, even when that layer's panel is a
- * portal at the end of <body>.
+ * Whether `target` is inside `layer`'s own nodes or those of any open layer
+ * opened within it, at any depth.
  */
-export function isInsideNestedLayer(layer: EscapeLayer, target: Node): boolean {
+export function isInsideLayer(layer: EscapeLayer, target: Node): boolean {
+  const own = layer as Layer;
+  // Its own nodes count whether or not it is on the stack yet.
+  if (containsTarget(own.nodes.current, target)) {
+    return true;
+  }
   return stack.some(
-    (entry) =>
-      isDescendant(entry, layer as Layer) &&
-      entry.nodes.current.some((node) => node.current?.contains(target)),
+    (entry) => isDescendant(entry, own) && containsTarget(entry.nodes.current, target),
   );
 }
 
@@ -109,8 +115,6 @@ export function EscapeLayerProvider({
 }) {
   return createElement(EscapeLayerContext.Provider, { value: value as Layer }, children);
 }
-
-type LayerNodes = readonly RefObject<Element | null>[];
 
 function useLayer(onEscape: (() => void) | null, enabled: boolean, nodes: LayerNodes): EscapeLayer {
   const parent = useContext(EscapeLayerContext);
@@ -140,8 +144,8 @@ function useLayer(onEscape: (() => void) | null, enabled: boolean, nodes: LayerN
  * when an Escape reaches this layer as the topmost one and nothing inside it
  * has cancelled the keydown already.
  *
- * `nodes` are what the layer draws. A click inside them is not outside any
- * layer this one was opened within (see `isInsideNestedLayer`).
+ * `nodes` are what the layer draws. A click inside them is not outside this
+ * layer, nor any layer this one was opened within (see `isInsideLayer`).
  */
 export function useEscapeKey(
   onEscape: () => void,

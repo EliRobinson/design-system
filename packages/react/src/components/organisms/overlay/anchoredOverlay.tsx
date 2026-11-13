@@ -71,9 +71,8 @@ export function useAnchoredOverlay({
     open,
     [triggerRef, contentRef],
   );
-  // The layer is passed so a click in a panel opened from this one, which is
-  // portalled elsewhere in <body>, does not count as outside (#397).
-  useClickOutside([triggerRef, contentRef], () => setOpen(false), open, escapeLayer);
+  // The layer, not the refs: a panel opened from this one is inside it (#397).
+  useClickOutside(escapeLayer, () => setOpen(false), open);
 
   return useMemo(
     () => ({
