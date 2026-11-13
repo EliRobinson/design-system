@@ -323,7 +323,11 @@ export function loadEnvironment(origins, selfDir) {
  * `ds tokens`.
  *
  * @param {{tokens: string | null}} env the resolved environment
- * @returns {Promise<{dials: object, sources: string[], platformCss: string[]} | null>}
+ * `colorsIn` is the installed package's own colour grammar, or null on a
+ * tokens package that has none. It is optional on purpose: it only powers
+ * `ds tokens color`, and a consumer without it still gets every other answer.
+ *
+ * @returns {Promise<{dials: object, sources: string[], platformCss: string[], colorsIn: ((value: string) => string[]) | null} | null>}
  */
 export async function loadDials(env) {
   const srcDir = env?.tokens ? join(env.tokens, 'src') : null;
@@ -349,11 +353,29 @@ export async function loadDials(env) {
     if (typeof readTokens !== 'function' || typeof readPlatform !== 'function') return null;
     if (typeof dials.tokenDials !== 'function') return null;
 
-    return { dials, sources: readTokens(srcDir), platformCss: readPlatform(srcDir) };
+    return {
+      dials,
+      sources: readTokens(srcDir),
+      platformCss: readPlatform(srcDir),
+      colorsIn: await loadColorsIn(moduleAt('color.mjs')),
+    };
   } catch {
     /* A half-published package, a file the roster names and the install does
        not have, a syntax the running node cannot parse. All of them mean the
        same thing here and none of them is worth a stack trace. */
+    return null;
+  }
+}
+
+/* `colorsIn` from the installed tokens' color.mjs, or null when the file or
+   the export is missing. Same dynamic-import rule as `loadDials`, for the
+   same reason. */
+async function loadColorsIn(colorModule) {
+  if (!colorModule) return null;
+  try {
+    const { colorsIn } = await import(colorModule);
+    return typeof colorsIn === 'function' ? colorsIn : null;
+  } catch {
     return null;
   }
 }
