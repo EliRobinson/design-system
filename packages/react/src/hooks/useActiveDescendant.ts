@@ -36,7 +36,8 @@ export type ActiveDescendant = {
   /** Id of the active option, for `aria-activedescendant`. */
   activeId: string | undefined;
   /** Highlights `index` outright. With `keys`, the highlight then follows
-   * that option's key. */
+   * that option's key, so `setActiveIndex(0)` locks onto the option now on
+   * top. To hold the top row whatever is on it, call `resetActive`. */
   setActiveIndex: (index: number) => void;
   /** Highlights the first option and follows no key, so when the options
    * change the highlight stays on top. Same as `setActiveIndex(0)` without
@@ -47,6 +48,24 @@ export type ActiveDescendant = {
   /** Every attribute an option element needs. Spread onto the option. */
   getOptionProps: (index: number) => ActiveOptionProps;
 };
+
+type Stored = { index: number; key: string | undefined };
+
+/**
+ * Where the stored highlight sits in the current options. A stored key that
+ * is still present wins over the stored index; a stored key that is gone falls
+ * back to the first option. With no key, the index is clamped into range.
+ */
+function resolveIndex(stored: Stored, count: number, keys: readonly string[] | undefined): number {
+  if (count === 0) {
+    return -1;
+  }
+  if (keys && stored.key !== undefined) {
+    const found = keys.indexOf(stored.key);
+    return found >= 0 && found < count ? found : 0;
+  }
+  return Math.min(stored.index, count - 1);
+}
 
 /**
  * The `aria-activedescendant` half of the WAI-ARIA combobox/listbox pattern:
@@ -67,25 +86,11 @@ export type ActiveDescendant = {
  * where a single arrow key moves it from (say) 5 to 4 — both of which still
  * clamp to 1, so the highlight appears stuck until the user presses the key
  * enough times to walk back into range.
+ *
+ * With `keys`, the highlight is held by key instead of by position: when the
+ * option set changes, it follows its key to wherever that option now sits,
+ * and goes to the first option only when the key is gone (#412).
  */
-type Stored = { index: number; key: string | undefined };
-
-/**
- * Where the stored highlight sits in the current options. A stored key that
- * is still present wins over the stored index; a stored key that is gone falls
- * back to the first option. With no key, the index is clamped into range.
- */
-function resolveIndex(stored: Stored, count: number, keys: readonly string[] | undefined): number {
-  if (count === 0) {
-    return -1;
-  }
-  if (keys && stored.key !== undefined) {
-    const found = keys.indexOf(stored.key);
-    return found >= 0 && found < count ? found : 0;
-  }
-  return Math.min(stored.index, count - 1);
-}
-
 export function useActiveDescendant({
   count,
   baseId,
@@ -97,6 +102,15 @@ export function useActiveDescendant({
   // not churn the callbacks below (CommandPalette's open effect depends on
   // `resetActive`).
   const keysRef = useLatest(keys);
+
+  // A key that left the options is dropped, not kept for later: the highlight
+  // now holds the first option. Kept, it would jump back to that option if a
+  // later refresh returned it, with no input from the user. Setting state
+  // during render is React's pattern for state derived from props; the guard
+  // makes it run once.
+  if (keys && stored.key !== undefined && !keys.includes(stored.key)) {
+    setStored({ index: 0, key: undefined });
+  }
 
   const activeIndex = resolveIndex(stored, count, keys);
   const activeId = activeIndex >= 0 ? `${baseId}-option-${activeIndex}` : undefined;
