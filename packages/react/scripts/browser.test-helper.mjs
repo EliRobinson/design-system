@@ -41,14 +41,15 @@ export function bootBrowser(label, engine = 'chromium') {
  * #419) with the common shape: tokens.css, then each of `sheets` in order
  * (published name -> file on disk, each one must exist), then `head`, then
  * `body`. Any other path is read from the tokens source folder, so tokens.css's
- * relative imports resolve. Runs `probe` in the page with `arg`.
+ * relative imports resolve. Runs `act(page)` first when given (a hover, say),
+ * then `probe` in the page with `arg`.
  *
  * @param {import('playwright').Browser} browser
- * @param {{ sheets?: Record<string, string>, head?: string, body: string, context?: import('playwright').BrowserContextOptions }} page
+ * @param {{ sheets?: Record<string, string>, head?: string, body: string, context?: import('playwright').BrowserContextOptions, act?: (page: import('playwright').Page) => Promise<unknown> }} page
  * @param {(arg: any) => any} probe
  * @param {any} [arg]
  */
-export async function inPage(browser, { sheets = {}, head = '', body, context }, probe, arg) {
+export async function inPage(browser, { sheets = {}, head = '', body, context, act }, probe, arg) {
   const links = Object.keys(sheets)
     .map((sheet) => `<link rel="stylesheet" href="/${sheet}">`)
     .join('');
@@ -63,6 +64,9 @@ export async function inPage(browser, { sheets = {}, head = '', body, context },
       fallbackDir: TOKENS_SRC_DIR,
       context,
     },
-    (page) => page.evaluate(probe, arg),
+    async (page) => {
+      if (act) await act(page);
+      return page.evaluate(probe, arg);
+    },
   );
 }

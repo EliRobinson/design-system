@@ -9,8 +9,7 @@
 }
 
 /* #423: the reset a host `.prose a` reaches for, at (0,2,0). The root is the
-   link itself, so it repeats its own class, as Stepper does. The hover rule
-   below ties it and wins on order. */
+   link itself, so it repeats its own class, as Stepper does. */
 .ds-rule-link.ds-rule-link {
   /* The rule under the label is the component's whole identity — fixed at
      --ink-1000 it was a black line on a black page. */
@@ -41,8 +40,11 @@
   padding: 18px 0 2px;
 }
 
-.ds-rule-link:hover {
+/* #426: at (0,3,0), so a host `.prose a:hover` (0,2,1) cannot recolour or
+   underline it. */
+.ds-rule-link.ds-rule-link:hover {
   color: var(--link-hover);
+  text-decoration: none;
 }
 
 .ds-rule-link:focus-visible {
