@@ -1,5 +1,11 @@
 # @elirobinson/ai-patterns
 
+## 0.34.9
+
+### Patch Changes
+
+- a877a20: `ds tokens color` (or `colour`) now lists every token whose value is a colour, read with the installed tokens package's own colour grammar. Before, it printed `No tokens match "color"`, though the lint messages and the `ds list` hint tell you to run it.
+
 ## 0.34.8
 
 ### Patch Changes
