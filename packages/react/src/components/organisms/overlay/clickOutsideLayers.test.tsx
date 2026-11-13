@@ -47,6 +47,36 @@ describe('a click inside a nested layer is not outside its parent', () => {
     expect(screen.getByText('Inner panel')).toBeInTheDocument();
   });
 
+  it('keeps the outermost popover open on a mousedown two layers down', async () => {
+    const user = userEvent.setup();
+    render(
+      <Popover defaultOpen>
+        <PopoverTrigger>Outer</PopoverTrigger>
+        <PopoverContent>
+          <p>Outer panel</p>
+          <DropdownMenu>
+            <DropdownMenuTrigger>Sort</DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <Popover defaultOpen>
+                <PopoverTrigger>Details</PopoverTrigger>
+                <PopoverContent>
+                  <p>Innermost panel</p>
+                </PopoverContent>
+              </Popover>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </PopoverContent>
+      </Popover>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Sort' }));
+    fireEvent.mouseDown(screen.getByText('Innermost panel'));
+
+    expect(screen.getByText('Outer panel')).toBeInTheDocument();
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(screen.getByText('Innermost panel')).toBeInTheDocument();
+  });
+
   it('closes only the inner popover on a mousedown inside the outer panel', () => {
     render(<NestedPopovers />);
 
@@ -90,6 +120,9 @@ describe('a click inside a nested layer is not outside its parent', () => {
   });
 
   it('keeps a dialog open on a click inside a popover opened from it', () => {
+    // A guard, not a #397 regression: a dialog closes only on a click on its
+    // own backdrop, so this held before. It is the Dialog/Sheet side of the
+    // same nesting rule.
     render(
       <Dialog defaultOpen>
         <DialogContent>
@@ -133,6 +166,33 @@ describe('a click inside a nested layer is not outside its parent', () => {
 
     fireEvent.mouseDown(screen.getByRole('dialog', { name: 'Confirm' }));
 
+    expect(screen.getByText('Popover panel')).toBeInTheDocument();
+  });
+
+  it('closes a dialog opened from a popover on a backdrop click and leaves the popover open', () => {
+    render(
+      <Popover defaultOpen>
+        <PopoverTrigger>More</PopoverTrigger>
+        <PopoverContent>
+          <p>Popover panel</p>
+          <Dialog defaultOpen>
+            {createPortal(
+              <DialogContent>
+                <DialogTitle>Confirm</DialogTitle>
+              </DialogContent>,
+              document.body,
+            )}
+          </Dialog>
+        </PopoverContent>
+      </Popover>,
+    );
+
+    // A click over the ::backdrop targets the <dialog> itself.
+    const dialog = screen.getByRole('dialog', { name: 'Confirm' });
+    fireEvent.mouseDown(dialog);
+    fireEvent.click(dialog);
+
+    expect(screen.queryByRole('dialog', { name: 'Confirm' })).not.toBeInTheDocument();
     expect(screen.getByText('Popover panel')).toBeInTheDocument();
   });
 });
