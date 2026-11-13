@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import type { MouseEvent } from 'react';
 
+import { useLatest } from '../lib/useLatest.js';
+
 export type ActiveDescendantOptions = {
   /** How many options are currently selectable (i.e. after filtering). */
   count: number;
@@ -8,6 +10,14 @@ export type ActiveDescendantOptions = {
   baseId: string;
   /** Invoked when an option is clicked. */
   onSelect: (index: number) => void;
+  /**
+   * A stable key per option, in option order (so `keys.length === count`).
+   * Give it when the option set can change under the user, such as async
+   * results: the highlight then follows the option's key, not its position,
+   * and falls back to the first option only when that key is gone. Omit it
+   * and the highlight is held by position.
+   */
+  keys?: readonly string[];
 };
 
 export type ActiveOptionProps = {
@@ -25,8 +35,13 @@ export type ActiveDescendant = {
   activeIndex: number;
   /** Id of the active option, for `aria-activedescendant`. */
   activeId: string | undefined;
-  /** Highlights `index` outright (used when the option set is replaced). */
+  /** Highlights `index` outright. With `keys`, the highlight then follows
+   * that option's key. */
   setActiveIndex: (index: number) => void;
+  /** Highlights the first option and follows no key, so when the options
+   * change the highlight stays on top. Same as `setActiveIndex(0)` without
+   * `keys`. Use it when the user starts a new search. */
+  resetActive: () => void;
   /** Moves the highlight by `delta`, clamped at both ends (no wrapping). */
   moveActive: (delta: number) => void;
   /** Every attribute an option element needs. Spread onto the option. */
@@ -53,27 +68,59 @@ export type ActiveDescendant = {
  * clamp to 1, so the highlight appears stuck until the user presses the key
  * enough times to walk back into range.
  */
+type Stored = { index: number; key: string | undefined };
+
+/**
+ * Where the stored highlight sits in the current options. A stored key that
+ * is still present wins over the stored index; a stored key that is gone falls
+ * back to the first option. With no key, the index is clamped into range.
+ */
+function resolveIndex(stored: Stored, count: number, keys: readonly string[] | undefined): number {
+  if (count === 0) {
+    return -1;
+  }
+  if (keys && stored.key !== undefined) {
+    const found = keys.indexOf(stored.key);
+    return found >= 0 && found < count ? found : 0;
+  }
+  return Math.min(stored.index, count - 1);
+}
+
 export function useActiveDescendant({
   count,
   baseId,
   onSelect,
+  keys,
 }: ActiveDescendantOptions): ActiveDescendant {
-  const [storedIndex, setStoredIndex] = useState(0);
+  const [stored, setStored] = useState<Stored>({ index: 0, key: undefined });
+  // Read at event time, so a caller that rebuilds `keys` every render does
+  // not churn the callbacks below (CommandPalette's open effect depends on
+  // `resetActive`).
+  const keysRef = useLatest(keys);
 
-  const activeIndex = count === 0 ? -1 : Math.min(storedIndex, count - 1);
+  const activeIndex = resolveIndex(stored, count, keys);
   const activeId = activeIndex >= 0 ? `${baseId}-option-${activeIndex}` : undefined;
+
+  const setActiveIndex = useCallback(
+    (index: number) => setStored({ index, key: keysRef.current?.[index] }),
+    [keysRef],
+  );
+
+  const resetActive = useCallback(() => setStored({ index: 0, key: undefined }), []);
 
   const moveActive = useCallback(
     (delta: number) => {
-      setStoredIndex((current) => {
+      setStored((current) => {
         if (count === 0) {
-          return 0;
+          return { index: 0, key: undefined };
         }
-        const clampedCurrent = Math.min(current, count - 1);
-        return Math.max(0, Math.min(count - 1, clampedCurrent + delta));
+        const currentKeys = keysRef.current;
+        const clampedCurrent = resolveIndex(current, count, currentKeys);
+        const next = Math.max(0, Math.min(count - 1, clampedCurrent + delta));
+        return { index: next, key: currentKeys?.[next] };
       });
     },
-    [count],
+    [count, keysRef],
   );
 
   const getOptionProps = useCallback(
@@ -86,16 +133,17 @@ export function useActiveDescendant({
       // mousedown, which breaks the activedescendant model outright. `onClick`
       // still fires normally afterward.
       onMouseDown: (event: MouseEvent) => event.preventDefault(),
-      onMouseEnter: () => setStoredIndex(index),
+      onMouseEnter: () => setActiveIndex(index),
       onClick: () => onSelect(index),
     }),
-    [baseId, activeIndex, onSelect],
+    [baseId, activeIndex, onSelect, setActiveIndex],
   );
 
   return {
     activeIndex,
     activeId,
-    setActiveIndex: setStoredIndex,
+    setActiveIndex,
+    resetActive,
     moveActive,
     getOptionProps,
   };

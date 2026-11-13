@@ -34,6 +34,38 @@ document-level listener to open it, same as most real command palettes.
   <KeyboardShortcut />
 </DemoBlock>
 
+## Async search
+
+For results you fetch yourself, control the search with `query` and `onQueryChange`, and set
+`loading` while a search runs. The palette keeps showing the current rows until the new ones
+arrive.
+
+Each command can set `filter: false`. The built-in label filter then skips that row, so it always
+shows. Use it on the rows your search returned, and leave it off your static rows (pages, help):
+those keep the built-in filter. To turn the filter off for every row, set `filter={false}` on the
+palette.
+
+```tsx
+const commands = [
+  ...staticCommands, // filtered by label as the user types
+  ...results.map((result) => ({ ...result, filter: false })), // always shown
+];
+
+<CommandPalette
+  open={open}
+  onOpenChange={setOpen}
+  commands={commands}
+  query={query}
+  onQueryChange={setQuery}
+  loading={searching}
+/>;
+```
+
+The highlight follows the command's `id`, not its position. When new results arrive and the rows
+above the highlight change, the same command stays highlighted, and `Enter` runs it. If that
+command is no longer in the list, the highlight goes to the first row. Typing puts the highlight
+on the first row, and it stays on the first row when the results for that text arrive.
+
 ## Props
 
 <PropsTables slug="command-palette" />
