@@ -3,9 +3,11 @@
    not at all, and quietly becomes `any`. The caller's own modules fill in the
    types instead. */
 
-type Engine = 'chromium' | 'webkit' | 'firefox';
+export type Engine = 'chromium' | 'webkit' | 'firefox';
 
 export declare const BROWSER_BUDGET: number;
+
+export declare const ENGINES: readonly Engine[];
 
 export declare function bootBrowser<
   TBrowser extends { close(): Promise<void> },
@@ -19,6 +21,6 @@ export declare function bootBrowser<
     };
     playwright: () => Promise<Record<Engine, { launch(): Promise<TBrowser> }>>;
     engine?: Engine;
-    budget?: number;
+    launchBudget?: number;
   },
 ): Promise<{ browser: TBrowser | null; describeBrowser: TDescribe }>;

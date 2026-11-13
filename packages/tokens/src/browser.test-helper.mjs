@@ -2,8 +2,9 @@
  * (link-cascade, form-font-cascade, mobile-floor, type-cascade). Not a
  * published module: the `.test-helper.mjs` suffix matches neither Vitest's
  * include glob nor the package's `files`, so it is neither collected as a suite
- * nor shipped. The launch itself is the repo's one shared bootstrap,
- * tests/support/boot-browser.mjs; this file adds the tokens page.
+ * nor shipped. The launch, its guard, the teardown budget and the reasoning
+ * behind them live in the repo's one shared bootstrap,
+ * tests/support/boot-browser.mjs (#402); this file adds the tokens page.
  *
  * Why these suites need a real browser at all: cascade layers are decided by
  * layer ORDER, which is fixed by first declaration across every stylesheet in
@@ -19,8 +20,6 @@ import { BROWSER_BUDGET, bootBrowser as bootShared } from '../../../tests/suppor
 
 import { TOKENS_SRC_DIR } from './token-stylesheets.mjs';
 
-/* The launch guard, the teardown budget and the reasoning behind both live in
-   the repo's one shared bootstrap, tests/support/boot-browser.mjs (#402). */
 export { BROWSER_BUDGET };
 
 /* A synthetic origin, served from src/ by a route handler. tokens.css @imports

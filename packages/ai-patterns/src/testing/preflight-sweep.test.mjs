@@ -7,7 +7,8 @@
  * form-control regression in #126 is still shipping.
  *
  * Skipped, loudly, when no browser is available. That posture, the browser
- * budget and the reasoning behind it all live in browser.test-helper.mjs,
+ * budget and the reasoning behind it all live in the repo's shared bootstrap,
+ * tests/support/boot-browser.mjs, reached through browser.test-helper.mjs,
  * which playwright.test.mjs boots from too — this file used to mirror that
  * bootstrap by hand and lost the teardown budget in the copy.
  */

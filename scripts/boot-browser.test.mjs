@@ -63,8 +63,35 @@ describe('bootBrowser', () => {
 
     expect(booted.browser).toBeNull();
     expect(booted.describeBrowser).toBe(vitest.describe.skip);
-    expect(warn).toHaveBeenCalledWith('Skipping missing tests: playwright is not installed');
+    expect(warn).toHaveBeenCalledWith(
+      'Skipping missing tests: playwright did not load: Cannot find package',
+    );
     await teardowns[0].fn();
+  });
+
+  it('says playwright is not installed when the module is missing', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { vitest } = fakeVitest();
+
+    await bootBrowser('absent', {
+      vitest,
+      playwright: async () => {
+        throw Object.assign(new Error('Cannot find package'), { code: 'ERR_MODULE_NOT_FOUND' });
+      },
+    });
+
+    expect(warn).toHaveBeenCalledWith('Skipping absent tests: playwright is not installed');
+  });
+
+  it('throws on an unknown engine instead of skipping', async () => {
+    const { vitest, teardowns } = fakeVitest();
+    const loader = vi.fn(async () => ({}));
+
+    await expect(
+      bootBrowser('typo', { vitest, playwright: loader, engine: 'webkti' }),
+    ).rejects.toThrow('unknown engine "webkti"');
+    expect(loader).not.toHaveBeenCalled();
+    expect(teardowns).toHaveLength(0);
   });
 
   it('skips with the launch error when the browser fails to start', async () => {
@@ -92,7 +119,7 @@ describe('bootBrowser', () => {
     const booted = await bootBrowser('hung', {
       vitest,
       playwright: async () => ({ chromium }),
-      budget: 20,
+      launchBudget: 20,
     });
 
     expect(booted.browser).toBeNull();

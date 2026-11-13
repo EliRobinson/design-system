@@ -28,6 +28,9 @@
    that, so this budget is the mitigation until it does. */
 export const BROWSER_BUDGET = 60_000;
 
+/* The browsers Playwright ships. */
+export const ENGINES = ['chromium', 'webkit', 'firefox'];
+
 /**
  * Launch, or give up loudly.
  *
@@ -36,7 +39,7 @@ export const BROWSER_BUDGET = 60_000;
  * late-arriving browser is closed instead of left parented to a worker that has
  * already moved on.
  *
- * @param {import('playwright').BrowserType} browserType
+ * @param {{ launch(): Promise<{ close(): Promise<void> }> }} browserType
  * @param {string} engine
  * @param {number} budget
  */
@@ -68,35 +71,41 @@ async function launchWithin(browserType, engine, budget) {
  * `afterAll` binds to that file. `describeBrowser` is `describe.skip` when no
  * browser came up, so a bare CI image skips loudly rather than fails.
  *
- * @param {string} label names the suite in the skip warning, which reads
- *   "Skipping <label> tests: <reason>"
- * @param {{
- *   vitest: { afterAll: typeof import('vitest').afterAll, describe: typeof import('vitest').describe },
- *   playwright: () => Promise<typeof import('playwright')>,
- *   engine?: 'chromium' | 'webkit' | 'firefox',
- *   budget?: number,
- * }} options `vitest` and `playwright` come from the caller, so they resolve
- *   from the caller's package. `budget` bounds the launch only, and exists for
- *   this helper's own tests; the teardown always gets BROWSER_BUDGET.
- * @returns {Promise<{ browser: import('playwright').Browser | null, describeBrowser: typeof import('vitest').describe }>}
+ * The types are in boot-browser.d.mts, which TypeScript reads for every
+ * importer. In prose:
+ * - `label` names the suite in the skip warning, which reads
+ *   "Skipping <label> tests: <reason>".
+ * - `vitest` ({ afterAll, describe }) and `playwright` (a loader) come from
+ *   the caller, so they resolve from the caller's package.
+ * - `engine` is one of ENGINES. Anything else throws: a typo is a bug in the
+ *   suite, not a missing browser, and must not turn into a green skip.
+ * - `launchBudget` bounds the launch only, and exists for this helper's own
+ *   tests. The teardown always gets BROWSER_BUDGET.
  */
 export async function bootBrowser(
   label,
-  { vitest, playwright, engine = 'chromium', budget = BROWSER_BUDGET },
+  { vitest, playwright, engine = 'chromium', launchBudget = BROWSER_BUDGET },
 ) {
+  if (!ENGINES.includes(engine)) {
+    throw new Error(`bootBrowser: unknown engine "${engine}" (expected ${ENGINES.join(', ')})`);
+  }
+
   let browserType = null;
   let browser = null;
   let skipReason;
 
   try {
     browserType = (await playwright())[engine];
-  } catch {
-    skipReason = 'playwright is not installed';
+  } catch (error) {
+    skipReason =
+      error?.code === 'ERR_MODULE_NOT_FOUND'
+        ? 'playwright is not installed'
+        : `playwright did not load: ${error?.message}`;
   }
 
   if (browserType) {
     try {
-      browser = await launchWithin(browserType, engine, budget);
+      browser = await launchWithin(browserType, engine, launchBudget);
     } catch (error) {
       skipReason = error.message;
     }
