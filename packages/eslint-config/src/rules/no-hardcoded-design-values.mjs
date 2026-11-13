@@ -190,13 +190,7 @@ export default {
       }
     }
 
-    // Object keys stay unread here for now: this rule ships at `error`, and
-    // reading `clsx({ 'bg-[#fff]': on })` would turn a consumer's build red on
-    // upgrade. #409 tracks it.
-    const classNames = classNameReader(
-      { functions: options.classNameFunctions, objectKeys: false },
-      checkClassName,
-    );
+    const classNames = classNameReader({ functions: options.classNameFunctions }, checkClassName);
 
     return {
       CallExpression: classNames.call,

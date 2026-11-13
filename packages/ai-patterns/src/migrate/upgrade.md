@@ -492,3 +492,24 @@ The `tokens-1-container-sm-is-shell-sm` change, for `--container-xl`: it is now
 
 The `tokens-1-container-sm-is-shell-sm` change, for `--container-2xl`: it is now
 `--shell-2xl`, and Tailwind's `max-w-2xl` is Tailwind's size again.
+
+## eslint-config-1-design-values-read-object-keys
+
+- Package: `@elirobinson/eslint-config`
+- Version: `pending`
+- Changeset: `design-values-object-keys-409`
+- Find: a string key with a colour or arbitrary value inside `cn(`, `clsx(` or another class-name helper, such as `{ 'bg-[#fff]':` or `{ 'text-zinc-500':`
+
+`no-hardcoded-design-values` now reads the string keys of an object passed to a class-name
+helper. It ships at `error`, so these keys now fail lint. Fix each one as you would fix the
+same class in a plain string. Run `pnpm ds tokens color` to pick the token.
+
+```jsx before
+<div className={cn(open && { 'text-zinc-500': muted }, clsx({ 'bg-[#fff]': on }))} />
+```
+
+```jsx after
+<div className={cn(open && { 'text-muted-foreground': muted }, clsx({ 'bg-background': on }))} />
+```
+
+To keep a literal for a while, add it to `hardcodedValues.allow`.

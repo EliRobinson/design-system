@@ -100,22 +100,17 @@ function classStrings(node, out = []) {
 
 /**
  * Finds every static className string: a `className` or `class` attribute,
- * and the arguments of a class-name helper call. Calls are not descended into
+ * and the arguments of a class-name helper call, object keys included (see
+ * `classStrings`). Calls are not descended into
  * from the attribute, so `className={cn('a')}` reaches `check` once, from the
  * call. A rule calls `attribute` and `call` from its own visitors.
  *
  * @param {object} options
  * @param {string[]} [options.functions] class-name helper names
- * @param {boolean} [options.objectKeys] also read the string keys of a
- *   helper's object arguments (`clsx({ 'h-[44px]': on })`)
  * @param {(node: object, className: string) => void} check
  */
-export function classNameReader(
-  { functions = DEFAULT_CLASS_NAME_FUNCTIONS, objectKeys = true },
-  check,
-) {
+export function classNameReader({ functions = DEFAULT_CLASS_NAME_FUNCTIONS }, check) {
   const helpers = new Set(functions);
-  const argumentStrings = objectKeys ? classStrings : staticStrings;
   return {
     /** @param {object} node a JSXAttribute */
     attribute(node) {
@@ -129,7 +124,7 @@ export function classNameReader(
       const callee = calleeName(node.callee);
       if (!callee || !helpers.has(callee)) return;
       for (const argument of node.arguments) {
-        for (const value of argumentStrings(argument)) check(node, value);
+        for (const value of classStrings(argument)) check(node, value);
       }
     },
   };
