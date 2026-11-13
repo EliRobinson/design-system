@@ -1,7 +1,8 @@
 /* The one page server for every browser suite in this repo that loads real
  * stylesheets: packages/tokens, packages/react/scripts and apps/docs (#419).
- * Each kept its own route handler, and the copies drifted: only react's closed
- * its context when the probe threw, and only react refused a missing file.
+ * Each kept its own route handler, and the copies drifted: tokens' callers
+ * closed their page by hand and leaked it when the probe threw, and only react
+ * refused a missing file.
  *
  * Not published, for the same reason as boot-browser.mjs beside it. Nx sees it
  * through the same `browserSupport` input.

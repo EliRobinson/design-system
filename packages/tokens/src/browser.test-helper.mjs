@@ -21,7 +21,7 @@ import { TOKENS_SRC_DIR } from './token-stylesheets.mjs';
 export { BROWSER_BUDGET };
 
 /* A synthetic origin, served from src/. Why: see tests/support/open-page.mjs. */
-export const ORIGIN = 'https://tokens.test';
+const ORIGIN = 'https://tokens.test';
 
 /* The layer order `@import 'tailwindcss'` declares ahead of tokens.css. It is
    what makes tokens.css's `base` sort below `utilities`, so every suite that

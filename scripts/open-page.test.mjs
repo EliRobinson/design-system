@@ -16,6 +16,8 @@ const dir = mkdtempSync(join(tmpdir(), 'open-page-'));
 writeFileSync(join(dir, 'tokens.css'), 'fallback');
 writeFileSync(join(dir, 'face.woff2'), 'font');
 writeFileSync(join(dir, 'named.css'), 'named');
+/* Same name as the entry in `files`, so the test proves `files` wins. */
+writeFileSync(join(dir, 'site.css'), 'shadowed');
 
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
@@ -29,8 +31,7 @@ function fakeBrowser() {
 
 /* Ask the recorded handler for `path` and return what it fulfilled. */
 async function request(page, path) {
-  const [pattern, handler] = page.route.mock.calls[0];
-  expect(pattern).toBe(`${ORIGIN}/**`);
+  const [, handler] = page.route.mock.calls[0];
   let fulfilled;
   await handler({
     request: () => ({ url: () => `${ORIGIN}/${path}` }),
@@ -63,6 +64,7 @@ describe('openPage', () => {
 
     expect(result).toBe('ran');
     expect(browser.newContext).toHaveBeenCalledWith(options);
+    expect(page.route).toHaveBeenCalledWith(`${ORIGIN}/**`, expect.any(Function));
     expect(page.goto).toHaveBeenCalledWith(`${ORIGIN}/index.html`);
     expect(await request(page, 'index.html')).toEqual({
       contentType: 'text/html',
