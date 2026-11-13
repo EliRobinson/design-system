@@ -55,6 +55,7 @@
   margin: 0;
   padding: 0 var(--space-3);
   border: 0;
+  box-shadow: none;
   color: var(--fg-2);
   font-size: var(--fs-sm);
   font-weight: inherit;

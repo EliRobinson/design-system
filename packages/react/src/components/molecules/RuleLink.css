@@ -14,7 +14,9 @@
 .ds-rule-link.ds-rule-link {
   /* The rule under the label is the component's whole identity — fixed at
      --ink-1000 it was a black line on a black page. */
+  border: 0;
   border-bottom: 1px solid var(--fg);
+  box-shadow: none;
   color: var(--fg);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);

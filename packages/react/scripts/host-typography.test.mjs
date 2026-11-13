@@ -154,12 +154,14 @@ const HOSTS = {
     .prose a {
       color: red; font-weight: 800; text-decoration: underline; border-bottom: 3px dotted red;
       padding: 0 4px; margin: 0 2px; font-size: 18px; letter-spacing: 0.1em;
+      border-top: 2px solid red; box-shadow: inset 0 -2px 0 red;
     }
     .prose table { margin: 32px 0; line-height: 2.2; font-size: 20px; }
     .prose th, .prose td {
       padding: 12px; border-bottom: 3px solid red; vertical-align: top; font-weight: 800;
-      font-size: 18px; line-height: 2; text-align: right;
+      font-size: 18px; line-height: 2; text-align: right; border: 1px solid red;
     }
+    .prose tr { background-color: red; }
   `,
   /* The shape of @tailwindcss/typography: (0,1,0), and list markers on. */
   tailwind: `
@@ -219,6 +221,10 @@ const PROPERTIES = [
   'border-top-style',
   'border-bottom-width',
   'border-bottom-style',
+  'border-left-width',
+  'border-right-width',
+  'background-color',
+  'box-shadow',
   'list-style-type',
   'text-decoration-line',
   'vertical-align',
