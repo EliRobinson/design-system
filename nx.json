@@ -50,9 +50,10 @@
        `nx run ai-patterns:test` still reports 1 of 1 from cache — the drift
        check passes without running. `pnpm sync:deps` exists precisely because
        that drift is real.
-       Those two are the whole list for sharedGlobals. One narrower read has its
-       own target input: ai-patterns:test reads apps/docs' AI theme layers (see
-       packages/ai-patterns/project.json). Swept for the rest: everything else these
+       Those two are the whole list for sharedGlobals. Two narrower reads have
+       their own target input: ai-patterns:test reads apps/docs' AI theme layers
+       (see packages/ai-patterns/project.json), and every `test` reads
+       tests/support/ (`browserSupport`, see the `test` target default). Swept for the rest: everything else these
        builds and tests read across project boundaries (packages/tokens/src,
        packages/react/src/components, each package.json) is a dependency edge
        Nx already models, and root package.json, pnpm-lock.yaml, nx.json and
@@ -61,7 +62,9 @@
       "{workspaceRoot}/design-system-docs/**",
       "!{workspaceRoot}/design-system-docs/README.md",
       "{workspaceRoot}/templates/**"
-    ]
+    ],
+    /* The shared browser bootstrap (#402). See the `test` target default. */
+    "browserSupport": ["{workspaceRoot}/tests/support/**"]
   },
   "targetDefaults": {
     "build": {
@@ -107,18 +110,19 @@
        runs before it. Both targets are cached, so a rerun pays nothing. */
 
     /* `test` inputs: one folder no project owns. tests/support/ holds the
-       browser bootstrap that tokens, react, ai-patterns and docs suites all
-       import by relative path (#402). An edit there changes what those suites
-       do, so it must be in their cache key, or a cached pass replays. (`nx
-       affected` already selects every project for an unowned file; this line
-       is for the cache key only, and the blast radius is every project with
-       a `test` target, placeholders included.) It is on the default rather than on
-       the four, so a fifth suite that starts using it cannot forget the line.
-       A project.json that lists its own `inputs` replaces this list, so
-       ai-patterns and scripts restate it. */
+       browser bootstrap that the tokens, react, ai-patterns and docs suites
+       import by relative path, plus its own unit test in scripts (#402). An
+       edit there changes what those suites do, so it must be in their cache
+       key, or a cached pass replays. `nx affected` already selects every
+       project for an unowned file, so this is for the cache key only. The
+       blast radius is every project with a `test` target, placeholders
+       included. It is on the default rather than on the five, so a sixth
+       suite that starts using it cannot forget it. A project.json that lists
+       its own `inputs` replaces this list, so ai-patterns and scripts restate
+       `browserSupport`. */
     "test": {
       "dependsOn": ["^build", "build"],
-      "inputs": ["default", "^default", "{workspaceRoot}/tests/support/**"],
+      "inputs": ["default", "^default", "browserSupport"],
       "cache": true
     },
     "lint": {

@@ -32,7 +32,7 @@
         "{workspaceRoot}/**/*.md",
         "{workspaceRoot}/**/*.mdx",
         "{workspaceRoot}/packages/ai-patterns/src/migrate/markdown.test-helper.mjs",
-        "{workspaceRoot}/tests/support/**"
+        "browserSupport"
       ],
       "options": {
         "cwd": "scripts"

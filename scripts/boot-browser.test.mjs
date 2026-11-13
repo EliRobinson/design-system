@@ -64,18 +64,15 @@ describe('bootBrowser', () => {
     }
   });
 
-  it('skips when playwright loads without the requested engine', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('throws when the loader returns a module without the engine', async () => {
     const { vitest } = fakeVitest();
 
-    await bootBrowser('engineless', { vitest, playwright: async () => ({}), engine: 'firefox' });
-
-    expect(warn).toHaveBeenCalledWith(
-      'Skipping engineless tests: playwright has no firefox browser type',
-    );
+    await expect(
+      bootBrowser('engineless', { vitest, playwright: async () => ({}), engine: 'firefox' }),
+    ).rejects.toThrow('has no firefox browser type');
   });
 
-  it('skips loudly when playwright is not installed', async () => {
+  it('skips with the load error when playwright fails to load for another reason', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { vitest, teardowns } = fakeVitest();
 
@@ -101,11 +98,31 @@ describe('bootBrowser', () => {
     await bootBrowser('absent', {
       vitest,
       playwright: async () => {
-        throw Object.assign(new Error('Cannot find package'), { code: 'ERR_MODULE_NOT_FOUND' });
+        throw Object.assign(new Error("Cannot find package 'playwright' imported from x"), {
+          code: 'ERR_MODULE_NOT_FOUND',
+        });
       },
     });
 
     expect(warn).toHaveBeenCalledWith('Skipping absent tests: playwright is not installed');
+  });
+
+  it('calls a missing dependency of playwright a broken install, not a missing one', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { vitest } = fakeVitest();
+
+    await bootBrowser('broken install', {
+      vitest,
+      playwright: async () => {
+        throw Object.assign(new Error("Cannot find package 'playwright-core'"), {
+          code: 'ERR_MODULE_NOT_FOUND',
+        });
+      },
+    });
+
+    expect(warn).toHaveBeenCalledWith(
+      "Skipping broken install tests: playwright did not load: Cannot find package 'playwright-core'",
+    );
   });
 
   it('throws on an unknown engine instead of skipping', async () => {

@@ -50,7 +50,7 @@
         "{workspaceRoot}/apps/docs/src/app/ai-theme-*.css",
         "{workspaceRoot}/.changeset/*.md",
         "{workspaceRoot}/packages/*/CHANGELOG.md",
-        "{workspaceRoot}/tests/support/**"
+        "browserSupport"
       ]
     }
   },
