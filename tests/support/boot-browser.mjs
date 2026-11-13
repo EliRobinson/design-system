@@ -8,8 +8,9 @@
  * `test` target's inputs in nx.json.
  *
  * It imports neither `vitest` nor `playwright`. The caller passes both in.
- * A bare import here would resolve from the repo root, not from the calling
- * package, and a second Vitest instance's `afterAll` binds to no file at all.
+ * Neither is a dependency of the repo root, so a bare import here would
+ * resolve by luck of hoisting or not at all, and could load a second Vitest
+ * instance, whose `afterAll` binds to no file at all.
  */
 
 /* Starting, opening and closing a browser are process-level operations that
@@ -67,14 +68,16 @@ async function launchWithin(browserType, engine, budget) {
  * `afterAll` binds to that file. `describeBrowser` is `describe.skip` when no
  * browser came up, so a bare CI image skips loudly rather than fails.
  *
- * @param {string} label names the suite in the skip warning
+ * @param {string} label names the suite in the skip warning, which reads
+ *   "Skipping <label> tests: <reason>"
  * @param {{
  *   vitest: { afterAll: typeof import('vitest').afterAll, describe: typeof import('vitest').describe },
  *   playwright: () => Promise<typeof import('playwright')>,
  *   engine?: 'chromium' | 'webkit' | 'firefox',
  *   budget?: number,
  * }} options `vitest` and `playwright` come from the caller, so they resolve
- *   from the caller's package. `budget` exists for this helper's own tests.
+ *   from the caller's package. `budget` bounds the launch only, and exists for
+ *   this helper's own tests; the teardown always gets BROWSER_BUDGET.
  * @returns {Promise<{ browser: import('playwright').Browser | null, describeBrowser: typeof import('vitest').describe }>}
  */
 export async function bootBrowser(

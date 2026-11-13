@@ -1,6 +1,7 @@
-/* Generic on purpose. Neither `playwright` nor `vitest` resolves from the repo
-   root, so a type import of either here would quietly become `any`. The
-   caller's own modules fill in the types instead. */
+/* Generic on purpose. Neither `playwright` nor `vitest` is a dependency of the
+   repo root, so a type import of either here resolves by luck of hoisting or
+   not at all, and quietly becomes `any`. The caller's own modules fill in the
+   types instead. */
 
 type Engine = 'chromium' | 'webkit' | 'firefox';
 
