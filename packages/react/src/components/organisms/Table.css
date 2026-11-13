@@ -19,9 +19,11 @@
 
 .ds-table-wrapper .ds-table :where(thead, tr) {
   border: 0;
+  background: transparent;
 }
 
 .ds-table-wrapper .ds-table :where(th, td) {
+  border: 0;
   vertical-align: middle;
   padding: var(--space-2) var(--space-3);
   font-size: inherit;
