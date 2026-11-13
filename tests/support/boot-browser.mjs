@@ -103,6 +103,10 @@ export async function bootBrowser(
         : `playwright did not load: ${error?.message}`;
   }
 
+  if (!browserType && !skipReason) {
+    skipReason = `playwright has no ${engine} browser type`;
+  }
+
   if (browserType) {
     try {
       browser = await launchWithin(browserType, engine, launchBudget);
