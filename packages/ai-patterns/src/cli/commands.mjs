@@ -54,7 +54,7 @@ export function usage() {
 
   list              Components, hooks, typography classes, token groups (default)
   props <Name>      Full prop/variant types for one component
-  tokens [filter]   Design tokens and their values
+  tokens [filter]   Design tokens and their values; "color" lists the colours
   dials             The root-element attributes tokens resolve under
   classes [filter]  CSS classes the design system ships
   contracts         Machine-checkable rules your UI must satisfy
@@ -258,23 +258,49 @@ function tokenRows(api, entry, nameWidth, labelWidth) {
   ];
 }
 
+/* `ds tokens color` names a kind of token, not a substring of one: no token
+   name or value contains "color". Lint messages and `ds list` send readers to
+   this command, so it has to answer. */
+const COLOUR_FILTERS = new Set(['color', 'colour']);
+
+/* CSS colour keywords the tokens package's colour grammar does not read, but
+   that a token can still resolve to (`--link-on-fill: currentColor`). */
+const COLOUR_KEYWORDS = new Set(['currentcolor', 'transparent']);
+
+/**
+ * True when the whole value is one colour. Read with the installed tokens'
+ * own `colorsIn`, so a colour is whatever that package measures as one. A
+ * value that only contains a colour (a box-shadow) is not a colour token.
+ */
+function isColourValue(colorsIn, value) {
+  const trimmed = value.trim();
+  if (COLOUR_KEYWORDS.has(trimmed.toLowerCase())) return true;
+  const found = colorsIn(trimmed);
+  return found.length === 1 && found[0] === trimmed;
+}
+
 export async function tokens(env, filter) {
   if (!env.tokenStylesheets) return fail(installHint(TOKENS_PKG));
 
   const loaded = await loadDials(env);
   if (!loaded) return tokensOfDefaultCombination(env, filter);
 
-  const { dials: api, sources, platformCss } = loaded;
+  const { dials: api, sources, platformCss, colorsIn } = loaded;
 
   /* One filter over every value a token has, not just the default one: a token
      whose slate value is the only place a colour appears would otherwise be
      unfindable by that colour, which is the same class of miss as printing one
      combination out of four. */
-  const matches = ({ name, values, platforms }) =>
+  const allValues = ({ values, platforms }) => [
+    ...values.map(({ value }) => value).filter(Boolean),
+    ...platforms.map(({ value }) => value),
+  ];
+  const byColour = colorsIn && COLOUR_FILTERS.has(filter);
+  const matches = (entry) =>
     !filter ||
-    name.includes(filter) ||
-    values.some(({ value }) => value?.includes(filter)) ||
-    platforms.some(({ value }) => value.includes(filter));
+    entry.name.includes(filter) ||
+    allValues(entry).some((value) => value.includes(filter)) ||
+    (byColour && allValues(entry).some((value) => isColourValue(colorsIn, value)));
 
   const entries = api.tokenDials(sources, { platformCss }).filter(matches);
   if (!entries.length) return fail(`No tokens match "${filter}".`);
@@ -289,6 +315,7 @@ export async function tokens(env, filter) {
     [
       ...entries.flatMap((entry) => tokenRows(api, entry, nameWidth, labelWidth)),
       '',
+      ...(byColour ? [`"${filter}" lists every token whose value is a colour.`] : []),
       `An unlabelled value is the same in all ${api.COMBINATIONS.length} combinations; a labelled one names its own.`,
       `The default combination is ${api.defaultCombinationId()} — what a root element with no attributes`,
       'renders — and `ds dials` is the map of the attributes that select the rest.',

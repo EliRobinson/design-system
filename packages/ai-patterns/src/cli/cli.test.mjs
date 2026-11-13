@@ -24,6 +24,8 @@ import {
   readPlatformStylesheets,
   readTokenStylesheets,
 } from '@elirobinson/tokens/token-stylesheets';
+import { plugin as cssPlugin } from '@elirobinson/eslint-config/css';
+import { plugin as jsPlugin } from '@elirobinson/eslint-config/plugin';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { findPackageDir } from '../package-lookup.mjs';
@@ -428,6 +430,90 @@ describe('ds dials', () => {
 
     expect(exitCode).toBe(1);
     expect(text).toContain('Not installed: @elirobinson/tokens');
+  });
+});
+
+/* Every `ds tokens <filter>` this repo tells a reader to run, run.
+ *
+ * The lint messages and `ds list` point at concrete filters. A filter that
+ * matches nothing is advice a consumer cannot follow (#417: `ds tokens color`
+ * printed "No tokens match"). The commands are scraped from the shipped text,
+ * not listed here, so a new message is checked the day it is written. */
+const SUGGESTED_TOKENS_COMMAND = /`(?:pnpm )?ds tokens ([a-z][\w-]*)`/g;
+
+function suggestedFilters(text) {
+  return [...text.matchAll(SUGGESTED_TOKENS_COMMAND)].map((match) => match[1]);
+}
+
+function lintMessages() {
+  return [jsPlugin, cssPlugin].flatMap((one) =>
+    Object.values(one.rules).flatMap((rule) => Object.values(rule.meta?.messages ?? {})),
+  );
+}
+
+/** The token names `ds tokens` printed, one per token's own line. */
+function printedTokens(text) {
+  return text
+    .split('\n')
+    .filter((line) => /^ {2}--/.test(line))
+    .map((line) => line.trim().split(/\s+/)[0]);
+}
+
+describe('every ds tokens command we suggest', () => {
+  const fromLint = [...new Set(lintMessages().flatMap(suggestedFilters))];
+
+  it('finds suggestions to check in the lint messages', () => {
+    expect(fromLint).toContain('color');
+  });
+
+  it.each(fromLint)(
+    '`ds tokens %s` from a lint message lists at least one token',
+    async (filter) => {
+      const { text, exitCode } = await run(['tokens', filter], at(dialConsumer()));
+      expect(exitCode).toBe(0);
+      expect(printedTokens(text).length).toBeGreaterThan(0);
+    },
+  );
+
+  it('every filter in the `ds list` hint lists at least one token', async () => {
+    const root = dialConsumer();
+    const filters = suggestedFilters((await run(['list'], at(root))).text);
+    expect(filters.length).toBeGreaterThan(0);
+
+    for (const filter of filters) {
+      const { text, exitCode } = await run(['tokens', filter], at(root));
+      expect(exitCode, `ds tokens ${filter}`).toBe(0);
+      expect(printedTokens(text).length, `ds tokens ${filter}`).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('ds tokens color', () => {
+  const colourNames = async (filter) =>
+    printedTokens((await run(['tokens', filter], at(dialConsumer()))).text);
+
+  it('lists the colour tokens, read from their values', async () => {
+    const names = await colourNames('color');
+    for (const name of ['--fg', '--bg', '--accent', '--border', '--link-on-fill']) {
+      expect(names).toContain(name);
+    }
+  });
+
+  it('leaves out tokens that only contain a colour, and tokens that are not one', async () => {
+    const names = await colourNames('color');
+    for (const name of [
+      '--shadow-md',
+      '--shadow-focus',
+      '--radius-md',
+      '--space-4',
+      '--dur-fast',
+    ]) {
+      expect(names).not.toContain(name);
+    }
+  });
+
+  it('takes the British spelling too', async () => {
+    expect(await colourNames('colour')).toEqual(await colourNames('color'));
   });
 });
 
