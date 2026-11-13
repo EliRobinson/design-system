@@ -48,8 +48,12 @@ const BODY = `
   <button id="dense-marked" data-touch-target="dense" type="button">Marked</button>
 `;
 
-/* Runs `run` on the page, then closes it. */
-function open({ platform, viewport }, run) {
+/* A fine-pointer desktop window. */
+const DESKTOP = { viewport: { width: 1280, height: 800 } };
+
+/* Opens the probe page in a context made with `context`, runs `run` on it,
+   then closes it. */
+function open({ platform, context }, run) {
   return openTokensPage(
     browser,
     {
@@ -59,7 +63,7 @@ function open({ platform, viewport }, run) {
           <link rel="stylesheet" href="/tokens.css">
           <style>${COMPONENT_CSS}</style>
           ${BODY}`,
-      context: { viewport },
+      context,
     },
     run,
   );
@@ -79,24 +83,12 @@ const minHeights = (page) =>
    a new context rather than a viewport change — and the viewport meta above is
    what keeps `isMobile` from laying the page out at 980px, where the 480px
    query would never match and every assertion below would pass vacuously. */
-function coarsePage(run) {
-  return openTokensPage(
-    browser,
-    {
-      html: `<!doctype html><html><meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <link rel="stylesheet" href="/tokens.css">
-          <style>${COMPONENT_CSS}</style>
-          ${BODY}`,
-      context: { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true },
-    },
-    run,
-  );
-}
+const coarsePage = (run) =>
+  open({ context: { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true } }, run);
 
 describeBrowser('the mobile touch-target floor', () => {
   it('does not fire at all on a fine-pointer desktop', async () => {
-    const heights = await open({ viewport: { width: 1280, height: 800 } }, minHeights);
+    const heights = await open({ context: DESKTOP }, minHeights);
 
     expect(heights.plain).toBe('0px');
     expect(heights.chip).toBe('32px');
@@ -104,10 +96,7 @@ describeBrowser('the mobile touch-target floor', () => {
   });
 
   it('floors the primary controls under data-platform="mobile"', async () => {
-    const heights = await open(
-      { platform: 'mobile', viewport: { width: 1280, height: 800 } },
-      minHeights,
-    );
+    const heights = await open({ platform: 'mobile', context: DESKTOP }, minHeights);
 
     expect(heights.plain).toBe('44px');
     expect(heights['anchor-button']).toBe('44px');
@@ -124,10 +113,7 @@ describeBrowser('the mobile touch-target floor', () => {
      scale they were deliberately drawn at without buying anything the dense
      floor was not already buying. */
   it('leaves the dense affordances at their own scale under data-platform="mobile"', async () => {
-    const heights = await open(
-      { platform: 'mobile', viewport: { width: 1280, height: 800 } },
-      minHeights,
-    );
+    const heights = await open({ platform: 'mobile', context: DESKTOP }, minHeights);
 
     expect(heights.chip).toBe('32px');
     expect(heights.sm).toBe('36px');
@@ -152,10 +138,7 @@ describeBrowser('the mobile touch-target floor', () => {
   /* The defect this file exists for: the two halves are one floor, so every
      control has to land on the same number under both, dense ones included. */
   it('agrees with the attribute half on every control, which is the whole point', async () => {
-    const viaAttribute = await open(
-      { platform: 'mobile', viewport: { width: 1280, height: 800 } },
-      minHeights,
-    );
+    const viaAttribute = await open({ platform: 'mobile', context: DESKTOP }, minHeights);
     const viaQuery = await coarsePage(minHeights);
 
     expect(viaQuery).toEqual(viaAttribute);
@@ -192,7 +175,7 @@ describeBrowser('the floor resolves at the specificity its comment claims', () =
             <link rel="stylesheet" href="/tokens.css">
             <style>${competitor(n)}</style>
             <button id="probe" class="w" type="button">probe</button>`,
-        context: { viewport: { width: 1280, height: 800 } },
+        context: DESKTOP,
       },
       (page) => page.evaluate(() => getComputedStyle(document.getElementById('probe')).minHeight),
     );

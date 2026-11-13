@@ -63,7 +63,8 @@
       "!{workspaceRoot}/design-system-docs/README.md",
       "{workspaceRoot}/templates/**"
     ],
-    /* The shared browser bootstrap (#402). See the `test` target default. */
+    /* The shared browser bootstrap (#402) and page server (#419). See the `test`
+       target default. */
     "browserSupport": ["{workspaceRoot}/tests/support/**"]
   },
   "targetDefaults": {
