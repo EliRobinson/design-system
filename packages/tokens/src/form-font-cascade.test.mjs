@@ -143,17 +143,19 @@ const IDS = [...AUDITED, 'textarea', 'select', 'utility-font', 'utility-size'];
  * around it in the given order.
  *
  * @param {string[]} before stylesheet sources emitted ahead of tokens.css
+ * @param {(page: import('playwright').Page) => Promise<any>} run
  */
-async function consumer(...before) {
-  const page = await consumerPage(browser, {
-    before,
-    after: `<style>${COMPONENT}</style>`,
-    body: BODY,
-  });
-  /* The faces are self-hosted and fetched over the same route handler. Reading
-     a font-derived box before they land measures the fallback. */
-  await page.evaluate(() => document.fonts.ready);
-  return page;
+function consumer(before, run) {
+  return consumerPage(
+    browser,
+    { before, after: `<style>${COMPONENT}</style>`, body: BODY },
+    async (page) => {
+      /* The faces are self-hosted and fetched over the same route handler.
+         Reading a font-derived box before they land measures the fallback. */
+      await page.evaluate(() => document.fonts.ready);
+      return run(page);
+    },
+  );
 }
 
 /**
@@ -191,9 +193,7 @@ const measure = (page, ids = IDS) =>
 
 describeBrowser('the five controls issue #167 audited', () => {
   it('typeset in the body face, not the UA stylesheet Arial', async () => {
-    const page = await consumer(TAILWIND);
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([TAILWIND], measure);
 
     /* Guards the assertion below against passing on 'Arial' === 'Arial' if
        --font-sans ever failed to resolve. */
@@ -209,13 +209,10 @@ describeBrowser('the five controls issue #167 audited', () => {
        of `font` over `font-family` puts at risk. It is safe because the
        component rules are unlayered and this one is not, and that is worth an
        assertion rather than an argument. */
-    const page = await consumer(TAILWIND);
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([TAILWIND], measure);
 
-    const ramp = await (async () => {
-      const probe = await consumer(TAILWIND);
-      const sizes = await probe.evaluate(() => {
+    const ramp = await consumer([TAILWIND], (probe) =>
+      probe.evaluate(() => {
         const read = (value) => {
           const span = document.createElement('span');
           span.style.fontSize = value;
@@ -225,10 +222,8 @@ describeBrowser('the five controls issue #167 audited', () => {
           return size;
         };
         return { sm: read('var(--fs-sm)'), xs: read('var(--fs-xs)') };
-      });
-      await probe.close();
-      return sizes;
-    })();
+      }),
+    );
 
     expect(computed.search.size).toBe(ramp.sm);
     expect(computed.pagination.size).toBe(ramp.sm);
@@ -241,9 +236,7 @@ describeBrowser('the five controls issue #167 audited', () => {
     /* The one audited control that states a weight. `font: inherit` resets
        font-weight as well, so an unlayered reset — or a component rule that
        lost the cascade — would flatten this to the body's 400. */
-    const page = await consumer(TAILWIND);
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([TAILWIND], measure);
 
     expect(computed.accordion.weight).not.toBe(computed.bodyWeight);
     expect(computed.accordion.weight).toBe('500');
@@ -257,9 +250,7 @@ describeBrowser('a Tailwind v4 consumer, wired the way the docs prescribe', () =
        over every layer regardless of specificity — so a consumer who asked, in
        markup, for a monospace button got Geist and had no way to override it
        from a stylesheet of their own. */
-    const page = await consumer(TAILWIND);
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([TAILWIND], measure);
 
     expect(computed['utility-font'].family).toBe('ui-monospace');
     expect(computed['utility-font'].family).not.toBe(computed.body);
@@ -270,9 +261,7 @@ describeBrowser('a Tailwind v4 consumer, wired the way the docs prescribe', () =
        unlayered `font-family: inherit` leaves this alone, an unlayered
        `font: inherit` renders 16px and eats the consumer's 24px. Layered, the
        shorthand is safe. */
-    const page = await consumer(TAILWIND);
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([TAILWIND], measure);
 
     expect(computed['utility-size'].size).toBe('24px');
   });
@@ -297,16 +286,12 @@ describeBrowser('the longhand, and the divergence from preflight it leaves open'
      with preflight everywhere, and line-height is where the two part. */
 
   const withAndWithoutPreflight = async () => {
-    const ours = await consumer(TAILWIND);
-    const oursComputed = await measure(ours);
-    await ours.close();
+    const oursComputed = await consumer([TAILWIND], measure);
 
     /* tokens.css is in this page too — no arrangement of this repo removes it
        — so this is "our rule" against "our rule plus preflight", i.e. what a
        consumer following tailwind.css's own Usage section actually renders. */
-    const withPreflight = await consumer(TAILWIND, PREFLIGHT);
-    const withPreflightComputed = await measure(withPreflight);
-    await withPreflight.close();
+    const withPreflightComputed = await consumer([TAILWIND, PREFLIGHT], measure);
 
     return { ours: oursComputed, preflight: withPreflightComputed };
   };
@@ -383,13 +368,8 @@ describeBrowser('the longhand, and the divergence from preflight it leaves open'
 
        Asserted against the SAME page with the reset defeated, so it measures
        this rule's own effect rather than a remembered number. */
-    const withReset = await consumer(TAILWIND);
-    const after = await measure(withReset);
-    await withReset.close();
-
-    const withoutReset = await consumer(TAILWIND, DEFEAT_RESET);
-    const before = await measure(withoutReset);
-    await withoutReset.close();
+    const after = await consumer([TAILWIND], measure);
+    const before = await consumer([TAILWIND, DEFEAT_RESET], measure);
 
     /* The face really did change, or the comparison below proves nothing. */
     expect(before.search.family).not.toBe(after.search.family);
@@ -422,9 +402,7 @@ describeBrowser('the longhand, and the divergence from preflight it leaves open'
        re-open the divergence on precisely those elements — a <textarea> in a
        consumer's Tailwind app renders the body face, and in ours would have
        kept the UA's monospace. */
-    const page = await consumer(TAILWIND);
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([TAILWIND], measure);
 
     expect(computed.textarea.family).toBe(computed.body);
     expect(computed.select.family).toBe(computed.body);
@@ -484,9 +462,7 @@ describeBrowser('a consumer with no cascade layers at all', () => {
     /* Without Tailwind, `@layer base` is declared by tokens.css itself and is
        the lowest-priority layer in the document. The reset still has to apply —
        the five controls are the whole point of it. */
-    const page = await consumer();
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([], measure);
 
     expect(computed.body).not.toBe('Arial');
     for (const id of AUDITED) {

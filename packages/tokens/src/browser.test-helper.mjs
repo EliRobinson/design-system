@@ -11,21 +11,16 @@
  * the document, and jsdom does not model layers.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { extname, join } from 'node:path';
-
 import { afterAll, describe } from 'vitest';
 
 import { BROWSER_BUDGET, bootBrowser as bootShared } from '../../../tests/support/boot-browser.mjs';
+import { openPage } from '../../../tests/support/open-page.mjs';
 
 import { TOKENS_SRC_DIR } from './token-stylesheets.mjs';
 
 export { BROWSER_BUDGET };
 
-/* A synthetic origin, served from src/ by a route handler. tokens.css @imports
-   its siblings relatively, so it has to be fetched from a URL that has a
-   directory — `setContent` runs on about:blank, where `./palettes.css` resolves
-   to nothing and the whole palette would silently be missing. */
+/* A synthetic origin, served from src/. Why: see tests/support/open-page.mjs. */
 export const ORIGIN = 'https://tokens.test';
 
 /* The layer order `@import 'tailwindcss'` declares ahead of tokens.css. It is
@@ -47,51 +42,42 @@ export function bootBrowser(label) {
 }
 
 /**
- * Serve `html` as the index of ORIGIN on `page`, with every other path read
- * from this package's src/ (tokens.css, its siblings, the fonts), and load it.
+ * Open a page on ORIGIN that serves `html` as its index and reads every other
+ * path from this package's src/ (tokens.css, its siblings, the fonts). Runs
+ * `run(page)` and closes the context, even when `run` throws. The route lives
+ * in the repo's one shared page server, tests/support/open-page.mjs (#419).
  *
- * @param {import('playwright').Page} page
- * @param {string} html
+ * @template T
+ * @param {import('playwright').Browser} browser
+ * @param {{ html: string, context?: import('playwright').BrowserContextOptions }} options
+ * @param {(page: import('playwright').Page) => Promise<T>} run
+ * @returns {Promise<T>}
  */
-export async function openTokensPage(page, html) {
-  await page.route(`${ORIGIN}/**`, async (route) => {
-    const name = new URL(route.request().url()).pathname.slice(1);
-
-    if (name === 'index.html') {
-      return route.fulfill({ contentType: 'text/html', body: html });
-    }
-
-    const file = join(TOKENS_SRC_DIR, name);
-    if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
-    return route.fulfill({
-      contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
-      body: readFileSync(file),
-    });
-  });
-
-  await page.goto(`${ORIGIN}/index.html`);
-  return page;
+export function openTokensPage(browser, { html, context }, run) {
+  return openPage(browser, { origin: ORIGIN, html, fallbackDir: TOKENS_SRC_DIR, context }, run);
 }
 
 /**
  * A consumer page: `before` stylesheets, then the real tokens.css, then
- * `after` (raw markup, such as a component `<style>`), then `body`. Opens a new
- * page on `browser` and returns it loaded.
+ * `after` (raw markup, such as a component `<style>`), then `body`. Runs
+ * `run(page)` on it, as openTokensPage does.
  *
+ * @template T
  * @param {import('playwright').Browser} browser
  * @param {{ htmlAttributes?: string, before?: string[], after?: string, body: string }} options
+ * @param {(page: import('playwright').Page) => Promise<T>} run
+ * @returns {Promise<T>}
  */
-export async function consumerPage(
-  browser,
-  { htmlAttributes = '', before = [], after = '', body },
-) {
-  const page = await browser.newPage();
+export function consumerPage(browser, { htmlAttributes = '', before = [], after = '', body }, run) {
   return openTokensPage(
-    page,
-    `<!doctype html><html ${htmlAttributes}><meta charset="utf-8">
+    browser,
+    {
+      html: `<!doctype html><html ${htmlAttributes}><meta charset="utf-8">
       ${before.map((css) => `<style>${css}</style>`).join('\n')}
       <link rel="stylesheet" href="/tokens.css">
       ${after}
       ${body}`,
+    },
+    run,
   );
 }

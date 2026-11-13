@@ -9,12 +9,11 @@
  * one level up, so a pass is the boundary holding, not the sheet missing.
  *
  * Needs a real cascade, so it runs in a browser, and skips loudly without one:
- * it boots through the repo's shared tests/support/boot-browser.mjs.
+ * it boots through the repo's shared tests/support/boot-browser.mjs and serves
+ * the page through tests/support/open-page.mjs.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { extname, join } from 'node:path';
 
 import {
   Dialog,
@@ -28,6 +27,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { BROWSER_BUDGET, bootBrowser } from '../../../../../tests/support/boot-browser.mjs';
+import { openPage } from '../../../../../tests/support/open-page.mjs';
 import { SITE_CSS } from '../../lib/css-source';
 
 const require = createRequire(import.meta.url);
@@ -81,66 +81,45 @@ const ORIGIN = 'https://demo-boundary.test';
 
 type Styles = Record<string, Record<string, string> | null>;
 
-async function measureBoundary(): Promise<{ bare: Styles; stage: Styles; prose: Styles }> {
-  const context = await browser!.newContext();
-  try {
-    const page = await context.newPage();
-
-    await page.route(`${ORIGIN}/**`, async (route) => {
-      const name = new URL(route.request().url()).pathname.slice(1);
-      if (name === 'index.html') {
-        return route.fulfill({
-          contentType: 'text/html',
-          body: `<!doctype html><html><head><meta charset="utf-8">
-            <link rel="stylesheet" href="/tokens.css">
-            <link rel="stylesheet" href="/Dialog.css">
-            <link rel="stylesheet" href="/site.css">
-            </head><body>
-            <div id="bare">${DIALOG}${PLAIN}</div>
-            <article class="prose">
-              <div id="prose">${PLAIN}</div>
-              <div class="demo-block__stage not-prose" id="stage">${DIALOG}${PLAIN}</div>
-            </article>
-            </body></html>`,
-        });
-      }
-      if (name === 'Dialog.css') {
-        return route.fulfill({ contentType: 'text/css', body: readFileSync(DIALOG_CSS) });
-      }
-      if (name === 'site.css') {
-        return route.fulfill({ contentType: 'text/css', body: readFileSync(SITE_CSS) });
-      }
-      const file = join(TOKENS_SRC_DIR, name);
-      if (!existsSync(file)) return route.fulfill({ status: 404, body: '' });
-      return route.fulfill({
-        contentType: extname(name) === '.css' ? 'text/css' : 'font/woff2',
-        body: readFileSync(file),
-      });
-    });
-
-    await page.goto(`${ORIGIN}/index.html`);
-    const result = await page.evaluate(
-      ({ targets, properties }) => {
-        const read = (id: string) =>
-          Object.fromEntries(
-            targets.map((selector) => {
-              const element = document.getElementById(id)!.querySelector(selector);
-              if (!element) return [selector, null];
-              const style = getComputedStyle(element);
-              return [
-                selector,
-                Object.fromEntries(properties.map((p) => [p, style.getPropertyValue(p)])),
-              ];
-            }),
-          );
-        return { bare: read('bare'), stage: read('stage'), prose: read('prose') };
-      },
-      { targets: TARGETS, properties: PROPERTIES },
-    );
-    return result;
-  } finally {
-    await context.close();
-  }
+function measureBoundary(): Promise<{ bare: Styles; stage: Styles; prose: Styles }> {
+  return openPage(
+    browser!,
+    {
+      origin: ORIGIN,
+      html: `<!doctype html><html><head><meta charset="utf-8">
+        <link rel="stylesheet" href="/tokens.css">
+        <link rel="stylesheet" href="/Dialog.css">
+        <link rel="stylesheet" href="/site.css">
+        </head><body>
+        <div id="bare">${DIALOG}${PLAIN}</div>
+        <article class="prose">
+          <div id="prose">${PLAIN}</div>
+          <div class="demo-block__stage not-prose" id="stage">${DIALOG}${PLAIN}</div>
+        </article>
+        </body></html>`,
+      files: { 'Dialog.css': DIALOG_CSS, 'site.css': SITE_CSS },
+      fallbackDir: TOKENS_SRC_DIR,
+    },
+    (page) =>
+      page.evaluate(
+        ({ targets, properties }) => {
+          const read = (id: string) =>
+            Object.fromEntries(
+              targets.map((selector) => {
+                const element = document.getElementById(id)!.querySelector(selector);
+                if (!element) return [selector, null];
+                const style = getComputedStyle(element);
+                return [
+                  selector,
+                  Object.fromEntries(properties.map((p) => [p, style.getPropertyValue(p)])),
+                ];
+              }),
+            );
+          return { bare: read('bare'), stage: read('stage'), prose: read('prose') };
+        },
+        { targets: TARGETS, properties: PROPERTIES },
+      ),
+  );
 }
 
 describeBrowser('a demo stage is a prose boundary', () => {
