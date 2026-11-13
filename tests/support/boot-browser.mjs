@@ -5,7 +5,8 @@
  *
  * Not published, and it cannot be: it sits at the repo root, outside every
  * package folder, so no package's `files` can reach it. Nx sees it through the
- * `test` target's inputs in nx.json.
+ * `browserSupport` input on the `test` target in nx.json (restated in
+ * ai-patterns' and scripts' project.json, whose own lists replace it).
  *
  * It imports neither `vitest` nor `playwright`. The caller passes both in.
  * Neither is a dependency of the repo root, so a bare import here would
@@ -29,7 +30,7 @@
 export const BROWSER_BUDGET = 60_000;
 
 /* The browsers Playwright ships. */
-export const ENGINES = ['chromium', 'webkit', 'firefox'];
+export const ENGINES = Object.freeze(['chromium', 'webkit', 'firefox']);
 
 /**
  * Launch, or give up loudly.
@@ -97,14 +98,21 @@ export async function bootBrowser(
   try {
     browserType = (await playwright())[engine];
   } catch (error) {
-    skipReason =
-      error?.code === 'ERR_MODULE_NOT_FOUND'
-        ? 'playwright is not installed'
-        : `playwright did not load: ${error?.message}`;
+    /* A broken install skips too, with its own message: like a missing
+       browser binary, it is the machine, not the suite. Only "playwright"
+       itself missing reads as not installed; a missing dependency of it is
+       a broken install. */
+    const missing =
+      error?.code === 'ERR_MODULE_NOT_FOUND' && String(error.message).includes("'playwright'");
+    skipReason = missing
+      ? 'playwright is not installed'
+      : `playwright did not load: ${error?.message}`;
   }
 
   if (!browserType && !skipReason) {
-    skipReason = `playwright has no ${engine} browser type`;
+    /* The engine is valid, so a module without it means the caller's loader
+       is wrong: a bug in the suite, not a skip. */
+    throw new Error(`bootBrowser: the playwright loader has no ${engine} browser type`);
   }
 
   if (browserType) {
