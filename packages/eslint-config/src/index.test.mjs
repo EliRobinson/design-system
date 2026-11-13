@@ -131,6 +131,35 @@ describe('no-hardcoded-design-values: colour', () => {
     expect(results[0].message).toContain('Hardcoded colour "text-zinc-500"');
   });
 
+  it('passes a mapped utility in a helper object key', () => {
+    const results = lint(
+      `import { clsx } from 'clsx'
+       export const A = ({ on }) => <div className={clsx({ 'bg-background': on })} />`,
+    );
+
+    expect(results).toEqual([]);
+  });
+
+  it('exempts an allowed literal in a helper object key', () => {
+    const results = lint(
+      `import { cn } from './cn'
+       export const A = ({ x }) => <div className={cn({ 'text-zinc-500': x })} />`,
+      { options: { hardcodedValues: { allow: ['text-zinc-500'] } } },
+    );
+
+    expect(results).toEqual([]);
+  });
+
+  it('reads the object keys of a helper named in classNameFunctions', () => {
+    const results = lint(
+      `import { tw } from './tw'
+       export const A = ({ on }) => <div className={tw({ 'bg-[#ff0000]': on })} />`,
+      { options: { hardcodedValues: { classNameFunctions: ['tw'] } } },
+    );
+
+    expect(rulesOf(results)).toContain('@elirobinson/no-hardcoded-design-values');
+  });
+
   it('does not read an object key outside a class-name helper', () => {
     const results = lint(`export const map = { 'bg-[#ff0000]': true }`);
 

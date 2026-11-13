@@ -62,48 +62,11 @@ function calleeName(callee) {
 }
 
 /**
- * Every static class string in a helper argument. It walks what
- * `staticStrings` walks, and also reads the string keys of any object it
- * reaches, because `clsx({ 'min-h-11': open })` and
- * `cn(open && { 'min-h-11': x })` name their classes in the keys. An
- * identifier key cannot hold `[` or `-`, so only string keys are read.
- *
- * @param {object | null | undefined} node
- * @param {string[]} [out]
- * @returns {string[]}
- */
-function classStrings(node, out = []) {
-  if (!node) return out;
-
-  if (node.type === 'ObjectExpression') {
-    for (const property of node.properties) {
-      if (property.type !== 'Property') continue;
-      if (property.key.type === 'Literal' && typeof property.key.value === 'string') {
-        out.push(property.key.value);
-      }
-      classStrings(property.value, out);
-    }
-  } else if (node.type === 'ConditionalExpression') {
-    classStrings(node.consequent, out);
-    classStrings(node.alternate, out);
-  } else if (node.type === 'LogicalExpression') {
-    classStrings(node.left, out);
-    classStrings(node.right, out);
-  } else if (node.type === 'ArrayExpression') {
-    for (const element of node.elements) classStrings(element, out);
-  } else {
-    staticStrings(node, out);
-  }
-
-  return out;
-}
-
-/**
  * Finds every static className string: a `className` or `class` attribute,
- * and the arguments of a class-name helper call, object keys included (see
- * `classStrings`). Calls are not descended into
- * from the attribute, so `className={cn('a')}` reaches `check` once, from the
- * call. A rule calls `attribute` and `call` from its own visitors.
+ * and the arguments of a class-name helper call, object keys included. Calls
+ * are not descended into from the attribute, so `className={cn('a')}` reaches
+ * `check` once, from the call. A rule calls `attribute` and `call` from its
+ * own visitors.
  *
  * @param {object} options
  * @param {string[]} [options.functions] class-name helper names
@@ -124,7 +87,9 @@ export function classNameReader({ functions = DEFAULT_CLASS_NAME_FUNCTIONS }, ch
       const callee = calleeName(node.callee);
       if (!callee || !helpers.has(callee)) return;
       for (const argument of node.arguments) {
-        for (const value of classStrings(argument)) check(node, value);
+        for (const value of staticStrings(argument, [], { objectKeys: true })) {
+          check(node, value);
+        }
       }
     },
   };

@@ -10,29 +10,45 @@
  * from both the JSX attribute and the call, and letting only a CallExpression
  * visitor own it keeps each finding reported once.
  *
+ * With `objectKeys`, it also reads the string keys of any object it reaches,
+ * because `clsx({ 'min-h-11': open })` and `cn(open && { 'min-h-11': x })`
+ * name their classes in the keys. An identifier key cannot hold `[` or `-`, so
+ * only string keys are read. Only class-name helper arguments want this; a
+ * style object's keys are property names.
+ *
  * @param {object | null | undefined} node
  * @param {string[]} [out]
+ * @param {{ objectKeys?: boolean }} [options]
  * @returns {string[]}
  */
-export function staticStrings(node, out = []) {
+export function staticStrings(node, out = [], options = {}) {
   if (!node) return out;
+  const walk = (child) => staticStrings(child, out, options);
 
   if (node.type === 'Literal' && typeof node.value === 'string') out.push(node.value);
   else if (node.type === 'TemplateLiteral') {
     for (const quasi of node.quasis) out.push(quasi.value.cooked ?? '');
-    for (const expression of node.expressions) staticStrings(expression, out);
-  } else if (node.type === 'JSXExpressionContainer') staticStrings(node.expression, out);
+    for (const expression of node.expressions) walk(expression);
+  } else if (node.type === 'JSXExpressionContainer') walk(node.expression);
   else if (node.type === 'ConditionalExpression') {
-    staticStrings(node.consequent, out);
-    staticStrings(node.alternate, out);
+    walk(node.consequent);
+    walk(node.alternate);
   } else if (node.type === 'LogicalExpression' || node.type === 'BinaryExpression') {
-    staticStrings(node.left, out);
-    staticStrings(node.right, out);
+    walk(node.left);
+    walk(node.right);
   } else if (node.type === 'ArrayExpression') {
-    for (const element of node.elements) staticStrings(element, out);
+    for (const element of node.elements) walk(element);
   } else if (node.type === 'ObjectExpression') {
     for (const property of node.properties) {
-      if (property.type === 'Property') staticStrings(property.value, out);
+      if (property.type !== 'Property') continue;
+      if (
+        options.objectKeys &&
+        property.key.type === 'Literal' &&
+        typeof property.key.value === 'string'
+      ) {
+        out.push(property.key.value);
+      }
+      walk(property.value);
     }
   }
 
