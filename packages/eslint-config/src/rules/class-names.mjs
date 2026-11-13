@@ -68,6 +68,10 @@ function calleeName(callee) {
  * `check` once, from the call. A rule calls `attribute` and `call` from its
  * own visitors.
  *
+ * Keys are read at any depth, so a `cva` variant name that looks like a class
+ * (`variants: { tone: { 'bg-[#fff]': '...' } }`) is read as one. Variant names
+ * are words in practice, so this is accepted rather than special-cased.
+ *
  * @param {object} options
  * @param {string[]} [options.functions] class-name helper names
  * @param {(node: object, className: string) => void} check

@@ -131,6 +131,26 @@ describe('no-hardcoded-design-values: colour', () => {
     expect(results[0].message).toContain('Hardcoded colour "text-zinc-500"');
   });
 
+  it('reads every axis in a helper object key, not only colour', () => {
+    const results = lint(
+      `import { clsx } from 'clsx'
+       export const A = ({ on }) => (
+         <div className={clsx({ 'rounded-[8px]': on, 'shadow-[0_1px_2px_#000]': on, 'duration-[250ms]': on })} />
+       )`,
+    );
+
+    expect(results.map((result) => result.messageId)).toEqual(['radius', 'shadow', 'duration']);
+  });
+
+  it('reports a class once when one call writes it as a key and as a string', () => {
+    const results = lint(
+      `import { cn } from './cn'
+       export const A = ({ on }) => <div className={cn({ 'text-zinc-500': on }, 'text-zinc-500')} />`,
+    );
+
+    expect(results).toHaveLength(1);
+  });
+
   it('passes a mapped utility in a helper object key', () => {
     const results = lint(
       `import { clsx } from 'clsx'
