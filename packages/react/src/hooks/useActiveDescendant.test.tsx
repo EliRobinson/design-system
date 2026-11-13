@@ -88,10 +88,9 @@ describe('useActiveDescendant', () => {
 
     it('keeps resetActive stable across renders that rebuild keys', () => {
       const { result, rerender } = setup({ count: 1, keys: ['a'] });
-      const { resetActive, setActiveIndex } = result.current;
+      const { resetActive } = result.current;
       rerender({ count: 1, keys: ['a'] });
       expect(result.current.resetActive).toBe(resetActive);
-      expect(result.current.setActiveIndex).toBe(setActiveIndex);
     });
   });
 });

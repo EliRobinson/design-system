@@ -12,6 +12,15 @@ const commands = [
   { id: 'open', label: 'Open file', onSelect: vi.fn() },
 ];
 
+/** The option `aria-activedescendant` points at. */
+function activeOption() {
+  const id = screen.getByRole('searchbox').getAttribute('aria-activedescendant');
+  return document.getElementById(id as string);
+}
+
+/** A palette showing results the caller searched itself. */
+const asyncProps = { open: true, filter: false } as const;
+
 describe('CommandPalette', () => {
   it('does not render when closed', () => {
     render(<CommandPalette open={false} onOpenChange={vi.fn()} commands={commands} />);
@@ -468,15 +477,13 @@ describe('CommandPalette', () => {
         { id: 'a', label: 'Alpha', onSelect: vi.fn() },
         { id: 'open', label: 'Open file', onSelect: onSelectOpen },
       ];
-      const props = { open: true, onOpenChange: vi.fn(), filter: false };
+      const props = { ...asyncProps, onOpenChange: vi.fn() };
       const { rerender } = render(<CommandPalette {...props} commands={before} />);
 
       await user.keyboard('{ArrowDown}');
       rerender(<CommandPalette {...props} commands={after} />);
 
-      const input = screen.getByRole('searchbox');
-      const activeId = input.getAttribute('aria-activedescendant');
-      expect(document.getElementById(activeId as string)).toHaveTextContent('Open file');
+      expect(activeOption()).toHaveTextContent('Open file');
 
       await user.keyboard('{Enter}');
       expect(onSelectOpen).toHaveBeenCalledTimes(1);
@@ -495,15 +502,14 @@ describe('CommandPalette', () => {
         { id: 'b', label: 'Beta', onSelect: vi.fn() },
         { id: 'r2', label: 'Result two', onSelect: vi.fn() },
       ];
-      const props = { open: true, onOpenChange: vi.fn(), filter: false };
+      const props = { ...asyncProps, onOpenChange: vi.fn() };
       const { rerender } = render(<CommandPalette {...props} commands={before} />);
 
       await user.keyboard('{ArrowDown}');
       rerender(<CommandPalette {...props} commands={after} />);
       await user.keyboard('{ArrowDown}');
 
-      const activeId = screen.getByRole('searchbox').getAttribute('aria-activedescendant');
-      expect(document.getElementById(activeId as string)).toHaveTextContent('Result two');
+      expect(activeOption()).toHaveTextContent('Result two');
     });
 
     it('falls back to the first row when the highlighted command is gone (#412)', async () => {
@@ -516,14 +522,13 @@ describe('CommandPalette', () => {
         { id: 'r1', label: 'Result one', onSelect: vi.fn() },
         { id: 'r2', label: 'Result two', onSelect: vi.fn() },
       ];
-      const props = { open: true, onOpenChange: vi.fn(), filter: false };
+      const props = { ...asyncProps, onOpenChange: vi.fn() };
       const { rerender } = render(<CommandPalette {...props} commands={before} />);
 
       await user.keyboard('{ArrowDown}');
       rerender(<CommandPalette {...props} commands={after} />);
 
-      const activeId = screen.getByRole('searchbox').getAttribute('aria-activedescendant');
-      expect(document.getElementById(activeId as string)).toHaveTextContent('Result one');
+      expect(activeOption()).toHaveTextContent('Result one');
     });
 
     it('keeps the top row active after typing, when new results replace the old (#412)', async () => {
@@ -557,8 +562,7 @@ describe('CommandPalette', () => {
       await user.type(screen.getByRole('searchbox'), 'r');
       rerender(<Harness results={after} />);
 
-      const activeId = screen.getByRole('searchbox').getAttribute('aria-activedescendant');
-      expect(document.getElementById(activeId as string)).toHaveTextContent('Result one');
+      expect(activeOption()).toHaveTextContent('Result one');
     });
 
     it('does not report the open-time reset to a controlled parent when already empty', () => {
