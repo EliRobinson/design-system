@@ -50,6 +50,31 @@ describe('bootBrowser', () => {
     expect(browser.close).toHaveBeenCalledOnce();
   });
 
+  it('leaves no launch timer behind once the browser is up', async () => {
+    vi.useFakeTimers();
+    try {
+      const { vitest } = fakeVitest();
+      const chromium = { launch: async () => fakeBrowser() };
+
+      await bootBrowser('timer', { vitest, playwright: async () => ({ chromium }) });
+
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('skips when playwright loads without the requested engine', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { vitest } = fakeVitest();
+
+    await bootBrowser('engineless', { vitest, playwright: async () => ({}), engine: 'firefox' });
+
+    expect(warn).toHaveBeenCalledWith(
+      'Skipping engineless tests: playwright has no firefox browser type',
+    );
+  });
+
   it('skips loudly when playwright is not installed', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { vitest, teardowns } = fakeVitest();

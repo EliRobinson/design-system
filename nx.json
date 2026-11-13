@@ -111,7 +111,8 @@
        import by relative path (#402). An edit there changes what those suites
        do, so it must be in their cache key, or a cached pass replays. (`nx
        affected` already selects every project for an unowned file; this line
-       is for the cache key only.) It is on the default rather than on
+       is for the cache key only, and the blast radius is every project with
+       a `test` target, placeholders included.) It is on the default rather than on
        the four, so a fifth suite that starts using it cannot forget the line.
        A project.json that lists its own `inputs` replaces this list, so
        ai-patterns and scripts restate it. */
