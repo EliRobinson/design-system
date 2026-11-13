@@ -61,11 +61,21 @@
 }
 
 /* #426: scoped under the root (0,3,1), so a host `.prose a:hover` (0,2,1)
-   cannot recolour or underline a hovered crumb. The current crumb is a
-   <span>, so it takes no hover. */
+   cannot recolour, underline, border or fill a hovered crumb. It restates
+   what the reset above sets, since the host hover outranks the reset. The
+   current crumb is a <span>, so it takes no hover. */
 .ds-breadcrumb a.ds-breadcrumb__link:hover {
+  background: none;
+  border: 0;
+  box-shadow: none;
   color: var(--link-hover);
   text-decoration: none;
+}
+
+/* On a fill the surface owns the text colour (tokens.css, --link-on-fill):
+   --link-hover can be the fill's own hue. */
+:is([data-on-fill], .ds-alert, .ds-toast) .ds-breadcrumb a.ds-breadcrumb__link:hover {
+  color: var(--link-on-fill);
 }
 
 .ds-breadcrumb .ds-breadcrumb__link--current {
