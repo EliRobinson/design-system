@@ -18,6 +18,11 @@
  *
  * #414: Stepper, NavigationMenu and Accordion, which #383 missed.
  *
+ * #423: links and tables, which no host here styled until then. Tailwind
+ * Typography's `a` rule underlines, recolours and bolds a link at (0,1,0),
+ * the same as `.ds-breadcrumb__link`, and wins on order. Its table rules add
+ * margins, a line-height, row rules and cell alignment.
+ *
  * #368: `.ds-combobox__list` was `position: absolute` with no `top`, so it sat
  * at its static position. In a flex-column root that is the root's top, over
  * the input. This measures the list against the input in a real layout.
@@ -47,6 +52,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from '../src/components/
 import { DecisionCard } from '../src/components/molecules/DecisionCard.tsx';
 import { EmptyState } from '../src/components/molecules/EmptyState.tsx';
 import { Pagination } from '../src/components/molecules/Pagination.tsx';
+import { RuleLink } from '../src/components/molecules/RuleLink.tsx';
 import { Stepper } from '../src/components/molecules/Stepper.tsx';
 import { StubCard } from '../src/components/molecules/StubCard.tsx';
 import {
@@ -72,7 +78,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from '../src/components/organisms/Sheet.tsx';
+import { Table } from '../src/components/organisms/Table.tsx';
 import { Toast, ToastDescription, ToastTitle } from '../src/components/organisms/Toast.tsx';
+import { VirtualTable } from '../src/components/organisms/VirtualTable.tsx';
 
 import { bootBrowser, inPage } from './browser.test-helper.mjs';
 
@@ -87,6 +95,9 @@ const SHEET_NAMES = {
     'Toast',
     'NavigationMenu',
     'Accordion',
+    'table/core',
+    'Table',
+    'VirtualTable',
   ],
   molecules: [
     'SearchField',
@@ -99,6 +110,7 @@ const SHEET_NAMES = {
     'Pagination',
     'Breadcrumb',
     'Stepper',
+    'RuleLink',
   ],
 };
 const SHEETS = Object.fromEntries(
@@ -139,6 +151,11 @@ const HOSTS = {
     .prose dl { margin: 0 0 16px; }
     .prose dt { font-weight: 800; margin-top: 12px; }
     .prose dd { margin: 0 0 8px 24px; }
+    .prose a { color: red; font-weight: 800; text-decoration: underline; }
+    .prose table { margin: 32px 0; line-height: 2.2; font-size: 20px; }
+    .prose th, .prose td {
+      padding: 12px; border-bottom: 3px solid red; vertical-align: top; font-weight: 800;
+    }
   `,
   /* The shape of @tailwindcss/typography: (0,1,0), and list markers on. */
   tailwind: `
@@ -159,10 +176,26 @@ const HOSTS = {
     .prose :where(dl)${NOT} { margin-top: 1.25em; margin-bottom: 1.25em; }
     .prose :where(dt)${NOT} { font-weight: 600; margin-top: 1.25em; color: red; }
     .prose :where(dd)${NOT} { margin-top: 0.5em; padding-inline-start: 1.625em; }
+    .prose :where(a)${NOT} { color: red; text-decoration: underline; font-weight: 500; }
+    .prose :where(table)${NOT} {
+      width: 100%; table-layout: auto; margin-top: 2em; margin-bottom: 2em;
+      font-size: 0.875em; line-height: 1.71;
+    }
+    .prose :where(thead)${NOT} { border-bottom: 1px solid red; }
+    .prose :where(thead th)${NOT} {
+      color: red; font-weight: 600; vertical-align: bottom;
+      padding-inline-end: 0.57em; padding-bottom: 0.57em; padding-inline-start: 0.57em;
+    }
+    .prose :where(tbody tr)${NOT} { border-bottom: 1px solid red; }
+    .prose :where(tbody td)${NOT} { vertical-align: baseline; }
+    .prose :where(tbody td, tfoot td)${NOT} {
+      padding-top: 0.57em; padding-inline-end: 0.57em; padding-bottom: 0.57em; padding-inline-start: 0.57em;
+    }
   `,
 };
 
-/* Every property a host's heading, paragraph or list rule reaches for. */
+/* Every property a host's heading, paragraph, list, link or table rule
+   reaches for. */
 const PROPERTIES = [
   'font-family',
   'font-size',
@@ -180,7 +213,11 @@ const PROPERTIES = [
   'padding-left',
   'border-top-width',
   'border-top-style',
+  'border-bottom-width',
+  'border-bottom-style',
   'list-style-type',
+  'text-decoration-line',
+  'vertical-align',
 ];
 
 const noop = () => {};
@@ -400,6 +437,35 @@ const CASES = {
       '.ds-navigation-menu__link',
     ],
   },
+  /* #423: links and tables. RuleLink's root is its own `a`. Table renders a
+     real table; VirtualTable renders an ARIA grid of `div`s, which no host
+     element rule reaches, and is a case so a move to a real table keeps the
+     reset. */
+  RuleLink: {
+    markup: renderToStaticMarkup(h(RuleLink, { href: '/rules' }, 'Read the rules')),
+    targets: ['.ds-rule-link'],
+  },
+  Table: {
+    markup: renderToStaticMarkup(
+      h(Table, {
+        data: [{ name: 'Ada', role: 'Engineer' }],
+        columns: [
+          { accessorKey: 'name', header: 'Name' },
+          { accessorKey: 'role', header: 'Role' },
+        ],
+      }),
+    ),
+    targets: ['.ds-table', '.ds-table thead', '.ds-table th', '.ds-table tbody tr', '.ds-table td'],
+  },
+  VirtualTable: {
+    markup: renderToStaticMarkup(
+      h(VirtualTable, {
+        data: [{ name: 'Ada' }],
+        columns: [{ accessorKey: 'name', header: 'Name' }],
+      }),
+    ),
+    targets: ['.ds-table--virtual', '.ds-table__vcell--head'],
+  },
   Accordion: {
     markup: renderToStaticMarkup(
       h(
@@ -417,11 +483,12 @@ const CASES = {
   },
 };
 
-/* #414: three components were missed because joining CASES was a rule in a
-   doc. Every component file that renders a heading, paragraph or list (or
-   picks a heading from an `'h1'`-`'h6'` tag map or `headingLevel`) must name a case, so the next one
-   fails here instead. Runs without a browser. */
-const TEXT_ELEMENT = /<(h[1-6]|p|ul|ol|li|dl)[\s>]|['"]h[1-6]['"]|headingLevel/;
+/* #414, #423: components were missed because joining CASES was a rule in a
+   doc. Every component file that renders a heading, paragraph, list, link or
+   table (or picks a heading from an `'h1'`-`'h6'` tag map or `headingLevel`)
+   must name a case, so the next one fails here instead. Runs without a
+   browser. */
+const TEXT_ELEMENT = /<(h[1-6]|p|ul|ol|li|dl|a|table)[\s>]|['"]h[1-6]['"]|headingLevel/;
 
 /* Comments stripped, as tier-boundary.test.mjs does, so a file that only
    mentions an element in prose neither needs a case nor counts as one. */
@@ -441,6 +508,7 @@ function textBearingComponents() {
 describe('every text-bearing component is a host-typography case (#414)', () => {
   it('finds the components it sweeps', () => {
     expect(textBearingComponents()).toContain('Stepper');
+    expect(textBearingComponents()).toEqual(expect.arrayContaining(['RuleLink', 'Table']));
   });
 
   it('each one has a CASES entry', () => {
@@ -478,14 +546,16 @@ describeBrowser('components keep their own type and list styles inside .prose (#
   for (const [hostName, host] of Object.entries(HOSTS)) {
     /* The positive control: a plain h2 and ul really are restyled by this host,
        so a pass below is the component winning, not the fixture missing. */
-    it(`${hostName}: the host fixture restyles a plain h2 and ul`, async () => {
-      const { bare, prose } = await load(
-        { body: twoRoots('<h2>Plain</h2><ul><li>Plain</li></ul>'), host },
-        readStyles,
-        { targets: ['h2', 'ul'], properties: PROPERTIES },
-      );
-      expect(prose.h2).not.toEqual(bare.h2);
-      expect(prose.ul).not.toEqual(bare.ul);
+    it(`${hostName}: the host fixture restyles a plain h2, ul, a, table and td`, async () => {
+      const plain =
+        '<h2>Plain</h2><ul><li>Plain</li></ul><a href="/">Plain</a>' +
+        '<table><thead><tr><th>H</th></tr></thead><tbody><tr><td>D</td></tr></tbody></table>';
+      const targets = ['h2', 'ul', 'a', 'table', 'td'];
+      const { bare, prose } = await load({ body: twoRoots(plain), host }, readStyles, {
+        targets,
+        properties: PROPERTIES,
+      });
+      for (const selector of targets) expect(prose[selector], selector).not.toEqual(bare[selector]);
     });
 
     for (const [name, { markup, targets }] of Object.entries(CASES)) {
