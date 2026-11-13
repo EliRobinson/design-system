@@ -151,7 +151,9 @@ const HOSTS = {
     .prose dl { margin: 0 0 16px; }
     .prose dt { font-weight: 800; margin-top: 12px; }
     .prose dd { margin: 0 0 8px 24px; }
-    .prose a { color: red; font-weight: 800; text-decoration: underline; }
+    .prose a {
+      color: red; font-weight: 800; text-decoration: underline; border-bottom: 3px dotted red;
+    }
     .prose table { margin: 32px 0; line-height: 2.2; font-size: 20px; }
     .prose th, .prose td {
       padding: 12px; border-bottom: 3px solid red; vertical-align: top; font-weight: 800;
@@ -439,7 +441,8 @@ const CASES = {
       '.ds-navigation-menu__list > li',
       '.ds-navigation-menu__label',
       '.ds-navigation-menu__list .ds-navigation-menu__list',
-      '.ds-navigation-menu__link',
+      '.ds-navigation-menu__link--active',
+      '.ds-navigation-menu__link:not(.ds-navigation-menu__link--active)',
     ],
   },
   /* #423: links and tables. RuleLink's root is its own `a`. Table renders a
@@ -512,8 +515,9 @@ function textBearingComponents() {
 
 describe('every text-bearing component is a host-typography case (#414)', () => {
   it('finds the components it sweeps', () => {
-    expect(textBearingComponents()).toContain('Stepper');
-    expect(textBearingComponents()).toEqual(expect.arrayContaining(['RuleLink', 'Table']));
+    expect(textBearingComponents()).toEqual(
+      expect.arrayContaining(['Stepper', 'RuleLink', 'Table']),
+    );
   });
 
   it('each one has a CASES entry', () => {
@@ -614,6 +618,35 @@ describeBrowser('components keep their own type and list styles inside .prose (#
   /* #414: the nested-list indent ties the root-scoped list reset at (0,2,0)
      and wins only on source order. Losing it would match bare and prose
      alike, so this pins it. */
+  /* #423: the active link and the current crumb tie the root-scoped link
+     reset at (0,2,0) and win only on source order. Losing that would match
+     bare and prose alike, so this pins what each state paints. */
+  it('the active nav link and the current crumb keep their state styles', async () => {
+    const body =
+      CASES.NavigationMenu.markup +
+      CASES.Breadcrumb.markup +
+      '<span id="state" style="color: var(--fg); font-weight: var(--fw-medium)"></span>' +
+      '<span id="rest" style="color: var(--fg-2)"></span>';
+    const read = await load({ body }, () => {
+      const style = (selector) => {
+        const s = getComputedStyle(document.querySelector(selector));
+        return { color: s.color, weight: s.fontWeight };
+      };
+      return {
+        active: style('.ds-navigation-menu__link--active'),
+        link: style('.ds-navigation-menu__link:not(.ds-navigation-menu__link--active)'),
+        current: style('.ds-breadcrumb__link--current'),
+        state: style('#state'),
+        rest: style('#rest'),
+      };
+    });
+
+    expect(read.active).toEqual(read.state);
+    expect(read.current).toEqual(read.state);
+    expect(read.link.color).toBe(read.rest.color);
+    expect(read.link.weight).not.toBe(read.state.weight);
+  });
+
   it('NavigationMenu still indents a nested list', async () => {
     const body =
       CASES.NavigationMenu.markup +
