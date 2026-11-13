@@ -13,7 +13,9 @@
          and the ai-patterns Markdown parser (#333). package-list.test.mjs reads
          README.md, AGENTS.md and every package.json under packages; the Markdown
          globs and the package.json line below cover them (^default misses
-         design-system-mcp and the starter). */
+         design-system-mcp and the starter). tests/support/** is the shared
+         browser bootstrap that boot-browser.test.mjs tests; nx.json's test
+         targetDefaults says why, and this list replaces that one. */
       "inputs": [
         "default",
         "^default",

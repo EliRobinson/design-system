@@ -27,7 +27,7 @@ import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { bootBrowser } from '../../../../../tests/support/boot-browser.mjs';
+import { BROWSER_BUDGET, bootBrowser } from '../../../../../tests/support/boot-browser.mjs';
 import { SITE_CSS } from '../../lib/css-source';
 
 const require = createRequire(import.meta.url);
@@ -147,7 +147,7 @@ describeBrowser('a demo stage is a prose boundary', () => {
   let styles: Awaited<ReturnType<typeof measureBoundary>>;
   beforeAll(async () => {
     styles = await measureBoundary();
-  }, 60_000);
+  }, BROWSER_BUDGET);
 
   it('prose restyles plain elements outside the stage (positive control)', () => {
     const { bare, prose } = styles;

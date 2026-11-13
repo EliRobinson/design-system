@@ -39,7 +39,9 @@
          cached pass. "default" and "^default" are what Nx uses when a target
          names no inputs, so they are restated here.
          upgrade-coverage.test.mjs reads every package's CHANGELOG.md and the
-         pending changesets (#334), and most of those are no edge either. */
+         pending changesets (#334), and most of those are no edge either.
+         tests/support/** is the shared browser bootstrap; nx.json's test
+         targetDefaults says why, and this list replaces that one. */
       "inputs": [
         "default",
         "^default",
