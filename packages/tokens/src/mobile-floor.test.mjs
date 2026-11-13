@@ -48,20 +48,21 @@ const BODY = `
   <button id="dense-marked" data-touch-target="dense" type="button">Marked</button>
 `;
 
-async function open({ platform, viewport }) {
-  const page = await browser.newPage();
-  if (viewport) await page.setViewportSize(viewport);
-
-  await openTokensPage(
-    page,
-    `<!doctype html><html${platform ? ` data-platform="${platform}"` : ''}>
+/* Runs `run` on the page, then closes it. */
+function open({ platform, viewport }, run) {
+  return openTokensPage(
+    browser,
+    {
+      html: `<!doctype html><html${platform ? ` data-platform="${platform}"` : ''}>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <link rel="stylesheet" href="/tokens.css">
           <style>${COMPONENT_CSS}</style>
           ${BODY}`,
+      context: { viewport },
+    },
+    run,
   );
-  return page;
 }
 
 const minHeights = (page) =>
@@ -78,39 +79,35 @@ const minHeights = (page) =>
    a new context rather than a viewport change — and the viewport meta above is
    what keeps `isMobile` from laying the page out at 980px, where the 480px
    query would never match and every assertion below would pass vacuously. */
-async function coarsePage() {
-  const context = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    hasTouch: true,
-    isMobile: true,
-  });
-  const page = await context.newPage();
-  await openTokensPage(
-    page,
-    `<!doctype html><html><meta charset="utf-8">
+function coarsePage(run) {
+  return openTokensPage(
+    browser,
+    {
+      html: `<!doctype html><html><meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <link rel="stylesheet" href="/tokens.css">
           <style>${COMPONENT_CSS}</style>
           ${BODY}`,
+      context: { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true },
+    },
+    run,
   );
-  return { page, context };
 }
 
 describeBrowser('the mobile touch-target floor', () => {
   it('does not fire at all on a fine-pointer desktop', async () => {
-    const page = await open({ viewport: { width: 1280, height: 800 } });
-    const heights = await minHeights(page);
+    const heights = await open({ viewport: { width: 1280, height: 800 } }, minHeights);
 
     expect(heights.plain).toBe('0px');
     expect(heights.chip).toBe('32px');
     expect(heights.sm).toBe('36px');
-
-    await page.close();
   });
 
   it('floors the primary controls under data-platform="mobile"', async () => {
-    const page = await open({ platform: 'mobile', viewport: { width: 1280, height: 800 } });
-    const heights = await minHeights(page);
+    const heights = await open(
+      { platform: 'mobile', viewport: { width: 1280, height: 800 } },
+      minHeights,
+    );
 
     expect(heights.plain).toBe('44px');
     expect(heights['anchor-button']).toBe('44px');
@@ -119,8 +116,6 @@ describeBrowser('the mobile touch-target floor', () => {
     /* A range input draws its own track and thumb; a min-height stretches the
        track rather than the thumb, so it is excluded from the subject list. */
     expect(heights.range).toBe('0px');
-
-    await page.close();
   });
 
   /* The inversion. The dense affordances are held out of the floor rather than
@@ -129,42 +124,39 @@ describeBrowser('the mobile touch-target floor', () => {
      scale they were deliberately drawn at without buying anything the dense
      floor was not already buying. */
   it('leaves the dense affordances at their own scale under data-platform="mobile"', async () => {
-    const page = await open({ platform: 'mobile', viewport: { width: 1280, height: 800 } });
-    const heights = await minHeights(page);
+    const heights = await open(
+      { platform: 'mobile', viewport: { width: 1280, height: 800 } },
+      minHeights,
+    );
 
     expect(heights.chip).toBe('32px');
     expect(heights.sm).toBe('36px');
     expect(heights['dense-marked']).toBe('0px');
-
-    await page.close();
   });
 
   it('floors the primary controls on a responsive coarse-pointer phone', async () => {
-    const { page, context } = await coarsePage();
-    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
-    expect(await page.evaluate(() => document.documentElement.clientWidth)).toBeLessThanOrEqual(
-      480,
-    );
+    const { coarse, width, heights } = await coarsePage(async (page) => ({
+      coarse: await page.evaluate(() => matchMedia('(pointer: coarse)').matches),
+      width: await page.evaluate(() => document.documentElement.clientWidth),
+      heights: await minHeights(page),
+    }));
+    expect(coarse).toBe(true);
+    expect(width).toBeLessThanOrEqual(480);
 
-    const heights = await minHeights(page);
     expect(heights.plain).toBe('44px');
     expect(heights['anchor-button']).toBe('44px');
     expect(heights.select).toBe('44px');
     expect(heights.range).toBe('0px');
-
-    await context.close();
   });
 
   /* The defect this file exists for: the two halves are one floor, so every
      control has to land on the same number under both, dense ones included. */
   it('agrees with the attribute half on every control, which is the whole point', async () => {
-    const attribute = await open({ platform: 'mobile', viewport: { width: 1280, height: 800 } });
-    const viaAttribute = await minHeights(attribute);
-    await attribute.close();
-
-    const { page, context } = await coarsePage();
-    const viaQuery = await minHeights(page);
-    await context.close();
+    const viaAttribute = await open(
+      { platform: 'mobile', viewport: { width: 1280, height: 800 } },
+      minHeights,
+    );
+    const viaQuery = await coarsePage(minHeights);
 
     expect(viaQuery).toEqual(viaAttribute);
   });
@@ -193,19 +185,17 @@ describeBrowser('the floor resolves at the specificity its comment claims', () =
   const competitor = (n) => `button${'.w'.repeat(n)} { min-height: 7px; }`;
 
   async function winnerAgainst(n) {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-    const page = await context.newPage();
-    await openTokensPage(
-      page,
-      `<!doctype html><html data-platform="mobile"><meta charset="utf-8">
+    const value = await openTokensPage(
+      browser,
+      {
+        html: `<!doctype html><html data-platform="mobile"><meta charset="utf-8">
             <link rel="stylesheet" href="/tokens.css">
             <style>${competitor(n)}</style>
             <button id="probe" class="w" type="button">probe</button>`,
+        context: { viewport: { width: 1280, height: 800 } },
+      },
+      (page) => page.evaluate(() => getComputedStyle(document.getElementById('probe')).minHeight),
     );
-    const value = await page.evaluate(
-      () => getComputedStyle(document.getElementById('probe')).minHeight,
-    );
-    await context.close();
     return value === '44px' ? 'floor' : 'competitor';
   }
 

@@ -75,13 +75,14 @@ const BODY = `
  * around it in the given order.
  *
  * @param {string[]} before stylesheet sources emitted ahead of tokens.css
+ * @param {(page: import('playwright').Page) => Promise<any>} run
  */
-const consumer = (...before) =>
+const consumer = (before, run) =>
   /* data-palette="slate" is issue #112's own reproduction — the teal
      brand, whose --accent-fg is white while --link stays ink. Under the
      default ember palette both resolve to --ink-1000 and every assertion
      below would pass on black === black without measuring anything. */
-  consumerPage(browser, { htmlAttributes: 'data-palette="slate"', before, body: BODY });
+  consumerPage(browser, { htmlAttributes: 'data-palette="slate"', before, body: BODY }, run);
 
 /**
  * Computed colours, plus the same page's own resolution of the tokens they are
@@ -117,9 +118,7 @@ const measure = (page) =>
 
 describeBrowser('a Tailwind v4 consumer, wired the way the docs prescribe', () => {
   it('lets a text-* utility paint an anchor — issue #112', async () => {
-    const page = await consumer(TAILWIND, COMPONENT);
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([TAILWIND, COMPONENT], measure);
 
     /* The measurement that filed the bug: the CTA carried
        text-accent-foreground and rendered #ffffff on #14b8a6, ~2.1:1. */
@@ -128,9 +127,7 @@ describeBrowser('a Tailwind v4 consumer, wired the way the docs prescribe', () =
   });
 
   it('lets a text-decoration utility clear the underline', async () => {
-    const page = await consumer(TAILWIND, COMPONENT);
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([TAILWIND, COMPONENT], measure);
 
     expect(computed.underline).toBe('none');
   });
@@ -138,9 +135,7 @@ describeBrowser('a Tailwind v4 consumer, wired the way the docs prescribe', () =
   it('still styles an anchor nobody asked anything of', async () => {
     /* The reason to layer the rule rather than delete it. An unclassed link is
        the a11y default and has to survive. */
-    const page = await consumer(TAILWIND, COMPONENT);
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([TAILWIND, COMPONENT], measure);
 
     expect(computed.bare).toBe(computed.link);
     expect(computed.bareDecoration).toBe('underline');
@@ -153,10 +148,10 @@ describeBrowser('a Tailwind v4 consumer, wired the way the docs prescribe', () =
        unlayered beats layered whatever the specificity, so the variant wins
        even without the (0,2,0) `:hover` restatement Button.css added to
        out-specify it. Asserted on the hover state, which is where it bit. */
-    const page = await consumer(TAILWIND, COMPONENT);
-    await page.hover('#control');
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([TAILWIND, COMPONENT], async (page) => {
+      await page.hover('#control');
+      return measure(page);
+    });
 
     expect(computed.control).toBe(computed.accentFg);
     /* `a.ds-button { text-decoration: none }` is unlayered too, so it keeps
@@ -170,9 +165,7 @@ describeBrowser('a Tailwind v4 consumer, wired the way the docs prescribe', () =
        and the unlayered one has to keep winning. --link-on-fill is
        `currentColor`, so "it won" means the anchor takes the surface's own
        foreground rather than --link. */
-    const page = await consumer(TAILWIND, COMPONENT);
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([TAILWIND, COMPONENT], measure);
 
     expect(computed.fill).not.toBe(computed.link);
     expect(computed.onFill).toBe(computed.fill);
@@ -181,9 +174,7 @@ describeBrowser('a Tailwind v4 consumer, wired the way the docs prescribe', () =
 
 describeBrowser('a consumer with no cascade layers at all', () => {
   it('still gets the link default, because unlayered CSS is all there is', async () => {
-    const page = await consumer(COMPONENT);
-    const computed = await measure(page);
-    await page.close();
+    const computed = await consumer([COMPONENT], measure);
 
     expect(computed.bare).toBe(computed.link);
     expect(computed.bareDecoration).toBe('underline');

@@ -136,39 +136,41 @@ const BODY = `
  * Every listed longhand of every element with an id, plus the page's own
  * resolution of the tokens the colour assertions compare against.
  */
-async function measure({ theme = 'light', before = [] } = {}) {
-  const page = await consumerPage(browser, {
-    htmlAttributes: `data-theme="${theme}"`,
-    before,
-    body: BODY,
-  });
+function measure({ theme = 'light', before = [] } = {}) {
+  return consumerPage(
+    browser,
+    { htmlAttributes: `data-theme="${theme}"`, before, body: BODY },
+    async (page) => {
+      const read = () =>
+        page.evaluate(
+          ({ longhands, tokens }) => {
+            const probe = document.getElementById('probe');
+            const resolve = (token) => {
+              probe.style.color = `var(${token})`;
+              return getComputedStyle(probe).color;
+            };
+            const styles = {};
+            for (const element of document.querySelectorAll('[id]')) {
+              const style = getComputedStyle(element);
+              styles[element.id] = Object.fromEntries(longhands.map((name) => [name, style[name]]));
+            }
+            return {
+              token: Object.fromEntries(tokens.map((token) => [token, resolve(token)])),
+              styles,
+            };
+          },
+          { longhands: LONGHANDS, tokens: ['--fg-3', '--link', '--link-hover'] },
+        );
 
-  const read = () =>
-    page.evaluate(
-      ({ longhands, tokens }) => {
-        const probe = document.getElementById('probe');
-        const resolve = (token) => {
-          probe.style.color = `var(${token})`;
-          return getComputedStyle(probe).color;
-        };
-        const styles = {};
-        for (const element of document.querySelectorAll('[id]')) {
-          const style = getComputedStyle(element);
-          styles[element.id] = Object.fromEntries(longhands.map((name) => [name, style[name]]));
-        }
-        return {
-          token: Object.fromEntries(tokens.map((token) => [token, resolve(token)])),
-          styles,
-        };
-      },
-      { longhands: LONGHANDS, tokens: ['--fg-3', '--link', '--link-hover'] },
-    );
-
-  const computed = await read();
-  await page.hover('#anchor');
-  computed.anchorHover = await page.$eval('#anchor', (anchor) => getComputedStyle(anchor).color);
-  await page.close();
-  return computed;
+      const computed = await read();
+      await page.hover('#anchor');
+      computed.anchorHover = await page.$eval(
+        '#anchor',
+        (anchor) => getComputedStyle(anchor).color,
+      );
+      return computed;
+    },
+  );
 }
 
 const RENDERS_AS_UNLAYERED =

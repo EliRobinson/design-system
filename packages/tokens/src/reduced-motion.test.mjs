@@ -27,24 +27,21 @@ const HTML = `<!doctype html><html><head><meta charset="utf-8">
   <div id="loop">loop</div>
   </body></html>`;
 
-async function read(reducedMotion) {
-  const context = await browser.newContext({ reducedMotion });
-  const page = await context.newPage();
-  await openTokensPage(page, HTML);
-  const result = await page.evaluate(async () => {
-    const loop = document.getElementById('loop');
-    const opacities = [];
-    for (let i = 0; i < 20; i += 1) {
-      opacities.push(Number(getComputedStyle(loop).opacity).toFixed(2));
-      await new Promise((resolve) => setTimeout(resolve, 37));
-    }
-    return {
-      iterations: getComputedStyle(loop).animationIterationCount,
-      opacities,
-    };
-  });
-  await context.close();
-  return result;
+function read(reducedMotion) {
+  return openTokensPage(browser, { html: HTML, context: { reducedMotion } }, (page) =>
+    page.evaluate(async () => {
+      const loop = document.getElementById('loop');
+      const opacities = [];
+      for (let i = 0; i < 20; i += 1) {
+        opacities.push(Number(getComputedStyle(loop).opacity).toFixed(2));
+        await new Promise((resolve) => setTimeout(resolve, 37));
+      }
+      return {
+        iterations: getComputedStyle(loop).animationIterationCount,
+        opacities,
+      };
+    }),
+  );
 }
 
 describeBrowser('the reduced-motion clamp', () => {
