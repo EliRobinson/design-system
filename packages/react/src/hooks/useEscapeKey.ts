@@ -6,7 +6,11 @@ import { useLatest } from '../lib/useLatest.js';
 /* One shared dismissal stack (#305). Every open layer — a tooltip, a popover, a
  * menu, a modal — sits on it, and one document listener hands an Escape to the
  * top entry only. Before this each layer listened by itself, so one keypress
- * closed every layer that was open. */
+ * closed every layer that was open.
+ *
+ * The same tree answers "was this click outside?" (#397). A layer's panel is
+ * often portalled to the end of <body>, so DOM containment cannot tell that a
+ * click in a nested panel is inside the layer that opened it. */
 
 declare const escapeLayer: unique symbol;
 
@@ -24,6 +28,8 @@ type Layer = EscapeLayer & {
   readonly parent: Layer | null;
   /** Holds `null` for a layer the browser closes itself (a modal <dialog>). */
   readonly onEscape: RefObject<(() => void) | null>;
+  /** The nodes this layer draws, wherever in the DOM they ended up. */
+  readonly nodes: RefObject<readonly RefObject<Element | null>[]>;
 };
 
 const stack: Layer[] = [];
@@ -74,6 +80,19 @@ function remove(layer: Layer) {
   }
 }
 
+/**
+ * Whether `target` is inside a layer opened within `layer`, at any depth. A
+ * click there is not outside `layer`, even when that layer's panel is a
+ * portal at the end of <body>.
+ */
+export function isInsideNestedLayer(layer: EscapeLayer, target: Node): boolean {
+  return stack.some(
+    (entry) =>
+      isDescendant(entry, layer as Layer) &&
+      entry.nodes.current.some((node) => node.current?.contains(target)),
+  );
+}
+
 const EscapeLayerContext = createContext<Layer | null>(null);
 
 /**
@@ -91,16 +110,19 @@ export function EscapeLayerProvider({
   return createElement(EscapeLayerContext.Provider, { value: value as Layer }, children);
 }
 
-function useLayer(onEscape: (() => void) | null, enabled: boolean): EscapeLayer {
+type LayerNodes = readonly RefObject<Element | null>[];
+
+function useLayer(onEscape: (() => void) | null, enabled: boolean, nodes: LayerNodes): EscapeLayer {
   const parent = useContext(EscapeLayerContext);
-  // Callers write this callback inline, so keeping it out of the effect's
-  // dependencies is what stops the layer moving to the top on every render.
-  // Same reasoning as useClickOutside.
+  // Callers write this callback and the node list inline, so keeping them out
+  // of the effect's dependencies is what stops the layer moving to the top on
+  // every render. Same reasoning as useClickOutside.
   const latest = useLatest(onEscape);
+  const latestNodes = useLatest(nodes);
   // State, not a memo: the layer's identity is its place on the stack, and
   // React may drop a memoized value and hand back a new one. The parent is
   // the enclosing layer's own state, so it lasts as long as this one does.
-  const [layer] = useState(() => ({ parent, onEscape: latest }) as Layer);
+  const [layer] = useState(() => ({ parent, onEscape: latest, nodes: latestNodes }) as Layer);
 
   useEffect(() => {
     if (!enabled) {
@@ -117,9 +139,16 @@ function useLayer(onEscape: (() => void) | null, enabled: boolean): EscapeLayer 
  * Puts a layer on the dismissal stack while `enabled`. `onEscape` runs only
  * when an Escape reaches this layer as the topmost one and nothing inside it
  * has cancelled the keydown already.
+ *
+ * `nodes` are what the layer draws. A click inside them is not outside any
+ * layer this one was opened within (see `isInsideNestedLayer`).
  */
-export function useEscapeKey(onEscape: () => void, enabled = true): EscapeLayer {
-  return useLayer(onEscape, enabled);
+export function useEscapeKey(
+  onEscape: () => void,
+  enabled = true,
+  nodes: LayerNodes = [],
+): EscapeLayer {
+  return useLayer(onEscape, enabled, nodes);
 }
 
 /**
@@ -127,6 +156,6 @@ export function useEscapeKey(onEscape: () => void, enabled = true): EscapeLayer 
  * dismisses on Escape itself: a modal <dialog>. Nothing underneath it closes,
  * and a layer opened inside it cancels the keydown so the dialog stays open.
  */
-export function useNativeEscapeLayer(enabled: boolean): EscapeLayer {
-  return useLayer(null, enabled);
+export function useNativeEscapeLayer(enabled: boolean, nodes: LayerNodes = []): EscapeLayer {
+  return useLayer(null, enabled, nodes);
 }
