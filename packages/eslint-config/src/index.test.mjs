@@ -111,13 +111,28 @@ describe('no-hardcoded-design-values: colour', () => {
     expect(results[0].message).toContain('Hardcoded colour');
   });
 
-  // It ships at `error`, so reading helper object keys would turn a
-  // consumer's build red on upgrade; no-hardcoded-control-geometry reads them.
-  it('does not read a clsx() object key yet', () => {
+  it('flags a literal in a clsx() object key', () => {
     const results = lint(
       `import { clsx } from 'clsx'
        export const A = ({ on }) => <div className={clsx({ 'bg-[#ff0000]': on })} />`,
     );
+
+    expect(rulesOf(results)).toEqual(['@elirobinson/no-hardcoded-design-values']);
+    expect(results[0].message).toContain('Hardcoded colour "#ff0000"');
+  });
+
+  it('flags a palette utility in a cn() object key behind a condition', () => {
+    const results = lint(
+      `import { cn } from './cn'
+       export const A = ({ open, x }) => <div className={cn(open && { 'text-zinc-500': x })} />`,
+    );
+
+    expect(rulesOf(results)).toEqual(['@elirobinson/no-hardcoded-design-values']);
+    expect(results[0].message).toContain('Hardcoded colour "text-zinc-500"');
+  });
+
+  it('does not read an object key outside a class-name helper', () => {
+    const results = lint(`export const map = { 'bg-[#ff0000]': true }`);
 
     expect(results).toEqual([]);
   });
