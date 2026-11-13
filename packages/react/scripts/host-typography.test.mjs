@@ -153,10 +153,12 @@ const HOSTS = {
     .prose dd { margin: 0 0 8px 24px; }
     .prose a {
       color: red; font-weight: 800; text-decoration: underline; border-bottom: 3px dotted red;
+      padding: 0 4px; margin: 0 2px; font-size: 18px; letter-spacing: 0.1em;
     }
     .prose table { margin: 32px 0; line-height: 2.2; font-size: 20px; }
     .prose th, .prose td {
       padding: 12px; border-bottom: 3px solid red; vertical-align: top; font-weight: 800;
+      font-size: 18px; line-height: 2; text-align: right;
     }
   `,
   /* The shape of @tailwindcss/typography: (0,1,0), and list markers on. */
@@ -220,6 +222,7 @@ const PROPERTIES = [
   'list-style-type',
   'text-decoration-line',
   'vertical-align',
+  'text-align',
 ];
 
 const noop = () => {};
@@ -559,7 +562,7 @@ describeBrowser('components keep their own type and list styles inside .prose (#
       const plain =
         '<h2>Plain</h2><ul><li>Plain</li></ul><a href="/">Plain</a>' +
         '<table><thead><tr><th>H</th></tr></thead><tbody><tr><td>D</td></tr></tbody></table>';
-      const targets = ['h2', 'ul', 'a', 'table', 'td'];
+      const targets = ['h2', 'ul', 'a', 'table', 'th', 'td'];
       const { bare, prose } = await load({ body: twoRoots(plain), host }, readStyles, {
         targets,
         properties: PROPERTIES,
@@ -615,9 +618,6 @@ describeBrowser('components keep their own type and list styles inside .prose (#
     expect(styles.sheetDescription).toEqual(styles.dialogDescription);
   });
 
-  /* #414: the nested-list indent ties the root-scoped list reset at (0,2,0)
-     and wins only on source order. Losing it would match bare and prose
-     alike, so this pins it. */
   /* #423: the active link and the current crumb tie the root-scoped link
      reset at (0,2,0) and win only on source order. Losing that would match
      bare and prose alike, so this pins what each state paints. */
@@ -647,6 +647,9 @@ describeBrowser('components keep their own type and list styles inside .prose (#
     expect(read.link.weight).not.toBe(read.state.weight);
   });
 
+  /* #414: the nested-list indent ties the root-scoped list reset at (0,2,0)
+     and wins only on source order. Losing it would match bare and prose
+     alike, so this pins it. */
   it('NavigationMenu still indents a nested list', async () => {
     const body =
       CASES.NavigationMenu.markup +
