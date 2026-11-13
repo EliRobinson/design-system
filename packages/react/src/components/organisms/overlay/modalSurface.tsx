@@ -113,7 +113,9 @@ export const ModalSurface = forwardRef<HTMLDialogElement, ModalSurfaceProps>(fun
   // the stack stops a layer opened before it, now underneath, from closing on
   // the same keypress, and lets a layer opened inside it cancel the keydown
   // so the dialog stays open.
-  const escapeLayer = useNativeEscapeLayer(open);
+  // It owns the <dialog> node, so a click in it is inside any layer the
+  // dialog was opened from, even when a consumer portals it (#397).
+  const escapeLayer = useNativeEscapeLayer(open, [dialogRef]);
 
   useEffect(() => {
     const dialog = dialogRef.current;

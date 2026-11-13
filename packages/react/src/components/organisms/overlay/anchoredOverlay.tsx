@@ -53,21 +53,27 @@ export function useAnchoredOverlay({
   const contentRef = useRef<HTMLDivElement>(null);
   const { open, setOpen } = useDisclosure({ open: controlledOpen, defaultOpen, onOpenChange });
 
-  useClickOutside([triggerRef, contentRef], () => setOpen(false), open);
   const closeToTrigger = useCallback(() => {
     triggerRef.current?.focus();
     setOpen(false);
   }, [setOpen]);
-  const escapeLayer = useEscapeKey(() => {
-    // Focus inside the panel would fall to <body> when it unmounts. The
-    // trigger is where it came from, and the panel is portalled to the end of
-    // <body>, so nothing in the tab order leads back otherwise.
-    if (contentRef.current?.contains(document.activeElement)) {
-      closeToTrigger();
-    } else {
-      setOpen(false);
-    }
-  }, open);
+  const escapeLayer = useEscapeKey(
+    () => {
+      // Focus inside the panel would fall to <body> when it unmounts. The
+      // trigger is where it came from, and the panel is portalled to the end of
+      // <body>, so nothing in the tab order leads back otherwise.
+      if (contentRef.current?.contains(document.activeElement)) {
+        closeToTrigger();
+      } else {
+        setOpen(false);
+      }
+    },
+    open,
+    [triggerRef, contentRef],
+  );
+  // The layer is passed so a click in a panel opened from this one, which is
+  // portalled elsewhere in <body>, does not count as outside (#397).
+  useClickOutside([triggerRef, contentRef], () => setOpen(false), open, escapeLayer);
 
   return useMemo(
     () => ({
