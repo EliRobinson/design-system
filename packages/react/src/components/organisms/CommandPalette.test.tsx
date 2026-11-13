@@ -147,7 +147,11 @@ describe('CommandPalette', () => {
     expect(ref.current).toHaveFocus();
   });
 
-  it('clamps the raw active index BEFORE applying the delta, so ArrowUp moves the highlight in a single press after the list shrinks', async () => {
+  // Before #412 the highlight was held by position and clamped to the last
+  // row here. It is now held by command id, so a highlighted command that
+  // leaves the list sends the highlight to the first row. The position clamp
+  // still holds for Combobox: see hooks/useActiveDescendant.test.tsx.
+  it('moves the highlight to the first row when the highlighted command leaves the list, and one ArrowDown moves on from there', async () => {
     const user = userEvent.setup();
     const sixCommands = Array.from({ length: 6 }, (_, index) => ({
       id: `cmd-${index}`,
@@ -173,14 +177,13 @@ describe('CommandPalette', () => {
     rerender(<CommandPalette open onOpenChange={vi.fn()} commands={sixCommands.slice(0, 2)} />);
 
     activeId = input.getAttribute('aria-activedescendant');
-    expect(document.getElementById(activeId as string)).toHaveTextContent('Command 1');
-
-    // A single ArrowUp must move the highlight immediately -- if the raw
-    // state were clamped only on read (not before applying the delta), this
-    // press would still display "Command 1" and require three more presses.
-    await user.keyboard('{ArrowUp}');
-    activeId = input.getAttribute('aria-activedescendant');
     expect(document.getElementById(activeId as string)).toHaveTextContent('Command 0');
+
+    // A single ArrowDown must move the highlight immediately -- if the move
+    // started from the stale stored position (5), it would not move at all.
+    await user.keyboard('{ArrowDown}');
+    activeId = input.getAttribute('aria-activedescendant');
+    expect(document.getElementById(activeId as string)).toHaveTextContent('Command 1');
   });
 
   it('resets the query and active index each time it re-opens', async () => {
@@ -411,6 +414,151 @@ describe('CommandPalette', () => {
       rerender(<CommandPalette open {...props} />);
       expect(onQueryChange).toHaveBeenCalledTimes(2);
       expect(onQueryChange).toHaveBeenLastCalledWith('');
+    });
+
+    it('a command with filter: false always shows, while the others keep the label filter (#412)', () => {
+      const mixed = [
+        { id: 'settings', label: 'Settings', onSelect: vi.fn() },
+        { id: 'help', label: 'Help', onSelect: vi.fn() },
+        { id: 'result', label: 'Ada Lovelace', filter: false, onSelect: vi.fn() },
+      ];
+      render(
+        <CommandPalette
+          open
+          onOpenChange={vi.fn()}
+          commands={mixed}
+          query="set"
+          onQueryChange={vi.fn()}
+        />,
+      );
+      const options = screen.getAllByRole('option');
+      expect(options.map((option) => option.textContent)).toEqual(['Settings', 'Ada Lovelace']);
+    });
+
+    it('filter={false} on the palette still shows every command, whatever each command says (#412)', () => {
+      const mixed = [
+        { id: 'settings', label: 'Settings', filter: true, onSelect: vi.fn() },
+        { id: 'result', label: 'Ada Lovelace', filter: false, onSelect: vi.fn() },
+      ];
+      render(
+        <CommandPalette
+          open
+          onOpenChange={vi.fn()}
+          commands={mixed}
+          query="zzz"
+          onQueryChange={vi.fn()}
+          filter={false}
+        />,
+      );
+      expect(screen.getAllByRole('option')).toHaveLength(2);
+    });
+
+    it('keeps the highlighted command active by id when the rows above it change (#412)', async () => {
+      const user = userEvent.setup();
+      const onSelectOpen = vi.fn();
+      const onSelectFirst = vi.fn();
+      const before = [
+        { id: 'a', label: 'Alpha', onSelect: vi.fn() },
+        { id: 'open', label: 'Open file', onSelect: onSelectOpen },
+      ];
+      // Async results land above the highlighted row: index 1 is now another command.
+      const after = [
+        { id: 'r1', label: 'Result one', onSelect: onSelectFirst },
+        { id: 'r2', label: 'Result two', onSelect: vi.fn() },
+        { id: 'a', label: 'Alpha', onSelect: vi.fn() },
+        { id: 'open', label: 'Open file', onSelect: onSelectOpen },
+      ];
+      const props = { open: true, onOpenChange: vi.fn(), filter: false };
+      const { rerender } = render(<CommandPalette {...props} commands={before} />);
+
+      await user.keyboard('{ArrowDown}');
+      rerender(<CommandPalette {...props} commands={after} />);
+
+      const input = screen.getByRole('searchbox');
+      const activeId = input.getAttribute('aria-activedescendant');
+      expect(document.getElementById(activeId as string)).toHaveTextContent('Open file');
+
+      await user.keyboard('{Enter}');
+      expect(onSelectOpen).toHaveBeenCalledTimes(1);
+      expect(onSelectFirst).not.toHaveBeenCalled();
+    });
+
+    it('arrow keys move on from where the kept command now sits (#412)', async () => {
+      const user = userEvent.setup();
+      const before = [
+        { id: 'a', label: 'Alpha', onSelect: vi.fn() },
+        { id: 'b', label: 'Beta', onSelect: vi.fn() },
+      ];
+      const after = [
+        { id: 'r1', label: 'Result one', onSelect: vi.fn() },
+        { id: 'a', label: 'Alpha', onSelect: vi.fn() },
+        { id: 'b', label: 'Beta', onSelect: vi.fn() },
+        { id: 'r2', label: 'Result two', onSelect: vi.fn() },
+      ];
+      const props = { open: true, onOpenChange: vi.fn(), filter: false };
+      const { rerender } = render(<CommandPalette {...props} commands={before} />);
+
+      await user.keyboard('{ArrowDown}');
+      rerender(<CommandPalette {...props} commands={after} />);
+      await user.keyboard('{ArrowDown}');
+
+      const activeId = screen.getByRole('searchbox').getAttribute('aria-activedescendant');
+      expect(document.getElementById(activeId as string)).toHaveTextContent('Result two');
+    });
+
+    it('falls back to the first row when the highlighted command is gone (#412)', async () => {
+      const user = userEvent.setup();
+      const before = [
+        { id: 'a', label: 'Alpha', onSelect: vi.fn() },
+        { id: 'b', label: 'Beta', onSelect: vi.fn() },
+      ];
+      const after = [
+        { id: 'r1', label: 'Result one', onSelect: vi.fn() },
+        { id: 'r2', label: 'Result two', onSelect: vi.fn() },
+      ];
+      const props = { open: true, onOpenChange: vi.fn(), filter: false };
+      const { rerender } = render(<CommandPalette {...props} commands={before} />);
+
+      await user.keyboard('{ArrowDown}');
+      rerender(<CommandPalette {...props} commands={after} />);
+
+      const activeId = screen.getByRole('searchbox').getAttribute('aria-activedescendant');
+      expect(document.getElementById(activeId as string)).toHaveTextContent('Result one');
+    });
+
+    it('keeps the top row active after typing, when new results replace the old (#412)', async () => {
+      const user = userEvent.setup();
+      const before = [
+        { id: 'a', label: 'Alpha', onSelect: vi.fn() },
+        { id: 'b', label: 'Beta', onSelect: vi.fn() },
+      ];
+      // The old top row is still in the new results, lower down. Typing reset
+      // the highlight to the top, so the top is where it stays.
+      const after = [
+        { id: 'r1', label: 'Result one', onSelect: vi.fn() },
+        { id: 'a', label: 'Alpha', onSelect: vi.fn() },
+      ];
+      function Harness({ results }: { results: typeof before }) {
+        const [query, setQuery] = useState('');
+        return (
+          <CommandPalette
+            open
+            onOpenChange={vi.fn()}
+            commands={results}
+            query={query}
+            onQueryChange={setQuery}
+            filter={false}
+          />
+        );
+      }
+      const { rerender } = render(<Harness results={before} />);
+
+      await user.keyboard('{ArrowDown}');
+      await user.type(screen.getByRole('searchbox'), 'r');
+      rerender(<Harness results={after} />);
+
+      const activeId = screen.getByRole('searchbox').getAttribute('aria-activedescendant');
+      expect(document.getElementById(activeId as string)).toHaveTextContent('Result one');
     });
 
     it('does not report the open-time reset to a controlled parent when already empty', () => {

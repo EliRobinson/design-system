@@ -19,6 +19,11 @@ export type CommandPaletteCommand = {
   group?: string;
   /** A second, quieter line on the row. Announced as the row's description. */
   detail?: string;
+  /** Set `false` and the built-in label filter skips this row: it always
+   * shows. For rows the caller already searched, next to static rows that
+   * keep the filter. Default `true`. The palette's own `filter={false}`
+   * turns the filter off for every row. */
+  filter?: boolean;
   onSelect: () => void;
 };
 
@@ -63,7 +68,9 @@ export type CommandPaletteProps = {
   /** Controlled search text. Omit it and the palette keeps its own. */
   query?: string;
   onQueryChange?: (query: string) => void;
-  /** Turn the built-in label filter off, for results the caller already searched. */
+  /** Turn the built-in label filter off for every row, for results the caller
+   * already searched. To skip it for some rows only, set `filter: false` on
+   * those commands. */
   filter?: boolean;
   /** Results are on their way. Shows a busy row; current results stay. */
   loading?: boolean;
@@ -122,8 +129,11 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
     const inputRef = useRef<HTMLInputElement>(null);
     const setInputRef = useMergedRef<HTMLInputElement>(inputRef, ref);
 
+    const needle = query.toLowerCase();
     const filtered = filter
-      ? commands.filter((command) => command.label.toLowerCase().includes(query.toLowerCase()))
+      ? commands.filter(
+          (command) => command.filter === false || command.label.toLowerCase().includes(needle),
+        )
       : commands;
 
     const runCommand = useCallback(
@@ -138,8 +148,14 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
       [filtered, onOpenChange],
     );
 
-    const { activeIndex, activeId, setActiveIndex, moveActive, getOptionProps } =
-      useActiveDescendant({ count: filtered.length, baseId, onSelect: runCommand });
+    // Keyed by command id: when async results replace the rows, the command
+    // the user highlighted stays highlighted wherever it moved (#412).
+    const { activeIndex, activeId, resetActive, moveActive, getOptionProps } = useActiveDescendant({
+      count: filtered.length,
+      baseId,
+      onSelect: runCommand,
+      keys: filtered.map((command) => command.id),
+    });
 
     // Every time the palette opens, start from a clean slate and move focus
     // to the search input. Focusing via `inputRef` relies on SearchField's
@@ -150,10 +166,10 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
         if (queryRef.current !== '') {
           setQuery('');
         }
-        setActiveIndex(0);
+        resetActive();
         inputRef.current?.focus();
       }
-    }, [open, setActiveIndex, setQuery]);
+    }, [open, resetActive, setQuery]);
 
     // Focus stays on the input at all times; the active item is tracked via
     // aria-activedescendant rather than moving DOM focus into the list.
@@ -244,7 +260,7 @@ export const CommandPalette = forwardRef<HTMLInputElement, CommandPaletteProps>(
             value={query}
             onValueChange={(next) => {
               setQuery(next);
-              setActiveIndex(0);
+              resetActive();
             }}
             onKeyDown={handleKeyDown}
           />
