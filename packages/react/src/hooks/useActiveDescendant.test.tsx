@@ -58,6 +58,17 @@ describe('useActiveDescendant', () => {
       expect(result.current.activeIndex).toBe(1);
     });
 
+    it('does not jump back to a key that left and then returned', () => {
+      const { result, rerender } = setup({ count: 2, keys: ['a', 'b'] });
+      act(() => result.current.moveActive(1));
+
+      rerender({ count: 2, keys: ['r1', 'r2'] });
+      expect(result.current.activeIndex).toBe(0);
+
+      rerender({ count: 3, keys: ['r1', 'b', 'r2'] });
+      expect(result.current.activeIndex).toBe(0);
+    });
+
     it('setActiveIndex holds the key at that index', () => {
       const { result, rerender } = setup({ count: 3, keys: ['a', 'b', 'c'] });
       act(() => result.current.setActiveIndex(2));
