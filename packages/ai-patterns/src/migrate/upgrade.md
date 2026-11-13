@@ -502,7 +502,8 @@ The `tokens-1-container-sm-is-shell-sm` change, for `--container-2xl`: it is now
 
 `no-hardcoded-design-values` now reads the string keys of an object passed to a class-name
 helper. It ships at `error`, so these keys now fail lint. Fix each one as you would fix the
-same class in a plain string. Run `pnpm ds tokens color` to pick the token.
+same class in a plain string. To pick the token, run `pnpm ds tokens fg` for text colours
+or `pnpm ds tokens bg` for backgrounds.
 
 ```jsx before
 <div className={cn(open && { 'text-zinc-500': muted }, clsx({ 'bg-[#fff]': on }))} />
@@ -512,4 +513,5 @@ same class in a plain string. Run `pnpm ds tokens color` to pick the token.
 <div className={cn(open && { 'text-muted-foreground': muted }, clsx({ 'bg-background': on }))} />
 ```
 
-To keep a literal for a while, add it to `hardcodedValues.allow`.
+To keep a literal for a while, add it to `hardcodedValues.allow` as written
+(`allow: ['text-zinc-500']`).
