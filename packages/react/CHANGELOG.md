@@ -1,5 +1,19 @@
 # @elirobinson/react
 
+## 3.15.0
+
+### Minor Changes
+
+- ec97dc3: `CommandPalette`: the highlighted row now follows the command's `id`, not its position. When async results change the rows above it, `Enter` still runs the command the user highlighted; the highlight goes to the first row only when that command is gone. Each command can also set `filter: false` to always show while the other rows keep the built-in label filter. `useActiveDescendant` takes an optional `keys` list and returns `resetActive`; `Combobox` is unchanged.
+
+### Patch Changes
+
+- 3826904: A click inside a Popover, DropdownMenu or Dialog that was opened from another Popover or DropdownMenu no longer closes the outer one. Click outside now uses the same layer tree as Escape, so a click inside any nested layer counts as inside its parent, even when that layer is portalled.
+
+  If you call the hooks yourself: `useEscapeKey` and `useNativeEscapeLayer` take a list of the nodes the layer draws as a new last argument, and `useClickOutside` accepts that layer in place of a list of refs. A new `isInsideLayer` export does the same check. Existing calls work as before.
+
+- 41c018b: Stepper, NavigationMenu and Accordion keep their own type and list styles inside a host `.prose`. The Stepper `ol` and its steps, the NavigationMenu lists and items, and the Accordion heading now reset at (0,2,0), as #383 did for Card, Pagination and others. The Accordion heading now inherits its font family, size, weight and colour, so a host heading face no longer reaches the trigger; in a bare render nothing on screen changes. Only the reset properties moved to (0,2,0): list style, margin, padding, line-height and letter-spacing on the Stepper list and steps, and the NavigationMenu lists and items. A consumer that overrode one of those with a single class now needs (0,2,0) too (`.ds-stepper.ds-stepper`, `.ds-stepper .ds-stepper__step`, `.ds-navigation-menu .ds-navigation-menu__list`). Layout and type stay at one class.
+
 ## 3.14.0
 
 ### Minor Changes
