@@ -2,8 +2,8 @@
  * (link-cascade, form-font-cascade, mobile-floor, type-cascade). Not a
  * published module: the `.test-helper.mjs` suffix matches neither Vitest's
  * include glob nor the package's `files`, so it is neither collected as a suite
- * nor shipped. @elirobinson/ai-patterns keeps its own copy of the same idea in
- * src/testing/browser.test-helper.mjs; this package does not depend on that one.
+ * nor shipped. The launch itself is the repo's one shared bootstrap,
+ * tests/support/boot-browser.mjs; this file adds the tokens page.
  *
  * Why these suites need a real browser at all: cascade layers are decided by
  * layer ORDER, which is fixed by first declaration across every stylesheet in
@@ -15,13 +15,13 @@ import { extname, join } from 'node:path';
 
 import { afterAll, describe } from 'vitest';
 
+import { BROWSER_BUDGET, bootBrowser as bootShared } from '../../../tests/support/boot-browser.mjs';
+
 import { TOKENS_SRC_DIR } from './token-stylesheets.mjs';
 
-/* Launching, opening and closing Chromium share the machine with whatever else
-   the monorepo is running, and Vitest's 10s hook default is sized for a unit
-   test's setup. The measured reasoning is in @elirobinson/ai-patterns'
-   src/testing/browser.test-helper.mjs. */
-export const BROWSER_BUDGET = 60_000;
+/* The launch guard, the teardown budget and the reasoning behind both live in
+   the repo's one shared bootstrap, tests/support/boot-browser.mjs (#402). */
+export { BROWSER_BUDGET };
 
 /* A synthetic origin, served from src/ by a route handler. tokens.css @imports
    its siblings relatively, so it has to be fetched from a URL that has a
@@ -35,44 +35,16 @@ export const ORIGIN = 'https://tokens.test';
 export const TAILWIND_LAYER_ORDER = '@layer theme, base, components, utilities;';
 
 /**
- * Bring up a browser for the calling suite, register its teardown, and hand
- * back the `describe` to hang the browser-dependent cases off.
- *
- * Await it at a test file's top level, where Vitest is still collecting and
- * `afterAll` binds to that file. `describeBrowser` is `describe.skip` when no
- * browser came up, so a bare CI image skips loudly rather than fails.
+ * The shared bootstrap, bound to this package's own Vitest and Playwright.
+ * Await it at a test file's top level.
  *
  * @param {string} label names the suite in the skip warning
  */
-export async function bootBrowser(label) {
-  let chromium = null;
-  try {
-    ({ chromium } = await import('playwright'));
-  } catch {
-    chromium = null;
-  }
-
-  let browser = null;
-  let launchError;
-  if (chromium) {
-    try {
-      browser = await chromium.launch();
-    } catch (error) {
-      launchError = error;
-    }
-  }
-
-  afterAll(async () => {
-    await browser?.close();
-  }, BROWSER_BUDGET);
-
-  if (!browser) {
-    console.warn(
-      `Skipping ${label} tests: ${chromium ? launchError?.message : 'playwright is not installed'}`,
-    );
-  }
-
-  return { browser, describeBrowser: browser ? describe : describe.skip };
+export function bootBrowser(label) {
+  return bootShared(label, {
+    vitest: { afterAll, describe },
+    playwright: () => import('playwright'),
+  });
 }
 
 /**

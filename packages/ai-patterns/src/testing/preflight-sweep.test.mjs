@@ -17,7 +17,7 @@ import { expect, it } from 'vitest';
 import { bootBrowser } from './browser.test-helper.mjs';
 import { findPreflightSensitiveElements } from './preflight-sweep.mjs';
 
-const { browser, describeBrowser } = await bootBrowser('preflight sweep tests');
+const { browser, describeBrowser } = await bootBrowser('preflight sweep');
 
 /* The one Preflight rule that causes #78, plus the line-height inheritance
    that causes #126. Enough to be a real reset without pulling Tailwind in as a
