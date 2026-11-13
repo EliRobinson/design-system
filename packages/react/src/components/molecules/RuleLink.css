@@ -40,11 +40,22 @@
   padding: 18px 0 2px;
 }
 
-/* #426: at (0,3,0), so a host `.prose a:hover` (0,2,1) cannot recolour or
-   underline it. */
+/* #426: at (0,3,0), so a host `.prose a:hover` (0,2,1) cannot recolour,
+   underline, border or fill it. It restates what the reset above sets, since
+   the host hover outranks the reset. */
 .ds-rule-link.ds-rule-link:hover {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--fg);
+  box-shadow: none;
   color: var(--link-hover);
   text-decoration: none;
+}
+
+/* On a fill the surface owns the text colour (tokens.css, --link-on-fill):
+   --link-hover can be the fill's own hue. */
+:is([data-on-fill], .ds-alert, .ds-toast) .ds-rule-link.ds-rule-link:hover {
+  color: var(--link-on-fill);
 }
 
 .ds-rule-link:focus-visible {

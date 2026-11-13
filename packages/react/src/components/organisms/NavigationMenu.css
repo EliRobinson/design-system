@@ -49,8 +49,8 @@
   border-radius: var(--radius-sm);
 }
 
-/* #423: the reset a host `.prose a` reaches for, at (0,2,0). The active rule
-   below ties it and wins on order. */
+/* #423: the reset a host `.prose a` reaches for, at (0,2,0). The state rules
+   below tie or outrank it. */
 .ds-navigation-menu .ds-navigation-menu__link {
   margin: 0;
   padding: 0 var(--space-3);
@@ -67,21 +67,20 @@
    (1.00:1), so the current page did not show. Same fix as CommandPalette (#275)
    and Combobox (#302): a fill plus an inset ring (SC 1.4.11; the ring clears
    3:1 on --bg and --surface; menu-contrast.test.mjs measures it).
-   #426: scoped under the root (0,3,0), so a host `.prose a:hover` (0,2,1)
-   cannot recolour or underline it. It outranks the active rule on a hovered
-   active link and paints the same fill, ring and colour; the active weight
-   still comes from the active rule. */
-.ds-navigation-menu .ds-navigation-menu__link:hover {
+   #426: the hover is scoped under the root (0,3,0), so a host
+   `.prose a:hover` (0,2,1) cannot recolour, underline, border or fill it.
+   Hover and active share one block: the hover outranks the active rule on a
+   hovered active link, so the two must paint the same. */
+.ds-navigation-menu .ds-navigation-menu__link:hover,
+.ds-navigation-menu .ds-navigation-menu__link--active {
   background: var(--surface-3);
+  border: 0;
   box-shadow: inset 0 0 0 1px var(--border-control);
   color: var(--fg);
   text-decoration: none;
 }
 
 .ds-navigation-menu .ds-navigation-menu__link--active {
-  background: var(--surface-3);
-  box-shadow: inset 0 0 0 1px var(--border-control);
-  color: var(--fg);
   font-weight: var(--fw-medium);
 }
 

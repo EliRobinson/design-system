@@ -161,7 +161,10 @@ const HOSTS = {
       padding: 0 4px; margin: 0 2px; font-size: 18px; letter-spacing: 0.1em;
       border-top: 2px solid red; box-shadow: inset 0 -2px 0 red;
     }
-    .prose a:hover { color: blue; text-decoration: underline wavy; }
+    .prose a:hover {
+      color: blue; text-decoration: underline wavy; border-bottom: 3px solid blue;
+      box-shadow: inset 0 -3px 0 blue; background-color: yellow;
+    }
     .prose table { margin: 32px 0; line-height: 2.2; font-size: 20px; }
     .prose th, .prose td {
       padding: 12px; border-bottom: 3px solid red; vertical-align: top; font-weight: 800;
@@ -227,12 +230,14 @@ const PROPERTIES = [
   'border-top-style',
   'border-bottom-width',
   'border-bottom-style',
+  'border-bottom-color',
   'border-left-width',
   'border-right-width',
   'background-color',
   'box-shadow',
   'list-style-type',
   'text-decoration-line',
+  'text-decoration-style',
   'vertical-align',
   'text-align',
 ];
@@ -432,6 +437,7 @@ const CASES = {
       'a.ds-breadcrumb__link',
       '.ds-breadcrumb__link--current',
     ],
+    hover: ['a.ds-breadcrumb__link'],
   },
   /* #414: the three the #383 review gate found. Stepper's root is its own
      `ol`; Accordion's heading is the default `headingLevel`, an h3. */
@@ -459,6 +465,10 @@ const CASES = {
       '.ds-navigation-menu__link--active',
       '.ds-navigation-menu__link:not(.ds-navigation-menu__link--active)',
     ],
+    hover: [
+      '.ds-navigation-menu__link--active',
+      '.ds-navigation-menu__link:not(.ds-navigation-menu__link--active)',
+    ],
   },
   /* #423: links and tables. RuleLink's root is its own `a`. Table renders a
      real table; VirtualTable renders an ARIA grid of `div`s, which no host
@@ -467,6 +477,7 @@ const CASES = {
   RuleLink: {
     markup: renderToStaticMarkup(h(RuleLink, { href: '/rules' }, 'Read the rules')),
     targets: ['.ds-rule-link'],
+    hover: ['.ds-rule-link'],
   },
   Table: {
     markup: renderToStaticMarkup(
@@ -504,16 +515,6 @@ const CASES = {
     ),
     targets: ['.ds-accordion__heading', '.ds-accordion__trigger', '.ds-accordion__content'],
   },
-};
-
-/* #426: the links each case renders, read again under the pointer. */
-const HOVER_CASES = {
-  Breadcrumb: ['a.ds-breadcrumb__link', '.ds-breadcrumb__link--current'],
-  RuleLink: ['.ds-rule-link'],
-  NavigationMenu: [
-    '.ds-navigation-menu__link--active',
-    '.ds-navigation-menu__link:not(.ds-navigation-menu__link--active)',
-  ],
 };
 
 /* #414, #423: components were missed because joining CASES was a rule in a
@@ -583,6 +584,20 @@ function twoRoots(markup, { apart = false } = {}) {
 /** An `act` that puts the pointer on `selector`, and fails fast if it cannot. */
 const hover = (selector) => (page) => page.hover(selector, { timeout: 2000 });
 
+/** `selector`'s styles in both roots, with the pointer on the one in `#${on}`
+    (#426). Only one element is hovered at a time, so a hovered comparison
+    takes two pages. `on` null hovers nothing. */
+const readHovered = (markup, host, selector, on) =>
+  load(
+    {
+      body: twoRoots(markup, { apart: true }),
+      host,
+      act: on ? hover(`#${on} ${selector}`) : undefined,
+    },
+    readStyles,
+    { targets: [selector], properties: PROPERTIES },
+  );
+
 describeBrowser('components keep their own type and list styles inside .prose (#367, #383)', () => {
   for (const [hostName, host] of Object.entries(HOSTS)) {
     /* The positive control: a plain h2 and ul really are restyled by this host,
@@ -611,49 +626,65 @@ describeBrowser('components keep their own type and list styles inside .prose (#
         }
       });
     }
-  }
 
-  /* #426: the links again, hovered. Each root is read in its own page, with
-     the pointer on that root's link, since only one element is hovered at a
-     time. */
-  it('docs: the host fixture restyles a plain hovered a', async () => {
-    const read = (root) =>
-      load(
-        {
-          body: twoRoots('<a href="/">Plain</a>'),
-          host: HOSTS.docs,
-          act: hover(`#${root} a`),
-        },
-        readStyles,
-        { targets: ['a'], properties: PROPERTIES },
-      );
-    const hovered = (await read('prose')).prose.a;
-    const resting = (await read('bare')).prose.a;
-    expect(hovered).not.toEqual(resting);
-  });
-
-  for (const [hostName, host] of Object.entries(HOSTS)) {
-    for (const [name, targets] of Object.entries(HOVER_CASES)) {
-      for (const target of targets) {
-        it(`${hostName}: ${name} ${target} computes the same hovered inside .prose`, async () => {
-          const read = (root) =>
-            load(
-              {
-                body: twoRoots(CASES[name].markup, { apart: true }),
-                host,
-                act: hover(`#${root} ${target}`),
-              },
-              readStyles,
-              { targets: [target], properties: PROPERTIES },
-            );
-          const bare = (await read('bare')).bare[target];
-          const prose = (await read('prose')).prose[target];
-          expect(bare, `${target} rendered`).not.toBeNull();
-          expect(prose, `${name} ${target} hovered`).toEqual(bare);
+    /* #426: the links again, under the pointer. Only the docs host has an
+       `a:hover` rule; the tailwind run checks the resting resets still hold
+       on a hovered link. */
+    for (const [name, { markup, hover: links = [] }] of Object.entries(CASES)) {
+      for (const link of links) {
+        it(`${hostName}: ${name} ${link} computes the same hovered inside .prose`, async () => {
+          const bare = (await readHovered(markup, host, link, 'bare')).bare[link];
+          const prose = (await readHovered(markup, host, link, 'prose')).prose[link];
+          expect(bare, `${link} rendered`).not.toBeNull();
+          expect(prose, `${name} ${link} hovered`).toEqual(bare);
         });
       }
     }
   }
+
+  /* #426: the positive controls for the hovered cases. The host's hover rule
+     really restyles a plain hovered `a`, and each link's own hover rule really
+     paints, so a pass above is the component winning, not a hover that never
+     landed. The active nav link is left out: its hover paints what its
+     resting state already does. */
+  it('docs: the host fixture restyles a plain hovered a', async () => {
+    const plain = '<a href="/">Plain</a>';
+    const hovered = (await readHovered(plain, HOSTS.docs, 'a', 'prose')).prose.a;
+    const resting = (await readHovered(plain, HOSTS.docs, 'a', null)).prose.a;
+    expect(hovered).not.toEqual(resting);
+  });
+
+  for (const [name, { markup, hover: links = [] }] of Object.entries(CASES)) {
+    for (const link of links.filter((l) => !l.includes('--active'))) {
+      it(`${name} ${link} paints a hover state`, async () => {
+        const hovered = (await readHovered(markup, '', link, 'bare')).bare[link];
+        const resting = (await readHovered(markup, '', link, null)).bare[link];
+        expect(hovered).not.toEqual(resting);
+      });
+    }
+  }
+
+  /* #426: a hovered link inside a filled surface keeps the surface's text
+     colour (tokens.css `--link-on-fill`), not --link-hover, which can be the
+     fill's own hue. */
+  it('RuleLink and a crumb keep the fill colour when hovered on a fill', async () => {
+    for (const fill of ['data-on-fill', 'class="ds-alert"', 'class="ds-toast"']) {
+      for (const [name, link] of [
+        ['RuleLink', '.ds-rule-link'],
+        ['Breadcrumb', 'a.ds-breadcrumb__link'],
+      ]) {
+        const body = `<div ${fill} style="color: rgb(1, 2, 3)">${CASES[name].markup}</div>`;
+        const color = await load(
+          { body, act: hover(link) },
+          (selector) => {
+            return getComputedStyle(document.querySelector(selector)).color;
+          },
+          link,
+        );
+        expect(color, `${name} on ${fill}`).toBe('rgb(1, 2, 3)');
+      }
+    }
+  });
 
   /* The comparisons above are relative: a reset lost from both roots would
      still match. This pins the bare values to the system's own sizes, and
