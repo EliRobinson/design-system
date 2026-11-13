@@ -419,14 +419,21 @@ const CASES = {
 
 /* #414: three components were missed because joining CASES was a rule in a
    doc. Every component file that renders a heading, paragraph or list (or
-   picks a heading from `headingLevel`) must name a case, so the next one
+   picks a heading from an `'h1'`-`'h6'` tag map or `headingLevel`) must name a case, so the next one
    fails here instead. Runs without a browser. */
-const TEXT_ELEMENT = /<(h[1-6]|p|ul|ol|dl)[\s>]|headingLevel/;
+const TEXT_ELEMENT = /<(h[1-6]|p|ul|ol|li|dl)[\s>]|['"]h[1-6]['"]|headingLevel/;
+
+/* Comments stripped, as tier-boundary.test.mjs does, so a file that only
+   mentions an element in prose neither needs a case nor counts as one. */
+const code = (file) =>
+  readFileSync(join(COMPONENTS, file), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 function textBearingComponents() {
   return readdirSync(COMPONENTS, { recursive: true })
     .filter((file) => /\.tsx$/.test(file) && !/\.(test|stories)\.tsx$/.test(file))
-    .filter((file) => TEXT_ELEMENT.test(readFileSync(join(COMPONENTS, file), 'utf8')))
+    .filter((file) => TEXT_ELEMENT.test(code(file)))
     .map((file) => basename(file, '.tsx'))
     .sort();
 }

@@ -4,12 +4,17 @@
 
 /* #414: scoped under the root at (0,2,0), so a host `.prose ul` or
    `.prose li` cannot restyle the list; docs/agents/components.md says why.
-   The nested-list indent below ties it and wins on order. */
+   Only the reset properties sit at (0,2,0). The nested-list indent below ties
+   it and wins on order. */
 .ds-navigation-menu .ds-navigation-menu__list {
   list-style: none;
   margin: 0;
   padding: 0;
   line-height: inherit;
+}
+
+/* Layout stays at one class: no host list rule sets it. */
+.ds-navigation-menu__list {
   display: flex;
   flex-direction: column;
 }
