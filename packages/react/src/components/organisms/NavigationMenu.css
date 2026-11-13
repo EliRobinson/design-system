@@ -49,8 +49,8 @@
   border-radius: var(--radius-sm);
 }
 
-/* #423: the reset a host `.prose a` reaches for, at (0,2,0). The hover and
-   active rules below tie it and win on order. */
+/* #423: the reset a host `.prose a` reaches for, at (0,2,0). The active rule
+   below ties it and wins on order. */
 .ds-navigation-menu .ds-navigation-menu__link {
   margin: 0;
   padding: 0 var(--space-3);
@@ -66,11 +66,16 @@
 /* #354: --bg-subtle is ink-950 in dark, the same as a --surface ground
    (1.00:1), so the current page did not show. Same fix as CommandPalette (#275)
    and Combobox (#302): a fill plus an inset ring (SC 1.4.11; the ring clears
-   3:1 on --bg and --surface; menu-contrast.test.mjs measures it). */
-.ds-navigation-menu__link:hover {
+   3:1 on --bg and --surface; menu-contrast.test.mjs measures it).
+   #426: scoped under the root (0,3,0), so a host `.prose a:hover` (0,2,1)
+   cannot recolour or underline it. It outranks the active rule on a hovered
+   active link and paints the same fill, ring and colour; the active weight
+   still comes from the active rule. */
+.ds-navigation-menu .ds-navigation-menu__link:hover {
   background: var(--surface-3);
   box-shadow: inset 0 0 0 1px var(--border-control);
   color: var(--fg);
+  text-decoration: none;
 }
 
 .ds-navigation-menu .ds-navigation-menu__link--active {
@@ -90,8 +95,8 @@
    colours, with an inset CanvasText ring that replaces the token ring (which
    would otherwise show through once the link opts out). Both are scoped under
    the root, as the #423 link reset is, or that reset would win the colour.
-   The :hover selector is a guard: today the active rule ties the base hover
-   rule and wins on order, and it keeps winning if the hover rule is raised.
+   The :hover selector is needed: the root-scoped hover rule (0,3,0, #426)
+   outranks the active rule, and this one ties it and wins on order.
    Opting out leaves the focus outline on var(--focus-ring), so it is set to
    CanvasText here. The outline is inset, so on the active link it sits on
    the Highlight fill and uses HighlightText. Keep this block after the base

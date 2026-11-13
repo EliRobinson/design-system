@@ -23,6 +23,10 @@
  * the same as `.ds-breadcrumb__link`, and wins on order. Its table rules add
  * margins, a line-height, row rules and cell alignment.
  *
+ * #426: the hover state of those links. A host `.prose a:hover` is (0,2,1)
+ * and outranks a link's own `:hover` at (0,2,0), so it recoloured and
+ * underlined a hovered link. The hover cases below read a hovered link.
+ *
  * #368: `.ds-combobox__list` was `position: absolute` with no `top`, so it sat
  * at its static position. In a flex-column root that is the root's top, over
  * the input. This measures the list against the input in a real layout.
@@ -122,11 +126,12 @@ const VIEWPORT = { width: 1024, height: 768 };
 
 const { browser, describeBrowser } = await bootBrowser('host typography');
 
-/** One page: the component sheets, then `host` (loaded last, the worst order). */
-function load({ body, host = '' }, probe, arg) {
+/** One page: the component sheets, then `host` (loaded last, the worst order).
+    `act` runs before `probe`, as a hover does. */
+function load({ body, host = '', act }, probe, arg) {
   return inPage(
     browser,
-    { sheets: SHEETS, head: `<style>${host}</style>`, body, context: { viewport: VIEWPORT } },
+    { sheets: SHEETS, head: `<style>${host}</style>`, body, context: { viewport: VIEWPORT }, act },
     probe,
     arg,
   );
@@ -156,6 +161,7 @@ const HOSTS = {
       padding: 0 4px; margin: 0 2px; font-size: 18px; letter-spacing: 0.1em;
       border-top: 2px solid red; box-shadow: inset 0 -2px 0 red;
     }
+    .prose a:hover { color: blue; text-decoration: underline wavy; }
     .prose table { margin: 32px 0; line-height: 2.2; font-size: 20px; }
     .prose th, .prose td {
       padding: 12px; border-bottom: 3px solid red; vertical-align: top; font-weight: 800;
@@ -500,6 +506,16 @@ const CASES = {
   },
 };
 
+/* #426: the links each case renders, read again under the pointer. */
+const HOVER_CASES = {
+  Breadcrumb: ['a.ds-breadcrumb__link', '.ds-breadcrumb__link--current'],
+  RuleLink: ['.ds-rule-link'],
+  NavigationMenu: [
+    '.ds-navigation-menu__link--active',
+    '.ds-navigation-menu__link:not(.ds-navigation-menu__link--active)',
+  ],
+};
+
 /* #414, #423: components were missed because joining CASES was a rule in a
    doc. Every component file that renders a heading, paragraph, list, link or
    table (or picks a heading from an `'h1'`-`'h6'` tag map or `headingLevel`)
@@ -556,9 +572,16 @@ function readStyles({ targets, properties }) {
   };
 }
 
-function twoRoots(markup) {
-  return `<div id="bare">${markup}</div><div id="prose" class="prose">${markup}</div>`;
+/* `apart` holds the roots 64px apart. RuleLink and Breadcrumb grow their
+   hit areas with a negative margin, so packed together one root's link sits
+   under the other's and takes the pointer. */
+function twoRoots(markup, { apart = false } = {}) {
+  const gap = apart ? ' style="margin: 64px 0"' : '';
+  return `<div id="bare"${gap}>${markup}</div><div id="prose" class="prose"${gap}>${markup}</div>`;
 }
+
+/** An `act` that puts the pointer on `selector`, and fails fast if it cannot. */
+const hover = (selector) => (page) => page.hover(selector, { timeout: 2000 });
 
 describeBrowser('components keep their own type and list styles inside .prose (#367, #383)', () => {
   for (const [hostName, host] of Object.entries(HOSTS)) {
@@ -587,6 +610,48 @@ describeBrowser('components keep their own type and list styles inside .prose (#
           expect(prose[selector], `${name} ${selector}`).toEqual(bare[selector]);
         }
       });
+    }
+  }
+
+  /* #426: the links again, hovered. Each root is read in its own page, with
+     the pointer on that root's link, since only one element is hovered at a
+     time. */
+  it('docs: the host fixture restyles a plain hovered a', async () => {
+    const read = (root) =>
+      load(
+        {
+          body: twoRoots('<a href="/">Plain</a>'),
+          host: HOSTS.docs,
+          act: hover(`#${root} a`),
+        },
+        readStyles,
+        { targets: ['a'], properties: PROPERTIES },
+      );
+    const hovered = (await read('prose')).prose.a;
+    const resting = (await read('bare')).prose.a;
+    expect(hovered).not.toEqual(resting);
+  });
+
+  for (const [hostName, host] of Object.entries(HOSTS)) {
+    for (const [name, targets] of Object.entries(HOVER_CASES)) {
+      for (const target of targets) {
+        it(`${hostName}: ${name} ${target} computes the same hovered inside .prose`, async () => {
+          const read = (root) =>
+            load(
+              {
+                body: twoRoots(CASES[name].markup, { apart: true }),
+                host,
+                act: hover(`#${root} ${target}`),
+              },
+              readStyles,
+              { targets: [target], properties: PROPERTIES },
+            );
+          const bare = (await read('bare')).bare[target];
+          const prose = (await read('prose')).prose[target];
+          expect(bare, `${target} rendered`).not.toBeNull();
+          expect(prose, `${name} ${target} hovered`).toEqual(bare);
+        });
+      }
     }
   }
 
