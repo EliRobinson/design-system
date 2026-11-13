@@ -229,12 +229,14 @@ describe('hook usedBy', () => {
     );
     expect(usedBy(manifest, 'useControllableState')).toContain('useDisclosure');
     // Tooltip imports it directly; the other four reach it through overlay/*.
+    // useClickOutside imports it for the layer tree (#397).
     expect(usedBy(manifest, 'useEscapeKey')).toEqual([
       'Dialog',
       'DropdownMenu',
       'Popover',
       'Sheet',
       'Tooltip',
+      'useClickOutside',
     ]);
   });
 
