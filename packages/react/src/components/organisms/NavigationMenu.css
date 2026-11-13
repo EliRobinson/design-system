@@ -4,6 +4,7 @@
 
 /* #414: scoped under the root at (0,2,0), so a host `.prose ul` or
    `.prose li` cannot restyle the list; docs/agents/components.md says why.
+   #423 does the same for the link, against a host `.prose a`.
    Only the reset properties sit at (0,2,0). The nested-list indent below ties
    it and wins on order. */
 .ds-navigation-menu .ds-navigation-menu__list {
@@ -47,8 +48,14 @@
   min-height: var(--target);
   padding: 0 var(--space-3);
   border-radius: var(--radius-sm);
-  color: var(--fg-2);
   font-size: var(--fs-sm);
+}
+
+/* #423: the reset a host `.prose a` reaches for, at (0,2,0). The hover and
+   active rules below tie it and win on order. */
+.ds-navigation-menu .ds-navigation-menu__link {
+  color: var(--fg-2);
+  font-weight: inherit;
   text-decoration: none;
 }
 
@@ -62,7 +69,7 @@
   color: var(--fg);
 }
 
-.ds-navigation-menu__link--active {
+.ds-navigation-menu .ds-navigation-menu__link--active {
   background: var(--surface-3);
   box-shadow: inset 0 0 0 1px var(--border-control);
   color: var(--fg);
@@ -78,14 +85,15 @@
    would mark the current page. The active link opts out and is painted with system
    colours, with an inset CanvasText ring that replaces the token ring (which
    would otherwise show through once the link opts out). Its :hover is listed
-   too because the base hover rule outranks it. Opting out leaves the focus
+   too because the base hover rule outranks it. Both are scoped under the
+   root, as the #423 link reset is, or that reset would win the colour. Opting out leaves the focus
    outline on var(--focus-ring), so it is set to CanvasText here. The outline
    is inset, so on the active link it sits on the Highlight fill and uses
    HighlightText. Keep this block after the base rules: component-tokens.mjs
    reads the first rule. */
 @media (forced-colors: active) {
-  .ds-navigation-menu__link--active,
-  .ds-navigation-menu__link--active:hover {
+  .ds-navigation-menu .ds-navigation-menu__link--active,
+  .ds-navigation-menu .ds-navigation-menu__link--active:hover {
     forced-color-adjust: none;
     background: Highlight;
     color: HighlightText;

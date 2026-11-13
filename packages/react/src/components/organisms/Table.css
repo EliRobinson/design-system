@@ -4,22 +4,36 @@
 
 /* -- Literal <table> mode ------------------------------------------------ */
 
-table.ds-table {
+/* #423: scoped under the wrapper root, so a host `.prose table`, `th` or `td`
+   cannot restyle it; docs/agents/components.md says why. Each rule sets what
+   a host table rule reaches for: margin, line-height, row rules and cell
+   alignment. */
+.ds-table-wrapper table.ds-table {
   width: 100%;
+  margin: 0;
   border-collapse: collapse;
   font-size: var(--fs-sm);
+  line-height: inherit;
 }
 
-table.ds-table th {
+.ds-table-wrapper .ds-table thead,
+.ds-table-wrapper .ds-table tr {
+  border: 0;
+}
+
+.ds-table-wrapper .ds-table th {
   text-align: left;
+  vertical-align: middle;
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border-strong);
   color: var(--fg-2);
   font-weight: var(--fw-medium);
 }
 
-table.ds-table td {
+.ds-table-wrapper .ds-table td {
+  vertical-align: middle;
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border);
   color: var(--fg);
+  font-weight: inherit;
 }

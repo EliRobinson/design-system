@@ -32,7 +32,10 @@ const MENUS = [
     name: 'NavigationMenu',
     path: 'organisms/NavigationMenu.css',
     grounds: ['--bg', '--surface', '--bg-subtle'],
-    states: ['.ds-navigation-menu__link:hover', '.ds-navigation-menu__link--active'],
+    states: [
+      '.ds-navigation-menu__link:hover',
+      '.ds-navigation-menu .ds-navigation-menu__link--active',
+    ],
   },
 ];
 

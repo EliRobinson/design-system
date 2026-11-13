@@ -23,10 +23,12 @@
   padding: 0;
 }
 
-.ds-breadcrumb__link {
+/* #423: at (0,2,0) too, against a host `.prose a`. */
+.ds-breadcrumb .ds-breadcrumb__link {
   color: var(--fg-2);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
+  font-weight: inherit;
   text-decoration: none;
 }
 
@@ -58,7 +60,7 @@ a.ds-breadcrumb__link {
   color: var(--link-hover);
 }
 
-.ds-breadcrumb__link--current {
+.ds-breadcrumb .ds-breadcrumb__link--current {
   color: var(--fg);
   font-weight: var(--fw-medium);
 }
