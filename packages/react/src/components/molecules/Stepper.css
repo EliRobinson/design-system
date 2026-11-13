@@ -4,8 +4,9 @@
 
 /* #414: at (0,2,0), so a host `.prose ol` or `.prose li` cannot restyle the
    list; docs/agents/components.md says why. The root is the `ol` itself, so
-   it repeats its own class to reach (0,2,0). Only the reset is doubled: the
-   layout stays at one class, so a consumer `className` can still change it. */
+   it repeats its own class to reach (0,2,0). Only the reset properties sit at
+   (0,2,0); layout and type stay at one class, so a consumer can still change
+   them with one class. */
 .ds-stepper {
   display: flex;
 }
@@ -22,6 +23,9 @@
   padding: 0;
   line-height: inherit;
   letter-spacing: inherit;
+}
+
+.ds-stepper__step {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -82,8 +86,7 @@
     flex-direction: column;
   }
 
-  /* (0,2,0), the same as the base rule it overrides. */
-  .ds-stepper .ds-stepper__step {
+  .ds-stepper__step {
     flex: none;
     display: grid;
     /* 24px is the marker's width. */
