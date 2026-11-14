@@ -27,6 +27,10 @@
  * and outranks a link's own `:hover` at (0,2,0), so it recoloured and
  * underlined a hovered link. The hover cases below read a hovered link.
  *
+ * #429: the other link states. A host `.prose a:visited`, `a:focus`,
+ * `a:focus-visible` or `a:active` is (0,2,1) too, so it recoloured a visited
+ * link and replaced a focused link's ring. The state cases read each one.
+ *
  * #368: `.ds-combobox__list` was `position: absolute` with no `top`, so it sat
  * at its static position. In a flex-column root that is the root's top, over
  * the input. This measures the list against the input in a real layout.
@@ -165,6 +169,19 @@ const HOSTS = {
       color: blue; text-decoration: underline wavy; border-bottom: 3px solid blue;
       box-shadow: inset 0 -3px 0 blue; background-color: yellow;
     }
+    .prose a:visited {
+      color: rgb(255, 0, 255); background-color: rgb(0, 255, 0);
+      border-bottom-color: rgb(255, 0, 255); text-decoration-color: rgb(255, 0, 255);
+    }
+    .prose a:focus {
+      color: green; text-decoration: underline dotted; border-bottom: 3px double green;
+      box-shadow: 0 0 0 4px green; background-color: pink;
+    }
+    .prose a:focus-visible { outline: 4px dashed rgb(255, 0, 255); outline-offset: 8px; }
+    .prose a:active {
+      color: orange; text-decoration: overline; border-bottom: 3px groove orange;
+      box-shadow: inset 0 0 0 3px orange; background-color: cyan;
+    }
     .prose table { margin: 32px 0; line-height: 2.2; font-size: 20px; }
     .prose th, .prose td {
       padding: 12px; border-bottom: 3px solid red; vertical-align: top; font-weight: 800;
@@ -238,6 +255,10 @@ const PROPERTIES = [
   'list-style-type',
   'text-decoration-line',
   'text-decoration-style',
+  'outline-style',
+  'outline-width',
+  'outline-color',
+  'outline-offset',
   'vertical-align',
   'text-align',
 ];
@@ -437,7 +458,7 @@ const CASES = {
       'a.ds-breadcrumb__link',
       '.ds-breadcrumb__link--current',
     ],
-    hover: ['a.ds-breadcrumb__link'],
+    links: ['a.ds-breadcrumb__link'],
   },
   /* #414: the three the #383 review gate found. Stepper's root is its own
      `ol`; Accordion's heading is the default `headingLevel`, an h3. */
@@ -465,7 +486,7 @@ const CASES = {
       '.ds-navigation-menu__link--active',
       '.ds-navigation-menu__link:not(.ds-navigation-menu__link--active)',
     ],
-    hover: [
+    links: [
       '.ds-navigation-menu__link--active',
       '.ds-navigation-menu__link:not(.ds-navigation-menu__link--active)',
     ],
@@ -477,7 +498,7 @@ const CASES = {
   RuleLink: {
     markup: renderToStaticMarkup(h(RuleLink, { href: '/rules' }, 'Read the rules')),
     targets: ['.ds-rule-link'],
-    hover: ['.ds-rule-link'],
+    links: ['.ds-rule-link'],
   },
   Table: {
     markup: renderToStaticMarkup(
@@ -573,30 +594,69 @@ function readStyles({ targets, properties }) {
   };
 }
 
-/* `apart` holds the roots 64px apart. RuleLink and Breadcrumb grow their
-   hit areas with a negative margin, so packed together one root's link sits
-   under the other's and takes the pointer. */
+/* `apart` holds the roots 64px apart, and off the page's left edge.
+   RuleLink and Breadcrumb grow their hit areas with a negative margin, so
+   packed together one root's link sits under the other's and takes the
+   pointer, and at the edge a crumb's box starts off the page, where a
+   screenshot of it comes back blank. */
 function twoRoots(markup, { apart = false } = {}) {
-  const gap = apart ? ' style="margin: 64px 0"' : '';
+  const gap = apart ? ' style="margin: 64px 32px"' : '';
   return `<div id="bare"${gap}>${markup}</div><div id="prose" class="prose"${gap}>${markup}</div>`;
 }
 
-/** An `act` that puts the pointer on `selector`, and fails fast if it cannot. */
-const hover = (selector) => (page) => page.hover(selector, { timeout: 2000 });
+/** Put `selector` in a forced state through the DevTools protocol. :active
+    needs a held button, and the test browser keeps no history, so a link is
+    never really :visited. */
+async function force(page, selector, state) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('DOM.enable');
+  await cdp.send('CSS.enable');
+  const { root } = await cdp.send('DOM.getDocument');
+  const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector });
+  if (!nodeId) throw new Error(`force: no ${selector}`);
+  await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [state] });
+}
 
-/** `selector`'s styles in both roots, with the pointer on the one in `#${on}`
-    (#426). Only one element is hovered at a time, so a hovered comparison
-    takes two pages. `on` null hovers nothing. */
-const readHovered = (markup, host, selector, on) =>
+/** An `act` per link state. Each fails fast if it cannot land. `focus` is a
+    script focus, which matches :focus-visible as a keyboard focus does. */
+const STATES = {
+  hover: (selector) => (page) => page.hover(selector, { timeout: 2000 }),
+  focus: (selector) => (page) => page.focus(selector, { timeout: 2000 }),
+  active: (selector) => (page) => force(page, selector, 'active'),
+  visited: (selector) => (page) => force(page, selector, 'visited'),
+};
+
+/** `selector`'s styles in both roots, with the one in `#${on}` in `state`
+    (#426, #429). Only one element is hovered or focused at a time, so a
+    comparison takes two pages. `on` null leaves every link at rest. */
+const readInState = (markup, host, selector, on, state) =>
   load(
     {
       body: twoRoots(markup, { apart: true }),
       host,
-      act: on ? hover(`#${on} ${selector}`) : undefined,
+      act: on ? STATES[state](`#${on} ${selector}`) : undefined,
     },
     readStyles,
     { targets: [selector], properties: PROPERTIES },
   );
+
+/** A screenshot of `selector` in `#${on}`, visited. getComputedStyle reports
+    a visited link as unvisited (a privacy rule), so only the pixels show it. */
+async function shotVisited(markup, host, selector, on) {
+  let shot;
+  await load(
+    {
+      body: twoRoots(markup, { apart: true }),
+      host,
+      act: async (page) => {
+        await STATES.visited(`#${on} ${selector}`)(page);
+        shot = await page.locator(`#${on} ${selector}`).screenshot({ animations: 'disabled' });
+      },
+    },
+    () => null,
+  );
+  return shot;
+}
 
 describeBrowser('components keep their own type and list styles inside .prose (#367, #383)', () => {
   for (const [hostName, host] of Object.entries(HOSTS)) {
@@ -627,40 +687,58 @@ describeBrowser('components keep their own type and list styles inside .prose (#
       });
     }
 
-    /* #426: the links again, under the pointer. Only the docs host has an
-       `a:hover` rule; the tailwind run checks the resting resets still hold
-       on a hovered link. */
-    for (const [name, { markup, hover: links = [] }] of Object.entries(CASES)) {
+    /* #426, #429: the links again, in each state. Only the docs host has
+       state rules; the tailwind run checks the resting resets still hold. */
+    for (const [name, { markup, links = [] }] of Object.entries(CASES)) {
       for (const link of links) {
-        it(`${hostName}: ${name} ${link} computes the same hovered inside .prose`, async () => {
-          const bare = (await readHovered(markup, host, link, 'bare')).bare[link];
-          const prose = (await readHovered(markup, host, link, 'prose')).prose[link];
-          expect(bare, `${link} rendered`).not.toBeNull();
-          expect(prose, `${name} ${link} hovered`).toEqual(bare);
+        for (const state of ['hover', 'focus', 'active']) {
+          it(`${hostName}: ${name} ${link} computes the same in ${state} inside .prose`, async () => {
+            const bare = (await readInState(markup, host, link, 'bare', state)).bare[link];
+            const prose = (await readInState(markup, host, link, 'prose', state)).prose[link];
+            expect(bare, `${link} rendered`).not.toBeNull();
+            expect(prose, `${name} ${link} ${state}`).toEqual(bare);
+          });
+        }
+
+        it(`${hostName}: ${name} ${link} paints the same visited inside .prose`, async () => {
+          const bare = await shotVisited(markup, host, link, 'bare');
+          const prose = await shotVisited(markup, host, link, 'prose');
+          expect(prose.equals(bare), `${name} ${link} visited`).toBe(true);
         });
       }
     }
   }
 
-  /* #426: the positive controls for the hovered cases. The host's hover rule
-     really restyles a plain hovered `a`, and each link's own hover rule really
-     paints, so a pass above is the component winning, not a hover that never
-     landed. The active nav link is left out: its hover paints what its
-     resting state already does. */
-  it('docs: the host fixture restyles a plain hovered a', async () => {
+  /* #426, #429: the positive controls for the state cases. The host's state
+     rules really restyle a plain `a`, and each link's own hover and focus
+     rules really paint, so a pass above is the component winning, not a state
+     that never landed. The active nav link is left out of hover: its hover
+     paints what its resting state already does. */
+  for (const state of ['hover', 'focus', 'active']) {
+    it(`docs: the host fixture restyles a plain a in ${state}`, async () => {
+      const plain = '<a href="/">Plain</a>';
+      const inState = (await readInState(plain, HOSTS.docs, 'a', 'prose', state)).prose.a;
+      const resting = (await readInState(plain, HOSTS.docs, 'a', null)).prose.a;
+      expect(inState).not.toEqual(resting);
+    });
+  }
+
+  it('docs: the host fixture repaints a plain visited a', async () => {
     const plain = '<a href="/">Plain</a>';
-    const hovered = (await readHovered(plain, HOSTS.docs, 'a', 'prose')).prose.a;
-    const resting = (await readHovered(plain, HOSTS.docs, 'a', null)).prose.a;
-    expect(hovered).not.toEqual(resting);
+    const visited = await shotVisited(plain, HOSTS.docs, 'a', 'prose');
+    const bare = await shotVisited(plain, HOSTS.docs, 'a', 'bare');
+    expect(visited.equals(bare)).toBe(false);
   });
 
-  for (const [name, { markup, hover: links = [] }] of Object.entries(CASES)) {
-    for (const link of links.filter((l) => !l.includes('--active'))) {
-      it(`${name} ${link} paints a hover state`, async () => {
-        const hovered = (await readHovered(markup, '', link, 'bare')).bare[link];
-        const resting = (await readHovered(markup, '', link, null)).bare[link];
-        expect(hovered).not.toEqual(resting);
-      });
+  for (const [name, { markup, links = [] }] of Object.entries(CASES)) {
+    for (const link of links) {
+      for (const state of link.includes('--active') ? ['focus'] : ['hover', 'focus']) {
+        it(`${name} ${link} paints a ${state} state`, async () => {
+          const inState = (await readInState(markup, '', link, 'bare', state)).bare[link];
+          const resting = (await readInState(markup, '', link, null)).bare[link];
+          expect(inState).not.toEqual(resting);
+        });
+      }
     }
   }
 
@@ -675,7 +753,7 @@ describeBrowser('components keep their own type and list styles inside .prose (#
       ]) {
         const body = `<div ${fill} style="color: rgb(1, 2, 3)">${CASES[name].markup}</div>`;
         const color = await load(
-          { body, act: hover(link) },
+          { body, act: STATES.hover(link) },
           (selector) => {
             return getComputedStyle(document.querySelector(selector)).color;
           },

@@ -33,7 +33,7 @@ const MENUS = [
     path: 'organisms/NavigationMenu.css',
     grounds: ['--bg', '--surface', '--bg-subtle'],
     states: [
-      '.ds-navigation-menu .ds-navigation-menu__link:hover, .ds-navigation-menu .ds-navigation-menu__link--active',
+      '.ds-navigation-menu .ds-navigation-menu__link:hover, .ds-navigation-menu .ds-navigation-menu__link.ds-navigation-menu__link--active',
     ],
   },
 ];

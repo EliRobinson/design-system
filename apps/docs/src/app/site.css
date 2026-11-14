@@ -164,10 +164,11 @@
   box-shadow: none; /* the component's hover ring (#354) is not part of the docs sidebar */
 }
 
-/* Outranks the component's root-scoped active rule (0,2,0, #423) whatever
-   order the two sheets load in. On hover, the nested-link hover rule above
-   (0,5,0) outranks both this and the component's hover (0,3,0, #426). */
-.site-nav .ds-navigation-menu .ds-navigation-menu__link--active {
+/* Outranks the component's active rule and its state rules (0,3,0, #423,
+   #429) whatever order the two sheets load in, so a focused or visited
+   active link keeps the accent bar. On hover, the nested-link hover rule
+   above (0,5,0) outranks both this and the component's hover (0,3,0, #426). */
+.site-nav .ds-navigation-menu .ds-navigation-menu__link.ds-navigation-menu__link--active {
   color: var(--fg);
   font-weight: var(--fw-medium);
   background: var(--bg-subtle);

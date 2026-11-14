@@ -46,10 +46,7 @@ const HIGHLIGHTED = [
   [
     'NavigationMenu',
     'organisms/NavigationMenu.css',
-    [
-      '.ds-navigation-menu .ds-navigation-menu__link--active',
-      '.ds-navigation-menu .ds-navigation-menu__link--active:hover',
-    ],
+    ['.ds-navigation-menu .ds-navigation-menu__link.ds-navigation-menu__link--active'],
   ],
   [
     'CommandPalette',
@@ -87,7 +84,10 @@ describe('edges that would keep a normal-mode colour after opting out', () => {
     ['molecules/SegmentedControl.css', '.ds-segmented-control__item--active'],
     ['organisms/CommandPalette.css', '.ds-command-palette__item--active'],
     ['organisms/Combobox.css', '.ds-combobox__option--active'],
-    ['organisms/NavigationMenu.css', '.ds-navigation-menu .ds-navigation-menu__link--active'],
+    [
+      'organisms/NavigationMenu.css',
+      '.ds-navigation-menu .ds-navigation-menu__link.ds-navigation-menu__link--active',
+    ],
   ])('%s: keeps an inset ring, not a border that would resize it', (path, selector) => {
     const body = declarations(path, selector);
     expect(body).toMatch(/box-shadow:\s*inset 0 0 0 1px CanvasText\b/);
@@ -134,7 +134,11 @@ describe.each([
   ],
   ['Pagination', 'molecules/Pagination.css', '.ds-pagination__item:focus-visible'],
   ['DatePicker', 'organisms/DatePicker.css', '.ds-date-picker__day:focus-visible'],
-  ['NavigationMenu', 'organisms/NavigationMenu.css', '.ds-navigation-menu__link:focus-visible'],
+  [
+    'NavigationMenu',
+    'organisms/NavigationMenu.css',
+    '.ds-navigation-menu .ds-navigation-menu__link:focus-visible',
+  ],
 ])('%s focus', (_name, path, selector) => {
   it('keeps focus visible with a system colour', () => {
     expect(declarations(path, selector)).toMatch(/outline-color:\s*CanvasText\b/);
@@ -145,6 +149,9 @@ it('NavigationMenu: the inset focus ring on the active link reads HighlightText'
   /* The ring sits inside the Highlight fill, and only HighlightText is
      promised to contrast with it. */
   expect(
-    declarations('organisms/NavigationMenu.css', '.ds-navigation-menu__link--active:focus-visible'),
+    declarations(
+      'organisms/NavigationMenu.css',
+      '.ds-navigation-menu .ds-navigation-menu__link--active:focus-visible',
+    ),
   ).toMatch(/outline-color:\s*HighlightText\b/);
 });

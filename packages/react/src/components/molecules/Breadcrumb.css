@@ -60,22 +60,37 @@
   padding: 11px 5px;
 }
 
-/* #426: scoped under the root (0,3,1), so a host `.prose a:hover` (0,2,1)
-   cannot recolour, underline, border or fill a hovered crumb. It restates
-   what the reset above sets, since the host hover outranks the reset. The
-   current crumb is a <span>, so it takes no hover. */
-.ds-breadcrumb a.ds-breadcrumb__link:hover {
+/* #426, #429: every link state, scoped under the root (0,3,1). A host
+   `.prose a:hover`, `a:visited`, `a:focus` or `a:active` is (0,2,1) and
+   outranks the reset above, so this restates what the reset sets. The
+   current crumb is a <span>, so it takes no state. */
+.ds-breadcrumb a.ds-breadcrumb__link:hover,
+.ds-breadcrumb a.ds-breadcrumb__link:visited,
+.ds-breadcrumb a.ds-breadcrumb__link:focus,
+.ds-breadcrumb a.ds-breadcrumb__link:active {
   background: none;
   border: 0;
   box-shadow: none;
-  color: var(--link-hover);
+  color: var(--fg-2);
   text-decoration: none;
+}
+
+.ds-breadcrumb a.ds-breadcrumb__link:hover {
+  color: var(--link-hover);
 }
 
 /* On a fill the surface owns the text colour (tokens.css, --link-on-fill):
    --link-hover can be the fill's own hue. */
 :is([data-on-fill], .ds-alert, .ds-toast) .ds-breadcrumb a.ds-breadcrumb__link:hover {
   color: var(--link-on-fill);
+}
+
+/* #429: the global ring (tokens.css :focus-visible), restated at (0,3,1),
+   so a host `.prose a:focus-visible` (0,2,1) cannot replace it. */
+.ds-breadcrumb a.ds-breadcrumb__link:focus-visible {
+  border-radius: var(--radius-xs);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .ds-breadcrumb .ds-breadcrumb__link--current {
