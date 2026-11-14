@@ -151,7 +151,7 @@ it('NavigationMenu: the inset focus ring on the active link reads HighlightText'
   expect(
     declarations(
       'organisms/NavigationMenu.css',
-      '.ds-navigation-menu .ds-navigation-menu__link--active:focus-visible',
+      '.ds-navigation-menu .ds-navigation-menu__link.ds-navigation-menu__link--active:focus-visible',
     ),
   ).toMatch(/outline-color:\s*HighlightText\b/);
 });

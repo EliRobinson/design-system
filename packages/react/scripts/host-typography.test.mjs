@@ -177,7 +177,9 @@ const HOSTS = {
       color: green; text-decoration: underline dotted; border-bottom: 3px double green;
       box-shadow: 0 0 0 4px green; background-color: pink;
     }
-    .prose a:focus-visible { outline: 4px dashed rgb(255, 0, 255); outline-offset: 8px; }
+    .prose a:focus-visible {
+      outline: 4px dashed rgb(255, 0, 255); outline-offset: 8px; border-radius: 12px;
+    }
     .prose a:active {
       color: orange; text-decoration: overline; border-bottom: 3px groove orange;
       box-shadow: inset 0 0 0 3px orange; background-color: cyan;
@@ -249,6 +251,7 @@ const PROPERTIES = [
   'border-bottom-style',
   'border-bottom-color',
   'border-left-width',
+  'border-top-left-radius',
   'border-right-width',
   'background-color',
   'box-shadow',
@@ -598,9 +601,10 @@ function readStyles({ targets, properties }) {
    RuleLink and Breadcrumb grow their hit areas with a negative margin, so
    packed together one root's link sits under the other's and takes the
    pointer, and at the edge a crumb's box starts off the page, where a
-   screenshot of it comes back blank. */
+   screenshot of it comes back blank. The fixed height keeps the second root
+   on a whole-pixel offset, so its text rasterises as the first root's does. */
 function twoRoots(markup, { apart = false } = {}) {
-  const gap = apart ? ' style="margin: 64px 32px"' : '';
+  const gap = apart ? ' style="margin: 64px 32px; height: 200px"' : '';
   return `<div id="bare"${gap}>${markup}</div><div id="prose" class="prose"${gap}>${markup}</div>`;
 }
 
@@ -614,6 +618,7 @@ async function force(page, selector, state) {
   const { root } = await cdp.send('DOM.getDocument');
   const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector });
   if (!nodeId) throw new Error(`force: no ${selector}`);
+  /* Not detached: a detach drops the forced state. The page owns the session. */
   await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [state] });
 }
 
@@ -625,6 +630,10 @@ const STATES = {
   active: (selector) => (page) => force(page, selector, 'active'),
   visited: (selector) => (page) => force(page, selector, 'visited'),
 };
+
+/** The states read through getComputedStyle. Visited is read from pixels
+    (shotVisited below). */
+const COMPUTED_STATES = Object.keys(STATES).filter((state) => state !== 'visited');
 
 /** `selector`'s styles in both roots, with the one in `#${on}` in `state`
     (#426, #429). Only one element is hovered or focused at a time, so a
@@ -640,23 +649,34 @@ const readInState = (markup, host, selector, on, state) =>
     { targets: [selector], properties: PROPERTIES },
   );
 
-/** A screenshot of `selector` in `#${on}`, visited. getComputedStyle reports
-    a visited link as unvisited (a privacy rule), so only the pixels show it. */
-async function shotVisited(markup, host, selector, on) {
-  let shot;
+/** A screenshot of `target` after `act`. getComputedStyle reports a visited
+    link as unvisited (a privacy rule), so only the pixels show it. */
+async function shot({ body, host, target, act }) {
+  let png;
   await load(
     {
-      body: twoRoots(markup, { apart: true }),
+      body,
       host,
       act: async (page) => {
-        await STATES.visited(`#${on} ${selector}`)(page);
-        shot = await page.locator(`#${on} ${selector}`).screenshot({ animations: 'disabled' });
+        if (act) await act(page);
+        png = await page.locator(target).screenshot({ animations: 'disabled' });
       },
     },
     () => null,
   );
-  return shot;
+  return png;
 }
+
+/** `selector` in `#${on}`, visited, or at rest when `visited` is false. */
+const shotVisited = (markup, host, selector, on, visited = true) => {
+  const target = `#${on} ${selector}`;
+  return shot({
+    body: twoRoots(markup, { apart: true }),
+    host,
+    target,
+    act: visited ? STATES.visited(target) : undefined,
+  });
+};
 
 describeBrowser('components keep their own type and list styles inside .prose (#367, #383)', () => {
   for (const [hostName, host] of Object.entries(HOSTS)) {
@@ -691,7 +711,7 @@ describeBrowser('components keep their own type and list styles inside .prose (#
        state rules; the tailwind run checks the resting resets still hold. */
     for (const [name, { markup, links = [] }] of Object.entries(CASES)) {
       for (const link of links) {
-        for (const state of ['hover', 'focus', 'active']) {
+        for (const state of COMPUTED_STATES) {
           it(`${hostName}: ${name} ${link} computes the same in ${state} inside .prose`, async () => {
             const bare = (await readInState(markup, host, link, 'bare', state)).bare[link];
             const prose = (await readInState(markup, host, link, 'prose', state)).prose[link];
@@ -714,7 +734,7 @@ describeBrowser('components keep their own type and list styles inside .prose (#
      rules really paint, so a pass above is the component winning, not a state
      that never landed. The active nav link is left out of hover: its hover
      paints what its resting state already does. */
-  for (const state of ['hover', 'focus', 'active']) {
+  for (const state of COMPUTED_STATES) {
     it(`docs: the host fixture restyles a plain a in ${state}`, async () => {
       const plain = '<a href="/">Plain</a>';
       const inState = (await readInState(plain, HOSTS.docs, 'a', 'prose', state)).prose.a;
@@ -726,8 +746,8 @@ describeBrowser('components keep their own type and list styles inside .prose (#
   it('docs: the host fixture repaints a plain visited a', async () => {
     const plain = '<a href="/">Plain</a>';
     const visited = await shotVisited(plain, HOSTS.docs, 'a', 'prose');
-    const bare = await shotVisited(plain, HOSTS.docs, 'a', 'bare');
-    expect(visited.equals(bare)).toBe(false);
+    const resting = await shotVisited(plain, HOSTS.docs, 'a', 'prose', false);
+    expect(visited.equals(resting)).toBe(false);
   });
 
   for (const [name, { markup, links = [] }] of Object.entries(CASES)) {
@@ -761,6 +781,22 @@ describeBrowser('components keep their own type and list styles inside .prose (#
         );
         expect(color, `${name} on ${fill}`).toBe('rgb(1, 2, 3)');
       }
+    }
+  });
+
+  /* #429: a visited link on a [data-on-fill] surface keeps the fill colour,
+     as tokens.css `[data-on-fill] a:visited` gave it before the state rules.
+     Visited is read from pixels, so it is matched against the hovered link,
+     which takes the same colour and nothing else. */
+  it('RuleLink and a crumb keep the fill colour when visited on a fill', async () => {
+    for (const [name, link] of [
+      ['RuleLink', '.ds-rule-link'],
+      ['Breadcrumb', 'a.ds-breadcrumb__link'],
+    ]) {
+      const body = `<div data-on-fill style="color: rgb(1, 2, 3)">${CASES[name].markup}</div>`;
+      const visited = await shot({ body, target: link, act: STATES.visited(link) });
+      const hovered = await shot({ body, target: link, act: STATES.hover(link) });
+      expect(visited.equals(hovered), name).toBe(true);
     }
   });
 

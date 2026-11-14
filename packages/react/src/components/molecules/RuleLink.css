@@ -42,7 +42,9 @@
 
 /* #426, #429: every link state at (0,3,0). A host `.prose a:hover`,
    `a:visited`, `a:focus` or `a:active` is (0,2,1) and outranks the reset
-   above, so this restates what the reset sets. */
+   above, so this restates the reset's paint: fill, border, shadow, colour and
+   underline. Size and spacing are left out, so a consumer's override of
+   them does not jump when the link takes a state. */
 .ds-rule-link.ds-rule-link:hover,
 .ds-rule-link.ds-rule-link:visited,
 .ds-rule-link.ds-rule-link:focus,
@@ -60,14 +62,18 @@
 }
 
 /* On a fill the surface owns the text colour (tokens.css, --link-on-fill):
-   --link-hover can be the fill's own hue. */
-:is([data-on-fill], .ds-alert, .ds-toast) .ds-rule-link.ds-rule-link:hover {
+   --link-hover can be the fill's own hue. A visited link on a
+   [data-on-fill] keeps the colour tokens.css `[data-on-fill] a:visited`
+   gave it before the state rules above outranked that rule (#429). */
+:is([data-on-fill], .ds-alert, .ds-toast) .ds-rule-link.ds-rule-link:hover,
+[data-on-fill] .ds-rule-link.ds-rule-link:visited {
   color: var(--link-on-fill);
 }
 
 /* #429: at (0,3,0), so a host `.prose a:focus-visible` (0,2,1) cannot
    replace the ring. */
 .ds-rule-link.ds-rule-link:focus-visible {
+  border-radius: var(--radius-xs);
   outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset, 2px);
 }
