@@ -62,7 +62,9 @@
 
 /* #426, #429: every link state, scoped under the root (0,3,1). A host
    `.prose a:hover`, `a:visited`, `a:focus` or `a:active` is (0,2,1) and
-   outranks the reset above, so this restates what the reset sets. The
+   outranks the reset above, so this restates the reset's paint: fill, border, shadow, colour and
+   underline. Size and spacing are left out, so a consumer's override of
+   them does not jump when the link takes a state. The
    current crumb is a <span>, so it takes no state. */
 .ds-breadcrumb a.ds-breadcrumb__link:hover,
 .ds-breadcrumb a.ds-breadcrumb__link:visited,
@@ -80,8 +82,11 @@
 }
 
 /* On a fill the surface owns the text colour (tokens.css, --link-on-fill):
-   --link-hover can be the fill's own hue. */
-:is([data-on-fill], .ds-alert, .ds-toast) .ds-breadcrumb a.ds-breadcrumb__link:hover {
+   --link-hover can be the fill's own hue. A visited link on a
+   [data-on-fill] keeps the colour tokens.css `[data-on-fill] a:visited`
+   gave it before the state rules above outranked that rule (#429). */
+:is([data-on-fill], .ds-alert, .ds-toast) .ds-breadcrumb a.ds-breadcrumb__link:hover,
+[data-on-fill] .ds-breadcrumb a.ds-breadcrumb__link:visited {
   color: var(--link-on-fill);
 }
 

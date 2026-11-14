@@ -65,7 +65,9 @@
 
 /* #429: the other link states, at (0,3,0). A host `.prose a:visited`,
    `a:focus` or `a:active` is (0,2,1) and outranks the reset above, so this
-   restates what the reset sets. The hover and active rules below tie it and
+   restates the reset's paint: fill, border, shadow, colour and
+   underline. Size and spacing are left out, so a consumer's override of
+   them does not jump when the link takes a state. The hover and active rules below tie it and
    win on order. */
 .ds-navigation-menu .ds-navigation-menu__link:visited,
 .ds-navigation-menu .ds-navigation-menu__link:focus,
@@ -102,6 +104,7 @@
 /* #429: scoped under the root (0,3,0), so a host `.prose a:focus-visible`
    (0,2,1) cannot replace the ring. */
 .ds-navigation-menu .ds-navigation-menu__link:focus-visible {
+  border-radius: var(--radius-sm);
   outline: var(--focus-ring-width, 2px) solid var(--focus-ring);
   outline-offset: calc(var(--focus-ring-width, 2px) * -1);
 }
@@ -129,7 +132,7 @@
     outline-color: CanvasText;
   }
 
-  .ds-navigation-menu .ds-navigation-menu__link--active:focus-visible {
+  .ds-navigation-menu .ds-navigation-menu__link.ds-navigation-menu__link--active:focus-visible {
     outline-color: HighlightText;
   }
 }
