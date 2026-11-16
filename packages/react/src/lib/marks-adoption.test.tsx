@@ -26,13 +26,14 @@ import { Chip } from '../components/molecules/Chip.js';
 import { Pagination } from '../components/molecules/Pagination.js';
 import { Rating } from '../components/molecules/Rating.js';
 import { SearchField } from '../components/molecules/SearchField.js';
+import { Stepper } from '../components/molecules/Stepper.js';
 import { DatePicker } from '../components/organisms/DatePicker.js';
 import { Toast } from '../components/organisms/Toast.js';
 
 /* The characters these controls used to typeset. If one comes back, the control
    has regressed to a font-dependent glyph — and it would still have a mark in
    the tree, so checking only for marks would not see it. */
-const TYPESET_GLYPHS = /[×✕✖★☆‹›+\u2212]/;
+const TYPESET_GLYPHS = /[×✕✖★☆‹›✓+\u2212]/;
 
 const noop = () => {};
 
@@ -78,6 +79,20 @@ const CONTROLS: Array<[string, () => HTMLElement, number]> = [
       ).container,
     2,
   ],
+  [
+    /* #308: the completed step typed `✓`. Two of three steps are complete
+       here, so the count catches a stepper that drew the first and typed the
+       second. */
+    'Stepper',
+    () =>
+      render(
+        <Stepper
+          steps={[{ label: 'Cart' }, { label: 'Address' }, { label: 'Pay' }]}
+          activeStep={3}
+        />,
+      ).container,
+    2,
+  ],
 ];
 
 describe('every control that #166 converted paints a drawn mark', () => {
@@ -99,6 +114,7 @@ describe('every control that #166 converted paints a drawn mark', () => {
     expect(TYPESET_GLYPHS.test('‹')).toBe(true);
     expect(TYPESET_GLYPHS.test('★')).toBe(true);
     expect(TYPESET_GLYPHS.test('+')).toBe(true);
+    expect(TYPESET_GLYPHS.test('✓')).toBe(true);
     expect(TYPESET_GLYPHS.test('\u2212')).toBe(true);
     expect(TYPESET_GLYPHS.test('August 2026')).toBe(false);
   });
