@@ -28,7 +28,7 @@ pnpm ds check            # known traps that fail with no error; run after setup 
 
 If `pnpm ds` is not wired up as a script, `pnpm exec elirobinson-ds` is the same command.
 
-See the Discover, Don't Document pattern in `pnpm ds patterns`. For deeper detail read the component source under `node_modules/@elirobinson/react/src/components/` and `node_modules/@elirobinson/tokens/src/tokens.css`.
+A component list you remember, or one in a doc, may be out of date, so `pnpm ds` is the authority; see the Discover, Don't Document pattern in `pnpm ds patterns`. For deeper detail read the component source under `node_modules/@elirobinson/react/src/components/` and `node_modules/@elirobinson/tokens/src/tokens.css`.
 
 ## Step 2: Compose
 
