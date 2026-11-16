@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { referenceSkillDoc } from '../artifacts/skills.mjs';
+import { AGENT_FILES } from '../cli/init.mjs';
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 const read = (path) => readFileSync(join(repo, path), 'utf8');
@@ -64,13 +65,23 @@ describe.each(Object.entries(SHIPPED))('%s', (_name, text) => {
 
 /* The four templates `init --agents` writes also state the Tailwind v4
  * CSS-entry order: tailwindcss, then the design system stylesheet, then
- * tokens/tailwind.css. The other shipped files are tracked in #435. */
-const AGENT_TEMPLATES = Object.entries(SHIPPED).filter(([name]) => name.startsWith('agents/'));
+ * tokens/tailwind.css. The other shipped files are tracked in #435. The list
+ * comes from AGENT_FILES, so a new template is covered without an edit here. */
+const AGENT_TEMPLATES = AGENT_FILES.map(({ template }) => [
+  template,
+  read(`packages/ai-patterns/src/agents/${template}`),
+]);
 
-describe.each(AGENT_TEMPLATES)('%s', (_name, raw) => {
+describe.each(AGENT_TEMPLATES)('agents/%s', (_name, raw) => {
   const text = flat(raw);
 
-  it('puts the Tailwind v4 import after tailwindcss and the design system stylesheet', () => {
+  /* The shared test also accepts "never next to", but these templates ban
+   * "never", so pin the calm wording directly. */
+  it('says importing tokens.css as well bundles it twice', () => {
+    expect(text).toContain('bundles it twice');
+  });
+
+  it('orders tailwindcss, then the stylesheet (or tokens.css), then the Tailwind v4 import', () => {
     const tailwind = text.indexOf("@import 'tailwindcss'");
     const stylesheet = text.indexOf('@elirobinson/react/styles.css', tailwind);
     const tokens = text.indexOf("@import '@elirobinson/tokens/tailwind.css'", stylesheet);

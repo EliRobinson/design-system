@@ -2,8 +2,9 @@
  * no shouting, no bold run-ins, no em dashes. This pins that voice and the
  * facts each template carries, not the bytes, so wording can still change.
  * The stylesheet facts, Tailwind order included, are pinned in
- * stylesheet-rule.test.mjs, not here. Only the Cursor rule's `globs:` line is dropped before the voice checks,
- * because it holds `**` globs; descriptions in frontmatter are still checked. */
+ * stylesheet-rule.test.mjs, not here. Only the Cursor rule's `globs:` line is
+ * dropped before the voice checks, because it holds `**` globs; descriptions
+ * in frontmatter are still checked. */
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -29,7 +30,6 @@ const SHARED = [
   '[data-theme="dark"]',
   'unlayered',
   '--ds-font-sans-override',
-  '@elirobinson/tokens/tailwind.css',
   'does not resolve',
   'worth upstreaming',
   'You have not been charged.',
