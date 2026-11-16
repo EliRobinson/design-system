@@ -2,6 +2,7 @@ import type { HTMLAttributes } from 'react';
 import { forwardRef } from 'react';
 
 import { cn } from '../../lib/cn.js';
+import { Mark } from '../../lib/marks.js';
 
 export type StepperStep = {
   label: string;
@@ -33,7 +34,9 @@ export const Stepper = forwardRef<HTMLOListElement, StepperProps>(function Stepp
             )}
             aria-current={isActive ? 'step' : undefined}
           >
-            <span className="ds-stepper__indicator">{isComplete ? '✓' : stepNumber}</span>
+            <span className="ds-stepper__indicator">
+              {isComplete ? <Mark name="check" /> : stepNumber}
+            </span>
             <span className="ds-stepper__label">{step.label}</span>
           </li>
         );
