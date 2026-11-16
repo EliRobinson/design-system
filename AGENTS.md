@@ -2,7 +2,7 @@
 
 Miltinson Design System monorepo — its packages are listed in [README.md](README.md#packages).
 
-`@elirobinson/ai-elements` is the one package whose source is not ours: it is vendored from `vercel/ai-elements` at a pinned release. Do not hand-edit `packages/ai-elements/src/`: `pnpm sync:elements` treats every file there as upstream's, so a hand edit blocks the next upgrade of that file. Put changes in `scripts/ai-elements-transforms.mjs`. See [AI Elements](docs/agents/ai-elements.md).
+`@elirobinson/ai-elements` is the one package whose source is not ours: it is vendored from `vercel/ai-elements` at a pinned release. Do not hand-edit `packages/ai-elements/src/`: `pnpm sync:elements` treats every file there as upstream's, so a hand edit blocks the next upgrade of that file. Put changes in `scripts/ai-elements-transforms.mjs` or in a wrapper component in our own package. See [AI Elements](docs/agents/ai-elements.md).
 
 Nothing we publish may require a consumer to update prose when this repo changes. A consumer bumps a version and is current. Anything they would otherwise have to copy into their own docs — a component list, a token table, a Tailwind mapping, a lint rule — is a bug in what we publish. Ship it as a command, a manifest, a stylesheet, or a rule instead.
 
@@ -14,15 +14,15 @@ Nothing we publish may require a consumer to update prose when this repo changes
 
 **Imports:** No barrel files — use package subpaths (`@elirobinson/react/components/atoms/Button`, `@elirobinson/tokens/tokens-data`). See `.cursor/rules/no-barrel-files.mdc`.
 
-**Components:** Components live under `packages/react/src/components/<tier>/` (atoms/molecules/organisms/ai). Every interactive component uses `forwardRef`. Primary controls get a 44x44 touch target; dense inline affordances (chip remove, search clear, rating stars, calendar days) have a 24x24 floor; a grown hit area never overlaps its neighbours. [Components](docs/agents/components.md) has the tier boundary rule and the full constraints.
+**Components:** Components live under `packages/react/src/components/<tier>/` (atoms/molecules/organisms/ai). Every interactive component uses `forwardRef`. Primary controls at their default size (buttons, pagination, segmented control, nav items) get at least a 44x44 touch target; dense inline affordances (chip remove, search clear, rating stars, calendar days) and compact size variants have a 24x24 floor; a grown hit area never overlaps its neighbours. [Components](docs/agents/components.md) has the tier boundary rule and the full constraints.
 
 **Work:** Each piece of work is a GitHub issue, done in its own worktree on its own feature branch. That includes subagents and side sessions that write files. See [Backlog](docs/agents/backlog.md) and [Parallel agents](docs/agents/parallel-agents.md).
 
 ## Do not
 
 - Do not edit files in the main checkout or commit on `main`, not even a one-line doc fix. Many sessions share that checkout, and the guard hook sees only git, not an editor.
-- Do not open a PR before the review gate runs: use the `review-gate` skill (`.agents/skills/review-gate/SKILL.md`). It finds problems before CI does, and a hook enforces it.
-- Do not bypass hooks, with `--no-verify` or any other way. A failing hook means something is wrong: fix the cause. Skip one only when Eli says so.
+- Do not open a PR before the review gate runs: use the `review-gate` skill (`.agents/skills/review-gate/SKILL.md`). It catches what tests and lint cannot, and a hook enforces it.
+- Do not skip or disable a hook (`--no-verify`). A failing hook means something is wrong: fix the cause. Skip one only when Eli says so. The main checkout guard's documented escape is not a skip: see [Git workflow](docs/agents/git-workflow.md).
 - Do not use Fable for any agent: it costs too much. Use Opus, Sonnet or Haiku, and pass `model`, except to `review-*` agents, whose file pins it.
 - Do not edit files another agent owns. Two agents editing one file overwrite each other.
 
