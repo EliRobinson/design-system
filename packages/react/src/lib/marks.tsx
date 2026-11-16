@@ -126,8 +126,7 @@ const MARK_PATHS = {
   plus: 'M8 5 8 11M5 8 11 8',
   minus: 'M5 8 11 8',
 
-  /* The dropdown menu's checkbox item and the stepper's completed step.
-     4.5..11.5 by 5.5..10.5: a little wider than `cross` because a check is a
+  /* 4.5..11.5 by 5.5..10.5: a little wider than `cross` because a check is a
      wide, short shape, and the box is still centred on (8, 8) — the short
      arm's end and the long arm's end sit 3.5 either side of x = 8, the elbow
      and the tip 2.5 either side of y = 8. */

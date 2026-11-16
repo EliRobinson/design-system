@@ -53,10 +53,9 @@
      3.64:1 under SC 1.4.11, not the 1.53:1 hairline. */
   border: 1px solid var(--border-control);
   font-size: var(--fs-xs);
-  /* A completed step paints the drawn `check` (#308), not a typed `✓`. The
-     same ramp step as the dropdown menu's check, so the two read as one mark
-     at one size; read from the ramp rather than `1em`, so the step number's
-     smaller --fs-xs does not shrink it. */
+  /* A completed step paints the drawn `check` (#308), not a typed `✓`. Set
+     here, from the ramp's base step, so a --mark-size from an ancestor cannot
+     reach it and the step number's smaller --fs-xs does not shrink it. */
   --mark-size: var(--fs-md);
   flex-shrink: 0;
 }
