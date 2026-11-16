@@ -61,3 +61,25 @@ describe.each(Object.entries(SHIPPED))('%s', (_name, text) => {
     );
   });
 });
+
+/* The four templates `init --agents` writes also state the Tailwind v4
+ * CSS-entry order: tailwindcss, then the design system stylesheet, then
+ * tokens/tailwind.css. The other shipped files are tracked in #435. */
+const AGENT_TEMPLATES = Object.entries(SHIPPED).filter(([name]) => name.startsWith('agents/'));
+
+describe.each(AGENT_TEMPLATES)('%s', (_name, raw) => {
+  const text = flat(raw);
+
+  it('puts the Tailwind v4 import after tailwindcss and the design system stylesheet', () => {
+    const tailwind = text.indexOf("@import 'tailwindcss'");
+    const stylesheet = text.indexOf('@elirobinson/react/styles.css', tailwind);
+    const tokens = text.indexOf("@import '@elirobinson/tokens/tailwind.css'", stylesheet);
+    const tokensCss = text.indexOf('@elirobinson/tokens/tokens.css', tailwind);
+
+    expect(tailwind).toBeGreaterThan(-1);
+    expect(stylesheet).toBeGreaterThan(tailwind);
+    expect(tokens).toBeGreaterThan(stylesheet);
+    expect(tokensCss).toBeGreaterThan(tailwind);
+    expect(tokensCss).toBeLessThan(tokens);
+  });
+});
