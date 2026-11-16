@@ -25,14 +25,14 @@ pnpm ds check            # known traps that fail with no error; run after setup 
 
 - Import each component by its full subpath. There is no barrel export, so a bare `@elirobinson/react` import does not resolve.
 - Set appearance with a component's own `variant` / `size` props. Use utility classes for layout only, because the design system owns the look.
-- Take colors, radii, shadows, durations, and font sizes from tokens: mapped utilities, `.t-*` classes, or `var(--token)`. Use no literal values.
-- With Tailwind v4, `@import '@elirobinson/tokens/tailwind.css'` maps the Tailwind color namespace onto the tokens. Without it, utilities like `bg-background` resolve to nothing.
-- Dark mode is `[data-theme="dark"]` (`.dark` also works). With `next-themes`, set `attribute="data-theme"`.
+- Take colors, radii, shadows, durations, and font sizes from tokens: mapped utilities, `.t-*` classes, or `var(--token)`. Do not use literal values.
+- On Tailwind v4, the `tailwind.css` import described in the stylesheet rule below maps the Tailwind color namespace onto the tokens. Without it, utilities like `bg-background` resolve to nothing.
+- Dark mode is `[data-theme="dark"]` (`.dark` also works). With `next-themes`, set `attribute="data-theme"`. The default `class` strategy silently does nothing.
 - Put token overrides in an unlayered `:root` block. `tokens.css` is unlayered, so an override inside `@layer base` silently loses to it. With `next/font`, re-point the families through `--ds-font-sans-override` / `--ds-font-mono-override` instead, with the font class on `<html>`.
 - Import `@elirobinson/react/styles.css` once, in the app shell, not per component. It already imports `@elirobinson/tokens/tokens.css`; importing `tokens.css` as well bundles it twice. An app that does not import `styles.css` (no React, or per-component sheets only) imports `@elirobinson/tokens/tokens.css` itself. On Tailwind v4, that import goes in the CSS entry after `@import 'tailwindcss'`, followed by `@import '@elirobinson/tokens/tailwind.css'`.
 - When a piece is missing, compose it from primitives, then use the repo's sanctioned gap-filler, then hand-roll it from tokens and flag it as a design system gap worth upstreaming.
 - `@elirobinson/eslint-config` blocks foreign UI libraries, direct Radix imports, bare `@elirobinson/*` imports, and hardcoded design values.
-- Contract checks that need a browser (touch targets, visible focus, WCAG AA contrast) come from `@elirobinson/ai-patterns/testing/playwright`. Add them to the E2E suite.
+- Contract checks that need a browser (touch targets, visible focus, WCAG AA contrast) come from `@elirobinson/ai-patterns/testing/playwright`. Add them to the E2E suite, because lint cannot measure them.
 
 ### UI copy
 
@@ -53,7 +53,7 @@ Functional copy is chrome: errors, empty states, helper and hint text, toasts, l
 
 This rule covers chrome, not this product's editorial voice. Marketing prose, conversational surfaces, and written deliverables are content, and their voice is a deliberate design decision. On a surface that mixes the two, chrome follows this rule. Applying it to the content would flatten the product's voice, which does more harm than the padding it removes.
 
-If functional copy runs past two short sentences, it is explaining, reassuring, or selling, so cut it back. `@elirobinson/eslint-config` reports the literal phrases, over copy props and chrome components only. It never reads ordinary prose. It ships at `warn` so an upgrade cannot fail a build. Raise it to `error` once your copy is clean: `designSystem({ copy: { severity: 'error' } })`.
+If functional copy runs past two short sentences, it is explaining, reassuring, or selling, so cut it back. `@elirobinson/eslint-config` reports the literal phrases, over copy props and chrome components only. It does not read ordinary prose. It ships at `warn` so an upgrade cannot fail a build. Raise it to `error` once your copy is clean: `designSystem({ copy: { severity: 'error' } })`.
 
 Before calling UI work done, run `pnpm ds patterns` and work through the Definition of Done for UI work checklist it prints.
 
