@@ -40,7 +40,8 @@ import { Button } from '@elirobinson/react/components/atoms/Button';
 
 - Import each component by its full subpath. There is no barrel export; a bare `@elirobinson/react` import does not resolve.
 - Set appearance with the component's own `variant` / `size` props, not by overriding with utilities. Use utility classes for layout (grid, flex, spacing) only, because the design system owns the look.
-- Import `@elirobinson/react/styles.css` once, in the app shell, not per component. It already imports `@elirobinson/tokens/tokens.css`; importing `tokens.css` as well bundles it twice. An app that does not import `styles.css` (no React, or per-component sheets only) imports `@elirobinson/tokens/tokens.css` itself. On Tailwind v4, that import goes in the CSS entry after `@import 'tailwindcss'`, followed by `@import '@elirobinson/tokens/tailwind.css'`.
+- On Tailwind v4, order the CSS entry as `@import 'tailwindcss'`, then the design system stylesheet (`@elirobinson/react/styles.css`, or `@elirobinson/tokens/tokens.css` for an app that does not import `styles.css`), then `@import '@elirobinson/tokens/tailwind.css'`. That last import maps the Tailwind color namespace onto the tokens, so utilities like `bg-background` resolve to them.
+- Import `@elirobinson/react/styles.css` once, in the app shell, not per component. It already imports `@elirobinson/tokens/tokens.css`; importing `tokens.css` as well bundles it twice. An app that does not import `styles.css` (no React, or per-component sheets only) imports `@elirobinson/tokens/tokens.css` itself.
 - Token overrides go in an unlayered `:root` block. `tokens.css` is unlayered, so an override inside `@layer base` silently loses to it. With `next/font`, re-point the families through `--ds-font-sans-override` / `--ds-font-mono-override` instead, with the font class on `<html>`.
 - Patterns like heroes, page headers, empty states, and sidebars are compositions of primitives, not missing components.
 
@@ -99,4 +100,4 @@ Contributing a component upstream instead? `pnpm ds prompts add-component` print
 
 ## Before you call UI work done
 
-Run `pnpm ds patterns` and follow the Definition of Done for UI work checklist it prints. It lives in the package so it stays current. Leave it out of this file.
+Run `pnpm ds patterns` and follow the Definition of Done for UI work checklist it prints. It lives in the package so it stays current; this file does not repeat it.
