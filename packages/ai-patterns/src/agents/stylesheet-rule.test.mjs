@@ -22,6 +22,8 @@ import { AGENT_FILES } from '../cli/init.mjs';
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 const read = (path) => readFileSync(join(repo, path), 'utf8');
+/* Prose wraps, so compare on collapsed whitespace. */
+const flat = (text) => text.replace(/\s+/g, ' ');
 
 /* The templates `init --agents` writes, from AGENT_FILES, so a new template is
  * covered by every test in this file without an edit here. */
@@ -42,9 +44,6 @@ const SHIPPED = {
   }),
   'templates/default-app/AGENTS.md': read('templates/default-app/AGENTS.md'),
 };
-
-/* Prose wraps, so compare on collapsed whitespace. */
-const flat = (text) => text.replace(/\s+/g, ' ');
 
 describe.each(Object.entries(SHIPPED))('%s', (_name, text) => {
   it('names react/styles.css as the stylesheet to import', () => {
@@ -68,18 +67,11 @@ describe.each(Object.entries(SHIPPED))('%s', (_name, text) => {
   });
 });
 
-/* The four templates `init --agents` writes also state the Tailwind v4
+/* The templates `init --agents` writes also state the Tailwind v4
  * CSS-entry order: tailwindcss, then the design system stylesheet, then
  * tokens/tailwind.css. The other shipped files are tracked in #435. */
 describe.each(AGENT_TEMPLATES)('%s', (_name, raw) => {
   const text = flat(raw);
-
-  /* The shared test also accepts "never next to". style-guard.test.mjs bans
-   * "never" in these templates, so this adds no coverage today; it pins the
-   * calm wording here, with a clearer failure, in case that ban changes. */
-  it('says importing tokens.css as well bundles it twice', () => {
-    expect(text).toContain('bundles it twice');
-  });
 
   it('orders tailwindcss, then the stylesheet (or tokens.css), then the Tailwind v4 import', () => {
     const tailwind = text.indexOf("@import 'tailwindcss'");
