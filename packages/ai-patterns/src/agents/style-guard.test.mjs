@@ -1,7 +1,8 @@
 /* The templates written by `init --agents` share one calm voice: plain rules,
  * no shouting, no bold run-ins, no em dashes. This pins that voice and the
  * facts each template carries, not the bytes, so wording can still change.
- * Only the Cursor rule's `globs:` line is dropped before the voice checks,
+ * The stylesheet facts, Tailwind order included, are pinned in
+ * stylesheet-rule.test.mjs, not here. Only the Cursor rule's `globs:` line is dropped before the voice checks,
  * because it holds `**` globs; descriptions in frontmatter are still checked. */
 
 import { readFileSync } from 'node:fs';
@@ -29,8 +30,6 @@ const SHARED = [
   'unlayered',
   '--ds-font-sans-override',
   '@elirobinson/tokens/tailwind.css',
-  '@elirobinson/react/styles.css',
-  'bundles it twice',
   'does not resolve',
   'worth upstreaming',
   'You have not been charged.',
@@ -42,6 +41,7 @@ const SHARED = [
   '@layer base',
   '--ds-font-mono-override',
   'almost always',
+  'https://github.com/EliRobinson/design-system',
 ];
 
 const FACTS = {
@@ -50,15 +50,13 @@ const FACTS = {
     '@elirobinson/ai-patterns/testing/playwright',
     'blocks foreign UI libraries',
     'You have not been charged. Try again.',
-    'https://github.com/EliRobinson/design-system',
   ],
   'SKILL.md': [
     ...SHARED,
     '@elirobinson/ai-patterns/testing/playwright',
     'You have not been charged. Try again.',
-    'https://github.com/EliRobinson/design-system',
   ],
-  'design-system.mdc': [...SHARED, 'https://github.com/EliRobinson/design-system'],
+  'design-system.mdc': [...SHARED],
   'copilot-instructions.md': [...SHARED],
 };
 
@@ -93,18 +91,5 @@ describe.each(TEMPLATES)('%s facts', (name) => {
 
   it.each(FACTS[name])('mentions %s', (fact) => {
     expect(text).toContain(fact);
-  });
-
-  it('puts the Tailwind v4 import after tailwindcss and the design system stylesheet', () => {
-    const tailwind = text.indexOf("@import 'tailwindcss'");
-    const stylesheet = text.indexOf('@elirobinson/react/styles.css', tailwind);
-    const tokens = text.indexOf("@import '@elirobinson/tokens/tailwind.css'", stylesheet);
-    const tokensCss = text.indexOf('@elirobinson/tokens/tokens.css', tailwind);
-
-    expect(tailwind).toBeGreaterThan(-1);
-    expect(stylesheet).toBeGreaterThan(tailwind);
-    expect(tokens).toBeGreaterThan(stylesheet);
-    expect(tokensCss).toBeGreaterThan(tailwind);
-    expect(tokensCss).toBeLessThan(tokens);
   });
 });
