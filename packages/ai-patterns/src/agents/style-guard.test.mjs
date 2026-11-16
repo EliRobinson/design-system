@@ -36,33 +36,30 @@ const SHARED = [
   'You have not been charged.',
   "designSystem({ copy: { severity: 'error' } })",
   'Definition of Done',
+  'sanctioned gap-filler',
+  'pnpm exec elirobinson-ds',
+  'variant',
+  '@layer base',
+  '--ds-font-mono-override',
+  'almost always',
 ];
 
 const FACTS = {
   'AGENTS.md': [
     ...SHARED,
     '@elirobinson/ai-patterns/testing/playwright',
-    'sanctioned gap-filler',
     'blocks foreign UI libraries',
     'You have not been charged. Try again.',
-    'pnpm exec elirobinson-ds',
     'https://github.com/EliRobinson/design-system',
   ],
   'SKILL.md': [
     ...SHARED,
     '@elirobinson/ai-patterns/testing/playwright',
-    'sanctioned gap-filler',
     'You have not been charged. Try again.',
-    'pnpm exec elirobinson-ds',
     'https://github.com/EliRobinson/design-system',
   ],
-  'design-system.mdc': [
-    ...SHARED,
-    'sanctioned gap-filler',
-    'pnpm exec elirobinson-ds',
-    'https://github.com/EliRobinson/design-system',
-  ],
-  'copilot-instructions.md': [...SHARED, 'sanctioned gap-filler', 'pnpm exec elirobinson-ds'],
+  'design-system.mdc': [...SHARED, 'https://github.com/EliRobinson/design-system'],
+  'copilot-instructions.md': [...SHARED],
 };
 
 describe('the template list', () => {
@@ -102,9 +99,12 @@ describe.each(TEMPLATES)('%s facts', (name) => {
     const tailwind = text.indexOf("@import 'tailwindcss'");
     const stylesheet = text.indexOf('@elirobinson/react/styles.css', tailwind);
     const tokens = text.indexOf("@import '@elirobinson/tokens/tailwind.css'", stylesheet);
+    const tokensCss = text.indexOf('@elirobinson/tokens/tokens.css', tailwind);
 
     expect(tailwind).toBeGreaterThan(-1);
     expect(stylesheet).toBeGreaterThan(tailwind);
     expect(tokens).toBeGreaterThan(stylesheet);
+    expect(tokensCss).toBeGreaterThan(tailwind);
+    expect(tokensCss).toBeLessThan(tokens);
   });
 });
