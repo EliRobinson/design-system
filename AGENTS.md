@@ -2,11 +2,11 @@
 
 Miltinson Design System monorepo — its packages are listed in [README.md](README.md#packages).
 
-`@elirobinson/ai-elements` is the one package whose source is not ours: it is vendored from `vercel/ai-elements` at a pinned release. Never hand-edit `packages/ai-elements/src/` — see [AI Elements](docs/agents/ai-elements.md).
+`@elirobinson/ai-elements` is the one package whose source is not ours: it is vendored from `vercel/ai-elements` at a pinned release. Do not hand-edit `packages/ai-elements/src/`: `pnpm sync:elements` treats every file there as upstream's, so a hand edit blocks the next upgrade of that file. Put changes in `scripts/ai-elements-transforms.mjs`. See [AI Elements](docs/agents/ai-elements.md).
 
-**Nothing we publish may require a consumer to update prose when this repo changes.** A consumer bumps a version and is current. Anything they would otherwise have to copy into their own docs — a component list, a token table, a Tailwind mapping, a lint rule — is a bug in what we publish. Ship it as a command, a manifest, a stylesheet, or a rule instead.
+Nothing we publish may require a consumer to update prose when this repo changes. A consumer bumps a version and is current. Anything they would otherwise have to copy into their own docs — a component list, a token table, a Tailwind mapping, a lint rule — is a bug in what we publish. Ship it as a command, a manifest, a stylesheet, or a rule instead.
 
-> Edit this file only. `CLAUDE.md` is a symlink to `AGENTS.md`.
+> Edit `AGENTS.md`, not `CLAUDE.md`: `CLAUDE.md` is a symlink to it.
 
 **Package manager:** pnpm (`pnpm@11.21.0`)
 
@@ -14,17 +14,17 @@ Miltinson Design System monorepo — its packages are listed in [README.md](READ
 
 **Imports:** No barrel files — use package subpaths (`@elirobinson/react/components/atoms/Button`, `@elirobinson/tokens/tokens-data`). See `.cursor/rules/no-barrel-files.mdc`.
 
-**Components:** Components live under `packages/react/src/components/<tier>/` (atoms/molecules/organisms/ai). Every interactive component uses `forwardRef`. Touch targets are scoped, not blanket: >=44x44 for primary controls (buttons, pagination, segmented-control, nav items), shadcn/MUI-scale sizing for dense inline affordances (chip remove, search clear, rating stars, calendar days) — either way, an expanded hit area must never overlap sibling content. See [Components](docs/agents/components.md) for the tier boundary rule and full constraints.
+**Components:** Components live under `packages/react/src/components/<tier>/` (atoms/molecules/organisms/ai). Every interactive component uses `forwardRef`. Primary controls get a 44x44 touch target; dense inline affordances (chip remove, search clear, rating stars, calendar days) have a 24x24 floor; a grown hit area never overlaps its neighbours. [Components](docs/agents/components.md) has the tier boundary rule and the full constraints.
 
-**Work:** Every piece of work is a GitHub issue, done in its own worktree on its own feature branch. That includes every subagent and side session that writes files. See How we work below.
+**Work:** Each piece of work is a GitHub issue, done in its own worktree on its own feature branch. That includes subagents and side sessions that write files. See [Backlog](docs/agents/backlog.md) and [Parallel agents](docs/agents/parallel-agents.md).
 
 ## Do not
 
-- Do not open a PR before the review gate runs. Use the `review-gate` skill (`.agents/skills/review-gate/SKILL.md`). A hook enforces it.
-- Do not commit on `main`, and do not edit files in the main checkout, not even a one-line doc fix. See [Parallel agents](docs/agents/parallel-agents.md).
-- Do not bypass hooks (`--no-verify`).
-- Do not use Fable for any agent. Use Opus, Sonnet or Haiku, and always pass `model`.
-- Do not edit files another agent owns.
+- Do not edit files in the main checkout or commit on `main`, not even a one-line doc fix. Many sessions share that checkout, and the guard hook sees only git, not an editor.
+- Do not open a PR before the review gate runs: use the `review-gate` skill (`.agents/skills/review-gate/SKILL.md`). It finds problems before CI does, and a hook enforces it.
+- Do not bypass hooks, with `--no-verify` or any other way. A failing hook means something is wrong: fix the cause. Skip one only when Eli says so.
+- Do not use Fable for any agent: it costs too much. Use Opus, Sonnet or Haiku, and pass `model`, except to `review-*` agents, whose file pins it.
+- Do not edit files another agent owns. Two agents editing one file overwrite each other.
 
 ## How we work
 
@@ -41,7 +41,7 @@ Miltinson Design System monorepo — its packages are listed in [README.md](READ
 - [Layout patterns](docs/agents/layout-patterns.md)
 - [Product token layer](docs/agents/product-token-layer.md) — the optional `--product-*` override convention
 - [Brand boundary](docs/agents/brand-boundary.md) — what is the system's and what is a consumer's, and the test that enforces it
-- [AI Elements](docs/agents/ai-elements.md) — the vendored tier, `pnpm sync:elements`, and why `src/` is never hand-edited
+- [AI Elements](docs/agents/ai-elements.md) — the vendored tier, `pnpm sync:elements`, and the transform layer
 - [AI Elements accessibility](docs/agents/ai-elements-accessibility.md) — `pnpm a11y:elements`, the per-control touch-target verdicts, and what the sweep handed to the token bridge
 - [AI Elements theme](docs/agents/ai-elements-theme.md) — the Miltinson × AI Elements CSS layers, the import chain, and the canvas keyboard path that gates `ai-canvas.css`
 - [AI patterns](docs/agents/ai-patterns.md) — the `ds` discovery CLI, contracts, agent templates
