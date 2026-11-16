@@ -5,7 +5,7 @@ description: Use when building, changing, or reviewing any UI in this repo: page
 
 # Design System First
 
-All UI in this repo is built from `@elirobinson/react` (components, hooks), `@elirobinson/tokens` (color, type, space, radius, shadow, motion), and `@elirobinson/ai-patterns` (the contracts and patterns you build under). Do not add a second component library or hardcode design values.
+All UI in this repo is built from `@elirobinson/react` (components, hooks), `@elirobinson/tokens` (color, type, space, radius, shadow, motion), and `@elirobinson/ai-patterns` (the contracts and patterns you build under).
 
 Upstream source of truth: https://github.com/EliRobinson/design-system
 
@@ -20,7 +20,7 @@ pnpm ds                  # components (+ exports & variants), hooks, typography 
 pnpm ds props <Name>     # props and variant unions; accepts `Card` or `molecules/Card`
 pnpm ds tokens [filter]  # tokens and their values
 pnpm ds classes [filter] # CSS classes the design system ships
-pnpm ds contracts        # machine-checkable rules your UI must satisfy; read this every time
+pnpm ds contracts        # machine-checkable UI rules to satisfy
 pnpm ds patterns         # working principles
 pnpm ds prompts [name]   # reusable prompt templates
 pnpm ds check            # known traps that fail with no error; run after setup and every upgrade
@@ -28,7 +28,7 @@ pnpm ds check            # known traps that fail with no error; run after setup 
 
 If `pnpm ds` is not wired up as a script, `pnpm exec elirobinson-ds` is the same command.
 
-A component list you remember, or one that appears in a doc, may be out of date. `pnpm ds` is the authority (see the Discover, Don't Document pattern in `pnpm ds patterns`). For deeper detail read the component source under `node_modules/@elirobinson/react/src/components/` and `node_modules/@elirobinson/tokens/src/tokens.css`.
+See the Discover, Don't Document pattern in `pnpm ds patterns`. For deeper detail read the component source under `node_modules/@elirobinson/react/src/components/` and `node_modules/@elirobinson/tokens/src/tokens.css`.
 
 ## Step 2: Compose
 
@@ -39,8 +39,7 @@ import { Button } from '@elirobinson/react/components/atoms/Button';
 ```
 
 - Import each component by its full subpath. There is no barrel export; a bare `@elirobinson/react` import does not resolve.
-- Drive appearance with the component's own `variant` / `size` props, not by overriding with utilities.
-- Use utility classes for layout (grid, flex, spacing) and the design system for look.
+- Set appearance with the component's own `variant` / `size` props, not by overriding with utilities. Use utility classes for layout (grid, flex, spacing) only, because the design system owns the look.
 - Import `@elirobinson/react/styles.css` once, in the app shell, not per component. It already imports `@elirobinson/tokens/tokens.css`; importing `tokens.css` as well bundles it twice. An app that does not import `styles.css` (no React, or per-component sheets only) imports `@elirobinson/tokens/tokens.css` itself. On Tailwind v4, that import goes in the CSS entry after `@import 'tailwindcss'`, followed by `@import '@elirobinson/tokens/tailwind.css'`.
 - Token overrides go in an unlayered `:root` block. `tokens.css` is unlayered, so an override inside `@layer base` silently loses to it. With `next/font`, re-point the families through `--ds-font-sans-override` / `--ds-font-mono-override` instead, with the font class on `<html>`.
 - Patterns like heroes, page headers, empty states, and sidebars are compositions of primitives, not missing components.
@@ -49,7 +48,7 @@ import { Button } from '@elirobinson/react/components/atoms/Button';
 
 In order of preference:
 
-1. Token-backed utilities, if this repo maps them. With Tailwind v4 that mapping is one line, `@import '@elirobinson/tokens/tailwind.css'`, which is what makes `bg-background`, `text-muted-foreground`, `border-border`, `text-accent`, `ring-ring` resolve to system tokens.
+1. Token-backed utilities, if this repo maps them. With Tailwind v4, the `tailwind.css` import from Step 2 is what makes `bg-background`, `text-muted-foreground`, `border-border`, `text-accent`, `ring-ring` resolve to system tokens.
 2. Typography classes: run `pnpm ds classes t-` for the current set.
 3. Arbitrary values referencing a token: `text-[var(--fg-2)]`, `gap-[var(--space-6)]`, `shadow-[var(--shadow-md)]`, `duration-[var(--dur-fast)]`.
 
@@ -70,7 +69,7 @@ Errors, empty states, helper and hint text, toasts, labels, button text, tooltip
 - Unverifiable frequency claims ("almost always", "this rarely happens"), because you do not have that data.
 - Blame attribution ("on their side", "check your connection"). Say what is observable, not whose fault it might be.
 - Filler pacing ("in a moment", "hang tight").
-- Unprompted reassurance or apology ("don't worry", "we'll sort it out"). Reassurance is fine where it answers a question the reader is actually asking, and then it is a fact: "You have not been charged."
+- Unprompted reassurance or apology ("don't worry", "we'll sort it out"). Reassurance is fine when it answers a question the reader is actually asking, and then it is a fact: "You have not been charged."
 - Escalation paths nobody asked for ("if it keeps happening, reply to..."). They belong in a support surface, not a control.
 - Enthusiasm ("Great news!", exclamation marks).
 
@@ -84,7 +83,7 @@ Past two short sentences, functional copy is explaining, reassuring, or selling.
 
 This rule covers chrome, not this product's editorial voice. Marketing prose, conversational surfaces, and written deliverables are content, and their voice is a deliberate design decision. Where a surface mixes the two, the chrome follows this rule and the content is left alone. Applying it to the content would flatten the product's voice, which does more harm than the padding it removes.
 
-`@elirobinson/eslint-config` reports the literal phrases above. Its scope is that same line: copy props (`title`, `description`, `label`, `placeholder`, …) and the children of chrome components (`Alert`, `Toast`, `EmptyState`, …), never ordinary prose. It ships as a warning so an upgrade cannot break a build. Raise it with `designSystem({ copy: { severity: 'error' } })` once existing copy is clean.
+`@elirobinson/eslint-config` reports the literal phrases above. Its scope is that same line: copy props (`title`, `description`, `label`, `placeholder`, …) and the children of chrome components (`Alert`, `Toast`, `EmptyState`, …), not ordinary prose. It ships as a warning so an upgrade cannot break a build. Raise it with `designSystem({ copy: { severity: 'error' } })` once existing copy is clean.
 
 ## Step 6: When something is missing
 
@@ -100,4 +99,4 @@ Contributing a component upstream instead? `pnpm ds prompts add-component` print
 
 ## Before you call UI work done
 
-Run `pnpm ds patterns` and follow the Definition of Done for UI work checklist it prints. It lives in the package so it stays current, so leave it out of this file.
+Run `pnpm ds patterns` and follow the Definition of Done for UI work checklist it prints. It lives in the package so it stays current. Leave it out of this file.

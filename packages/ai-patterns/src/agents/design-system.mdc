@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Design system first
 
-UI in this repo comes from `@elirobinson/react` (components, hooks), `@elirobinson/tokens` (color, type, space, radius, shadow, motion), and `@elirobinson/ai-patterns` (UI contracts and working patterns). Do not add another component library or hardcode design values.
+UI in this repo comes from `@elirobinson/react` (components, hooks), `@elirobinson/tokens` (color, type, space, radius, shadow, motion), and `@elirobinson/ai-patterns` (UI contracts and working patterns).
 
 Upstream: https://github.com/EliRobinson/design-system
 
@@ -31,11 +31,10 @@ pnpm ds check            # known traps that fail with no error; run after setup 
 
 - Import each component by its full subpath; `pnpm ds props <Name>` prints the exact line. There is no barrel export and a bare package import does not resolve.
 - Satisfy `pnpm ds contracts`. Each constraint carries its own `check` and a `verifiedBy` naming what enforces it.
-- Use each component's `variant` / `size` props rather than overriding its look with utilities.
-- Utility classes are for layout (grid, flex, spacing); the design system owns appearance.
-- Colors, radii, shadows, durations, font sizes come from tokens: mapped utilities, `.t-*` typography classes, or `var(--token)` in arbitrary values. Use no literal values.
-- With Tailwind v4, `@import '@elirobinson/tokens/tailwind.css'` is what makes `bg-background`, `text-muted-foreground`, `border-border` and friends resolve to tokens.
-- Dark mode is `[data-theme="dark"]` (`.dark` also works). With `next-themes`, set `attribute="data-theme"`.
+- Set appearance with a component's own `variant` / `size` props. Use utility classes for layout (grid, flex, spacing) only, because the design system owns the look.
+- Colors, radii, shadows, durations, font sizes come from tokens: mapped utilities, `.t-*` typography classes, or `var(--token)` in arbitrary values. Do not use literal values.
+- On Tailwind v4, the `tailwind.css` import described in the stylesheet rule below is what makes `bg-background`, `text-muted-foreground`, `border-border` and friends resolve to tokens.
+- Dark mode is `[data-theme="dark"]` (`.dark` also works). With `next-themes`, set `attribute="data-theme"`. The default `class` strategy silently does nothing.
 - Token overrides go in an unlayered `:root` block. `tokens.css` is unlayered, so an override inside `@layer base` silently loses to it. With `next/font`, re-point the families through `--ds-font-sans-override` / `--ds-font-mono-override` instead, with the font class on `<html>`.
 - Import `@elirobinson/react/styles.css` once, in the app shell, not per component. It already imports `@elirobinson/tokens/tokens.css`; importing `tokens.css` as well bundles it twice. An app that does not import `styles.css` (no React, or per-component sheets only) imports `@elirobinson/tokens/tokens.css` itself. On Tailwind v4, that import goes in the CSS entry after `@import 'tailwindcss'`, followed by `@import '@elirobinson/tokens/tailwind.css'`.
 - Heroes, page headers, empty states, sidebars are compositions of primitives, not missing components.
@@ -47,13 +46,13 @@ Functional copy (errors, empty states, helper and hint text, toasts, labels, but
 - No unverifiable frequency claims ("almost always", "this rarely happens").
 - No blame attribution ("on their side", "check your connection").
 - No filler pacing ("in a moment", "hang tight").
-- No unprompted reassurance or apology ("don't worry", "we'll sort it out"). Reassurance is fine where it answers a question the reader is actually asking, and then only as a fact: "You have not been charged."
+- No unprompted reassurance or apology ("don't worry", "we'll sort it out"). Reassurance is fine when it answers a question the reader is actually asking, and then it is a fact: "You have not been charged."
 - No escalation paths nobody asked for, and no enthusiasm or exclamation marks.
 - Past two short sentences, it is explaining, reassuring, or selling, so cut it back.
 
 This rule covers chrome only, not this product's editorial voice. Marketing prose, conversational surfaces, and written deliverables are content, and their voice is deliberate. Where a surface mixes the two, the chrome follows this rule and the content is left alone.
 
-`@elirobinson/eslint-config` reports the literal phrases, scoped to copy props and chrome components; it never reads ordinary prose. It ships at `warn` so an upgrade cannot fail a build. Raise it to `error` once your copy is clean: `designSystem({ copy: { severity: 'error' } })`.
+`@elirobinson/eslint-config` reports the literal phrases, scoped to copy props and chrome components; it does not read ordinary prose. It ships at `warn` so an upgrade cannot fail a build. Raise it to `error` once your copy is clean: `designSystem({ copy: { severity: 'error' } })`.
 
 ## Missing something?
 
