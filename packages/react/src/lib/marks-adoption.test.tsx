@@ -1,4 +1,5 @@
-/* The six controls #166 names actually paint a mark, and typeset no character.
+/* The controls #166 named, and the ones added since, actually paint a mark and
+ * typeset no character.
  *
  * scripts/marks.test.mjs proves the marks themselves are correct — centred in
  * their viewBox, the chevron pair a true reflection, the element hidden from
@@ -95,7 +96,7 @@ const CONTROLS: Array<[string, () => HTMLElement, number]> = [
   ],
 ];
 
-describe('every control that #166 converted paints a drawn mark', () => {
+describe('every control on the roster paints a drawn mark', () => {
   for (const [name, mount, expected] of CONTROLS) {
     it(`${name} paints ${expected} mark${expected === 1 ? '' : 's'} and typesets none`, () => {
       const container = mount();

@@ -41,9 +41,10 @@ On a screen narrower than 30rem, the steps stack one per line.
 - Renders a native `<ol>` with one `<li>` per step — the ordered list itself conveys
   sequence, independent of any visual styling.
 - The active step's `<li>` gets `aria-current="step"`.
-- The step indicator (a number or a `✓` for completed steps) is **not** hidden from
-  screen readers — it's announced along with the label, so a completed step reads as
-  something like "check mark, Account" rather than silently showing just "Account."
+- An upcoming or active step's number is announced with its label. A completed step
+  draws a check that screen readers skip, and says "Completed" in visually hidden text
+  instead, so it reads as "Completed Account" rather than just "Account." Set
+  `completedLabel` to change or translate that word.
 - **Keyboard:** none — `Stepper` renders no interactive elements, so there's nothing to
   tab to. If you need clickable steps (jump back to a previous one), you'll need to
   build that affordance yourself; the component doesn't invent it.
