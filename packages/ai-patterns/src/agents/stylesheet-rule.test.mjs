@@ -1,8 +1,9 @@
 /* Every file this repo ships to tell an agent how to load the stylesheets says
- * the same thing: import @elirobinson/react/styles.css once, never next to
- * @elirobinson/tokens/tokens.css (styles.css already imports it), and import
- * tokens.css directly only when styles.css is not imported. The rule is written
- * in each file's own voice, so this pins the facts rather than the bytes.
+ * the same thing: import @elirobinson/react/styles.css once, and not next to
+ * @elirobinson/tokens/tokens.css (styles.css already imports it, so that
+ * bundles it twice), and import tokens.css directly only when styles.css is
+ * not imported. The rule is written in each file's own voice, so this pins the
+ * facts rather than the bytes.
  * contracts.json → token-stylesheet-once is the reason, and
  * @elirobinson/eslint-config's no-duplicate-token-stylesheet the check.
  *
@@ -22,11 +23,15 @@ import { AGENT_FILES } from '../cli/init.mjs';
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 const read = (path) => readFileSync(join(repo, path), 'utf8');
 
+/* The templates `init --agents` writes, from AGENT_FILES, so a new template is
+ * covered by every test in this file without an edit here. */
+const AGENT_TEMPLATES = AGENT_FILES.map(({ template }) => [
+  `agents/${template}`,
+  read(`packages/ai-patterns/src/agents/${template}`),
+]);
+
 const SHIPPED = {
-  'agents/AGENTS.md (the managed block)': read('packages/ai-patterns/src/agents/AGENTS.md'),
-  'agents/SKILL.md': read('packages/ai-patterns/src/agents/SKILL.md'),
-  'agents/design-system.mdc': read('packages/ai-patterns/src/agents/design-system.mdc'),
-  'agents/copilot-instructions.md': read('packages/ai-patterns/src/agents/copilot-instructions.md'),
+  ...Object.fromEntries(AGENT_TEMPLATES),
   'prompts/adopt-system.md': read('packages/ai-patterns/src/prompts/adopt-system.md'),
   'resync/SKILL.md': read('packages/ai-patterns/src/resync/SKILL.md'),
   'patterns.md': read('packages/ai-patterns/src/patterns.md'),
@@ -65,18 +70,13 @@ describe.each(Object.entries(SHIPPED))('%s', (_name, text) => {
 
 /* The four templates `init --agents` writes also state the Tailwind v4
  * CSS-entry order: tailwindcss, then the design system stylesheet, then
- * tokens/tailwind.css. The other shipped files are tracked in #435. The list
- * comes from AGENT_FILES, so a new template is covered without an edit here. */
-const AGENT_TEMPLATES = AGENT_FILES.map(({ template }) => [
-  template,
-  read(`packages/ai-patterns/src/agents/${template}`),
-]);
-
-describe.each(AGENT_TEMPLATES)('agents/%s', (_name, raw) => {
+ * tokens/tailwind.css. The other shipped files are tracked in #435. */
+describe.each(AGENT_TEMPLATES)('%s', (_name, raw) => {
   const text = flat(raw);
 
-  /* The shared test also accepts "never next to", but these templates ban
-   * "never", so pin the calm wording directly. */
+  /* The shared test also accepts "never next to". style-guard.test.mjs bans
+   * "never" in these templates, so this adds no coverage today; it pins the
+   * calm wording here, with a clearer failure, in case that ban changes. */
   it('says importing tokens.css as well bundles it twice', () => {
     expect(text).toContain('bundles it twice');
   });
