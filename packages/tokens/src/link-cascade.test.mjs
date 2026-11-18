@@ -7,14 +7,12 @@
  * has to be the real question, put to a real engine: put `text-accent-foreground`
  * on an anchor and read `getComputedStyle`, exactly as issue #112 did.
  *
- * The consumer is reconstructed rather than mocked, in the shape the package's
- * own docs prescribe (tailwind.css, "Usage"):
+ * The consumer is reconstructed rather than mocked, in the shape of the no-React
+ * case in the package's own docs (tailwind.css, "Usage"); react/styles.css
+ * imports tokens.css at the same point:
  *
  *   @import 'tailwindcss';                — emits @layer theme, base, components, utilities
  *   @import '@elirobinson/tokens/tokens.css';
- *
- * (The Usage section's middle line is the design system stylesheet. Here that
- * is tokens.css, the no-React case; react/styles.css imports it the same way.)
  *
  * That order is what makes the layer NAME load-bearing, and it is why this file
  * exists at all: a freshly-invented `@layer ds-base` in tokens.css is declared

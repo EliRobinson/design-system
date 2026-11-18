@@ -618,6 +618,8 @@ describe('ds contracts / patterns / prompts', () => {
 });
 
 describe('ds init --agents', () => {
+  const TARGETS = AGENT_FILES.map(({ target }) => target);
+
   it('installs every agent surface', async () => {
     const root = consumer({});
     const { text, exitCode } = await run(['init', '--agents'], at(root));
@@ -650,7 +652,7 @@ describe('ds init --agents', () => {
     const root = consumer({});
     await run(['init', '--agents'], at(root));
 
-    for (const path of AGENT_FILES.map(({ target }) => target)) {
+    for (const path of TARGETS) {
       const contents = readFileSync(join(root, path), 'utf8');
       // A list of component names is exactly the thing that goes stale.
       expect(contents).not.toMatch(/SegmentedControl|CommandPalette|VirtualTable/);
@@ -662,7 +664,7 @@ describe('ds init --agents', () => {
     const root = consumer({});
     await run(['init', '--agents'], at(root));
 
-    for (const path of AGENT_FILES.map(({ target }) => target)) {
+    for (const path of TARGETS) {
       const contents = readFileSync(join(root, path), 'utf8');
       // A repo that has raised the severity cannot correct these files — the
       // AGENTS.md block is rewritten wholesale on the next --force, and the

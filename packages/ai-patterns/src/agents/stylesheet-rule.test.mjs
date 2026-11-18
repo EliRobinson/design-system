@@ -67,31 +67,48 @@ describe.each(Object.entries(SHIPPED))('%s', (_name, text) => {
   });
 });
 
-/* Every file that states the Tailwind v4 CSS-entry order states the same one:
- * tailwindcss, then the design system stylesheet (or tokens.css without it),
- * then tokens/tailwind.css. That is the four `init --agents` templates, the
- * default app's AGENTS.md, the generated reference skill, and the Usage
- * section of tailwind.css itself. */
+/* Every shipped file that states the Tailwind v4 CSS-entry order states the
+ * same one: tailwindcss, then the design system stylesheet, then
+ * tokens/tailwind.css. The prose files also name tokens.css as the stylesheet
+ * for an app without styles.css, in the same slot; the migrate snippets and
+ * tailwind.css's own Usage show that case as a separate block or not at all.
+ * Each entry is [name, text, whether it must name tokens.css in that slot]. */
+const STATES_FALLBACK = new Set([
+  ...AGENT_TEMPLATES.map(([name]) => name),
+  'templates/default-app/AGENTS.md',
+  'the generated reference skill',
+]);
+
 const TAILWIND_ORDER = [
-  ...AGENT_TEMPLATES,
-  ['templates/default-app/AGENTS.md', SHIPPED['templates/default-app/AGENTS.md']],
-  ['the generated reference skill', SHIPPED['the generated reference skill']],
+  ...Object.entries(SHIPPED).filter(([name]) => STATES_FALLBACK.has(name)),
+  ...['migrate/adopt/tailwind.md', 'migrate/adopt/shadcn.md'].map((path) => [
+    path,
+    read(`packages/ai-patterns/src/${path}`),
+  ]),
   ['tokens/tailwind.css Usage', read('packages/tokens/src/tailwind.css')],
-];
+].map(([name, text]) => [name, text, STATES_FALLBACK.has(name)]);
 
-describe.each(TAILWIND_ORDER)('%s', (_name, raw) => {
+describe.each(TAILWIND_ORDER)('%s', (_name, raw, statesFallback) => {
   const text = flat(raw);
+  const bridge = "@import '@elirobinson/tokens/tailwind.css'";
 
-  it('orders tailwindcss, then the stylesheet (or tokens.css), then the Tailwind v4 import', () => {
+  it('orders tailwindcss, then the stylesheet, then the Tailwind v4 bridge', () => {
     const tailwind = text.indexOf("@import 'tailwindcss'");
     const stylesheet = text.indexOf('@elirobinson/react/styles.css', tailwind);
-    const tokens = text.indexOf("@import '@elirobinson/tokens/tailwind.css'", stylesheet);
-    const tokensCss = text.indexOf('@elirobinson/tokens/tokens.css', tailwind);
 
     expect(tailwind).toBeGreaterThan(-1);
     expect(stylesheet).toBeGreaterThan(tailwind);
-    expect(tokens).toBeGreaterThan(stylesheet);
-    expect(tokensCss).toBeGreaterThan(tailwind);
-    expect(tokensCss).toBeLessThan(tokens);
+    expect(text.indexOf(bridge, stylesheet)).toBeGreaterThan(stylesheet);
   });
+
+  it.runIf(statesFallback)(
+    'puts tokens.css in the same slot when styles.css is not imported',
+    () => {
+      const tailwind = text.indexOf("@import 'tailwindcss'");
+      const tokensCss = text.indexOf('@elirobinson/tokens/tokens.css', tailwind);
+
+      expect(tokensCss).toBeGreaterThan(tailwind);
+      expect(text.indexOf(bridge, tokensCss)).toBeGreaterThan(tokensCss);
+    },
+  );
 });
