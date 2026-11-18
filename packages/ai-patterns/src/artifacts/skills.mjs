@@ -24,7 +24,9 @@ export const SKILL_DIRS = {
 /**
  * The SKILL.md that fronts the llms snapshot. Generated rather than checked in
  * because the version stamp is the load-bearing part of it, and a checked-in
- * copy would carry last release's numbers.
+ * copy would carry last release's numbers. Its first three Non-negotiables also
+ * open templates/default-app/AGENTS.md; src/agents/non-negotiables.test.mjs keeps
+ * the two in step.
  *
  * @param {{ versions: object, componentCount: number, hookCount: number }} input
  */
