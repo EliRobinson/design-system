@@ -12,8 +12,11 @@ export const read = (path) => readFileSync(join(repoRoot, path), 'utf8');
 /** Prose wraps, so compare on collapsed whitespace. */
 export const flat = (text) => text.replace(/\s+/g, ' ');
 
+/** Repo-relative path of a file under packages/ai-patterns/src. */
+export const srcPath = (path) => `packages/ai-patterns/src/${path}`;
+
 /** Repo-relative path of a template `init --agents` writes. */
-export const templatePath = (name) => `packages/ai-patterns/src/agents/${name}`;
+export const templatePath = (name) => srcPath(`agents/${name}`);
 
 /** The default app's AGENTS.md: not written by init, but read by the same agents. */
 export const DEFAULT_APP_AGENTS = 'templates/default-app/AGENTS.md';
