@@ -12,26 +12,19 @@
  * every other file told apps to import both stylesheets.
  *
  * It also pins the Tailwind v4 CSS-entry order, over the files listed in
- * TAILWIND_ORDER below, some of which are not in SHIPPED. */
-
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+ * FULL_ORDER and STYLES_CSS_ONLY below, some of which are not in SHIPPED. */
 
 import { describe, expect, it } from 'vitest';
 
-import { repoRoot } from '../artifacts/published-files.test-helper.mjs';
 import { referenceSkillDoc } from '../artifacts/skills.mjs';
 import { AGENT_FILES } from '../cli/init.mjs';
-
-const read = (path) => readFileSync(join(repoRoot, path), 'utf8');
-/* Prose wraps, so compare on collapsed whitespace. */
-const flat = (text) => text.replace(/\s+/g, ' ');
+import { DEFAULT_APP_AGENTS, flat, read, templatePath } from './agent-docs.test-helper.mjs';
 
 /* The templates `init --agents` writes, from AGENT_FILES, so a new template is
  * covered by every test in this file without an edit here. */
 const AGENT_TEMPLATES = AGENT_FILES.map(({ template }) => [
   `agents/${template}`,
-  read(`packages/ai-patterns/src/agents/${template}`),
+  read(templatePath(template)),
 ]);
 
 const SHIPPED = {
@@ -44,7 +37,7 @@ const SHIPPED = {
     componentCount: 0,
     hookCount: 0,
   }),
-  'templates/default-app/AGENTS.md': read('templates/default-app/AGENTS.md'),
+  [DEFAULT_APP_AGENTS]: read(DEFAULT_APP_AGENTS),
 };
 
 describe.each(Object.entries(SHIPPED))('%s', (_name, text) => {
@@ -82,7 +75,7 @@ const fromPackage = (path) => [path, read(`packages/ai-patterns/src/${path}`)];
 
 const FULL_ORDER = [
   ...AGENT_TEMPLATES,
-  fromShipped('templates/default-app/AGENTS.md'),
+  fromShipped(DEFAULT_APP_AGENTS),
   fromShipped('the generated reference skill'),
   ['tokens/tailwind.css Usage', read('packages/tokens/src/tailwind.css')],
 ];
@@ -122,7 +115,7 @@ describe.each(['agents/AGENTS.md', 'agents/design-system.mdc'].map(fromShipped))
   '%s',
   (_name, raw) => {
     it('says the app shell import is the CSS entry on Tailwind v4', () => {
-      expect(flat(raw)).toContain('On Tailwind v4 that is the CSS entry above.');
+      expect(flat(raw)).toMatch(/On Tailwind v4,? (?:that|this) is the CSS entry/);
     });
   },
 );
