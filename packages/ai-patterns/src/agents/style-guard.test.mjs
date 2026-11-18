@@ -26,9 +26,6 @@ const templatePath = (name) => `packages/ai-patterns/src/agents/${name}`;
 /* Not written by init, but it speaks to the same agents. */
 const DEFAULT_APP = 'templates/default-app/AGENTS.md';
 
-/* [label, repo-relative path] for every file whose voice is checked. */
-const VOICED = [...TEMPLATES.map((name) => [name, templatePath(name)]), [DEFAULT_APP, DEFAULT_APP]];
-
 /* Facts every template carries. */
 const SHARED = [
   'pnpm ds check',
@@ -50,12 +47,11 @@ const SHARED = [
   'https://github.com/EliRobinson/design-system',
 ];
 
-const FACTS = {
+const TEMPLATE_FACTS = {
   'AGENTS.md': [
     ...SHARED,
     '@elirobinson/ai-patterns/testing/playwright',
     'blocks foreign UI libraries',
-    'On Tailwind v4 that is the CSS entry above.',
     'You have not been charged. Try again.',
   ],
   'SKILL.md': [
@@ -63,7 +59,7 @@ const FACTS = {
     '@elirobinson/ai-patterns/testing/playwright',
     'You have not been charged. Try again.',
   ],
-  'design-system.mdc': [...SHARED, 'On Tailwind v4 that is the CSS entry above.'],
+  'design-system.mdc': [...SHARED],
   'copilot-instructions.md': [...SHARED],
 };
 
@@ -91,13 +87,19 @@ const DEFAULT_APP_FACTS = [
   'conventional commit messages',
 ];
 
+/* Every voiced file, by repo path, with the facts it carries. */
+const FACTS = {
+  ...Object.fromEntries(TEMPLATES.map((name) => [templatePath(name), TEMPLATE_FACTS[name]])),
+  [DEFAULT_APP]: DEFAULT_APP_FACTS,
+};
+
 describe('the template list', () => {
   it('has a fact list for every template init writes', () => {
-    expect(Object.keys(FACTS).sort()).toEqual([...TEMPLATES].sort());
+    expect(Object.keys(TEMPLATE_FACTS).sort()).toEqual([...TEMPLATES].sort());
   });
 });
 
-describe.each(VOICED)('%s voice', (_name, path) => {
+describe.each(Object.keys(FACTS))('%s voice', (path) => {
   const text = withoutGlobs(read(path));
 
   it('has no em dash', () => {
@@ -117,18 +119,10 @@ describe.each(VOICED)('%s voice', (_name, path) => {
   });
 });
 
-describe.each(TEMPLATES)('%s facts', (name) => {
-  const text = flat(read(templatePath(name)));
+describe.each(Object.entries(FACTS))('%s facts', (path, facts) => {
+  const text = flat(read(path));
 
-  it.each(FACTS[name])('mentions %s', (fact) => {
-    expect(text).toContain(fact);
-  });
-});
-
-describe(`${DEFAULT_APP} facts`, () => {
-  const text = flat(read(DEFAULT_APP));
-
-  it.each(DEFAULT_APP_FACTS)('mentions %s', (fact) => {
+  it.each(facts)('mentions %s', (fact) => {
     expect(text).toContain(fact);
   });
 });

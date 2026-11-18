@@ -80,7 +80,7 @@ ${RESYNC_COMMAND}
   \`@import '@elirobinson/tokens/tailwind.css'\`, which maps Tailwind's color namespace
   onto the tokens.
 - In app code, use semantic tokens (\`--fg\`, \`--surface\`, \`--accent\`) rather than raw
-  scale values (\`--ink-500\`), so the dials can move them.
+  scale values (\`--ink-500\`), so the theme dial can flip them.
 - When a system component does not fit, report the gap rather than restyling it with
   overrides that fight the tokens.
 `;
