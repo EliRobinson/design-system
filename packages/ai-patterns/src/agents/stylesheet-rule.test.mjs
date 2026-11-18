@@ -9,19 +9,21 @@
  *
  * It exists because the rule had already drifted: the Cursor rules file said
  * only "stylesheets are imported once" and the Copilot file said nothing, while
- * every other file told apps to import both stylesheets. */
+ * every other file told apps to import both stylesheets.
+ *
+ * It also pins the Tailwind v4 CSS-entry order, over the files listed in
+ * TAILWIND_ORDER below, some of which are not in SHIPPED. */
 
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { repoRoot } from '../artifacts/published-files.test-helper.mjs';
 import { referenceSkillDoc } from '../artifacts/skills.mjs';
 import { AGENT_FILES } from '../cli/init.mjs';
 
-const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
-const read = (path) => readFileSync(join(repo, path), 'utf8');
+const read = (path) => readFileSync(join(repoRoot, path), 'utf8');
 /* Prose wraps, so compare on collapsed whitespace. */
 const flat = (text) => text.replace(/\s+/g, ' ');
 
@@ -69,50 +71,58 @@ describe.each(Object.entries(SHIPPED))('%s', (_name, text) => {
 
 /* Every shipped file that states the Tailwind v4 CSS-entry order states the
  * same one: tailwindcss, then the design system stylesheet, then
- * tokens/tailwind.css. The third column says whether the file also names
- * `@elirobinson/tokens/tokens.css` in that slot, for an app without styles.css.
- * The prose files and tailwind.css's second Usage block do; the migrate
- * snippets and patterns.md show only the styles.css case. */
-const fromShipped = (name, statesFallback) => {
+ * tokens/tailwind.css. Files in FULL_ORDER also put
+ * `@elirobinson/tokens/tokens.css` in that slot for an app without styles.css;
+ * the snippets in STYLES_CSS_ONLY show only the styles.css case. */
+const fromShipped = (name) => {
   if (!(name in SHIPPED)) throw new Error(`${name} is not in SHIPPED`);
-  return [name, SHIPPED[name], statesFallback];
+  return [name, SHIPPED[name]];
 };
-const fromPackage = (path, statesFallback) => [
-  path,
-  read(`packages/ai-patterns/src/${path}`),
-  statesFallback,
+const fromPackage = (path) => [path, read(`packages/ai-patterns/src/${path}`)];
+
+const FULL_ORDER = [
+  ...AGENT_TEMPLATES,
+  fromShipped('templates/default-app/AGENTS.md'),
+  fromShipped('the generated reference skill'),
+  ['tokens/tailwind.css Usage', read('packages/tokens/src/tailwind.css')],
+];
+const STYLES_CSS_ONLY = [
+  fromShipped('patterns.md'),
+  fromPackage('migrate/adopt/tailwind.md'),
+  fromPackage('migrate/adopt/shadcn.md'),
 ];
 
-const TAILWIND_ORDER = [
-  ...AGENT_TEMPLATES.map(([name]) => fromShipped(name, true)),
-  fromShipped('templates/default-app/AGENTS.md', true),
-  fromShipped('the generated reference skill', true),
-  fromShipped('patterns.md', false),
-  fromPackage('migrate/adopt/tailwind.md', false),
-  fromPackage('migrate/adopt/shadcn.md', false),
-  ['tokens/tailwind.css Usage', read('packages/tokens/src/tailwind.css'), true],
-];
+const TAILWIND = "@import 'tailwindcss'";
+const BRIDGE = "@import '@elirobinson/tokens/tailwind.css'";
 
-describe.each(TAILWIND_ORDER)('%s', (_name, raw, statesFallback) => {
-  const text = flat(raw);
-  const tailwind = text.indexOf("@import 'tailwindcss'");
-  const bridge = "@import '@elirobinson/tokens/tailwind.css'";
+/* True when `stylesheet` sits between an `@import 'tailwindcss'` and the
+ * first bridge import after it. */
+const inTheMiddleSlot = (text, stylesheet) => {
+  const at = text.indexOf(stylesheet, text.indexOf(TAILWIND));
+  const tailwind = text.lastIndexOf(TAILWIND, at);
+  return at > -1 && tailwind > -1 && text.indexOf(BRIDGE, tailwind) > at;
+};
 
-  it('orders tailwindcss, then the stylesheet, then the Tailwind v4 bridge', () => {
-    const stylesheet = text.indexOf('@elirobinson/react/styles.css', tailwind);
-
-    expect(tailwind).toBeGreaterThan(-1);
-    expect(stylesheet).toBeGreaterThan(tailwind);
-    expect(text.indexOf(bridge, stylesheet)).toBeGreaterThan(stylesheet);
+describe.each([...FULL_ORDER, ...STYLES_CSS_ONLY])('%s', (_name, raw) => {
+  it('orders tailwindcss, then react/styles.css, then the Tailwind v4 bridge', () => {
+    expect(inTheMiddleSlot(flat(raw), '@elirobinson/react/styles.css')).toBe(true);
   });
-
-  it.runIf(statesFallback)(
-    'puts tokens.css in the same slot when styles.css is not imported',
-    () => {
-      const tokensCss = text.indexOf('@elirobinson/tokens/tokens.css', tailwind);
-
-      expect(tokensCss).toBeGreaterThan(tailwind);
-      expect(text.indexOf(bridge, tokensCss)).toBeGreaterThan(tokensCss);
-    },
-  );
 });
+
+describe.each(FULL_ORDER)('%s', (_name, raw) => {
+  it('puts tokens.css in the same slot when styles.css is not imported', () => {
+    expect(inTheMiddleSlot(flat(raw), '@elirobinson/tokens/tokens.css')).toBe(true);
+  });
+});
+
+/* The templates whose "import styles.css once" rule says, on Tailwind v4, that
+ * the app shell import is the CSS entry. SKILL.md and copilot-instructions.md
+ * are not listed yet (#436 owns them this cycle). */
+describe.each(['agents/AGENTS.md', 'agents/design-system.mdc'].map(fromShipped))(
+  '%s',
+  (_name, raw) => {
+    it('says the app shell import is the CSS entry on Tailwind v4', () => {
+      expect(flat(raw)).toContain('On Tailwind v4 that is the CSS entry above.');
+    });
+  },
+);

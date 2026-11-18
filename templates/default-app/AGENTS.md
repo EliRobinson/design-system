@@ -60,7 +60,7 @@ then the artifacts command again.
   the tokens.
 - Take colours, spacing, radii, shadows, and durations from tokens. In app code, use
   semantic tokens (`--fg`, `--surface`, `--accent`) rather than raw scale values
-  (`--ink-500`), so the dials can move them.
+  (`--ink-500`), so the theme dial can flip them.
 - The three dials (palette, theme, platform) are root-element attributes, and an absent
   attribute is that dial's default. `pnpm ds dials` prints the attributes, their values,
   and which tokens each one moves. `lib/dials.ts` writes the two a person chooses.
