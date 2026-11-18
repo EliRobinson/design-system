@@ -16,12 +16,13 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { referenceSkillDoc } from '../artifacts/skills.mjs';
 import { AGENT_FILES } from '../cli/init.mjs';
 import {
   DEFAULT_APP_AGENTS,
   flat,
   read,
+  REFERENCE_SKILL,
+  referenceSkill,
   srcPath,
   templatePath,
 } from './agent-docs.test-helper.mjs';
@@ -38,11 +39,7 @@ const SHIPPED = {
   'prompts/adopt-system.md': read(srcPath('prompts/adopt-system.md')),
   'resync/SKILL.md': read(srcPath('resync/SKILL.md')),
   'patterns.md': read(srcPath('patterns.md')),
-  'the generated reference skill': referenceSkillDoc({
-    versions: {},
-    componentCount: 0,
-    hookCount: 0,
-  }),
+  [REFERENCE_SKILL]: referenceSkill(),
   [DEFAULT_APP_AGENTS]: read(DEFAULT_APP_AGENTS),
 };
 
@@ -84,7 +81,7 @@ const fromPackage = (path) => [path, read(srcPath(path))];
 const FULL_ORDER = [
   ...AGENT_TEMPLATES,
   fromShipped(DEFAULT_APP_AGENTS),
-  fromShipped('the generated reference skill'),
+  fromShipped(REFERENCE_SKILL),
   ['tokens/tailwind.css Usage', read('packages/tokens/src/tailwind.css')],
 ];
 const STYLES_CSS_ONLY = [

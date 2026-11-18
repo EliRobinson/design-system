@@ -7,59 +7,69 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { referenceSkillDoc } from '../artifacts/skills.mjs';
-import { DEFAULT_APP_AGENTS, flat, read } from './agent-docs.test-helper.mjs';
+import {
+  DEFAULT_APP_AGENTS,
+  flat,
+  read,
+  REFERENCE_SKILL,
+  referenceSkill,
+} from './agent-docs.test-helper.mjs';
 
 /** How many bullets, from the top of each list, the two files share. */
 const SHARED = 3;
 
 /** The top-level bullets under `## Non-negotiables`, each on one line. */
-const nonNegotiables = (text) => {
+const nonNegotiables = (name, text) => {
   const section = text.split(/^## Non-negotiables\n/m)[1]?.split(/^## /m)[0];
-  if (!section) throw new Error('no ## Non-negotiables section');
+  if (!section) throw new Error(`${name} has no ## Non-negotiables section`);
   return section
     .split(/^- /m)
     .slice(1)
     .map((bullet) => flat(bullet).trim());
 };
 
-/* Each copy's shared bullets, and the text only that copy has, by design: the
- * default app knows its CSS entry, always has React, and leads the tokens
+/* Each copy, and the text only it has, by bullet number. By design, the
+ * default app names its CSS entry, always has React, and leads the tokens
  * bullet with what to take from tokens. */
-const skill = {
-  bullets: nonNegotiables(
-    referenceSkillDoc({ versions: {}, componentCount: 0, hookCount: 0 }),
-  ).slice(0, SHARED),
-  onlyHere: ['no React, or '],
-};
-const defaultApp = {
-  bullets: nonNegotiables(read(DEFAULT_APP_AGENTS)).slice(0, SHARED),
-  onlyHere: [
-    ' (`app/globals.css`)',
-    'Take colours, spacing, radii, shadows, and durations from tokens. ',
-  ],
-};
-const COPIES = { 'the generated reference skill': skill, [DEFAULT_APP_AGENTS]: defaultApp };
+const COPIES = [
+  {
+    name: REFERENCE_SKILL,
+    bullets: nonNegotiables(REFERENCE_SKILL, referenceSkill()),
+    onlyHere: { 2: ['no React, or '] },
+  },
+  {
+    name: DEFAULT_APP_AGENTS,
+    bullets: nonNegotiables(DEFAULT_APP_AGENTS, read(DEFAULT_APP_AGENTS)),
+    onlyHere: {
+      2: [' (`app/globals.css`)'],
+      3: ['Take colours, spacing, radii, shadows, and durations from tokens. '],
+    },
+  },
+];
+const [skill, defaultApp] = COPIES;
 
-/** A bullet with its copy's own text taken out. */
-const common = ({ bullets, onlyHere }, i) =>
-  onlyHere.reduce((text, part) => text.replace(part, ''), bullets[i]);
+/** Bullet `n` (1-based) with its copy's own text for that bullet taken out. */
+const common = ({ bullets, onlyHere }, n) =>
+  (onlyHere[n] ?? []).reduce((text, part) => text.replace(part, ''), bullets[n - 1] ?? '');
 
-describe.each(Object.entries(COPIES))('%s', (_name, copy) => {
+describe.each(COPIES.map((copy) => [copy.name, copy]))('%s', (_name, copy) => {
   it(`has at least ${SHARED} Non-negotiables`, () => {
-    expect(copy.bullets).toHaveLength(SHARED);
+    expect(copy.bullets.length).toBeGreaterThanOrEqual(SHARED);
   });
 
-  it.each(copy.onlyHere)('still has its own text %j', (part) => {
-    expect(copy.bullets.join(' ')).toContain(part);
-  });
+  it.each(Object.entries(copy.onlyHere).flatMap(([n, parts]) => parts.map((part) => [n, part])))(
+    'still has its own text in bullet %s: %j',
+    (n, part) => {
+      expect(copy.bullets[n - 1]).toContain(part);
+    },
+  );
 });
 
-describe.each(skill.bullets.map((bullet, i) => [i + 1, bullet.slice(0, 48), i]))(
+describe.each(skill.bullets.slice(0, SHARED).map((bullet, i) => [i + 1, bullet.slice(0, 48)]))(
   'Non-negotiable %i ("%s…")',
-  (_n, _start, i) => {
+  (n) => {
     it('says the same in the reference skill and the default app', () => {
-      expect(common(defaultApp, i)).toBe(common(skill, i));
+      expect(common(defaultApp, n)).toBe(common(skill, n));
     });
   },
 );

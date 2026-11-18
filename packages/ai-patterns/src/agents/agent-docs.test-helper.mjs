@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { repoRoot } from '../artifacts/published-files.test-helper.mjs';
+import { referenceSkillDoc } from '../artifacts/skills.mjs';
 
 /** Read a file by its repo-relative path. */
 export const read = (path) => readFileSync(join(repoRoot, path), 'utf8');
@@ -21,3 +22,8 @@ export const templatePath = (name) => srcPath(`agents/${name}`);
 
 /** The default app's AGENTS.md: not written by init, but read by the same agents. */
 export const DEFAULT_APP_AGENTS = 'templates/default-app/AGENTS.md';
+
+/** The generated design-system-reference skill, by name and text. */
+export const REFERENCE_SKILL = 'the generated reference skill';
+export const referenceSkill = () =>
+  referenceSkillDoc({ versions: {}, componentCount: 0, hookCount: 0 });
