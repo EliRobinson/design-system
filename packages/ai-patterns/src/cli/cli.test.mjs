@@ -625,9 +625,7 @@ describe('ds init --agents', () => {
     const { text, exitCode } = await run(['init', '--agents'], at(root));
 
     expect(exitCode).toBe(0);
-    expect(text).toContain('.claude/skills/design-system/SKILL.md');
-    expect(text).toContain('.cursor/rules/design-system.mdc');
-    expect(text).toContain('.github/copilot-instructions.md');
+    for (const target of TARGETS) expect(text).toContain(target);
     expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toContain('design system first');
   });
 

@@ -53,8 +53,8 @@ then the artifacts command again.
 - Import `@elirobinson/react/styles.css` once, in the app shell (`app/globals.css`). It
   already imports `@elirobinson/tokens/tokens.css`; importing `tokens.css` as well bundles
   it twice. An app that does not import `styles.css` (per-component sheets only) imports
-  `@elirobinson/tokens/tokens.css` itself. On Tailwind v4 that import goes in the CSS
-  entry, in this order: `@import 'tailwindcss'`, then the design system stylesheet
+  `@elirobinson/tokens/tokens.css` itself. On Tailwind v4, that one stylesheet import goes in
+  the CSS entry, in this order: `@import 'tailwindcss'`, then the design system stylesheet
   (`@elirobinson/react/styles.css` or `@elirobinson/tokens/tokens.css`), then
   `@import '@elirobinson/tokens/tailwind.css'`, which maps Tailwind's color namespace onto
   the tokens.
