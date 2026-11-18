@@ -67,10 +67,19 @@ describe.each(Object.entries(SHIPPED))('%s', (_name, text) => {
   });
 });
 
-/* The templates `init --agents` writes also state the Tailwind v4
- * CSS-entry order: tailwindcss, then the design system stylesheet, then
- * tokens/tailwind.css. The other shipped files are tracked in #435. */
-describe.each(AGENT_TEMPLATES)('%s', (_name, raw) => {
+/* Every file that states the Tailwind v4 CSS-entry order states the same one:
+ * tailwindcss, then the design system stylesheet (or tokens.css without it),
+ * then tokens/tailwind.css. That is the four `init --agents` templates, the
+ * default app's AGENTS.md, the generated reference skill, and the Usage
+ * section of tailwind.css itself. */
+const TAILWIND_ORDER = [
+  ...AGENT_TEMPLATES,
+  ['templates/default-app/AGENTS.md', SHIPPED['templates/default-app/AGENTS.md']],
+  ['the generated reference skill', SHIPPED['the generated reference skill']],
+  ['tokens/tailwind.css Usage', read('packages/tokens/src/tailwind.css')],
+];
+
+describe.each(TAILWIND_ORDER)('%s', (_name, raw) => {
   const text = flat(raw);
 
   it('orders tailwindcss, then the stylesheet (or tokens.css), then the Tailwind v4 import', () => {

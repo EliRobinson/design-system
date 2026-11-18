@@ -30,7 +30,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { findPackageDir } from '../package-lookup.mjs';
 import { loadInventory } from './discovery.mjs';
-import { mergeBlock } from './init.mjs';
+import { AGENT_FILES, mergeBlock } from './init.mjs';
 import { run } from './run.mjs';
 
 const patternsRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -650,12 +650,7 @@ describe('ds init --agents', () => {
     const root = consumer({});
     await run(['init', '--agents'], at(root));
 
-    for (const path of [
-      '.claude/skills/design-system/SKILL.md',
-      '.cursor/rules/design-system.mdc',
-      '.github/copilot-instructions.md',
-      'AGENTS.md',
-    ]) {
+    for (const path of AGENT_FILES.map(({ target }) => target)) {
       const contents = readFileSync(join(root, path), 'utf8');
       // A list of component names is exactly the thing that goes stale.
       expect(contents).not.toMatch(/SegmentedControl|CommandPalette|VirtualTable/);
@@ -667,17 +662,12 @@ describe('ds init --agents', () => {
     const root = consumer({});
     await run(['init', '--agents'], at(root));
 
-    for (const path of [
-      '.claude/skills/design-system/SKILL.md',
-      '.cursor/rules/design-system.mdc',
-      '.github/copilot-instructions.md',
-      'AGENTS.md',
-    ]) {
+    for (const path of AGENT_FILES.map(({ target }) => target)) {
       const contents = readFileSync(join(root, path), 'utf8');
       // A repo that has raised the severity cannot correct these files — the
       // AGENTS.md block is rewritten wholesale on the next --force, and the
       // other three are whole-file writes. So the claim has to be true at any
-      // configured level, and the raise has to be reachable from all four.
+      // configured level, and the raise has to be reachable from every one.
       expect(contents).not.toMatch(/eslint-config` warns/);
       expect(contents).toContain("designSystem({ copy: { severity: 'error' } })");
     }

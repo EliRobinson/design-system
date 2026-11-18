@@ -13,6 +13,9 @@
  *   @import 'tailwindcss';                — emits @layer theme, base, components, utilities
  *   @import '@elirobinson/tokens/tokens.css';
  *
+ * (The Usage section's middle line is the design system stylesheet. Here that
+ * is tokens.css, the no-React case; react/styles.css imports it the same way.)
+ *
  * That order is what makes the layer NAME load-bearing, and it is why this file
  * exists at all: a freshly-invented `@layer ds-base` in tokens.css is declared
  * after Tailwind's four, so it sorts ABOVE `utilities` and the bug survives the

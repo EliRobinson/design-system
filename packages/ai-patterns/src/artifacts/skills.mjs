@@ -69,16 +69,20 @@ ${RESYNC_COMMAND}
 
 ## Non-negotiables
 
-- Imports name a subpath — \`@elirobinson/react/components/<tier>/<Name>\`. A bare
-  \`@elirobinson/react\` import does not resolve.
-- \`@elirobinson/react/styles.css\`, once, in the app shell. It already imports
-  \`@elirobinson/tokens/tokens.css\`; importing \`tokens.css\` as well bundles it twice.
-  An app that does not import \`styles.css\` (no React, or per-component sheets only)
-  imports \`@elirobinson/tokens/tokens.css\` itself. On Tailwind v4 that import goes in the
-  CSS entry after \`@import 'tailwindcss'\`, then \`@elirobinson/tokens/tailwind.css\`.
-- Reference semantic tokens (\`--fg\`, \`--surface\`, \`--accent\`), never raw scale values
-  (\`--ink-500\`) in app code.
-- Never restyle a system component with overrides that fight the tokens. Report the gap.
+- Import each component by its subpath, \`@elirobinson/react/components/<tier>/<Name>\`.
+  There is no barrel export, so a bare \`@elirobinson/react\` import does not resolve.
+- On Tailwind v4, order the CSS entry as \`@import 'tailwindcss'\`, then the design system
+  stylesheet (\`@elirobinson/react/styles.css\`, or \`@elirobinson/tokens/tokens.css\` for an
+  app that does not import \`styles.css\`), then \`@import '@elirobinson/tokens/tailwind.css'\`.
+  That last import maps Tailwind's color namespace onto the tokens.
+- Import \`@elirobinson/react/styles.css\` once, in the app shell. On Tailwind v4 that is
+  the CSS entry above. It already imports \`@elirobinson/tokens/tokens.css\`; importing
+  \`tokens.css\` as well bundles it twice. An app that does not import \`styles.css\` (no
+  React, or per-component sheets only) imports \`@elirobinson/tokens/tokens.css\` itself.
+- In app code, use semantic tokens (\`--fg\`, \`--surface\`, \`--accent\`) rather than raw
+  scale values (\`--ink-500\`), so the dials can move them.
+- When a system component does not fit, report the gap rather than restyling it with
+  overrides that fight the tokens.
 `;
 }
 
