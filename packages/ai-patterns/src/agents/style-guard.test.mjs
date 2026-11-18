@@ -7,24 +7,14 @@
  * Cursor rule's `globs:` line is dropped before the voice checks, because it
  * holds `**` globs; descriptions in frontmatter are still checked. */
 
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
-import { repoRoot } from '../artifacts/published-files.test-helper.mjs';
 import { AGENT_FILES } from '../cli/init.mjs';
+import { DEFAULT_APP_AGENTS, flat, read, templatePath } from './agent-docs.test-helper.mjs';
 
-const read = (path) => readFileSync(join(repoRoot, path), 'utf8');
 const withoutGlobs = (text) => text.replace(/^globs:.*\n/m, '');
-/* Prose wraps, so compare on collapsed whitespace. */
-const flat = (text) => text.replace(/\s+/g, ' ');
 
 const TEMPLATES = AGENT_FILES.map((file) => file.template);
-const templatePath = (name) => `packages/ai-patterns/src/agents/${name}`;
-
-/* Not written by init, but it speaks to the same agents. */
-const DEFAULT_APP = 'templates/default-app/AGENTS.md';
 
 /* Facts every template carries. */
 const SHARED = [
@@ -90,7 +80,7 @@ const DEFAULT_APP_FACTS = [
 /* Every voiced file, by repo path, with the facts it carries. */
 const FACTS = {
   ...Object.fromEntries(TEMPLATES.map((name) => [templatePath(name), TEMPLATE_FACTS[name]])),
-  [DEFAULT_APP]: DEFAULT_APP_FACTS,
+  [DEFAULT_APP_AGENTS]: DEFAULT_APP_FACTS,
 };
 
 describe('the template list', () => {
