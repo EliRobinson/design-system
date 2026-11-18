@@ -77,7 +77,7 @@ ${RESYNC_COMMAND}
   imports \`@elirobinson/tokens/tokens.css\` itself. On Tailwind v4, that one stylesheet import
   goes in the CSS entry, in this order: \`@import 'tailwindcss'\`, then the design system
   stylesheet (\`@elirobinson/react/styles.css\` or \`@elirobinson/tokens/tokens.css\`), then
-  \`@import '@elirobinson/tokens/tailwind.css'\`, which maps Tailwind's color namespace
+  \`@import '@elirobinson/tokens/tailwind.css'\`, which maps Tailwind's \`color\` namespace
   onto the tokens.
 - In app code, use semantic tokens (\`--fg\`, \`--surface\`, \`--accent\`) rather than raw
   scale values (\`--ink-500\`), so the theme dial can flip them.

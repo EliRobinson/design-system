@@ -18,7 +18,13 @@ import { describe, expect, it } from 'vitest';
 
 import { referenceSkillDoc } from '../artifacts/skills.mjs';
 import { AGENT_FILES } from '../cli/init.mjs';
-import { DEFAULT_APP_AGENTS, flat, read, templatePath } from './agent-docs.test-helper.mjs';
+import {
+  DEFAULT_APP_AGENTS,
+  flat,
+  read,
+  srcPath,
+  templatePath,
+} from './agent-docs.test-helper.mjs';
 
 /* The templates `init --agents` writes, from AGENT_FILES, so a new template is
  * covered by every test in this file without an edit here. */
@@ -29,9 +35,9 @@ const AGENT_TEMPLATES = AGENT_FILES.map(({ template }) => [
 
 const SHIPPED = {
   ...Object.fromEntries(AGENT_TEMPLATES),
-  'prompts/adopt-system.md': read('packages/ai-patterns/src/prompts/adopt-system.md'),
-  'resync/SKILL.md': read('packages/ai-patterns/src/resync/SKILL.md'),
-  'patterns.md': read('packages/ai-patterns/src/patterns.md'),
+  'prompts/adopt-system.md': read(srcPath('prompts/adopt-system.md')),
+  'resync/SKILL.md': read(srcPath('resync/SKILL.md')),
+  'patterns.md': read(srcPath('patterns.md')),
   'the generated reference skill': referenceSkillDoc({
     versions: {},
     componentCount: 0,
@@ -62,16 +68,18 @@ describe.each(Object.entries(SHIPPED))('%s', (_name, text) => {
   });
 });
 
-/* Every shipped file that states the Tailwind v4 CSS-entry order states the
+/* The files listed below state the Tailwind v4 CSS-entry order, and state the
  * same one: tailwindcss, then the design system stylesheet, then
  * tokens/tailwind.css. Files in FULL_ORDER also put
  * `@elirobinson/tokens/tokens.css` in that slot for an app without styles.css;
- * the snippets in STYLES_CSS_ONLY show only the styles.css case. */
+ * the snippets in STYLES_CSS_ONLY show only the styles.css case.
+ * prompts/adopt-system.md states only the bridge-after-stylesheet half, with
+ * no `@import 'tailwindcss'`, so it is left out. */
 const fromShipped = (name) => {
   if (!(name in SHIPPED)) throw new Error(`${name} is not in SHIPPED`);
   return [name, SHIPPED[name]];
 };
-const fromPackage = (path) => [path, read(`packages/ai-patterns/src/${path}`)];
+const fromPackage = (path) => [path, read(srcPath(path))];
 
 const FULL_ORDER = [
   ...AGENT_TEMPLATES,
@@ -108,14 +116,11 @@ describe.each(FULL_ORDER)('%s', (_name, raw) => {
   });
 });
 
-/* The templates whose "import styles.css once" rule says, on Tailwind v4, that
- * the app shell import is the CSS entry. SKILL.md and copilot-instructions.md
- * are not listed yet (#436 owns them this cycle). */
-describe.each(['agents/AGENTS.md', 'agents/design-system.mdc'].map(fromShipped))(
-  '%s',
-  (_name, raw) => {
-    it('says the app shell import is the CSS entry on Tailwind v4', () => {
-      expect(flat(raw)).toMatch(/On Tailwind v4,? (?:that|this) is the CSS entry/);
-    });
-  },
-);
+/* Each template's "import styles.css once" rule says that, on Tailwind v4,
+ * the app shell import is the CSS entry, so an app that already imports
+ * styles.css from a layout does not import it a second time. */
+describe.each(AGENT_TEMPLATES)('%s', (_name, raw) => {
+  it('says the app shell import is the CSS entry on Tailwind v4', () => {
+    expect(flat(raw)).toMatch(/On Tailwind v4,? (?:that|this) is the CSS entry/);
+  });
+});

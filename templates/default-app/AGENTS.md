@@ -56,7 +56,7 @@ then the artifacts command again.
   `@elirobinson/tokens/tokens.css` itself. On Tailwind v4, that one stylesheet import goes in
   the CSS entry, in this order: `@import 'tailwindcss'`, then the design system stylesheet
   (`@elirobinson/react/styles.css` or `@elirobinson/tokens/tokens.css`), then
-  `@import '@elirobinson/tokens/tailwind.css'`, which maps Tailwind's color namespace onto
+  `@import '@elirobinson/tokens/tailwind.css'`, which maps Tailwind's `color` namespace onto
   the tokens.
 - Take colours, spacing, radii, shadows, and durations from tokens. In app code, use
   semantic tokens (`--fg`, `--surface`, `--accent`) rather than raw scale values
