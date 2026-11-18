@@ -1,16 +1,17 @@
 # AI Agent Rules
 
-> `CLAUDE.md` is a symlink to this file — edit here only.
+> `CLAUDE.md` is a symlink to this file, so edit this file only.
 
 Always use conventional commit messages.
 
 ## UI is built on the Miltinson Design System
 
 Every screen in this repo is assembled from `@elirobinson/react` and `@elirobinson/tokens`.
-Do not hand-roll a button, field, card, or colour value, and do not add another UI library.
+Use their buttons, fields, cards, and colour values instead of hand-rolling them, and do not
+add another UI library.
 
-**Never work from a remembered or pasted inventory.** Any list of components, props, or
-tokens is wrong as of the next release. Ask the installed packages instead:
+A remembered or pasted list of components, props, or tokens goes stale with the next
+release, so ask the installed packages instead:
 
 ```bash
 pnpm ds                  # components, exports, variants, hooks, typography, token groups
@@ -47,16 +48,21 @@ then the artifacts command again.
 
 ## Non-negotiables
 
-- Imports name a subpath — `@elirobinson/react/components/<tier>/<Name>`. A bare
-  `@elirobinson/react` import does not resolve.
-- `@elirobinson/react/styles.css`, once, in the app shell (`app/globals.css`). It already
-  imports `@elirobinson/tokens/tokens.css`; importing `tokens.css` as well bundles it twice.
-  An app that does not import `styles.css` (per-component sheets only) imports
-  `@elirobinson/tokens/tokens.css` itself. On Tailwind v4, keep both in the CSS entry after
-  `@import 'tailwindcss'`, followed by `@elirobinson/tokens/tailwind.css`.
-- Colours, spacing, radii, shadows, and durations come from tokens. Semantic tokens
-  (`--fg`, `--surface`, `--accent`) in app code, never raw scale values (`--ink-500`).
-- Three dials — palette, theme, platform — are root-element attributes, and an absent
+- Import each component by its subpath, `@elirobinson/react/components/<tier>/<Name>`.
+  There is no barrel export, so a bare `@elirobinson/react` import does not resolve.
+- On Tailwind v4, order the CSS entry as `@import 'tailwindcss'`, then the design system
+  stylesheet (`@elirobinson/react/styles.css`, or `@elirobinson/tokens/tokens.css` for an
+  app that does not import `styles.css`), then `@import '@elirobinson/tokens/tailwind.css'`.
+  That last import maps Tailwind's color namespace onto the tokens.
+- Import `@elirobinson/react/styles.css` once, in the app shell (`app/globals.css`). On
+  Tailwind v4 that is the CSS entry above. It already imports
+  `@elirobinson/tokens/tokens.css`; importing `tokens.css` as well bundles it twice. An app
+  that does not import `styles.css` (per-component sheets only) imports
+  `@elirobinson/tokens/tokens.css` itself.
+- Take colours, spacing, radii, shadows, and durations from tokens. In app code, use
+  semantic tokens (`--fg`, `--surface`, `--accent`) rather than raw scale values
+  (`--ink-500`), so the dials can move them.
+- The three dials (palette, theme, platform) are root-element attributes, and an absent
   attribute is that dial's default. `pnpm ds dials` prints the attributes, their values,
   and which tokens each one moves. `lib/dials.ts` writes the two a person chooses.
 - Before calling UI work done, run `pnpm ds patterns` and work the checklist it prints.

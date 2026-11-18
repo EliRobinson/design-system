@@ -4,7 +4,8 @@
  * The stylesheet facts, Tailwind order included, are pinned in
  * stylesheet-rule.test.mjs, not here. Only the Cursor rule's `globs:` line is
  * dropped before the voice checks, because it holds `**` globs; descriptions
- * in frontmatter are still checked. */
+ * in frontmatter are still checked. The copy rule's
+ * `severity: 'error'` line is pinned in cli.test.mjs, over the written files. */
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -33,14 +34,13 @@ const SHARED = [
   'does not resolve',
   'worth upstreaming',
   'You have not been charged.',
-  "designSystem({ copy: { severity: 'error' } })",
   'Definition of Done',
   'sanctioned gap-filler',
   'pnpm exec elirobinson-ds',
-  'variant',
+  'own `variant` / `size` props',
   '@layer base',
   '--ds-font-mono-override',
-  'almost always',
+  'frequency claims',
   'https://github.com/EliRobinson/design-system',
 ];
 
@@ -66,7 +66,11 @@ describe('the template list', () => {
   });
 });
 
-describe.each(TEMPLATES)('%s voice', (name) => {
+/* The default app's AGENTS.md is not written by init, but it speaks to the
+ * same agents, so it keeps the same voice. Its facts are its own. */
+const DEFAULT_APP = '../../../../templates/default-app/AGENTS.md';
+
+describe.each([...TEMPLATES, DEFAULT_APP])('%s voice', (name) => {
   const text = withoutGlobs(read(name));
 
   it('has no em dash', () => {

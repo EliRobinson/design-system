@@ -7,15 +7,17 @@
    friends resolve to design system values instead of Tailwind's defaults —
    or, worse, to nothing at all.
 
-   Usage (Tailwind v4 only), in your app's entry stylesheet:
+   Usage (Tailwind v4 only), in your app's entry stylesheet, in this order:
 
      @import 'tailwindcss';
-     @import '@elirobinson/tokens/tokens.css';
+     @import '@elirobinson/react/styles.css'; (or '@elirobinson/tokens/tokens.css')
      @import '@elirobinson/tokens/tailwind.css';
 
-   tokens.css must be loaded — this file aliases its variables, it does not
-   define them. Import it here as shown, or once in your app shell; either
-   works, as long as it is present.
+   The middle line is the design system stylesheet. react/styles.css already
+   imports tokens.css, so import one or the other, not both. An app that does
+   not import react/styles.css (no React, or per-component sheets only) imports
+   tokens.css there instead. Either way tokens.css must be loaded, because this
+   file aliases its variables and does not define them.
 
    Because every alias below is `@theme inline`, utilities compile to
    `var(--token)` rather than to a snapshot of its value. That is the whole
