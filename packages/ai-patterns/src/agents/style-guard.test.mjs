@@ -1,32 +1,33 @@
 /* The templates written by `init --agents`, and the default app's AGENTS.md,
- * share one calm voice: plain rules, no shouting, no bold run-ins, no em dashes. This pins that voice and the
- * facts each template carries, not the bytes, so wording can still change.
- * The stylesheet facts, Tailwind order included, are pinned in
- * stylesheet-rule.test.mjs, not here. Only the Cursor rule's `globs:` line is
- * dropped before the voice checks, because it holds `**` globs; descriptions
- * in frontmatter are still checked. The copy rule's
- * `severity: 'error'` line is pinned in cli.test.mjs, over the written files. */
+ * share one calm voice: plain rules, no shouting, no bold run-ins, no em
+ * dashes. This pins that voice and the facts each file carries, not the bytes,
+ * so wording can still change. The stylesheet facts, Tailwind order included,
+ * are pinned in stylesheet-rule.test.mjs, not here, and the copy rule's
+ * `severity: 'error'` line in cli.test.mjs, over the written files. Only the
+ * Cursor rule's `globs:` line is dropped before the voice checks, because it
+ * holds `**` globs; descriptions in frontmatter are still checked. */
 
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { repoRoot } from '../artifacts/published-files.test-helper.mjs';
 import { AGENT_FILES } from '../cli/init.mjs';
 
-const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
-const readRepo = (path) => readFileSync(join(repo, path), 'utf8');
-const read = (name) =>
-  readRepo(name === DEFAULT_APP ? name : `packages/ai-patterns/src/agents/${name}`);
+const read = (path) => readFileSync(join(repoRoot, path), 'utf8');
 const withoutGlobs = (text) => text.replace(/^globs:.*\n/m, '');
 /* Prose wraps, so compare on collapsed whitespace. */
 const flat = (text) => text.replace(/\s+/g, ' ');
 
 const TEMPLATES = AGENT_FILES.map((file) => file.template);
+const templatePath = (name) => `packages/ai-patterns/src/agents/${name}`;
 
-/* Not written by init, but it speaks to the same agents. Repo-relative. */
+/* Not written by init, but it speaks to the same agents. */
 const DEFAULT_APP = 'templates/default-app/AGENTS.md';
+
+/* [label, repo-relative path] for every file whose voice is checked. */
+const VOICED = [...TEMPLATES.map((name) => [name, templatePath(name)]), [DEFAULT_APP, DEFAULT_APP]];
 
 /* Facts every template carries. */
 const SHARED = [
@@ -54,6 +55,7 @@ const FACTS = {
     ...SHARED,
     '@elirobinson/ai-patterns/testing/playwright',
     'blocks foreign UI libraries',
+    'On Tailwind v4 that is the CSS entry above.',
     'You have not been charged. Try again.',
   ],
   'SKILL.md': [
@@ -61,13 +63,12 @@ const FACTS = {
     '@elirobinson/ai-patterns/testing/playwright',
     'You have not been charged. Try again.',
   ],
-  'design-system.mdc': [...SHARED],
+  'design-system.mdc': [...SHARED, 'On Tailwind v4 that is the CSS entry above.'],
   'copilot-instructions.md': [...SHARED],
 };
 
 /* The default app's own facts: every command and rule it carried before #435. */
 const DEFAULT_APP_FACTS = [
-  'pnpm ds ',
   'pnpm ds props <Name>',
   'pnpm ds tokens [filter]',
   'pnpm ds dials',
@@ -76,7 +77,7 @@ const DEFAULT_APP_FACTS = [
   '"ds": "elirobinson-ds"',
   'pnpm exec elirobinson-ds',
   'pnpm --package=@elirobinson/ai-patterns dlx ds-resync artifacts --write',
-  'pnpm --package=@elirobinson/ai-patterns dlx ds-resync` first',
+  'snapshot is stale',
   'miltinson-design',
   'design-system-reference',
   'do not copy their contents',
@@ -96,8 +97,8 @@ describe('the template list', () => {
   });
 });
 
-describe.each([...TEMPLATES, DEFAULT_APP])('%s voice', (name) => {
-  const text = withoutGlobs(read(name));
+describe.each(VOICED)('%s voice', (_name, path) => {
+  const text = withoutGlobs(read(path));
 
   it('has no em dash', () => {
     expect(text).not.toContain('—');
@@ -117,7 +118,7 @@ describe.each([...TEMPLATES, DEFAULT_APP])('%s voice', (name) => {
 });
 
 describe.each(TEMPLATES)('%s facts', (name) => {
-  const text = flat(read(name));
+  const text = flat(read(templatePath(name)));
 
   it.each(FACTS[name])('mentions %s', (fact) => {
     expect(text).toContain(fact);
