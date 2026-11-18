@@ -162,23 +162,18 @@ you can actually check, not a sentiment.
 
 ## Integration notes
 
-These are the wiring mistakes that cost the most time to diagnose, because each
-one fails silently rather than loudly.
+These are the wiring details worth getting right first. Most of them fail
+silently rather than loudly, which makes them slow to diagnose.
 
-### Dark mode: match the theme switcher to the selector
+### Dark mode: point the theme switcher at `data-theme`
 
-The system themes on `[data-theme="dark"]`. `next-themes` defaults to
-`attribute="class"`, so the default wiring toggles a class the stylesheet never
-looks at and dark mode does nothing at all. Configure it explicitly:
+Set `next-themes` to `attribute="data-theme"`, the convention the system
+documents. `.dark` also works, so the library's default `class` strategy
+switches the theme too.
 
 ```tsx
 <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
 ```
-
-Since `@elirobinson/tokens@0.3.0` a `.dark` compatibility selector ships
-alongside `[data-theme="dark"]`, so a class-strategy switcher also works. Prefer
-`attribute="data-theme"` anyway — it is the convention the system documents, and
-it is what every component's CSS is written against.
 
 ### Tailwind: import the bridge, don't hand-roll the mapping
 

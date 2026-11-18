@@ -200,7 +200,7 @@ A plain `.ts` spec is compiled to CommonJS by Playwright, so this import resolve
 <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
 ```
 
-`next-themes` defaults to a `class` strategy. A `.dark` compatibility selector ships too, so either works — but `data-theme` is what every component's CSS is written against.
+`next-themes` defaults to a `class` strategy. A `.dark` compatibility selector ships too, so either works. `data-theme` is the convention the system documents.
 
 ### Staying current
 
