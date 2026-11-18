@@ -1,5 +1,6 @@
 /* Shared by the tests that read the agent-facing docs this repo ships
- * (style-guard, stylesheet-rule). Not collected as a test, not published. */
+ * (style-guard, stylesheet-rule, non-negotiables). Not collected as a test,
+ * not published. */
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
