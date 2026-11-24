@@ -167,12 +167,12 @@ silently rather than loudly, which makes them slow to diagnose.
 
 ### Dark mode: point the theme switcher at `data-theme`
 
-Set `next-themes` to `attribute="data-theme"`, the convention the system
-documents. `.dark` also works, so the library's default `class` strategy
-switches the theme too.
+Set `next-themes` to `attribute={["data-theme", "class"]}`. `<html>` then gets
+both `data-theme`, the convention the system documents, and the `.dark` class,
+which some third-party components read instead.
 
 ```tsx
-<ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+<ThemeProvider attribute={["data-theme", "class"]} defaultTheme="system" enableSystem>
 ```
 
 ### Tailwind: import the bridge, don't hand-roll the mapping
