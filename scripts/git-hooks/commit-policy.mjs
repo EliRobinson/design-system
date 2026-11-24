@@ -65,12 +65,13 @@ export function checkCommitMessage(text, { raw = false } = {}) {
   return checkSubject(subject, subject.replace(/^(fixup|squash)! /, ''));
 }
 
-/** The shape and length rule. `bare` is the subject without a `fixup!` prefix. */
-function checkSubject(subject, bare) {
-  if (!SUBJECT.test(bare)) {
+/** The shape and length rule. `shape` is matched against the Conventional
+ *  pattern; `measured` is the full line that lands, checked for length. */
+function checkSubject(measured, shape) {
+  if (!SUBJECT.test(shape)) {
     return `Use a Conventional Commit: <type>(<scope>): <subject>. Types: ${TYPES.join(', ')}.`;
   }
-  if (subject.length > MAX_LENGTH) return `Keep the line to ${MAX_LENGTH} characters or fewer.`;
+  if (measured.length > MAX_LENGTH) return `Keep the line to ${MAX_LENGTH} characters or fewer.`;
   return null;
 }
 
@@ -154,12 +155,12 @@ const MODES = {
   },
 };
 
-function main([mode, arg, arg2]) {
+function main([mode, ...args]) {
   const entry = Object.hasOwn(MODES, mode) ? MODES[mode] : null;
   const usage = Object.values(MODES)
     .map((m) => `"${m.usage}"`)
     .join(', ');
-  const problem = entry ? entry.run(arg, arg2) : `Unknown mode: ${mode}. Use ${usage}.`;
+  const problem = entry ? entry.run(...args) : `Unknown mode: ${mode}. Use ${usage}.`;
   if (problem) {
     process.stderr.write(
       `${entry?.prefix ?? 'commit policy'}: ${problem}\nSee docs/agents/git-workflow.md.\n`,

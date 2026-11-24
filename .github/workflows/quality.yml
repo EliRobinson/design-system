@@ -39,10 +39,8 @@ jobs:
         run: |
           git fetch --no-tags origin "$BASE_REF"
           node scripts/git-hooks/commit-policy.mjs range "origin/${BASE_REF}..${HEAD_SHA}"
-      # A squash merge lands the pull request title as the commit on main, so
-      # the title gets the same rule as a commit (#447). The title is
-      # attacker-controlled text, so it goes through env, never `${{ }}` in the
-      # run text. `edited` is in the trigger list so a title fix reruns it.
+      # #447: the title is attacker-controlled text, so it goes through env,
+      # never `${{ }}` in the run text. `edited` is in the trigger list so a title fix reruns it.
       # The cost: any body or base edit reruns the whole job too. A skipped or
       # partial run on the same head would replace the full result on the
       # required check, so the job is not narrowed for `edited`.
