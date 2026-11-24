@@ -10,7 +10,7 @@
  *
  * The rule under test is the design system's: an element is dark when it or
  * an ancestor has data-theme="dark" or .dark (tokens.css, palettes.css, the
- * `dark:` variant in tailwind.css). Nothing resets a subtree to light.
+ * `dark:` variant in tailwind.css). No `data-theme` value resets a subtree to light.
  */
 
 import { createRequire } from 'node:module';
@@ -55,6 +55,8 @@ afterEach(() => {
     act(() => root.unmount());
     host.remove();
   }
+  // Themed panels a test appended must not leak into the next test.
+  document.body.replaceChildren();
   document.documentElement.removeAttribute('data-theme');
   document.documentElement.className = '';
   document.body.removeAttribute('data-theme');
@@ -154,6 +156,24 @@ describe('the vendored Persona follows a runtime change of its ancestor', () => 
 
     await act(async () => themed.classList.remove('dark'));
     expect(colour()).toBe('light');
+  });
+
+  it('keeps reading its panel, not <html>, when the OS theme changes', async () => {
+    let fireChange = () => {};
+    window.matchMedia = () => ({
+      matches: false,
+      addEventListener: (_type, listener) => (fireChange = listener),
+      removeEventListener() {},
+    });
+    try {
+      await render(panel(), document.body.appendChild(panel({ 'data-theme': 'dark' })));
+      expect(colour()).toBe('dark');
+
+      await act(async () => fireChange());
+      expect(colour()).toBe('dark');
+    } finally {
+      delete window.matchMedia;
+    }
   });
 
   it('follows <html> switching too', async () => {
