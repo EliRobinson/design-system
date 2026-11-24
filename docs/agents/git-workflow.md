@@ -67,8 +67,9 @@ with conflict fixes blocks rebase-merge.
 
 A squash lands one commit on `main`: the PR title plus ` (#N)` as the line,
 with a blank body. It folds the branch into that one commit, so intermediate
-commits never reach `main`. The `quality` job checks the title under the same rule as a commit
-(`commit-policy.mjs title`), so it must be one Conventional line. Fix a bad
+commits never reach `main`. The `quality` job checks the title under the same
+rule as a commit (`commit-policy.mjs title`), so it must be one Conventional
+line. Fix a bad
 title with `gh pr edit <N> --title ...`; that reruns the check. Any PR edit
 reruns `quality`, body edits too.
 
