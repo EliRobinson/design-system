@@ -180,13 +180,13 @@ const RULES = [
   /* Persona's theme. Upstream picks light or dark in JS from the `.dark` class
      or the OS, and sets the Rive colour from that, so no stylesheet can fix it.
      This rule makes it use the design system's own rule instead: dark when
-     <html> has data-theme="dark" or .dark, re-checked when either changes
-     (#442). Its own module for the same reason motion has one: it is neither
+     its own element or an ancestor has data-theme="dark" or .dark, re-checked
+     when either changes (#442, #444). Its own module for the same reason motion has one: it is neither
      a touch target nor a look. Anchored the same way; a miss throws. */
   {
     id: 'persona-theme',
     describe:
-      'made Persona dark when <html> has data-theme="dark" or .dark, never from the OS alone, ' +
+      'made Persona dark when it or an ancestor has data-theme="dark" or .dark, never from the OS alone, ' +
       'and re-check when either attribute changes (see scripts/ai-elements-patches/theme.mjs)',
     apply(source, ctx) {
       return applyThemePatches(source, ctx.upstreamPath);

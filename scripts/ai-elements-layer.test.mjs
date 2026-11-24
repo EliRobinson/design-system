@@ -87,8 +87,9 @@ describe('the AI Elements transform layer, versus what is published about it', (
 
   /* The persona-theme patch, pinned at its landing site for the same reason
      as motion: theme.mjs throws when an anchor moves, but deleting the patch
-     re-derives a Persona that reads the OS again, and sync exits 0 (#442). */
-  it('leaves the vendored Persona reading data-theme and not the OS', () => {
+     re-derives a Persona that reads the OS again, and sync exits 0 (#442).
+     ai-elements-persona-theme.test.mjs runs the result (#444). */
+  it('leaves the vendored Persona reading its nearest dark ancestor and not the OS', () => {
     const source = readFileSync(personaPath, 'utf8');
     const start = source.indexOf('const getCurrentTheme');
     const end = source.indexOf('const useTheme');
@@ -98,17 +99,17 @@ describe('the AI Elements transform layer, versus what is published about it', (
     ).toBe(true);
     const getCurrentTheme = source.slice(start, end);
 
-    expect(getCurrentTheme, 'Persona no longer reads data-theme').toContain(
-      'root.getAttribute("data-theme") === "dark"',
-    );
-    expect(getCurrentTheme, 'Persona no longer reads the .dark class').toContain(
-      'root.classList.contains("dark")',
+    expect(getCurrentTheme, 'Persona no longer reads its nearest dark ancestor').toContain(
+      `.closest('[data-theme="dark"], .dark')`,
     );
     expect(getCurrentTheme, 'Persona reads the OS theme again').not.toContain(
       'prefers-color-scheme',
     );
     expect(source, 'Persona no longer watches data-theme').toContain(
       'attributeFilter: ["class", "data-theme"]',
+    );
+    expect(source, 'Persona no longer passes its canvas to useTheme').toContain(
+      'useTheme(source.dynamicColor, canvas)',
     );
   });
 });

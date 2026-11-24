@@ -169,14 +169,43 @@ Two changes fix it (#442):
 - **The `persona-theme` transform rule** (`scripts/ai-elements-patches/theme.mjs`). The
   vendored `getCurrentTheme()` is dark when `<html>` has `data-theme="dark"` or `.dark`, and
   light otherwise. The observer also watches `data-theme`. This is what fixes all three
-  cases. It reads `<html>` only: our CSS also themes a nested `data-theme="dark"` subtree,
-  and a Persona inside one still follows `<html>`. `scripts/ai-elements-layer.test.mjs` pins it in the vendored file.
+  cases. `scripts/ai-elements-layer.test.mjs` pins it in the vendored file.
 - **The `next-themes` advice sets both attributes** (needs `next-themes` 0.4 or newer):
   `attribute={["data-theme", "class"]}`. `<html>` then gets `data-theme` and the `.dark`
   class together. Our CSS reads either, with the same values at the same specificity, so
   having both changes nothing for our styles. It helps any third-party component that,
   like upstream Persona, reads only `.dark`. This replaces the `attribute="data-theme"`
   advice that #436 settled.
+
+### Persona reads its own element (#444)
+
+After #442, Persona still read `<html>` only. Our CSS also themes a subtree: `tokens.css`
+and `palettes.css` use bare `[data-theme='dark'], .dark`, so the dark values inherit into
+everything inside, and the `dark:` variant matches `[data-theme='dark'] *`. So a Persona
+inside a dark panel on a light page drew black on a dark panel. The same happened when an
+app put `data-theme` on `<body>`.
+
+Now Persona reads the same rule from its own element:
+
+- **Which element.** `useRive` already returns the `<canvas>` it draws into. The patch
+  passes it from `Persona` to the internal `PersonaWithModel`, and from there to `useTheme`.
+  No new ref and no extra DOM.
+- **The rule.** Dark when `canvas.closest('[data-theme="dark"], .dark')` finds an element,
+  light otherwise. Until the canvas exists, it reads `<html>`. Nothing in our CSS resets a
+  subtree to light, so a `data-theme="light"` panel inside a dark page stays dark, for the
+  CSS and for Persona alike.
+- **Runtime changes.** The observer watches `class` and `data-theme` on the canvas and on
+  every ancestor up to `<html>`, and re-reads when the canvas arrives. Limit: it watches the
+  ancestors the canvas has when it mounts. A Persona moved under a new ancestor without a
+  remount re-reads at the next change it watches, not at the move.
+- **Why anchors, not a wrapper.** The colour is set inside the vendored `PersonaWithModel`
+  from `useTheme`'s value, and `Persona` takes no theme prop. A wrapper sees neither, so
+  it could only re-implement Persona, which forks the whole file. The anchors keep
+  upstream's file, and `pnpm sync:elements` fails by name if upstream moves them.
+- **Tests.** `scripts/ai-elements-persona-theme.test.mjs` renders the real vendored
+  `persona.tsx` in jsdom, with only the Rive library stubbed, and reads the colour Persona
+  sets: in a dark panel, beside it, under `<body>`, and as a panel's `data-theme` or
+  `.dark` changes at runtime.
 
 Considered and not chosen for now: a PR to `vercel/ai-elements` so upstream reads
 `data-theme`. If upstream ever does, `theme.mjs`'s anchors stop matching and

@@ -91,7 +91,8 @@ control with a size, so it has no touch-target floor and no honest verdict to pu
 there. The module's header carries the full argument.
 
 `persona-theme` is fifth, and lives in `scripts/ai-elements-patches/theme.mjs`. It makes
-`Persona` use the system's dark rule instead of the OS (#442); see
+`Persona` use the system's dark rule, read from its own element, instead of the OS (#442,
+#444); see
 [AI Elements theme](ai-elements-theme.md#persona-follows-data-theme).
 
 All three modules' anchors are exact and their misses are fatal. They share one engine, `scripts/ai-elements-patches/anchored.mjs`; each keeps its own patch list and its own error text. A patch whose anchor no longer
@@ -101,7 +102,7 @@ which control to re-measure. That is the intended failure: a dropped accessibili
 motion fix that reports a clean bump is the outcome the whole arrangement exists to
 prevent. The fix is a new anchor, never a deleted patch entry — `ai-elements-layer.test.mjs`
 in `scripts/` re-reads the vendored `conversation.tsx` for `initial="instant"` and
-`resize="instant"`, and the vendored `persona.tsx` for its `data-theme` check, so that
+`resize="instant"`, and the vendored `persona.tsx` for its dark-ancestor check, so that
 deleting the motion or theme patch to get a bump through goes red.
 
 ## Re-syncing

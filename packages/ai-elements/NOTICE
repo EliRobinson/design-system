@@ -89,13 +89,16 @@ release the layer is six rules, and they are, in full:
                          in JS and sets its animation colour from that.
                          Upstream treats the page as dark when `<html>` has
                          the `dark` class or the OS prefers dark, and watches
-                         only the `class` attribute. The vendored copy treats
-                         the page as dark when `<html>` has
-                         `data-theme="dark"` or the `dark` class, which is the
-                         rule the design system's own CSS applies at `<html>`,
-                         and also
-                         watches `data-theme` for changes. No colour, copy,
-                         structure, geometry or API is changed. The patched
+                         only the `class` attribute of `<html>`. The vendored
+                         copy treats Persona as dark when its own canvas or
+                         any ancestor has `data-theme="dark"` or the `dark`
+                         class, which is the rule the design system's own CSS
+                         applies, and watches `class` and `data-theme` on
+                         each of those elements for changes. To reach its
+                         canvas, `Persona` passes the canvas that `useRive`
+                         returns to its internal `PersonaWithModel`. No
+                         colour, copy, structure, geometry or exported API is
+                         changed. The patched
                          lines are recorded in
                          `scripts/ai-elements-patches/theme.mjs` in the source
                          repository.
