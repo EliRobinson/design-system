@@ -90,14 +90,11 @@ separate rule from `a11y.mjs` on purpose: that file's ids are pinned name-for-na
 control with a size, so it has no touch-target floor and no honest verdict to publish
 there. The module's header carries the full argument.
 
-`persona-theme` is fifth, and lives in `scripts/ai-elements-patches/theme.mjs`. `Persona`
-picks light or dark in JS and sets its Rive colour from that, so no stylesheet can reach
-it. Upstream reads the `.dark` class, else the OS, and watches only `class`. The vendored
-copy is dark when `<html>` has `data-theme="dark"` or `.dark`, the same rule as our CSS,
-and also watches `data-theme` (#442). [AI Elements theme](ai-elements-theme.md#persona-follows-data-theme)
-has the reasoning.
+`persona-theme` is fifth, and lives in `scripts/ai-elements-patches/theme.mjs`. It makes
+`Persona` use the system's dark rule instead of the OS (#442); see
+[AI Elements theme](ai-elements-theme.md#persona-follows-data-theme).
 
-All three modules' anchors are exact and their misses are fatal. A patch whose anchor no longer
+All three modules' anchors are exact and their misses are fatal. They share one engine, `scripts/ai-elements-patches/anchored.mjs`; each keeps its own patch list and its own error text. A patch whose anchor no longer
 appears throws **by name** during `pnpm sync:elements` rather than quietly not applying, so
 an upstream bump that moves one of these class strings or attributes stops and tells you
 which control to re-measure. That is the intended failure: a dropped accessibility or

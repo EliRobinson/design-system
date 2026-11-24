@@ -92,7 +92,8 @@ release the layer is six rules, and they are, in full:
                          only the `class` attribute. The vendored copy treats
                          the page as dark when `<html>` has
                          `data-theme="dark"` or the `dark` class, which is the
-                         rule the design system's own CSS uses, and also
+                         rule the design system's own CSS applies at `<html>`,
+                         and also
                          watches `data-theme` for changes. No colour, copy,
                          structure, geometry or API is changed. The patched
                          lines are recorded in

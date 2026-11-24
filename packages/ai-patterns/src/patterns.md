@@ -165,11 +165,13 @@ you can actually check, not a sentiment.
 These are the wiring details worth getting right first. Most of them fail
 silently rather than loudly, which makes them slow to diagnose.
 
-### Dark mode: point the theme switcher at `data-theme`
+### Dark mode: set both `data-theme` and `.dark`
 
-Set `next-themes` to `attribute={["data-theme", "class"]}`. `<html>` then gets
-both `data-theme`, the convention the system documents, and the `.dark` class,
-which some third-party components read instead.
+Set `next-themes` (0.4 or newer) to `attribute={["data-theme", "class"]}`.
+`<html>` then gets both `data-theme`, the convention the system documents, and
+the `.dark` class, which some third-party components read instead. In light
+mode it also gets a `light` class; the system's CSS does not use it. On an
+older `next-themes`, which takes one attribute only, use `attribute="data-theme"`.
 
 ```tsx
 <ThemeProvider attribute={["data-theme", "class"]} defaultTheme="system" enableSystem>

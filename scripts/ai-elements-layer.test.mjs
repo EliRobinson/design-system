@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { applyAnchoredPatches } from './ai-elements-patches/anchored.mjs';
 import { ruleIds } from './ai-elements-transforms.mjs';
 
 const noticePath = fileURLToPath(new URL('../packages/ai-elements/NOTICE', import.meta.url));
@@ -58,7 +59,7 @@ describe('the AI Elements transform layer, versus what is published about it', (
   });
 
   /* The reduced-motion patch, asserted at its landing site rather than only at
-     its source. `motion.mjs`'s own `assertPatch` throws when its ANCHOR
+     its source. The shared `applyAnchoredPatches` throws when its ANCHOR
      ("initial=\"smooth\"") stops appearing upstream, which is the loud half.
      The quiet half is the other direction: delete the patch entry, or the rule
      that applies it, and `pnpm sync:elements` re-derives a vendored file that
@@ -89,10 +90,13 @@ describe('the AI Elements transform layer, versus what is published about it', (
      re-derives a Persona that reads the OS again, and sync exits 0 (#442). */
   it('leaves the vendored Persona reading data-theme and not the OS', () => {
     const source = readFileSync(personaPath, 'utf8');
-    const getCurrentTheme = source.slice(
-      source.indexOf('const getCurrentTheme'),
-      source.indexOf('const useTheme'),
-    );
+    const start = source.indexOf('const getCurrentTheme');
+    const end = source.indexOf('const useTheme');
+    expect(
+      start >= 0 && end > start,
+      "getCurrentTheme/useTheme not found in persona.tsx; update this test's slice anchors",
+    ).toBe(true);
+    const getCurrentTheme = source.slice(start, end);
 
     expect(getCurrentTheme, 'Persona no longer reads data-theme').toContain(
       'root.getAttribute("data-theme") === "dark"',
@@ -106,5 +110,29 @@ describe('the AI Elements transform layer, versus what is published about it', (
     expect(source, 'Persona no longer watches data-theme').toContain(
       'attributeFilter: ["class", "data-theme"]',
     );
+  });
+});
+
+describe('the shared anchored-patch engine', () => {
+  const patch = { id: 'p', upstreamPath: 'a.tsx', find: 'x', replace: 'y' };
+  const miss = (p, expected, found) => `${p.id}: ${expected} vs ${found}`;
+
+  it('replaces an anchor that appears exactly once, and reports it fired', () => {
+    expect(applyAnchoredPatches([patch], '-x-', 'a.tsx', miss)).toEqual({
+      source: '-y-',
+      fired: true,
+    });
+  });
+
+  it('leaves a file with no patches alone', () => {
+    expect(applyAnchoredPatches([patch], '-x-', 'b.tsx', miss)).toEqual({
+      source: '-x-',
+      fired: false,
+    });
+  });
+
+  it('throws with the module message when the anchor count is wrong', () => {
+    expect(() => applyAnchoredPatches([patch], '--', 'a.tsx', miss)).toThrow('p: 1 vs 0');
+    expect(() => applyAnchoredPatches([patch], 'xx', 'a.tsx', miss)).toThrow('p: 1 vs 2');
   });
 });

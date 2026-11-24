@@ -438,10 +438,10 @@
    Dark mode — opt-in via [data-theme="dark"]
    --------------------------------------------------------------------------
    `.dark` is accepted as a compatibility alias because most theme switchers
-   default to a class strategy. next-themes in particular defaults to
-   `attribute="class"`, so wiring it up without `attribute="data-theme"` used
-   to leave dark mode silently doing nothing. Either convention works now;
-   `[data-theme="dark"]` remains the one the system documents.
+   default to a class strategy (next-themes defaults to `attribute="class"`).
+   Either convention works; `[data-theme="dark"]` remains the one the system
+   documents. With next-themes 0.4+, set `attribute={["data-theme", "class"]}` so
+   both are present for components that read only `.dark`.
    ========================================================================== */
 [data-theme='dark'],
 .dark {

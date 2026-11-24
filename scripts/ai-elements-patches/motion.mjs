@@ -32,13 +32,15 @@
  * The mechanism is otherwise identical to `a11y.mjs`, on purpose: the
  * transform layer runs on upstream bytes, so a patch here is a find/replace on
  * upstream source, and that is brittle by construction for the same reason
- * it is there — `assertPatch` below throws when an anchor does not appear
+ * it is there — `applyAnchoredPatches` (anchored.mjs) throws when an anchor does not appear
  * exactly the expected number of times, so the day upstream rewrites one of
  * these attributes, `pnpm sync:elements` fails loudly and names the control,
  * rather than dropping the fix and reporting a clean bump. An anchor miss here
  * is exactly as fatal as an anchor miss in `a11y.mjs`, and for the same
  * reason: silently not applying is the failure mode neither file tolerates.
  */
+
+import { applyAnchoredPatches } from './anchored.mjs';
 
 /**
  * Every motion patch. `behaviour` is what upstream does today, unpatched, and
@@ -89,22 +91,17 @@ export const PATCHES = [
   },
 ];
 
-function assertPatch(patch, source) {
-  const count = patch.count ?? 1;
-  const parts = source.split(patch.find).length - 1;
-
-  if (parts !== count) {
-    throw new Error(
-      `ai-elements motion patch "${patch.id}" expected its anchor ${count} time(s) in ` +
-        `${patch.upstreamPath} and found ${parts}.\n\n` +
-        `  control:   ${patch.control}\n` +
-        `  behaviour: ${patch.behaviour}\n` +
-        `  anchor:    ${JSON.stringify(patch.find.slice(0, 120))}\n\n` +
-        'Upstream has moved this control. Re-run the audit, re-measure the control, ' +
-        'and update the anchor — do not delete the patch to make the bump pass, and ' +
-        'do not edit the vendored file directly.',
-    );
-  }
+function missMessage(patch, expected, found) {
+  return (
+    `ai-elements motion patch "${patch.id}" expected its anchor ${expected} time(s) in ` +
+    `${patch.upstreamPath} and found ${found}.\n\n` +
+    `  control:   ${patch.control}\n` +
+    `  behaviour: ${patch.behaviour}\n` +
+    `  anchor:    ${JSON.stringify(patch.find.slice(0, 120))}\n\n` +
+    'Upstream has moved this attribute. Check whether upstream now avoids the ' +
+    'smooth scroll itself; if not, update the anchor. Do not delete the patch to ' +
+    'make the bump pass, and do not edit the vendored file directly.'
+  );
 }
 
 /**
@@ -115,17 +112,5 @@ function assertPatch(patch, source) {
  * @returns {{ source: string, fired: boolean }}
  */
 export function applyMotionPatches(source, upstreamPath) {
-  const patches = PATCHES.filter((patch) => patch.upstreamPath === upstreamPath);
-  if (patches.length === 0) return { source, fired: false };
-
-  let current = source;
-  for (const patch of patches) {
-    assertPatch(patch, current);
-    current = current.split(patch.find).join(patch.replace);
-  }
-
-  return { source: current, fired: true };
+  return applyAnchoredPatches(PATCHES, source, upstreamPath, missMessage);
 }
-
-/** Every file this rule touches, for the sync check's reporting. */
-export const patchedPaths = [...new Set(PATCHES.map((patch) => patch.upstreamPath))];

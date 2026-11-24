@@ -200,7 +200,7 @@ A plain `.ts` spec is compiled to CommonJS by Playwright, so this import resolve
 <ThemeProvider attribute={["data-theme", "class"]} defaultTheme="system" enableSystem>
 ```
 
-This sets both `data-theme` and the `.dark` class on `<html>`. The system's CSS reads either. The class is for third-party components that read only `.dark`.
+This needs `next-themes` 0.4 or newer. It sets both `data-theme` and the `.dark` class on `<html>`. The system's CSS reads either. The class is for third-party components that read only `.dark`.
 
 ### Staying current
 
