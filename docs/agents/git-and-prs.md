@@ -49,7 +49,7 @@ git fetch origin && git log --oneline HEAD..origin/main
 ## Merge
 
 - Merge only after a clean run on the PR's head commit. `quality` is the required check. Read [Visual regression](visual-regression.md) before you treat a red `Visual` run as a flake.
-- This repo rebase-merges: `gh pr merge <N> --rebase`. See [Git workflow](git-workflow.md).
+- Merge with `gh pr merge <N> --rebase`, or `--squash` when the branch has a merge commit from `main`. The PR title is the squash commit, so `quality` checks it. See [Git workflow](git-workflow.md).
 
 ## After merge
 

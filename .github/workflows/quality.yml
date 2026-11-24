@@ -2,6 +2,7 @@ name: Quality
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   push:
     branches:
       - main
@@ -38,6 +39,15 @@ jobs:
         run: |
           git fetch --no-tags origin "$BASE_REF"
           node scripts/git-hooks/commit-policy.mjs range "origin/${BASE_REF}..${HEAD_SHA}"
+      # A squash merge lands the pull request title as the commit on main, so
+      # the title gets the same rule as a commit (#447). The title is
+      # attacker-controlled text, so it goes through env, never `${{ }}` in the
+      # run text. `edited` is in the trigger list so a title fix reruns it.
+      - name: Pull request title is one Conventional line
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/git-hooks/commit-policy.mjs title "$PR_TITLE"
       # Corepack activates the exact pnpm from `packageManager` in ./package.json,
       # same as pnpm/action-setup did, but without installing a second pnpm to get
       # there. That action bootstrapped its own pnpm into a flat, v10-style

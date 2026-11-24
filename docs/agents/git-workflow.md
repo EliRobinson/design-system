@@ -57,19 +57,29 @@ Then say in your next message that you used it, and why. It covers only the comm
 - It runs for Claude Code only. Codex, Gemini, Cursor and Copilot do not have it yet.
 - If the hook crashes, it allows the call and prints `guard-main-checkout: hook crashed` on stderr. A guard that refused every Bash call would leave no way to run the fix.
 
-## This repo rebase-merges
+## Merge method: rebase by default, squash for a merge commit
 
-Squash and merge commits are both disabled; `gh pr merge --squash` fails with
-`Squash merges are not allowed on this repository`. Use `--rebase`.
+Rebase-merge and squash are both on; merge commits are off, so `main` stays
+linear. Use `gh pr merge <N> --rebase` by default. Use `gh pr merge <N> --squash`
+when the branch has a merge commit from `main` (you caught up with
+`git merge origin/main`, never a rebase or force-push), because a merge commit
+with conflict fixes blocks rebase-merge.
 
-Two consequences, and the second is the one that changes how you write a branch:
+A squash lands one commit on `main`: the PR title as the line, with a blank
+body. The `quality` job checks the title under the same rule as a commit
+(`commit-policy.mjs title`), so it must be one Conventional line. Fix a bad
+title with `gh pr edit <N> --title ...`; that reruns the check.
+
+Two consequences of a rebase merge, and the second is the one that changes how
+you write a branch:
 
 - **A merged branch is still never an ancestor of `main`.** Rebasing rewrites
   every commit, so the SHAs you pushed are not the SHAs that land. Check PR
   state — `gh pr view <n> --json state` — never `git merge-base --is-ancestor`,
-  which reports merged branches as unmerged. This was equally true under
-  squash; only the mechanism changed.
-- **Every commit on the branch lands on `main` individually.** Nothing is
+  which reports merged branches as unmerged. A squash is the same: one new
+  commit lands, not yours.
+- **Every commit on the branch lands on `main` individually** (a squash folds
+  them into one). Nothing is
   folded away, so an intermediate commit is permanent history rather than a
   private working step. Keep the branch to commits you would want in the log.
   That includes the baseline-accept commit CI pushes for you when you apply
@@ -191,7 +201,7 @@ Check the content type, not just the status. A 404 from `github.com` redirects t
 
 ### After merge, repoint to the commit that landed
 
-**Merging orphans every commit on the branch** — including the one the screenshots are pinned to. Rebasing rewrites each commit onto `main`, so what you pushed and what landed are different objects, and the SHA you had to use when opening the PR is, by definition, not the SHA the record should keep. (This was true under squash for a different reason, which is why the procedure below did not change when the merge method did.)
+**Merging orphans every commit on the branch** — including the one the screenshots are pinned to. Rebasing rewrites each commit onto `main`, so what you pushed and what landed are different objects, and the SHA you had to use when opening the PR is, by definition, not the SHA the record should keep. (A squash merge orphans them too, for a different reason, so the procedure below is the same for both methods.)
 
 GitHub still serves blobs from unreachable commits, so nothing visibly breaks the moment it merges (verified on #107 after its branch commit was orphaned). But it is unreachable from any ref, nothing guarantees it stays served, and `git show <sha>` fails for anyone who fetches the repo fresh. Repoint the body once, right after merging:
 
@@ -199,7 +209,7 @@ GitHub still serves blobs from unreachable commits, so nothing visibly breaks th
 gh pr view <pr> --json mergeCommit -q .mergeCommit.oid   # the tip that landed, on main
 ```
 
-For a rebase merge that is the **tip of the landed sequence**, not a single combined commit — verified on #184, where the branch's two commits landed as `ce0a782` and `7417ed8` and `mergeCommit` returned the latter. The tip is still the right SHA to pin to even when the assets were committed earlier in the branch: a file added by any commit is present in every commit after it, so the tip carries every PNG the branch introduced.
+For a squash merge that is the single squash commit, and it carries every PNG the branch introduced. For a rebase merge it is the **tip of the landed sequence**, not a single combined commit — verified on #184, where the branch's two commits landed as `ce0a782` and `7417ed8` and `mergeCommit` returned the latter. The tip is still the right SHA to pin to even when the assets were committed earlier in the branch: a file added by any commit is present in every commit after it, so the tip carries every PNG the branch introduced.
 
 Swap that SHA into the body's image URLs and `gh pr edit <pr> --body-file …`. Two SHAs total: the branch one to open with, the landed one to leave behind.
 
