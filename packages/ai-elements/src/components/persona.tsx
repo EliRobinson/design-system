@@ -8,7 +8,7 @@
  *
  * Local modifications, applied by scripts/ai-elements-transforms.mjs:
  *   - workspace-alias: rewrote @repo/shadcn-ui/* imports to paths inside this package
- *   - persona-theme: made Persona dark when <html> has data-theme="dark" or .dark, never from the OS alone, and re-check when either attribute changes (see scripts/ai-elements-patches/theme.mjs)
+ *   - persona-theme: made Persona dark when it or an ancestor has data-theme="dark" or .dark, never from the OS alone, and re-check when either attribute changes (see scripts/ai-elements-patches/theme.mjs)
  *
  * Re-pull with `pnpm sync:elements`. An edit made here instead is detected
  * as local divergence and makes the next upstream bump fail loudly rather
@@ -106,18 +106,17 @@ const sources = {
   },
 };
 
-const getCurrentTheme = (): "light" | "dark" => {
+const getCurrentTheme = (el: Element | null = null): "light" | "dark" => {
   if (typeof window !== "undefined") {
-    const root = document.documentElement;
-    if (root.getAttribute("data-theme") === "dark" || root.classList.contains("dark")) {
+    if ((el ?? document.documentElement).closest('[data-theme="dark"], .dark')) {
       return "dark";
     }
   }
   return "light";
 };
 
-const useTheme = (enabled: boolean) => {
-  const [theme, setTheme] = useState<"light" | "dark">(getCurrentTheme);
+const useTheme = (enabled: boolean, el: Element | null = null) => {
+  const [theme, setTheme] = useState<"light" | "dark">(() => getCurrentTheme(el));
 
   useEffect(() => {
     // Skip if not enabled (avoids unnecessary observers for non-dynamic-color variants)
@@ -127,18 +126,27 @@ const useTheme = (enabled: boolean) => {
 
     // Watch for classList changes
     const observer = new MutationObserver(() => {
-      setTheme(getCurrentTheme());
+      setTheme(getCurrentTheme(el));
     });
 
-    observer.observe(document.documentElement, {
-      attributeFilter: ["class", "data-theme"],
-      attributes: true,
-    });
+    // Any ancestor can make this element dark, so watch them all
+    for (
+      let node: Element | null = el ?? document.documentElement;
+      node;
+      node = node.parentElement
+    ) {
+      observer.observe(node, {
+        attributeFilter: ["class", "data-theme"],
+        attributes: true,
+      });
+    }
+    // The element can arrive after the first render, so read it now
+    setTheme(getCurrentTheme(el));
 
     // Watch for OS-level theme changes
     let mql: MediaQueryList | null = null;
     const handleMediaChange = () => {
-      setTheme(getCurrentTheme());
+      setTheme(getCurrentTheme(el));
     };
 
     if (window.matchMedia) {
@@ -152,7 +160,7 @@ const useTheme = (enabled: boolean) => {
         mql.removeEventListener("change", handleMediaChange);
       }
     };
-  }, [enabled]);
+  }, [enabled, el]);
 
   return theme;
 };
@@ -160,12 +168,13 @@ const useTheme = (enabled: boolean) => {
 interface PersonaWithModelProps {
   rive: ReturnType<typeof useRive>["rive"];
   source: (typeof sources)[keyof typeof sources];
+  canvas?: HTMLCanvasElement | null;
   children: React.ReactNode;
 }
 
 const PersonaWithModel = memo(
-  ({ rive, source, children }: PersonaWithModelProps) => {
-    const theme = useTheme(source.dynamicColor);
+  ({ rive, source, canvas, children }: PersonaWithModelProps) => {
+    const theme = useTheme(source.dynamicColor, canvas);
     const viewModel = useViewModel(rive, { useDefault: true });
     const viewModelInstance = useViewModelInstance(viewModel, {
       rive,
@@ -265,7 +274,7 @@ export const Persona: FC<PersonaProps> = memo(
     // a WebGL2 context during React Strict Mode's first throw-away mount.
     const ready = useStrictModeSafeInit();
 
-    const { rive, RiveComponent } = useRive(
+    const { rive, RiveComponent, canvas } = useRive(
       ready
         ? {
             autoplay: true,
@@ -310,7 +319,7 @@ export const Persona: FC<PersonaProps> = memo(
     const Component = source.hasModel ? PersonaWithModel : PersonaWithoutModel;
 
     return (
-      <Component rive={rive} source={source}>
+      <Component canvas={canvas} rive={rive} source={source}>
         <RiveComponent className={cn("size-16 shrink-0", className)} />
       </Component>
     );

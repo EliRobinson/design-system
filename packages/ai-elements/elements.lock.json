@@ -171,7 +171,7 @@
     "src/components/persona.tsx": {
       "from": "packages/elements/src/persona.tsx",
       "upstream": "sha256:5c649409c4c08408959eff5ec43a179ca6f585ec101ca7f8322348510b6b0375",
-      "vendored": "sha256:b2459e1cdbc2374d36fae0f4f0bdacaf41e3088844fd89a86dc0e51a970da8c7"
+      "vendored": "sha256:84dea67b5e9a2bb62feb5baf99941eb8247d8094ba3d51ab2de65cae0c112723"
     },
     "src/components/plan.tsx": {
       "from": "packages/elements/src/plan.tsx",
