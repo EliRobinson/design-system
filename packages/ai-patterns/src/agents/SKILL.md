@@ -55,7 +55,7 @@ In order of preference:
 
 Leave out hex / `rgb()` / `oklch()` literals, magic px for radius, shadow, and motion, and ad-hoc font-size stacks where a `.t-*` class exists. `@elirobinson/eslint-config` fails the build on these.
 
-Dark mode is `[data-theme="dark"]` (`.dark` also works). If this repo uses `next-themes`, set `attribute={["data-theme", "class"]}`.
+Dark mode is `[data-theme="dark"]` (`.dark` also works). If this repo uses `next-themes` 0.4 or newer, set `attribute={["data-theme", "class"]}`.
 
 ## Step 4: Satisfy the contracts
 

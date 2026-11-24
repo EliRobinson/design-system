@@ -71,8 +71,8 @@ Before migrating any screen, install the things that keep this from drifting bac
 
    The font's class goes on `<html>`, not `<body>`: the tokens resolve at `:root`.
 
-8. If the app has a theme switcher, point it at `data-theme` (`next-themes`:
-   `attribute={["data-theme", "class"]}`, which also sets `.dark`).
+8. If the app has a theme switcher, have it set both `data-theme` and the `.dark` class
+   (`next-themes` 0.4 or newer: `attribute={["data-theme", "class"]}`).
 9. Drop `expectDesignSystemContracts` from `@elirobinson/ai-patterns/testing/playwright`
    into the E2E suite for the routes in scope.
 10. `pnpm ds check` — finds the known traps that make an app look wrong with no error

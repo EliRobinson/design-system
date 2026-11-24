@@ -24,18 +24,22 @@
  * left in place: it now re-reads the same attributes, so it is harmless, and
  * leaving it keeps this to two anchors.
  *
+ * Known limit: Persona reads `<html>` only. Our CSS also themes a nested
+ * `data-theme="dark"` subtree, and a Persona inside one still follows `<html>`.
+ * Reading the nearest themed ancestor needs a ref to Persona's own element.
+ *
  * Same mechanism as `motion.mjs` and `a11y.mjs`: a find/replace on upstream
- * bytes, and `assertPatch` throws by name when an anchor does not appear
+ * bytes, and `applyAnchoredPatches` (anchored.mjs) throws by name when an anchor does not appear
  * exactly the expected number of times, so an upstream rewrite of either
  * function stops `pnpm sync:elements` loudly instead of dropping the fix.
  */
 
+import { applyAnchoredPatches } from './anchored.mjs';
+
 /**
  * Every theme patch. `behaviour` is what upstream does today, unpatched, and
- * `why` is the reason the vendored copy does not do that.
- *
- * `count` defaults to 1 and is the number of times `find` must occur in that
- * file.
+ * `why` is the reason the vendored copy does not do that. Each `find` must
+ * occur exactly once in its file.
  */
 export const PATCHES = [
   {
@@ -74,22 +78,17 @@ export const PATCHES = [
   },
 ];
 
-function assertPatch(patch, source) {
-  const count = patch.count ?? 1;
-  const parts = source.split(patch.find).length - 1;
-
-  if (parts !== count) {
-    throw new Error(
-      `ai-elements theme patch "${patch.id}" expected its anchor ${count} time(s) in ` +
-        `${patch.upstreamPath} and found ${parts}.\n\n` +
-        `  control:   ${patch.control}\n` +
-        `  behaviour: ${patch.behaviour}\n` +
-        `  anchor:    ${JSON.stringify(patch.find.slice(0, 120))}\n\n` +
-        'Upstream has moved this code. Check whether upstream now reads data-theme ' +
-        'itself; if not, update the anchor. Do not delete the patch to make the bump ' +
-        'pass, and do not edit the vendored file directly.',
-    );
-  }
+function missMessage(patch, expected, found) {
+  return (
+    `ai-elements theme patch "${patch.id}" expected its anchor ${expected} time(s) in ` +
+    `${patch.upstreamPath} and found ${found}.\n\n` +
+    `  control:   ${patch.control}\n` +
+    `  behaviour: ${patch.behaviour}\n` +
+    `  anchor:    ${JSON.stringify(patch.find.slice(0, 120))}\n\n` +
+    'Upstream has moved this code. Check whether upstream now reads data-theme ' +
+    'itself; if not, update the anchor. Do not delete the patch to make the bump ' +
+    'pass, and do not edit the vendored file directly.'
+  );
 }
 
 /**
@@ -100,14 +99,5 @@ function assertPatch(patch, source) {
  * @returns {{ source: string, fired: boolean }}
  */
 export function applyThemePatches(source, upstreamPath) {
-  const patches = PATCHES.filter((patch) => patch.upstreamPath === upstreamPath);
-  if (patches.length === 0) return { source, fired: false };
-
-  let current = source;
-  for (const patch of patches) {
-    assertPatch(patch, current);
-    current = current.split(patch.find).join(patch.replace);
-  }
-
-  return { source: current, fired: true };
+  return applyAnchoredPatches(PATCHES, source, upstreamPath, missMessage);
 }

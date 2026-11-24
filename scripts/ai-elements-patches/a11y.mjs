@@ -37,7 +37,7 @@
  * ---------------------------------------------------------------------------
  * The transform layer runs on upstream bytes, so a patch is a find/replace on
  * upstream source. That is brittle by construction — and the brittleness is the
- * feature. `assertPatch` below throws when an anchor does not appear exactly
+ * feature. `applyAnchoredPatches` (anchored.mjs) throws when an anchor does not appear exactly
  * the expected number of times, so the day upstream rewrites one of these class
  * strings, `pnpm sync:elements` fails loudly and names the control, rather than
  * dropping the fix and reporting a clean bump. A patch that silently stopped
@@ -59,6 +59,8 @@
  * `elements-classification-parity.test.mjs` both hold this file's entries to
  * exactly those two tiers and no others.
  */
+
+import { applyAnchoredPatches } from './anchored.mjs';
 
 /** A primary control's floor. Both axes, for a control that is its own box. */
 const TARGET = 'min-h-[var(--target)] min-w-[var(--target)]';
@@ -464,23 +466,18 @@ export const PATCHES = [
   },
 ];
 
-function assertPatch(patch, source) {
-  const count = patch.count ?? 1;
-  const parts = source.split(patch.find).length - 1;
-
-  if (parts !== count) {
-    throw new Error(
-      `ai-elements a11y patch "${patch.id}" expected its anchor ${count} time(s) in ` +
-        `${patch.upstreamPath} and found ${parts}.\n\n` +
-        `  control: ${patch.control}\n` +
-        `  verdict: ${patch.verdict}\n` +
-        `  anchor:  ${JSON.stringify(patch.find.slice(0, 120))}\n\n` +
-        'Upstream has moved this control. Re-run the audit harness ' +
-        '(`pnpm a11y:elements`), re-measure the control, and update the anchor — do ' +
-        'not delete the patch to make the bump pass, and do not edit the vendored ' +
-        'file directly.',
-    );
-  }
+function missMessage(patch, expected, found) {
+  return (
+    `ai-elements a11y patch "${patch.id}" expected its anchor ${expected} time(s) in ` +
+    `${patch.upstreamPath} and found ${found}.\n\n` +
+    `  control: ${patch.control}\n` +
+    `  verdict: ${patch.verdict}\n` +
+    `  anchor:  ${JSON.stringify(patch.find.slice(0, 120))}\n\n` +
+    'Upstream has moved this control. Re-run the audit harness ' +
+    '(`pnpm a11y:elements`), re-measure the control, and update the anchor — do ' +
+    'not delete the patch to make the bump pass, and do not edit the vendored ' +
+    'file directly.'
+  );
 }
 
 /**
@@ -491,17 +488,5 @@ function assertPatch(patch, source) {
  * @returns {{ source: string, fired: boolean }}
  */
 export function applyA11yPatches(source, upstreamPath) {
-  const patches = PATCHES.filter((patch) => patch.upstreamPath === upstreamPath);
-  if (patches.length === 0) return { source, fired: false };
-
-  let current = source;
-  for (const patch of patches) {
-    assertPatch(patch, current);
-    current = current.split(patch.find).join(patch.replace);
-  }
-
-  return { source: current, fired: true };
+  return applyAnchoredPatches(PATCHES, source, upstreamPath, missMessage);
 }
-
-/** Every file this rule touches, for the sync check's reporting. */
-export const patchedPaths = [...new Set(PATCHES.map((patch) => patch.upstreamPath))];
