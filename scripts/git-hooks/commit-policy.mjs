@@ -4,9 +4,12 @@
  *   node scripts/git-hooks/commit-policy.mjs branch            (pre-commit)
  *   node scripts/git-hooks/commit-policy.mjs commit-msg <file> (commit-msg)
  *   node scripts/git-hooks/commit-policy.mjs range <a>..<b>    (CI, quality.yml)
+ *   node scripts/git-hooks/commit-policy.mjs title <title>     (CI, quality.yml)
  *
  * `range` is the backstop: git's sequencer (revert, cherry-pick, rebase -i)
  * skips the hooks, so CI reads every commit a pull request adds (#278).
+ * `title` checks the pull request title, which a squash merge lands as the
+ * commit on main (#447).
  */
 
 import { execFileSync } from 'node:child_process';
@@ -59,12 +62,26 @@ export function checkCommitMessage(text, { raw = false } = {}) {
   const [subject] = filled;
   if (GIT_MERGE.test(subject)) return null;
   // `amend!` is left out on purpose: git always gives it a body.
-  const bare = subject.replace(/^(fixup|squash)! /, '');
+  return checkSubject(subject, subject.replace(/^(fixup|squash)! /, ''));
+}
+
+/** The shape and length rule. `bare` is the subject without a `fixup!` prefix. */
+function checkSubject(subject, bare) {
   if (!SUBJECT.test(bare)) {
     return `Use a Conventional Commit: <type>(<scope>): <subject>. Types: ${TYPES.join(', ')}.`;
   }
   if (subject.length > MAX_LENGTH) return `Keep the line to ${MAX_LENGTH} characters or fewer.`;
   return null;
+}
+
+/** Returns why this pull request title is rejected, or null. A squash merge
+ *  lands the title as the commit on main, so it gets the commit rule with no
+ *  allowance for git's own merge or `fixup!` subjects. */
+export function checkPrTitle(title) {
+  const subject = (title ?? '').trim();
+  if (subject === '') return 'The pull request title is empty.';
+  if (subject.includes('\n')) return 'Write one line only.';
+  return checkSubject(subject, subject);
 }
 
 /** Returns one line per commit that breaks the rule: `<sha> <subject>: <why>`. */
@@ -77,8 +94,8 @@ export function checkCommits(commits) {
   });
 }
 
-/* Merge commits are skipped (ADR 0002): main takes rebase-merges only, and
-   GitHub's own `Merge <sha> into <sha>` is not ours to word. Git exits
+/* Merge commits are skipped (ADR 0002): main takes rebase-merges and squash
+   merges, never a merge commit, and GitHub's own `Merge <sha> into <sha>` is not ours to word. Git exits
    non-zero on a bad range, and execFileSync throws, so a typo never passes. */
 function commitsIn(range) {
   const log = execFileSync('git', ['log', '--no-merges', '--format=%h%x00%B%x1e', range], {
@@ -127,6 +144,7 @@ const MODES = {
     run: (file) => checkCommitMessage(readFileSync(file, 'utf8')),
   },
   range: { usage: 'range <a>..<b>', prefix: 'commit policy', run: checkRange },
+  title: { usage: 'title <title>', prefix: 'pull request title', run: checkPrTitle },
 };
 
 function main([mode, arg]) {

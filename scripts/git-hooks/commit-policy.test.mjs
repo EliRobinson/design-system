@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { checkBranch, checkCommitMessage, checkCommits } from './commit-policy.mjs';
+import { checkBranch, checkCommitMessage, checkCommits, checkPrTitle } from './commit-policy.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..');
@@ -222,7 +222,7 @@ describe('the CLI range mode', () => {
     expect(run.stderr).toMatch(/Revert "fix: x": Use a Conventional Commit/);
   });
 
-  it('skips merge commits, which a rebase-merge never lands on main', () => {
+  it('skips merge commits, which neither rebase-merge nor squash lands on main', () => {
     const dir = repo();
     commit(dir, 'fix: one line');
     git(dir, 'checkout', '-q', 'main');
@@ -244,7 +244,66 @@ describe('the CLI range mode', () => {
   });
 });
 
-/* The quality job is the only thing that runs range mode. */
+/* A squash merge lands the pull request title as the commit on main (#447). */
+describe('checkPrTitle', () => {
+  const passes = [
+    ['a typed title', 'fix: one line'],
+    ['a scoped title', 'docs(agents): allow squash merge'],
+    ['a breaking title', 'feat(react)!: drop the prop'],
+    ['a title with edge spaces', '  fix: one line  '],
+  ];
+  it.each(passes)('passes %s', (_name, title) => {
+    expect(checkPrTitle(title)).toBeNull();
+  });
+
+  const fails = [
+    ['an empty title', '', /empty/],
+    ['a blank title', '   ', /empty/],
+    ['a title with no type', 'Allow squash merge', /Conventional Commit/],
+    ['an unknown type', 'wip: allow squash merge', /Conventional Commit/],
+    ['a title with no subject', 'fix:', /Conventional Commit/],
+    [
+      "git's own merge subject, which a commit may carry",
+      'Merge branch main into x',
+      /Conventional/,
+    ],
+    ['a fixup subject, which a commit may carry', 'fixup! fix: one line', /Conventional/],
+    ['two lines', 'fix: one line\nsecond', /one line only/],
+    ['a title over the length limit', `fix: ${'x'.repeat(100)}`, /100 characters/],
+  ];
+  it.each(fails)('fails %s', (_name, title, why) => {
+    expect(checkPrTitle(title)).toMatch(why);
+  });
+
+  it('fails a missing title', () => {
+    expect(checkPrTitle(undefined)).toMatch(/empty/);
+  });
+
+  it('judges a title by the same subject rule as a commit', () => {
+    const subject = 'fix(react): keep focus on the trigger';
+    expect(checkPrTitle(subject)).toBe(checkCommitMessage(subject));
+  });
+});
+
+describe('title mode', () => {
+  const title = (arg) => spawnSync('node', [cli, 'title', arg], { encoding: 'utf8' });
+
+  it('exits 0 for a good title', () => {
+    expect(title('fix: one line').status).toBe(0);
+  });
+
+  it('exits 1 for a bad title and names it', () => {
+    const run = title('Allow squash merge');
+    expect(run.status).toBe(1);
+    expect(run.stderr).toMatch(/^pull request title: /);
+  });
+
+  it('exits 1 with no title given', () => {
+    expect(spawnSync('node', [cli, 'title'], { encoding: 'utf8' }).status).toBe(1);
+  });
+});
+
+/* The quality job is the only thing that runs range and title mode. */
 describe('the quality workflow', () => {
   const workflow = readFileSync(join(root, '.github/workflows/quality.yml'), 'utf8');
 
@@ -252,6 +311,15 @@ describe('the quality workflow', () => {
     expect(workflow).toContain(
       'node scripts/git-hooks/commit-policy.mjs range "origin/${BASE_REF}..${HEAD_SHA}"',
     );
+  });
+
+  it('checks the pull request title, passed through env and not interpolated', () => {
+    expect(workflow).toContain('PR_TITLE: ${{ github.event.pull_request.title }}');
+    expect(workflow).toContain('node scripts/git-hooks/commit-policy.mjs title "$PR_TITLE"');
+  });
+
+  it('reruns when the title is edited', () => {
+    expect(workflow).toMatch(/pull_request:\n\s+types: \[[^\]]*\bedited\b[^\]]*\]/);
   });
 });
 
