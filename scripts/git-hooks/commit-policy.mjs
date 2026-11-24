@@ -4,7 +4,7 @@
  *   node scripts/git-hooks/commit-policy.mjs branch            (pre-commit)
  *   node scripts/git-hooks/commit-policy.mjs commit-msg <file> (commit-msg)
  *   node scripts/git-hooks/commit-policy.mjs range <a>..<b>    (CI, quality.yml)
- *   node scripts/git-hooks/commit-policy.mjs title <title>     (CI, quality.yml)
+ *   node scripts/git-hooks/commit-policy.mjs title <title> [<number>] (CI, quality.yml)
  *
  * `range` is the backstop: git's sequencer (revert, cherry-pick, rebase -i)
  * skips the hooks, so CI reads every commit a pull request adds (#278).
@@ -77,11 +77,13 @@ function checkSubject(subject, bare) {
 /** Returns why this pull request title is rejected, or null. A squash merge
  *  lands the title as the commit on main, so it gets the commit rule with no
  *  allowance for git's own merge or `fixup!` subjects. */
-export function checkPrTitle(title) {
+export function checkPrTitle(title, number) {
   const subject = (title ?? '').trim();
   if (subject === '') return 'The pull request title is empty.';
   if (subject.includes('\n')) return 'Write one line only.';
-  return checkSubject(subject, subject);
+  // GitHub appends ` (#<number>)` to the squash subject, so measure that.
+  const landed = number ? `${subject} (#${number})` : subject;
+  return checkSubject(landed, subject);
 }
 
 /** Returns one line per commit that breaks the rule: `<sha> <subject>: <why>`. */
@@ -95,8 +97,9 @@ export function checkCommits(commits) {
 }
 
 /* Merge commits are skipped (ADR 0002): main takes rebase-merges and squash
-   merges, never a merge commit, and GitHub's own `Merge <sha> into <sha>` is not ours to word. Git exits
-   non-zero on a bad range, and execFileSync throws, so a typo never passes. */
+   merges, never a merge commit, and GitHub's own `Merge <sha> into <sha>` is
+   not ours to word. Git exits non-zero on a bad range, and execFileSync
+   throws, so a typo never passes. */
 function commitsIn(range) {
   const log = execFileSync('git', ['log', '--no-merges', '--format=%h%x00%B%x1e', range], {
     encoding: 'utf8',
@@ -144,15 +147,19 @@ const MODES = {
     run: (file) => checkCommitMessage(readFileSync(file, 'utf8')),
   },
   range: { usage: 'range <a>..<b>', prefix: 'commit policy', run: checkRange },
-  title: { usage: 'title <title>', prefix: 'pull request title', run: checkPrTitle },
+  title: {
+    usage: 'title <title> [<number>]',
+    prefix: 'pull request title',
+    run: checkPrTitle,
+  },
 };
 
-function main([mode, arg]) {
+function main([mode, arg, arg2]) {
   const entry = Object.hasOwn(MODES, mode) ? MODES[mode] : null;
   const usage = Object.values(MODES)
     .map((m) => `"${m.usage}"`)
     .join(', ');
-  const problem = entry ? entry.run(arg) : `Unknown mode: ${mode}. Use ${usage}.`;
+  const problem = entry ? entry.run(arg, arg2) : `Unknown mode: ${mode}. Use ${usage}.`;
   if (problem) {
     process.stderr.write(
       `${entry?.prefix ?? 'commit policy'}: ${problem}\nSee docs/agents/git-workflow.md.\n`,

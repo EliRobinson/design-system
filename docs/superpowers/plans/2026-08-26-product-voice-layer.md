@@ -48,7 +48,7 @@ packId packages apps` returned nothing on `main` @ b6d467b. Task 12 adds it, onc
 - **`apps/docs/public/brand/` is gitignored** and staged from `design-system-docs/` by `apps/docs/scripts/stage-brand.mjs` at build time. Editing the source tree is sufficient; never edit the staged copy.
 - **Nx locally:** use `pnpm nx <target> <project>` — verified working in a worktree. `npx nx` and `node_modules/.bin/nx` fail with a bogus `Failed to parse "nx.json"` (a wrapper plain-`JSON.parse`s a JSONC file). `.nx/installation/node_modules/.bin/nx` is a workaround for the **main checkout only** — that directory is generated and is not present in a fresh worktree, where only `.nx/nxw.js` exists.
 - **Rebase before pushing.** `main` moves fast. A PR with merge conflicts runs zero workflows silently — check `gh pr view N --json mergeable,mergeStateStatus` if a PR shows no runs.
-- **This repo rebase-merges by default** — use `--rebase`, or `--squash` when the branch has a merge commit from `main`; merge commits are off. Rebasing rewrites every commit onto `main`, so the SHA you pushed is never the SHA that lands: check PR state rather than reasoning from `git merge-base --is-ancestor`. `docs/agents/git-workflow.md` is the authority.
+- **Merge method:** see `docs/agents/git-workflow.md`. Rebasing rewrites every commit onto `main`, so the SHA you pushed is never the SHA that lands: check PR state rather than reasoning from `git merge-base --is-ancestor`. `docs/agents/git-workflow.md` is the authority.
 - **Kept deliberately, do not "fix":** the system's name (`Miltinson Design System`), `[data-palette='miltinson']`, Miltinson Amber as the default palette, Geist and JetBrains Mono in `@elirobinson/tokens`.
 
 ---

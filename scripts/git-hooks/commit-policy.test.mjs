@@ -279,6 +279,12 @@ describe('checkPrTitle', () => {
     expect(checkPrTitle(undefined)).toMatch(/empty/);
   });
 
+  it('counts the ` (#N)` GitHub adds to the squash subject', () => {
+    const title = `fix: ${'x'.repeat(95)}`; // 100 characters
+    expect(checkPrTitle(title)).toBeNull();
+    expect(checkPrTitle(title, 447)).toMatch(/100 characters/);
+  });
+
   it('judges a title by the same subject rule as a commit', () => {
     const subject = 'fix(react): keep focus on the trigger';
     expect(checkPrTitle(subject)).toBe(checkCommitMessage(subject));
@@ -286,7 +292,7 @@ describe('checkPrTitle', () => {
 });
 
 describe('title mode', () => {
-  const title = (arg) => spawnSync('node', [cli, 'title', arg], { encoding: 'utf8' });
+  const title = (...args) => spawnSync('node', [cli, 'title', ...args], { encoding: 'utf8' });
 
   it('exits 0 for a good title', () => {
     expect(title('fix: one line').status).toBe(0);
@@ -299,7 +305,11 @@ describe('title mode', () => {
   });
 
   it('exits 1 with no title given', () => {
-    expect(spawnSync('node', [cli, 'title'], { encoding: 'utf8' }).status).toBe(1);
+    expect(title().status).toBe(1);
+  });
+
+  it('exits 1 when the number pushes the title over the limit', () => {
+    expect(title(`fix: ${'x'.repeat(95)}`, '447').status).toBe(1);
   });
 });
 
@@ -315,7 +325,12 @@ describe('the quality workflow', () => {
 
   it('checks the pull request title, passed through env and not interpolated', () => {
     expect(workflow).toContain('PR_TITLE: ${{ github.event.pull_request.title }}');
-    expect(workflow).toContain('node scripts/git-hooks/commit-policy.mjs title "$PR_TITLE"');
+    expect(workflow).toContain(
+      'node scripts/git-hooks/commit-policy.mjs title "$PR_TITLE" "$PR_NUMBER"',
+    );
+    expect(workflow).toMatch(
+      /Pull request title is one Conventional line\n\s+if: github\.event_name == 'pull_request'/,
+    );
   });
 
   it('reruns when the title is edited', () => {
