@@ -8,6 +8,7 @@
  *
  * Local modifications, applied by scripts/ai-elements-transforms.mjs:
  *   - workspace-alias: rewrote @repo/shadcn-ui/* imports to paths inside this package
+ *   - persona-theme: made Persona dark when <html> has data-theme="dark" or .dark, never from the OS alone, and re-check when either attribute changes (see scripts/ai-elements-patches/theme.mjs)
  *
  * Re-pull with `pnpm sync:elements`. An edit made here instead is detected
  * as local divergence and makes the next upstream bump fail loudly rather
@@ -107,10 +108,8 @@ const sources = {
 
 const getCurrentTheme = (): "light" | "dark" => {
   if (typeof window !== "undefined") {
-    if (document.documentElement.classList.contains("dark")) {
-      return "dark";
-    }
-    if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+    const root = document.documentElement;
+    if (root.getAttribute("data-theme") === "dark" || root.classList.contains("dark")) {
       return "dark";
     }
   }
@@ -132,7 +131,7 @@ const useTheme = (enabled: boolean) => {
     });
 
     observer.observe(document.documentElement, {
-      attributeFilter: ["class"],
+      attributeFilter: ["class", "data-theme"],
       attributes: true,
     });
 

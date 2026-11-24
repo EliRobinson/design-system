@@ -30,11 +30,11 @@ being true:
 
 A change we actually need goes in `scripts/ai-elements-transforms.mjs`, where it is
 re-applied on every bump and reviewable as one file, or in a wrapper component in our own
-package. As of `ai-elements@1.9.0` the transform layer is five rules, in this order.
+package. As of `ai-elements@1.9.0` the transform layer is six rules, in this order.
 Two are mechanical: `workspace-alias` rewrites upstream's `@repo/shadcn-ui/*` workspace
 imports to paths inside the package, and `relative-extensions` adds `.js` to relative
-specifiers. Then come the two that carry judgement — `a11y-touch-targets` and
-`reduced-motion`, below — and last, the skin.
+specifiers. Then come the three that carry judgement — `a11y-touch-targets`,
+`reduced-motion` and `persona-theme`, below — and last, the skin.
 
 ## The skin
 
@@ -70,9 +70,9 @@ entry carries the reason it is not a token.
 system's dial instead of the reader's operating system. Every `dark:` utility upstream
 ships — and every one a consumer writes — moves with the theme toggle because of it.
 
-## The two rules that carry judgement
+## The three rules that carry judgement
 
-`a11y-touch-targets` is third of the five, after the two specifier rules and before the
+`a11y-touch-targets` is third of the six, after the two specifier rules and before the
 skin. It lives in its own module, `scripts/ai-elements-patches/a11y.mjs`. Every entry there
 names one control, the geometry a browser measured for it, which of the two touch-target
 floors it was held to, and why it is that one and not the other — see
@@ -90,14 +90,22 @@ separate rule from `a11y.mjs` on purpose: that file's ids are pinned name-for-na
 control with a size, so it has no touch-target floor and no honest verdict to publish
 there. The module's header carries the full argument.
 
-Both modules' anchors are exact and their misses are fatal. A patch whose anchor no longer
+`persona-theme` is fifth, and lives in `scripts/ai-elements-patches/theme.mjs`. `Persona`
+picks light or dark in JS and sets its Rive colour from that, so no stylesheet can reach
+it. Upstream reads the `.dark` class, else the OS, and watches only `class`. The vendored
+copy is dark when `<html>` has `data-theme="dark"` or `.dark`, the same rule as our CSS,
+and also watches `data-theme` (#442). [AI Elements theme](ai-elements-theme.md#persona-follows-data-theme)
+has the reasoning.
+
+All three modules' anchors are exact and their misses are fatal. A patch whose anchor no longer
 appears throws **by name** during `pnpm sync:elements` rather than quietly not applying, so
 an upstream bump that moves one of these class strings or attributes stops and tells you
 which control to re-measure. That is the intended failure: a dropped accessibility or
 motion fix that reports a clean bump is the outcome the whole arrangement exists to
 prevent. The fix is a new anchor, never a deleted patch entry — `ai-elements-layer.test.mjs`
 in `scripts/` re-reads the vendored `conversation.tsx` for `initial="instant"` and
-`resize="instant"` so that deleting the motion patch to get a bump through goes red.
+`resize="instant"`, and the vendored `persona.tsx` for its `data-theme` check, so that
+deleting the motion or theme patch to get a bump through goes red.
 
 ## Re-syncing
 

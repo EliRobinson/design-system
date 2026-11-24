@@ -51,8 +51,8 @@ shadcn's names onto ours (`--accent: var(--accent)`): the names collide, the ali
 at itself, and the colour silently resolves to nothing. If the app uses `next/font`, keep
 its two font lines as `--ds-font-sans-override` and `--ds-font-mono-override` (Step 0).
 
-Move the theme switch from the `.dark` class to `data-theme="dark"` on `<html>`. With
-`next-themes`, that is `attribute="data-theme"`.
+Add `data-theme="dark"` on `<html>` to the theme switch, and keep the `.dark` class. With
+`next-themes`, that is `attribute={["data-theme", "class"]}`.
 
 ## Colour
 

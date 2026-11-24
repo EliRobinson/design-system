@@ -147,6 +147,41 @@ read it are re-asserted in the fixups file with `--shell-md`. `ai-theme-tokens.t
 the old name in `RENAMED` and checks the fixups file carries the new one. Remove the row and the
 fixups when a drop carries the rename.
 
+## Persona follows `data-theme`
+
+`Persona` is the one vendored component that picks its own theme in JS. When the variant
+has `dynamicColor` (`command`, `glint`, `halo`, and the default `obsidian`), that choice
+sets the Rive model's colour: white in dark, black in light. CSS cannot reach a colour set
+on a Rive view model, so the CSS layers above cannot fix it.
+
+Upstream, `getCurrentTheme()` returns dark when `<html>` has the `.dark` class, or else when
+the OS prefers dark. Its `MutationObserver` watches only `class`. This system is dark only
+when `<html>` has `data-theme="dark"` or `.dark` (tokens.css, palettes.css, and the `dark:`
+variant in tailwind.css), and it never follows the OS by itself. So, before #442:
+
+- An app set to light on a dark OS drew a white Persona on a light page.
+- An app set to dark with `data-theme` alone, on a light OS, drew a black Persona on a dark
+  page.
+- Switching `data-theme` at runtime did not update Persona until a reload.
+
+Two changes fix it (#442):
+
+- **The `persona-theme` transform rule** (`scripts/ai-elements-patches/theme.mjs`). The
+  vendored `getCurrentTheme()` is dark when `<html>` has `data-theme="dark"` or `.dark`, and
+  light otherwise. The observer also watches `data-theme`. This is what fixes all three
+  cases. `scripts/ai-elements-layer.test.mjs` pins it in the vendored file.
+- **The `next-themes` advice sets both attributes**:
+  `attribute={["data-theme", "class"]}`. `<html>` then gets `data-theme` and the `.dark`
+  class together. Our CSS reads either, with the same values at the same specificity, so
+  having both changes nothing for our styles. It helps any third-party component that,
+  like upstream Persona, reads only `.dark`. This replaces the `attribute="data-theme"`
+  advice that #436 settled.
+
+Considered and not chosen for now: a PR to `vercel/ai-elements` so upstream reads
+`data-theme`. If upstream ever does, `theme.mjs`'s anchors stop matching and
+`pnpm sync:elements` fails by name. Then check upstream's rule against ours and delete the
+patch if they agree.
+
 ## Colours
 
 **No new colour was introduced.** Every pair the layer uses was already measured and is

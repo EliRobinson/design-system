@@ -19,6 +19,7 @@ import { posix } from 'node:path';
 import * as skin from './ai-elements-patches/skin.mjs';
 import { applyA11yPatches } from './ai-elements-patches/a11y.mjs';
 import { applyMotionPatches } from './ai-elements-patches/motion.mjs';
+import { applyThemePatches } from './ai-elements-patches/theme.mjs';
 
 /**
  * Upstream is a pnpm monorepo, so its components import their shadcn/ui
@@ -173,6 +174,22 @@ const RULES = [
       '(see scripts/ai-elements-patches/motion.mjs)',
     apply(source, ctx) {
       return applyMotionPatches(source, ctx.upstreamPath);
+    },
+  },
+
+  /* Persona's theme. Upstream picks light or dark in JS from the `.dark` class
+     or the OS, and sets the Rive colour from that, so no stylesheet can fix it.
+     This rule makes it use the design system's own rule instead: dark when
+     <html> has data-theme="dark" or .dark, re-checked when either changes
+     (#442). Its own module for the same reason motion has one: it is neither
+     a touch target nor a look. Anchored the same way; a miss throws. */
+  {
+    id: 'persona-theme',
+    describe:
+      'made Persona dark when <html> has data-theme="dark" or .dark, never from the OS alone, ' +
+      'and re-check when either attribute changes (see scripts/ai-elements-patches/theme.mjs)',
+    apply(source, ctx) {
+      return applyThemePatches(source, ctx.upstreamPath);
     },
   },
 

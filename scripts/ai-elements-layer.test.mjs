@@ -24,6 +24,9 @@ const noticePath = fileURLToPath(new URL('../packages/ai-elements/NOTICE', impor
 const conversationPath = fileURLToPath(
   new URL('../packages/ai-elements/src/components/conversation.tsx', import.meta.url),
 );
+const personaPath = fileURLToPath(
+  new URL('../packages/ai-elements/src/components/persona.tsx', import.meta.url),
+);
 
 describe('the AI Elements transform layer, versus what is published about it', () => {
   /* NOTICE ships in the tarball (packages/ai-elements/package.json `files`),
@@ -78,6 +81,30 @@ describe('the AI Elements transform layer, versus what is published about it', (
     );
     expect(source, 'a smooth-scroll default survived the reduced-motion rule').not.toMatch(
       /(?:initial|resize)="smooth"/,
+    );
+  });
+
+  /* The persona-theme patch, pinned at its landing site for the same reason
+     as motion: theme.mjs throws when an anchor moves, but deleting the patch
+     re-derives a Persona that reads the OS again, and sync exits 0 (#442). */
+  it('leaves the vendored Persona reading data-theme and not the OS', () => {
+    const source = readFileSync(personaPath, 'utf8');
+    const getCurrentTheme = source.slice(
+      source.indexOf('const getCurrentTheme'),
+      source.indexOf('const useTheme'),
+    );
+
+    expect(getCurrentTheme, 'Persona no longer reads data-theme').toContain(
+      'root.getAttribute("data-theme") === "dark"',
+    );
+    expect(getCurrentTheme, 'Persona no longer reads the .dark class').toContain(
+      'root.classList.contains("dark")',
+    );
+    expect(getCurrentTheme, 'Persona reads the OS theme again').not.toContain(
+      'prefers-color-scheme',
+    );
+    expect(source, 'Persona no longer watches data-theme').toContain(
+      'attributeFilter: ["class", "data-theme"]',
     );
   });
 });

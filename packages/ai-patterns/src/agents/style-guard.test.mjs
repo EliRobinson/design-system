@@ -20,7 +20,7 @@ const TEMPLATES = AGENT_FILES.map((file) => file.template);
 const SHARED = [
   'pnpm ds check',
   'pnpm ds patterns',
-  'attribute="data-theme"',
+  'attribute={["data-theme", "class"]}',
   '[data-theme="dark"]',
   'unlayered',
   '--ds-font-sans-override',

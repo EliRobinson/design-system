@@ -197,10 +197,10 @@ A plain `.ts` spec is compiled to CommonJS by Playwright, so this import resolve
 ### 10. If you have a theme switcher, point it at `data-theme`
 
 ```tsx
-<ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+<ThemeProvider attribute={["data-theme", "class"]} defaultTheme="system" enableSystem>
 ```
 
-`next-themes` defaults to a `class` strategy. A `.dark` compatibility selector ships too, so either works. `data-theme` is the convention the system documents.
+This sets both `data-theme` and the `.dark` class on `<html>`. The system's CSS reads either. The class is for third-party components that read only `.dark`.
 
 ### Staying current
 
