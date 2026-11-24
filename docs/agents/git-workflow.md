@@ -65,10 +65,12 @@ when the branch has a merge commit from `main` (you caught up with
 `git merge origin/main`, never a rebase or force-push), because a merge commit
 with conflict fixes blocks rebase-merge.
 
-A squash lands one commit on `main`: the PR title as the line, with a blank
-body. The `quality` job checks the title under the same rule as a commit
+A squash lands one commit on `main`: the PR title plus ` (#N)` as the line,
+with a blank body. It folds the branch into that one commit, so intermediate
+commits never reach `main`. The `quality` job checks the title under the same rule as a commit
 (`commit-policy.mjs title`), so it must be one Conventional line. Fix a bad
-title with `gh pr edit <N> --title ...`; that reruns the check.
+title with `gh pr edit <N> --title ...`; that reruns the check. Any PR edit
+reruns `quality`, body edits too.
 
 Two consequences of a rebase merge, and the second is the one that changes how
 you write a branch:
@@ -78,8 +80,7 @@ you write a branch:
   state — `gh pr view <n> --json state` — never `git merge-base --is-ancestor`,
   which reports merged branches as unmerged. A squash is the same: one new
   commit lands, not yours.
-- **Every commit on the branch lands on `main` individually** (a squash folds
-  them into one). Nothing is
+- **Every commit on the branch lands on `main` individually.** Nothing is
   folded away, so an intermediate commit is permanent history rather than a
   private working step. Keep the branch to commits you would want in the log.
   That includes the baseline-accept commit CI pushes for you when you apply
