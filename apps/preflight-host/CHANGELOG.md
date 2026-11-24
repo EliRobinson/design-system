@@ -1,5 +1,13 @@
 # preflight-host
 
+## 0.0.22
+
+### Patch Changes
+
+- Updated dependencies [4785126]
+  - @elirobinson/tokens@1.1.2
+  - @elirobinson/react@3.15.6
+
 ## 0.0.21
 
 ### Patch Changes
