@@ -15,7 +15,7 @@
  * or any ancestor has `data-theme="dark"` or `.dark`. That is what tokens.css
  * and palettes.css do (bare `[data-theme='dark'], .dark`, inherited), and what
  * the `dark:` variant in tailwind.css matches (`[data-theme='dark'] *`). It
- * never follows the OS on its own, and nothing resets a subtree to light, so a
+ * never follows the OS on its own, and no `data-theme` value resets a subtree to light, so a
  * `data-theme="light"` inside a dark page is still dark.
  *
  * Upstream's rule drew white on a light page whenever the OS was dark (#442),
@@ -41,7 +41,8 @@
  * Known limit: the observer watches the ancestors the canvas has when it
  * mounts. If the Persona is moved under a new themed ancestor without
  * remounting, it re-reads on the next change of an attribute it watches, not
- * at the move.
+ * at the move. Inside a shadow root, `closest()` and the ancestor walk stop at
+ * the root, so Persona there reads light even under a dark `<html>`.
  *
  * Same mechanism as `motion.mjs` and `a11y.mjs`: a find/replace on upstream
  * bytes, and `applyAnchoredPatches` (anchored.mjs) throws by name when an

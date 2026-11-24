@@ -155,21 +155,23 @@ sets the Rive model's colour: white in dark, black in light. CSS cannot reach a 
 on a Rive view model, so the CSS layers above cannot fix it.
 
 Upstream, `getCurrentTheme()` returns dark when `<html>` has the `.dark` class, or else when
-the OS prefers dark. Its `MutationObserver` watches only `class`. This system is dark only
-when `<html>` has `data-theme="dark"` or `.dark` (tokens.css, palettes.css, and the `dark:`
-variant in tailwind.css), and this system never follows the OS by itself. So, before #442:
+the OS prefers dark. Its `MutationObserver` watches only `class`. This system is dark
+wherever an element or an ancestor has `data-theme="dark"` or `.dark` (tokens.css,
+palettes.css, and the `dark:` variant in tailwind.css), and this system never follows the
+OS by itself. So, before #442:
 
 - An app set to light on a dark OS drew a white Persona on a light page.
 - An app set to dark with `data-theme` alone, on a light OS, drew a black Persona on a dark
   page.
 - Switching `data-theme` at runtime did not update Persona until a reload.
 
-Two changes fix it (#442):
+Two changes fixed it (#442):
 
-- **The `persona-theme` transform rule** (`scripts/ai-elements-patches/theme.mjs`). The
-  vendored `getCurrentTheme()` is dark when `<html>` has `data-theme="dark"` or `.dark`, and
-  light otherwise. The observer also watches `data-theme`. This is what fixes all three
-  cases. `scripts/ai-elements-layer.test.mjs` pins it in the vendored file.
+- **The `persona-theme` transform rule** (`scripts/ai-elements-patches/theme.mjs`). In
+  #442, the vendored `getCurrentTheme()` became dark when `<html>` has `data-theme="dark"`
+  or `.dark`, and light otherwise, and the observer also watched `data-theme`. This fixed
+  all three cases. #444 then moved the check from `<html>` to Persona's own element; see
+  [Persona reads its own element](#persona-reads-its-own-element-444). `scripts/ai-elements-layer.test.mjs` pins it in the vendored file.
 - **The `next-themes` advice sets both attributes** (needs `next-themes` 0.4 or newer):
   `attribute={["data-theme", "class"]}`. `<html>` then gets `data-theme` and the `.dark`
   class together. Our CSS reads either, with the same values at the same specificity, so
@@ -191,13 +193,14 @@ Now Persona reads the same rule from its own element:
   passes it from `Persona` to the internal `PersonaWithModel`, and from there to `useTheme`.
   No new ref and no extra DOM.
 - **The rule.** Dark when `canvas.closest('[data-theme="dark"], .dark')` finds an element,
-  light otherwise. Until the canvas exists, it reads `<html>`. Nothing in our CSS resets a
+  light otherwise. Until the canvas exists, it reads `<html>`. No `data-theme` value in our CSS resets a
   subtree to light, so a `data-theme="light"` panel inside a dark page stays dark, for the
   CSS and for Persona alike.
 - **Runtime changes.** The observer watches `class` and `data-theme` on the canvas and on
   every ancestor up to `<html>`, and re-reads when the canvas arrives. Limit: it watches the
   ancestors the canvas has when it mounts. A Persona moved under a new ancestor without a
-  remount re-reads at the next change it watches, not at the move.
+  remount re-reads at the next change it watches, not at the move. Inside a shadow root,
+  the lookup stops at the root, so Persona there reads light even under a dark `<html>`.
 - **Why anchors, not a wrapper.** The colour is set inside the vendored `PersonaWithModel`
   from `useTheme`'s value, and `Persona` takes no theme prop. A wrapper sees neither, so
   it could only re-implement Persona, which forks the whole file. The anchors keep
