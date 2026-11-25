@@ -6,7 +6,7 @@
 - No body. No trailers.
 - The scope is the package, app or top-level folder the change lives in, for example `fix(react): ...` or `docs(agents): ...`. It is optional.
 - The allowed types and the length limit are in `scripts/git-hooks/commit-policy.mjs`. The `commit-msg` hook enforces them.
-- Git's sequencer (`git revert`, `rebase -i` squash, and `git cherry-pick` without an editor) skips the hooks. Write those messages yourself, as one Conventional line, for example `revert: fix(react): keep focus on the trigger`. Git's own `Revert "..."` subject does not pass. The `quality` job checks every commit in a pull request, so a missed one fails CI. Check those messages before you push, and fix a bad one with `git rebase -i` while the branch is still unpushed. After the first push, a rewrite would need a force push, which [One branch, one PR](#one-branch-one-pr) rules out: bring it to the coordinator.
+- Git's sequencer (`git revert`, `rebase -i` squash, and `git cherry-pick` without an editor) skips the hooks. Write those messages yourself, as one Conventional line, for example `revert: fix(react): keep focus on the trigger`. Git's own `Revert "..."` subject does not pass. The `quality` job checks every commit in a pull request, so a missed one fails CI. Check those messages before you push, and fix a bad one with `git rebase -i` while the branch is still unpushed. After the first push, a rewrite needs a force push, which only Eli can allow: the coordinator asks on his Asks board, and on a yes the branch owner runs one `git push --force-with-lease` for that branch. This is the one exception to [One branch, one PR](#one-branch-one-pr).
 
 ## Hooks
 
@@ -20,8 +20,8 @@ An issue keeps one branch and one PR until it merges.
 
 - Review fixes are new commits on the same branch. Never open a second branch or PR for the same issue.
 - Before the first push, rebasing your own commits is fine.
-- After it, catch up with `main` by merging it in: `git fetch origin && git merge origin/main`, then push normally. Never rebase a pushed branch, and never force push, so nobody's pushed work is overwritten.
-- A branch with a merge from `main` lands with `--squash`. See [Merge method](#merge-method-rebase-by-default-squash-for-a-merge-commit).
+- After it, catch up with `main` by merging it in: `git fetch origin && git merge origin/main`, then push normally. With an open PR, `gh pr update-branch <N>` does the same merge on GitHub (never with `--rebase`); run `git pull --ff-only origin <branch>` before your next commit.
+- Never rebase a pushed branch, and never force push, so nobody's pushed work is overwritten. A branch with a merge from `main` lands as the [merge method](#merge-method-rebase-by-default-squash-for-a-merge-commit) says.
 
 ## The main checkout guard
 
@@ -70,8 +70,8 @@ Then say in your next message that you used it, and why. It covers only the comm
 
 Rebase-merge and squash are both on; merge commits are off, so `main` stays
 linear. Use `gh pr merge <N> --rebase` by default. Use `gh pr merge <N> --squash`
-when the branch has a merge commit from `main` (you caught up with
-`git merge origin/main`, never a rebase or force-push), because a merge commit
+when the branch has a merge commit from `main` (see
+[One branch, one PR](#one-branch-one-pr)), because a merge commit
 with conflict fixes blocks rebase-merge.
 
 A squash lands one commit on `main`: the PR title plus ` (#N)` as the line,
@@ -93,6 +93,7 @@ you write a branch:
 - **Every commit on the branch lands on `main` individually.** Nothing is
   folded away, so an intermediate commit is permanent history rather than a
   private working step. Keep the branch to commits you would want in the log.
+  Review-fix commits are expected there: they are new commits, never rewrites.
   That includes the baseline-accept commit CI pushes for you when you apply
   `visual-accept` — it lands beside your change rather than being absorbed
   into it.

@@ -16,7 +16,7 @@ Nothing we publish may require a consumer to update prose when this repo changes
 
 **Components:** Components live under `packages/react/src/components/<tier>/` (atoms/molecules/organisms/ai). Every interactive component uses `forwardRef`. Primary controls at their default size (buttons, pagination, segmented control, nav items) get at least a 44x44 touch target; dense inline affordances (chip remove, search clear, rating stars, calendar days) and compact size variants have a 24x24 floor; a grown hit area never overlaps its neighbours. [Components](docs/agents/components.md) has the tier boundary rule and the full constraints.
 
-**Tests:** Every behaviour change ships tests and docs. Unit tests are DRY (case tables, shared fixtures) and check one behaviour each. See [Quality bar](docs/agents/quality-bar.md).
+**Tests:** Every behaviour change ships tests and docs. Unit tests follow the test rules in [Quality bar](docs/agents/quality-bar.md).
 
 **Work:** Each piece of work is a GitHub issue, done in its own worktree on its own feature branch. That includes subagents and side sessions that write files. See [Backlog](docs/agents/backlog.md) and [Parallel agents](docs/agents/parallel-agents.md).
 
@@ -25,12 +25,14 @@ Nothing we publish may require a consumer to update prose when this repo changes
 - Do not edit files in the main checkout or commit on `main`, not even a one-line doc fix. Many sessions share that checkout, and the guard hook sees only git, not an editor.
 - Do not open a PR before the review gate runs: use the `review-gate` skill (`.agents/skills/review-gate/SKILL.md`). It catches what tests and lint cannot, and a hook enforces it.
 - Do not skip or disable a hook (`--no-verify`, `HUSKY=0`). A failing hook means something is wrong: fix the cause. Skip one only when Eli says so. The main checkout guard's documented escape is not a skip: see [Git workflow](docs/agents/git-workflow.md).
+- Do not force push or rebase a pushed branch. An issue keeps one branch and one PR; catch up with `git merge origin/main`. See [Git workflow](docs/agents/git-workflow.md#one-branch-one-pr).
 - Do not use Fable for any agent: it costs too much. Use Opus, Sonnet or Haiku, and pass `model`, except to `review-*` agents, whose file pins it.
 - Do not edit files another agent owns. Two agents editing one file overwrite each other.
 
 ## How we work
 
-- [Backlog](docs/agents/backlog.md) — GitHub Issues, labels, triage, blocked-by and sub-issue links. [Ticketing tool](docs/agents/issue-tracker.md) — the setting and commands the agent-roster agents read
+- [Backlog](docs/agents/backlog.md) — GitHub Issues, labels, triage, blocked-by and sub-issue links
+- [Issue tracker](docs/agents/issue-tracker.md) — the tool setting and commands the agent-roster agents read
 - [Parallel agents](docs/agents/parallel-agents.md) — worktrees, file ownership, messages, models, subagent briefs
 - [Quality bar](docs/agents/quality-bar.md) — proof, how we build, the definition of done
 - [Coordinator prompt](docs/agents/coordinator.md) — the standing prompt for the chat that runs every agent
