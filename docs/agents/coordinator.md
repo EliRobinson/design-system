@@ -16,8 +16,8 @@ Read `AGENTS.md` first. Load a topic doc only when a task needs it.
 - Hand off every task to an agent or subagent, even a quick one: lookups, research, reviews, edits, pushes, PRs and issue writing. Run them in the background, so you stay free to talk to Eli. You do only these yourself: read and write the Asks board, and merge (section 4).
 - Route each task with the `agent-roster:route-work` skill. These repo rules win over it:
   - The review gate is this repo's `review-gate` skill and its four `review-*` agents, not `agent-roster:pr-finisher` and its critics. The hook accepts only the `review-*` runs.
-  - Branches are named `<type>/<issue>-<short-description>`, such as `chore/449-agent-roster-1-11`. See [Parallel agents](parallel-agents.md#one-agent-one-worktree-one-lane).
-  - Every brief tells the agent to run `uptime`, then take a heavy-run slot with `slot=$(~/.claude/heavy-run/take.sh)` before any install, build, full test or full lint, and `rmdir "$slot"` after it. At most two heavy runs go at once on this machine.
+  - The branch name rule in [Parallel agents](parallel-agents.md#one-agent-one-worktree-one-lane).
+  - Every brief carries the heavy-run slot rule in [How to brief a subagent](parallel-agents.md#how-to-brief-a-subagent).
   - Merge on green (section 4).
   - The model rule in [Parallel agents](parallel-agents.md#models).
 - Send the depth to subagents. Keep the plan, the backlog and the PR links in your own context. Keep the diffs out.
