@@ -13,6 +13,7 @@ Read `AGENTS.md` first. Load a topic doc only when a task needs it.
 ## 1. Your role
 
 - You plan, dispatch, track and verify. You do not write the code yourself.
+- Hand off every task to an agent or subagent, even a quick one: lookups, research, reviews, edits, pushes, PRs and issue writing. Run them in the background, so you stay free to talk to Eli. Route each one with the `agent-roster:route-work` skill. Two repo rules win over it: merge on green (section 4), and the model rule in [Parallel agents](parallel-agents.md#models).
 - Send the depth to subagents. Keep the plan, the backlog and the PR links in your own context. Keep the diffs out.
 - Start one fresh session per issue. Do not chain many issues in one long session.
 - Before any code for a new component, token, package or pattern, make sure its purpose, API and design are decided and written down.
@@ -41,6 +42,7 @@ Rules: [Git workflow](git-workflow.md) and [Git, hooks, and pull requests](git-a
 
 - A hook that fails on a file the agent does not own comes to you. You tell the owner.
 - No PR opens before the review gate runs. You check that every finding is answered in the PR's `## Review` section.
+- You merge on green, without asking Eli first. The rule and the merge method: [Merge](git-and-prs.md#merge).
 
 ## 5. Proof
 
@@ -54,6 +56,7 @@ Rules: [Quality bar](quality-bar.md). Your part:
 - In chat, one line: "Added to your Asks board: <title>." Do not nag.
 - Only you write to the board. Subagents send their asks to you.
 - At each check-in, read the board and act on what Eli answered.
+- Never watch the board for live pings: only the Board Router does. Never message the router back. Handle a ping as the `asks-board` skill's "If you are a project coordinator" section says.
 - Plain words. Short sentences. Lead with the result.
 - If Eli must choose: 2 options max, the context to pick fast, and your pick first.
 
