@@ -6,13 +6,22 @@
 - No body. No trailers.
 - The scope is the package, app or top-level folder the change lives in, for example `fix(react): ...` or `docs(agents): ...`. It is optional.
 - The allowed types and the length limit are in `scripts/git-hooks/commit-policy.mjs`. The `commit-msg` hook enforces them.
-- Git's sequencer (`git revert`, `rebase -i` squash, and `git cherry-pick` without an editor) skips the hooks. Write those messages yourself, as one Conventional line, for example `revert: fix(react): keep focus on the trigger`. Git's own `Revert "..."` subject does not pass. The `quality` job checks every commit in a pull request, so a missed one fails CI. Fix it with `git rebase -i`.
+- Git's sequencer (`git revert`, `rebase -i` squash, and `git cherry-pick` without an editor) skips the hooks. Write those messages yourself, as one Conventional line, for example `revert: fix(react): keep focus on the trigger`. Git's own `Revert "..."` subject does not pass. The `quality` job checks every commit in a pull request, so a missed one fails CI. Check those messages before you push, and fix a bad one with `git rebase -i` while the branch is still unpushed. After the first push, a rewrite would need a force push, which [One branch, one PR](#one-branch-one-pr) rules out: bring it to the coordinator.
 
 ## Hooks
 
-- Never bypass a hook. No `--no-verify`. Fix the cause.
+- Never bypass a hook. No `--no-verify`, no `HUSKY=0`. Fix the cause.
 - Skip a hook only when Eli says so.
 - `.husky/pre-commit` runs `sync-workspace-deps`, `lint-staged` and `pnpm lint` on the whole repo. So it can fail on a file you do not own. If it does, stop. Tell the owner and the coordinator.
+
+## One branch, one PR
+
+An issue keeps one branch and one PR until it merges.
+
+- Review fixes are new commits on the same branch. Never open a second branch or PR for the same issue.
+- Before the first push, rebasing your own commits is fine.
+- After it, catch up with `main` by merging it in: `git fetch origin && git merge origin/main`, then push normally. Never rebase a pushed branch, and never force push, so nobody's pushed work is overwritten.
+- A branch with a merge from `main` lands with `--squash`. See [Merge method](#merge-method-rebase-by-default-squash-for-a-merge-commit).
 
 ## The main checkout guard
 
