@@ -11,7 +11,9 @@
 ## How we build
 
 - **Spec, then plan, then code.** Big work gets a short spec and a plan (`superpowers:writing-plans`). Split the plan into small issues. Each issue fits in one small PR.
-- **Tests first.** Every behaviour change ships with a test. It fails before the change and passes after.
+- **Tests first.** Every behaviour change ships with a test and its docs. The test fails before the change and passes after.
+- **Keep unit tests DRY.** In the tests you add or change, put cases that share one test body in a table that drives a parametrized test (`it.each`), so each case runs and fails on its own. Share fixtures where cases share setup. A case that needs its own setup or logic gets its own test. Existing tests that break this rule are a follow-up issue, not part of your change.
+- **Each unit test checks one behaviour.** Aim for one assertion, and name the test after that behaviour.
 - **Find the root cause.** Use `superpowers:systematic-debugging`. After two failed fixes on the same idea, stop. Rethink, or ask Eli.
 - **Small diffs win.** A PR must be small enough for one careful review. If not, split it.
 - **Keep context lean.** Use subagents to search and read wide. Keep only their summary. Load a topic doc only when the task needs it.
@@ -28,7 +30,7 @@
 - [ ] `pnpm lint`, `pnpm format:check` and `pnpm typecheck` pass.
 - [ ] A changeset exists if the PR touches `packages/` (`pnpm changeset`).
 - [ ] Review gate run. `## Review` section complete.
-- [ ] Rebased on fresh `origin/main`. Gates run again.
+- [ ] Caught up with fresh `origin/main`, as [Git workflow](git-workflow.md#one-branch-one-pr) says. Gates run again.
 - [ ] Docs, ADRs and `CONTEXT.md` updated where needed.
 - [ ] Follow-up work filed as issues.
 - [ ] PR says `Closes #N`. Summary comment on the issue.
