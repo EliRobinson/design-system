@@ -43,11 +43,12 @@ Read what landed on `main` since you branched:
 git fetch origin && git log --oneline HEAD..origin/main
 ```
 
-- If it touches your work, rebase and run the gates again.
+- If it touches your work, catch up as [One branch, one PR](git-workflow.md#one-branch-one-pr) says, and run the gates again.
 - If it already solves your problem, stop and say so.
 
 ## Merge
 
+- The coordinator merges on green: once every CI check on the PR's head commit passes and the local checks pass in its worktree. Eli does not need to say "merge N". It asks Eli only when a check is red, skipped for an odd reason, or failing locally.
 - Merge only after a clean run on the PR's head commit. `quality` is the required check. Read [Visual regression](visual-regression.md) before you treat a red `Visual` run as a flake.
 - Merge with `gh pr merge <N> --rebase`, or `--squash` for a branch with a merge commit from `main`. See [Git workflow](git-workflow.md#merge-method-rebase-by-default-squash-for-a-merge-commit).
 

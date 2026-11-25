@@ -25,7 +25,7 @@ The model rule is in `docs/agents/git-and-prs.md`.
 
 ## 2. Act on the findings
 
-Handle each finding as `docs/agents/git-and-prs.md` says: fix it, decline it with evidence, or file it.
+Handle each finding as `docs/agents/git-and-prs.md` says: fix it, decline it with evidence, or file it. Each fix is a new commit on the same branch.
 
 ## 3. Open the PR
 
