@@ -1,6 +1,6 @@
 # Backlog
 
-The backlog is GitHub Issues on `EliRobinson/design-system`. Nothing else is the record.
+The backlog is GitHub Issues on `EliRobinson/design-system`. Nothing else is the record. The tool setting and its commands are in [Ticketing tool](issue-tracker.md).
 
 ## Every piece of work is an issue
 
