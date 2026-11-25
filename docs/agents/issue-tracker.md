@@ -7,7 +7,7 @@ This file is the repo's one setting for where tickets live. The `agent-roster` a
 - **Tool:** GitHub Issues
 - **Access:** cli
 - **Ticket ID:** `#123`
-- **In branch names:** `123`, as in `chore/123-short-description`
+- **In branch names:** `123`. See the branch name rule in [Parallel agents](parallel-agents.md#one-agent-one-worktree-one-lane).
 - **Link:** `https://github.com/EliRobinson/design-system/issues/<id>`
 - **Close from a PR:** `Closes #<id>` in the PR body
 

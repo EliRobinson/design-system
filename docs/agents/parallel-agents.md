@@ -6,6 +6,7 @@ Many agents work in this repo at once. These rules keep them out of each other's
 
 - Every agent that writes works in its own git worktree, on its own feature branch. That includes subagents and side sessions, not only the agent Eli talks to. "Writes" means it edits files, commits, or runs a command that changes the tree.
 - Why: two agents in one checkout lose work without a trace. One switches the branch, reverts a file, or runs `git add -A`, and `git status` in the other comes back clean.
+- Name the branch `<type>/<issue>-<short-description>`, such as `chore/449-agent-roster-1-11`.
 - Cut the branch from a fresh `origin/main`. `<name>` is the branch name without its `type/` prefix, so the folder is not nested:
 
 ```bash
@@ -84,5 +85,6 @@ The subagent has none of your context. The brief must stand alone. Include:
 - The issue link and the exact files it owns.
 - What "done" looks like, as commands it can run.
 - Limits: what not to touch, what not to change.
+- Heavy-run slots: run `uptime`, then take a slot with `slot=$(~/.claude/heavy-run/take.sh)` before any install, build, full test or full lint, and `rmdir "$slot"` after it. At most two heavy runs go at once on this machine.
 - The skills to use, for example `superpowers:test-driven-development`, `superpowers:systematic-debugging`, `superpowers:verification-before-completion`.
 - How to report back: what changed, what it ran, the real output, what is left, and any asks for Eli.

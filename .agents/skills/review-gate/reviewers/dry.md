@@ -7,7 +7,7 @@ Search the whole repo, not only the diff, for:
 - parallel structures that should be one parametrized thing
 - hand-written types that duplicate generated ones
 - the same rule written in two places
-- test code too: test bodies copied for cases that share one body. The fix is a table that drives a parametrized test (`it.each`), with shared fixtures where cases share setup. A case that needs its own setup or logic stays its own test.
+- test code too: tests the diff adds or changes that break the DRY test rule in `docs/agents/quality-bar.md` (How we build). Report the same problem in tests the diff did not touch as a follow-up, not a finding.
 
 Also name abstractions to leave alone: two things that look alike but change for different reasons. Say why.
 
