@@ -18,7 +18,7 @@ Run every reviewer on the branch diff, in parallel if your tool can. None of the
 | Spec, security, copy | `review-spec`         | `reviewers/spec.md`         | sonnet |
 | DRY                  | `review-dry`          | `reviewers/dry.md`          | opus   |
 
-The model rule is in `docs/agents/git-and-prs.md`.
+The model rule is in `docs/agents/parallel-agents.md#models`.
 
 - **Claude Code:** start one `review-*` agent per reviewer with the Agent tool. Do not pass a `model`; each agent file pins its own.
 - **Other tools:** start one subagent per reviewer with its instructions file. If your tool has no subagents, run each reviewer yourself, one at a time, and keep their findings apart.
