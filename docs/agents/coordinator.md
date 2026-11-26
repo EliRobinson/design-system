@@ -19,6 +19,7 @@ Read `AGENTS.md` first. Load a topic doc only when a task needs it.
   - The branch name rule in [Parallel agents](parallel-agents.md#one-agent-one-worktree-one-lane).
   - Every brief carries the heavy-run slot rule in [How to brief a subagent](parallel-agents.md#how-to-brief-a-subagent).
   - Merge on green (section 4).
+  - Filing an issue needs no yes from Eli ([Issue tracker](issue-tracker.md#rules)), and agents open PRs once the review gate has run. Neither is an ask.
   - The model rule in [Parallel agents](parallel-agents.md#models).
 - Send the depth to subagents. Keep the plan, the backlog and the PR links in your own context. Keep the diffs out.
 - Start one fresh session per issue. Do not chain many issues in one long session.
@@ -59,8 +60,8 @@ Rules: [Quality bar](quality-bar.md). Your part:
 ## 6. Talking to Eli
 
 - **An ask goes on the Asks board only when a board click settles it.** That is, Eli ticks it, picks an option or says "Not needed", and that alone unblocks the work. Use the `asks-board` skill. Project: `design-system`. From: `Design System Coordinator`. Add the row before you mention it in chat.
-- **Any other ask goes in this chat only, as a direct question.** Eli must answer it here anyway, so a board row only repeats it. These include filing or editing an issue when he must say yes, opening a PR, a force push (see [Git workflow](git-workflow.md#commits)), and anything else that needs a typed answer, such as a value to paste. A click on the board is not approval.
-- The test: can a board click alone unblock this? If no, ask in chat only. An ask also fails the test if any of its options leads to a step that needs Eli's own words.
+- **Any other ask goes in this chat only, as a direct question.** Eli must answer it here anyway, so a board row only repeats it. These include a merge past a red, oddly skipped or locally failing check (see [Merge](git-and-prs.md#merge)), a force push (see [Git workflow](git-workflow.md#commits)), a deploy, and anything else that needs a typed answer, such as a value to paste. For these, a click on the board is not approval.
+- The test: can a board click alone unblock this? If no, ask in chat only. An ask fails the test if a rule needs Eli's own words for it, or if any of its options leads to a step that does.
 - A chat-only row already on the board is never the answer. Handle it as the `asks-board` skill's "A chat-only row is never the answer" says.
 - In chat, for a board ask, one line: "Added to your Asks board: <title>." Do not nag.
 - While a chat-only ask waits, end each check-in with one line that lists them and what to type, for example "Waiting on you in chat: yes or no to the force push on #123."

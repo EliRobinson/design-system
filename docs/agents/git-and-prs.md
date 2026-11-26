@@ -48,15 +48,15 @@ git fetch origin && git log --oneline HEAD..origin/main
 
 ## Merge
 
-- The coordinator merges on green, without a "merge N" from Eli: a clean CI run on the PR's exact head commit (`quality` is the required check; "no checks reported" is not a pass, and a pass on an older head does not count), and the local checks passing in the PR's worktree, run by the agent that owns it. It asks Eli only when a check is red, skipped for an odd reason, or failing locally. A red `Visual` run is settled as [Visual regression](visual-regression.md) says.
+- The coordinator merges on green, without a "merge N" from Eli: a clean CI run on the PR's exact head commit (`quality` is the required check; "no checks reported" is not a pass, and a pass on an older head does not count), and the local checks passing in the PR's worktree, run by the agent that owns it. It asks Eli, as [Talking to Eli](coordinator.md#6-talking-to-eli) says, only when a check is red, skipped for an odd reason, or failing locally. A red `Visual` run is settled as [Visual regression](visual-regression.md) says.
 - Merge with `gh pr merge <N> --rebase`, or `--squash` for a branch with a merge commit from `main`. See [Git workflow](git-workflow.md#merge-method-rebase-by-default-squash-for-a-merge-commit).
-- After the merge, tell Eli in one or two lines, with the head commit you merged.
 
 ## After merge
 
-1. Comment a short summary on the issue.
-2. Repoint any screenshot links to the landed commit. See [Git workflow](git-workflow.md).
-3. Clean up, from the main checkout. `<name>` is the worktree folder: the branch name without its `type/` prefix. See [Parallel agents](parallel-agents.md).
+1. Tell Eli in one or two lines, with the head commit you merged.
+2. Comment a short summary on the issue.
+3. Repoint any screenshot links to the landed commit. See [Git workflow](git-workflow.md).
+4. Clean up, from the main checkout. `<name>` is the worktree folder: the branch name without its `type/` prefix. See [Parallel agents](parallel-agents.md).
 
    The [main checkout guard](git-workflow.md#the-main-checkout-guard) refuses `git worktree remove` there. This is the one routine use of its escape:
 
