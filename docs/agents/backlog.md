@@ -33,15 +33,15 @@ The visual labels (`visual`, `visual-accept`, `visual-baseline`) keep their own 
 
 ## Triage labels: may an agent pick it up?
 
-| Label                 | Meaning                                     |
-| --------------------- | ------------------------------------------- |
-| none                  | Ready. An agent may take it.                |
-| `in-progress`         | An agent owns it. Hands off.                |
-| `needs-decision`      | Waits on a design or scope decision.        |
-| `needs-eli`           | Waits on Eli. The ask is on his board.      |
-| `human-only`          | Only Eli does this.                         |
-| `blocked`             | Waits on another issue. Link it.            |
-| `shared-append-point` | Touches a shared file. One agent at a time. |
+| Label                 | Meaning                                                              |
+| --------------------- | -------------------------------------------------------------------- |
+| none                  | Ready. An agent may take it.                                         |
+| `in-progress`         | An agent owns it. Hands off.                                         |
+| `needs-decision`      | Waits on a design or scope decision.                                 |
+| `needs-eli`           | Waits on Eli. See [Talking to Eli](coordinator.md#6-talking-to-eli). |
+| `human-only`          | Only Eli does this.                                                  |
+| `blocked`             | Waits on another issue. Link it.                                     |
+| `shared-append-point` | Touches a shared file. One agent at a time.                          |
 
 Shared append points in this repo: `AGENTS.md`, root `package.json`, `nx.json`, `pnpm-workspace.yaml`, `.github/workflows/`.
 
