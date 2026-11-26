@@ -6,7 +6,7 @@ Before a PR is opened, read-only reviewers run on the branch diff. The `review-g
 
 The author checks each finding against the code and fixes the valid ones. Findings the author disagrees with are answered with evidence in the PR body, never dropped silently. The PR body gets a **Review** section, one line per reviewer, that marks each finding as fixed, declined (and why), or filed (with an issue link).
 
-Anything that needs Eli's decision gets the `needs-eli` label. The coordinator adds the ask to his board.
+Anything that needs Eli's decision gets the `needs-eli` label. The coordinator asks him as [Talking to Eli](coordinator.md#6-talking-to-eli) says.
 
 ### Where the gate lives
 
@@ -48,8 +48,9 @@ git fetch origin && git log --oneline HEAD..origin/main
 
 ## Merge
 
-- The coordinator merges on green, without a "merge N" from Eli: a clean CI run on the PR's head commit (`quality` is the required check), and the local checks passing in the PR's worktree, run by the agent that owns it. It asks Eli only when a check is red, skipped for an odd reason, or failing locally. A red `Visual` run is settled as [Visual regression](visual-regression.md) says.
+- The coordinator merges on green, without a "merge N" from Eli: a clean CI run on the PR's exact head commit (`quality` is the required check; "no checks reported" is not a pass, and a pass on an older head does not count), and the local checks passing in the PR's worktree, run by the agent that owns it. It asks Eli only when a check is red, skipped for an odd reason, or failing locally. A red `Visual` run is settled as [Visual regression](visual-regression.md) says.
 - Merge with `gh pr merge <N> --rebase`, or `--squash` for a branch with a merge commit from `main`. See [Git workflow](git-workflow.md#merge-method-rebase-by-default-squash-for-a-merge-commit).
+- After the merge, tell Eli in one or two lines, with the head commit you merged.
 
 ## After merge
 

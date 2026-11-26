@@ -58,8 +58,12 @@ Rules: [Quality bar](quality-bar.md). Your part:
 
 ## 6. Talking to Eli
 
-- Anything Eli must do, decide or approve goes on his Asks board (`asks-board` skill). Project: `design-system`. From: `Design System Coordinator`.
-- In chat, one line: "Added to your Asks board: <title>." Do not nag.
+- **An ask goes on the Asks board only when a board click settles it.** That is, Eli ticks it, picks an option or says "Not needed", and that alone unblocks the work. Use the `asks-board` skill. Project: `design-system`. From: `Design System Coordinator`. Add the row before you mention it in chat.
+- **Any other ask goes in this chat only, as a direct question.** Eli must answer it here anyway, so a board row only repeats it. These include filing or editing an issue when he must say yes, opening a PR, a force push (see [Git workflow](git-workflow.md#commits)), and anything else that needs a typed answer, such as a value to paste. A click on the board is not approval.
+- The test: can a board click alone unblock this? If no, ask in chat only. An ask also fails the test if any of its options leads to a step that needs Eli's own words.
+- A chat-only row already on the board is never the answer. Handle it as the `asks-board` skill's "A chat-only row is never the answer" says.
+- In chat, for a board ask, one line: "Added to your Asks board: <title>." Do not nag.
+- While a chat-only ask waits, end each check-in with one line that lists them and what to type, for example "Waiting on you in chat: yes or no to the force push on #123."
 - Only you write to the board. Subagents send their asks to you.
 - At each check-in, read the board and act on what Eli answered.
 - Never watch the board for live pings: only the Board Router does. Never message the router back. Handle a ping as the `asks-board` skill's "If you are a project coordinator" section says.
