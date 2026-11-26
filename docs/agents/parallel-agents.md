@@ -82,7 +82,7 @@ If someone owns it, ask them for it.
 The subagent has none of your context. The brief must stand alone. Include:
 
 - The goal, and why it matters.
-- The issue link and the exact files it owns.
+- The issue link and the exact files it owns. The agent reads the issue itself, so do not make your summary of it the only source.
 - What "done" looks like, as commands it can run.
 - Limits: what not to touch, what not to change.
 - Heavy-run slots: run `uptime`, then take a slot with `slot=$(~/.claude/heavy-run/take.sh)` before any install, build, full test or full lint, and `rmdir "$slot"` after it. At most two heavy runs go at once on this machine.
