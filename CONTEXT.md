@@ -53,5 +53,5 @@ The read-only reviewers that must run before a PR opens.
 _Avoid_: PR review, checks
 
 **Ask**:
-One thing Eli must do, decide or approve. It goes on his Asks board only when a board click settles it, and in the coordinator chat otherwise. See [Talking to Eli](docs/agents/coordinator.md#6-talking-to-eli).
+One thing Eli must do, decide or approve. Where it goes: see [Talking to Eli](docs/agents/coordinator.md#6-talking-to-eli).
 _Avoid_: request, ping
