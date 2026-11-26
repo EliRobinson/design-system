@@ -6,7 +6,7 @@
 - No body. No trailers.
 - The scope is the package, app or top-level folder the change lives in, for example `fix(react): ...` or `docs(agents): ...`. It is optional.
 - The allowed types and the length limit are in `scripts/git-hooks/commit-policy.mjs`. The `commit-msg` hook enforces them.
-- Git's sequencer (`git revert`, `rebase -i` squash, and `git cherry-pick` without an editor) skips the hooks. Write those messages yourself, as one Conventional line, for example `revert: fix(react): keep focus on the trigger`. Git's own `Revert "..."` subject does not pass. The `quality` job checks every commit in a pull request, so a missed one fails CI. Check those messages before you push, and fix a bad one with `git rebase -i` while the branch is still unpushed. After the first push, a rewrite needs a force push, which only Eli can allow: the coordinator asks him in chat, not on the Asks board (see [Talking to Eli](coordinator.md#6-talking-to-eli)), and on his yes the branch owner runs one `git push --force-with-lease` for that branch. This is the one exception to [One branch, one PR](#one-branch-one-pr).
+- Git's sequencer (`git revert`, `rebase -i` squash, and `git cherry-pick` without an editor) skips the hooks. Write those messages yourself, as one Conventional line, for example `revert: fix(react): keep focus on the trigger`. Git's own `Revert "..."` subject does not pass. The `quality` job checks every commit in a pull request, so a missed one fails CI. Check those messages before you push, and fix a bad one with `git rebase -i` while the branch is still unpushed. After the first push, a rewrite needs a force push, which only Eli can allow: the coordinator asks him as [Talking to Eli](coordinator.md#6-talking-to-eli) says, and on his yes the branch owner runs one `git push --force-with-lease` for that branch. This is the one exception to [One branch, one PR](#one-branch-one-pr).
 
 ## Hooks
 
@@ -21,7 +21,7 @@ An issue keeps one branch and one PR until it merges.
 - Review fixes are new commits on the same branch. Never open a second branch or PR for the same issue.
 - Before the first push, rebasing your own commits is fine.
 - After it, catch up with `main` by merging it in: `git fetch origin && git merge origin/main`, then push normally. With an open PR, `gh pr update-branch <N>` does the same merge on GitHub (never with `--rebase`); run `git pull --ff-only origin <branch>` before your next commit.
-- Never rebase a pushed branch, and never force push, so nobody's pushed work is overwritten. A branch with a merge from `main` lands as the [merge method](#merge-method-rebase-by-default-squash-for-a-merge-commit) says.
+- Never rebase a pushed branch, and never force push, so nobody's pushed work is overwritten. The one exception is in [Commits](#commits). A branch with a merge from `main` lands as the [merge method](#merge-method-rebase-by-default-squash-for-a-merge-commit) says.
 
 ## The main checkout guard
 
