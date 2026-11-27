@@ -42,6 +42,8 @@ const UNREAD_AT = {
   prMerge: `in this gh pr merge: the shell builds it at run time, and ${FLAG_CLAUSE}`,
   apiCall: `in this gh api call: the shell builds it at run time, and ${FLAG_CLAUSE}`,
   apiWrite: `in this gh api write's endpoint: the shell builds it at run time, and ${ENDPOINT_CLAUSE}`,
+  httpWrite:
+    'in this HTTP write to the GitHub API: the shell builds it at run time, and it may become a merge path (`pulls/<N>/merge`). Quote the URL or write it out in full',
 };
 
 /**
@@ -259,7 +261,6 @@ function checkApi(args) {
 
 const HTTPIE = new Set(['http', 'https', 'xh', 'xhs']);
 const WRITE_METHOD = /^(PUT|POST|PATCH|DELETE)$/i;
-const READ_METHOD = /^(GET|HEAD)$/i;
 const ANY_METHOD = /^(GET|HEAD|PUT|POST|PATCH|DELETE|OPTIONS)$/i;
 
 /**
@@ -278,7 +279,7 @@ function checkHttp(program, args) {
   const { method, body } = readHttpWrite(program, args);
   const hidden = args.find((word) => word.splits && GITHUB_API_URL.test(word.text));
   if (hidden && (method ? !READ_METHOD.test(method) : body)) {
-    return `The hook cannot read \`${hidden.text}\` in this ${program} write to the GitHub API: the shell builds it at run time, and it may become a merge path (\`pulls/<N>/merge\`). Quote the URL or write it out in full.`;
+    return unreadReason('httpWrite', hidden);
   }
   const names = args.map(({ text }) => text.replace(/^--?[\w-]+=/, ''));
   if (!names.some((text) => MERGE_PATH.test(urlPath(text)))) return null;
