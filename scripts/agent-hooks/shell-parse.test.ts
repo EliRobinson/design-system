@@ -120,6 +120,47 @@ describe('parseCommands', () => {
     expect(names(script).filter((name) => name !== undefined)).toEqual(expected);
   });
 
+  // bash's `coproc [NAME] command` (#468). zsh reads only the forms with no NAME.
+  it.each([
+    ['coproc foo { y; }; z', ['coproc', 'y', 'z']],
+    ['coproc foo { y; w; }', ['coproc', 'y', 'w']],
+    ['coproc foo ( y ); z', ['coproc', 'y', 'z']],
+    ['coproc { y; }; z', ['coproc', 'y', 'z']],
+    ['coproc ( y ); z', ['coproc', 'y', 'z']],
+    ['coproc foo while x; do y; done', ['coproc', 'x', 'y']],
+    ['coproc foo if x; then y; fi', ['coproc', 'x', 'y']],
+    ['coproc foo for a in b; do y; done', ['coproc', 'for', 'y']],
+    ['coproc y a', ['coproc', 'y']],
+    ['coproc env A=1 y a', ['coproc', 'y']],
+    ['coproc bash -c "y"', ['coproc', 'bash', 'y']],
+    ['x && coproc foo { y; }', ['x', 'coproc', 'y']],
+    ['if x; then coproc foo { y; }; fi; z', ['x', 'coproc', 'y', 'z']],
+    ['echo $(coproc foo { y; })', ['coproc', 'y', 'echo']],
+  ])('reads the command a coproc runs: %s', (script, expected) => {
+    expect(names(script)).toEqual(expected);
+  });
+
+  it('reads a coproc’s words past its NAME and keyword', () => {
+    expect(argvs('coproc foo { y a; }').at(-1)).toEqual(['y', 'a']);
+    expect(argvs('coproc y a').at(-1)).toEqual(['y', 'a']);
+  });
+
+  it('runs a coproc’s simple command in a shell of its own', () => {
+    const [, cd, after] = parseCommands('coproc cd a; b');
+    expect(cd?.argv[0]).toBe('cd');
+    expect(cd?.scope).toHaveLength(1);
+    expect(after?.scope).toEqual([]);
+  });
+
+  it('gives the first command of a coproc’s compound body a compound body id', () => {
+    const scopes = (script: string) => parseCommands(script).map(({ scope }) => scope);
+    const [, y, w, z] = scopes('coproc foo { y; w; }; z');
+    expect(y).toHaveLength(1);
+    expect(y?.[0]).toBeLessThan(0);
+    expect(w).toEqual([]);
+    expect(z).toEqual([]);
+  });
+
   it('keeps one mark per word past dropped env assignments and wrappers', () => {
     const [command] = parseCommands('A=$x timeout 5 gh "$y" z');
     expect(command?.argv).toEqual(['gh', '$y', 'z']);

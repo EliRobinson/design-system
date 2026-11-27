@@ -1,7 +1,7 @@
 // @ts-check
 // A small shell parser for the review gate hook. It is not a full shell: it
 // finds every simple command in a script, including ones inside `$(...)`,
-// backticks, `bash -c`, and `eval`, and ignores text inside quotes,
+// backticks, `bash -c`, `eval`, and `coproc`, and ignores text inside quotes,
 // comments, heredoc bodies, and `((...))`. See docs/agents/git-and-prs.md
 // for what it does not catch.
 
@@ -80,6 +80,27 @@ const BRACE_EXPANSION = /^\{[^{}\s'"]*(,|\.\.)[^{}\s'"]*\}/;
 function leadingKeywords(argv) {
   const end = argv.findIndex((each) => !COMPOUND_OPENERS.has(each) && !KEYWORDS.has(each));
   return end === -1 ? argv : argv.slice(0, end);
+}
+
+/**
+ * Where the command that a `coproc` at the front of `argv` runs starts,
+ * past the `coproc` and bash's NAME, or null when there is no such command.
+ * bash reads `coproc NAME compound` when the word after NAME opens a
+ * compound command, and `coproc command` otherwise; zsh has no NAME and
+ * rejects that form. `compound`: the command starts with a compound opener.
+ * `beforeSubshell`: a `(` comes right after these words, so a lone word
+ * after `coproc` is NAME, not a command.
+ * @param {string[]} argv
+ * @param {boolean} beforeSubshell
+ * @returns {{ at: number, compound: boolean } | null}
+ */
+function coprocStart(argv, beforeSubshell) {
+  if (argv[0] !== 'coproc') return null;
+  const name = argv[1] ?? '';
+  if (!KEYWORDS.has(name) && COMPOUND_OPENERS.has(argv[2] ?? '')) return { at: 2, compound: true };
+  const rest = argv.at(-1) === GLOB_GROUP_WORD ? argv.slice(1, -1) : argv.slice(1);
+  if (rest.length === 0 || (beforeSubshell && rest.length === 1)) return null;
+  return { at: 1, compound: COMPOUND_OPENERS.has(name) };
 }
 
 /** Hands out scope ids, unique within one parse. @typedef {{ last: number }} ScopeIds */
@@ -173,20 +194,43 @@ function readLevel(script, start, closer, scope, ids) {
     }
     return opened;
   };
+  // Adds the command in `words`, past what `unwrap` drops. Then, for a
+  // `coproc`, adds the command it runs as well (see coprocStart), so a hook
+  // reads both. A simple command gets a subshell of its own, as bash and zsh
+  // run it. The first command of a compound body gets a compound body id of
+  // its own, so a `cd` in it leaves the folder around it unknown: the rest
+  // of the body, which the parser reads as it always has, may run there.
+  // `beforeSubshell`: a `(` comes right after these words.
+  const pushCommand = (
+    /** @type {string[]} */ words,
+    /** @type {WordMark[]} */ wordMarks,
+    /** @type {number[]} */ scope,
+    /** @type {boolean} */ beforeSubshell,
+  ) => {
+    const { argv: command, env } = unwrap(words);
+    // `unwrap` drops words only from the front.
+    const commandMarks = wordMarks.slice(words.length - command.length);
+    // A bare `NAME=value` is kept: it sets a variable in the current shell.
+    if (command.length > 0 || env.length > 0)
+      commands.push({ argv: command, env, scope, top: false, marks: commandMarks });
+    const start = coprocStart(command, beforeSubshell);
+    if (start === null) return;
+    pushCommand(
+      command.slice(start.at),
+      commandMarks.slice(start.at),
+      [...scope, start.compound ? -newScope() : newScope()],
+      beforeSubshell,
+    );
+  };
   // `op` is the operator that ends the command, if any. Each stage of a
   // pipeline runs in a subshell, and so does an and-or list sent to the
-  // background.
-  const endCommand = (/** @type {string | null} */ op = null) => {
+  // background. `beforeSubshell`: a `(` ends it.
+  const endCommand = (/** @type {string | null} */ op = null, beforeSubshell = false) => {
     endWord();
     const opened = trackCompound();
     const piped = op === '|' || op === '|&';
     const own = (pipedIn && !opened) || piped ? [...here(), newScope()] : here();
-    const { argv: command, env } = unwrap(argv);
-    // `unwrap` drops words only from the front.
-    const commandMarks = marks.slice(argv.length - command.length);
-    // A bare `NAME=value` is kept: it sets a variable in the current shell.
-    if (command.length > 0 || env.length > 0)
-      commands.push({ argv: command, env, scope: own, top: false, marks: commandMarks });
+    pushCommand(argv, marks, own, beforeSubshell);
     if (op === '&') {
       const id = newScope();
       const prefix = here();
@@ -338,7 +382,7 @@ function readLevel(script, start, closer, scope, ids) {
           pushWord(GLOB_GROUP_WORD, { dynamic: true, splits: 'unquoted' });
         }
       }
-      endCommand();
+      endCommand(null, true);
       groups.push(newScope());
       i++;
     } else if (ch === ')') {

@@ -462,6 +462,20 @@ describe('what the parser sees', () => {
     expect(refused(command)).toBe(true);
   });
 
+  it.each([
+    'coproc foo { git add -A; }',
+    'coproc foo ( git add -A )',
+    'coproc { git add -A; }',
+    'coproc foo while true; do git add -A; done',
+    'coproc git add -A',
+  ])('reads the command a coproc runs: %s', (command) => {
+    expect(refused(command)).toBe(true);
+  });
+
+  it('follows a cd into the main checkout inside a coproc body', () => {
+    expect(refused('coproc foo { cd ../../..; git add -A; }', wt)).toBe(true);
+  });
+
   it('allows a line with no git at all', () => {
     expect(refused('pnpm test')).toBe(false);
     expect(refused('')).toBe(false);
