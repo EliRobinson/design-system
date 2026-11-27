@@ -5,7 +5,8 @@ import { parseCommands, wordsOf } from './shell-parse.mjs';
 
 // The program and its words in a one-command script.
 const request = (script: string) => {
-  const [program, ...args] = wordsOf(parseCommands(script)[0]!);
+  // The last command: a substitution's commands come first.
+  const [program, ...args] = wordsOf(parseCommands(script).at(-1)!);
   return readHttpRequest(program!.text, args);
 };
 
@@ -29,18 +30,46 @@ describe('hasRunTimeHost', () => {
 describe('readHttpRequest: writes', () => {
   it.each([
     ['curl -X PUT u', true],
-    ['curl -sXPUT u', true],
+    ['http --timeout 5 PUT u', true],
+    ['http --verify no PUT u', true],
+    ['http --print HB PUT u', true],
+    ['http --pretty all PUT u', true],
+    ['http --style monokai PUT u', true],
+    ['http --cert c.pem PUT u', true],
+    ['http --raw x PUT u', true],
+    ['xh --bearer T PUT u', true],
+    ['http -P H PUT u', true],
+    ['http -- PUT u', true],
+    ['http -S PUT u', true],
+    ['xh -S PUT u', true],
+    ['curl -S -X PUT u', true],
+    ['curl -SXPUT u', true],
+    ['curl -S -d x u', true],
+    ['curl -X OPTIONS u', true],
+    ['curl -X P[U]T u', true],
     ['curl -XP?T u', true],
+    ['http P[U]T u', true],
+    ['xh "$M" u', true],
+    ['curl -4XPUT u', true],
+    ['curl -s4XPUT u', true],
+    ['curl -#XPUT u', true],
+    ['curl -4Tf u', true],
+    ['curl -4T f u', true],
+    ['curl -s#T f u', true],
+    ['curl -X${M:-PUT} u', true],
+    ['curl -X$(echo PUT) u', true],
+    ['http ${M:-PUT} u', true],
+    ['curl -T f u', true],
+    ['curl --upload-file f u', true],
+    ['http --raw x u', true],
+    ['curl -sXPUT u', true],
     ['curl -X "$M" u', true],
     ['curl --request=PUT u', true],
-    ['curl -S -X PUT u', true],
     ['curl -d x u', true],
     ['curl --data-raw x u', true],
     ['wget --method=PUT u', true],
     ['wget --post-data=x u', true],
     ['http PUT u', true],
-    ['http --timeout 5 PUT u', true],
-    ['http -S PUT u', true],
     ['http "$M" u', true],
     ['http u a=b', true],
     ['curl u', false],

@@ -13,6 +13,7 @@ const FLAGS_FIRST = 'flags come before the subcommand';
 const ACTION_FIRST = 'right after `gh pr`';
 const UNREAD = 'it may become a flag';
 const UNREAD_URL = 'Write the URL out in full';
+const MERGE_URL = 'https://api.github.com/repos/o/r/pulls/5/merge';
 const UNREAD_COMMAND = 'it may become `gh pr create` or `gh pr merge --admin`';
 
 describe('findBypass: refuses --admin in every form', () => {
@@ -95,21 +96,11 @@ describe('findBypass: refuses a REST merge', () => {
     'http https://api.github.com/repos/o/r/pulls/5/merge merge_method=squash',
     '{gh} api -X PUT repos/o/r/pulls/5/merge --help=false',
     'curl {-XPUT,https://api.github.com/repos/o/r/pulls/5/merge}',
-    'http --timeout 5 PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'http --verify no PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'http --print HB PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'http --pretty all PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'http --style monokai PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'http --cert c.pem PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'http --raw x PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'xh --bearer T PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'http -P H PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'http -- PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'http -S PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'xh -S PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'curl -S -X PUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'curl -SXPUT https://api.github.com/repos/o/r/pulls/5/merge',
-    'curl -S -d x https://api.github.com/repos/o/r/pulls/5/merge',
+    `curl -T f ${MERGE_URL}`,
+    `curl --upload-file f ${MERGE_URL}`,
+    `curl -4XPUT ${MERGE_URL}`,
+    `http --timeout 5 PUT ${MERGE_URL}`,
+    `xh -S PUT ${MERGE_URL}`,
   ])('%s', (script) => {
     expect(reason(script)).toBe(REST_MERGE_REASON);
   });
@@ -169,13 +160,8 @@ describe('findBypass: refuses merge words it cannot read', () => {
     ['http PUT api.github.com/repos/o/r/pulls/5/m*', UNREAD_URL],
     ['curl -X PUT "https://api.github.com/repos/o/r/$P"', UNREAD_URL],
     ['curl -X PUT https://ghe.example.com/api/v3/repos/o/r/pulls/5/m*', UNREAD_URL],
-    ['curl -X OPTIONS https://api.github.com/repos/o/r/pulls/5/merge', REST_MERGE_REASON],
-    ['curl -X P[U]T https://api.github.com/repos/o/r/pulls/5/merge', REST_MERGE_REASON],
-    ['curl -XP?T https://api.github.com/repos/o/r/pulls/5/merge', REST_MERGE_REASON],
     ['curl -X "$M" https://api.github.com/repos/o/r/pulls/5/merge', REST_MERGE_REASON],
     ['http "$M" https://api.github.com/repos/o/r/pulls/5/merge', REST_MERGE_REASON],
-    ['xh "$M" https://api.github.com/repos/o/r/pulls/5/merge', REST_MERGE_REASON],
-    ['http P[U]T https://api.github.com/repos/o/r/pulls/5/merge', REST_MERGE_REASON],
     ['http "$M" "https://api.github.com/repos/$R"', UNREAD_URL],
     ['curl -X PUT https://api.github.c[o]m/repos/o/r/pulls/5/merge', REST_MERGE_REASON],
     ['curl -X PUT https://api.github.c[o]m/repos/o/r/pulls/5/m*', UNREAD_URL],
