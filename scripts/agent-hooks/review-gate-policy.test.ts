@@ -303,6 +303,12 @@ describe('branchRefsOf', () => {
     });
   });
 
+  it('keeps an unknown folder unknown, not the working directory', () => {
+    expect(branchRefsOf({ kind: 'pr-create', fill: false, web: false, dir: null }).dir).toBeNull();
+    const files = { kind: 'graphql-files' as const, files: [], dir: null };
+    expect(branchRefsOf(files).dir).toBeNull();
+  });
+
   it('falls back to origin/HEAD and the working directory', () => {
     expect(branchRefsOf({ kind: 'mcp-create', body: '' })).toEqual({
       head: undefined,
@@ -579,9 +585,43 @@ describe('decidePr', () => {
     expect(decidePr(command, deps)).not.toBeNull();
   });
 
-  it('denies a relative path after a cd it cannot follow', () => {
-    expect(decidePr({ ...pr, dir: null }, deps)?.deny).toMatch(/absolute path/);
-    expect(decidePr({ ...pr, dir: null, bodyFile: '/abs/b.md' }, deps)).toBeNull();
+  // #472: the reviewer runs are read from the PR's folder too, so an absolute
+  // body path is not enough.
+  it.each([
+    ['a relative body path', { ...pr, dir: null }],
+    ['an absolute body path', { ...pr, dir: null, bodyFile: '/abs/b.md' }],
+  ])('denies a pr create in a folder it cannot tell, with %s', (_, command) => {
+    expect(decidePr(command, deps)?.deny).toMatch(/cannot tell which folder/);
+  });
+
+  it.each([
+    ['no cd', `${CREATE} --body-file b.md`, '.'],
+    ['a cd it follows', `cd ../wtA && ${CREATE} --body-file b.md`, '../wtA'],
+    [
+      'a cd in a subshell before it',
+      `cd ../wtA && (cd /tmp); ${CREATE} --body-file b.md`,
+      '../wtA',
+    ],
+  ])('lets a pr create through with %s', (_, script, folder) => {
+    const [command] = findPrCommands(script);
+    expect(command).toMatchObject({ dir: folder });
+    expect(decidePr(command as Parameters<typeof decidePr>[0], deps)).toBeNull();
+  });
+
+  it.each([
+    `cd ../wtA && { cd /tmp; }; ${CREATE} --body-file b.md`,
+    `cd ../wtA && { cd /tmp; }; ${CREATE} --body-file /abs/b.md`,
+    `{ coproc foo { true; }; cd /tmp; }; cd /abs && ${CREATE} --body-file b.md`,
+    `cd "$DIR" && ${CREATE} --body-file /abs/b.md`,
+  ])('denies a pr create whose folder it cannot tell: %s', (script) => {
+    const [command] = findPrCommands(script);
+    expect(command).toMatchObject({ dir: null });
+    expect(decidePr(command as Parameters<typeof decidePr>[0], deps)?.deny).toMatch(
+      /cannot tell which folder/,
+    );
+  });
+
+  it('denies a relative graphql file after a cd it cannot follow', () => {
     const files = {
       kind: 'graphql-files' as const,
       files: ['m.graphql'],

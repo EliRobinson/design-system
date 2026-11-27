@@ -10,7 +10,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 
 import {
   REVIEWERS,
@@ -241,12 +241,19 @@ function block(adapter, message) {
 
 /** @param {PrCommand} pr @param {string} cwd @param {ToolName} tool */
 function checkPr(pr, cwd, tool) {
-  const dir = resolve(cwd, branchRefsOf(pr).dir ?? '.');
+  const refs = branchRefsOf(pr);
+  const dir = refs.dir === null ? null : resolve(cwd, refs.dir);
+  // decidePr refuses before it needs a folder the parser could not tell;
+  // never fall back to the hook's own (#472).
+  const inDir = () => {
+    if (dir === null) throw new Error('no folder is known for this PR command');
+    return dir;
+  };
   let decision;
   try {
     decision = decidePr(pr, {
-      readFile: (path) => readFile(path, dir),
-      reviewersNotRun: () => (TOOLS[tool].tracksReviewers ? reviewersNotRun(pr, dir) : []),
+      readFile: (path) => readFile(path, isAbsolute(path) ? '/' : inDir()),
+      reviewersNotRun: () => (TOOLS[tool].tracksReviewers ? reviewersNotRun(pr, inDir()) : []),
     });
   } catch (error) {
     decision = {

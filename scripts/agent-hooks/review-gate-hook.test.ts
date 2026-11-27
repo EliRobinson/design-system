@@ -184,6 +184,13 @@ describe('Claude Code', () => {
     expect(run('claude', bash(`cd sub && ${CREATE} -F ../body.md`)).code).toBe(0);
   });
 
+  it('refuses a PR whose folder it cannot tell, even with an absolute body path (#472)', () => {
+    finishAllReviewers();
+    const result = run('claude', bash(`{ cd /tmp; }; ${CREATE} -F ${join(repo, 'body.md')}`));
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/cannot tell which folder/);
+  });
+
   it('follows a leading cd to an absolute path', () => {
     finishAllReviewers();
     expect(run('claude', bash(`cd ${repo} && ${CREATE} -F body.md`)).code).toBe(0);

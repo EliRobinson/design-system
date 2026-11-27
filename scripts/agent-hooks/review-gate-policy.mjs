@@ -188,7 +188,8 @@ export function unfilledReviewLabels(markdown) {
 /**
  * The refs to check reviewer runs against: the PR's head branch (without an
  * `owner:` prefix), the base refs to try in order, and the directory to run
- * git in.
+ * git in: the hook's own (`.`) when the command has none, as an MCP call, and
+ * null when the parser cannot tell which folder the command runs in.
  * @param {PrCommand} pr
  * @returns {{ head?: string, baseRefs: string[], dir: string | null }}
  */
@@ -196,13 +197,13 @@ export function branchRefsOf(pr) {
   if (pr.kind === 'api-create' || pr.kind === 'graphql-files') {
     return {
       baseRefs: [],
-      dir: pr.kind === 'graphql-files' ? (pr.dir ?? '.') : '.',
+      dir: pr.kind === 'graphql-files' ? (pr.dir === undefined ? '.' : pr.dir) : '.',
     };
   }
   return {
     head: pr.head?.replace(/^[^:]+:/, ''),
     baseRefs: [`origin/${pr.base ?? 'HEAD'}`, 'origin/main'],
-    dir: pr.kind === 'pr-create' ? (pr.dir ?? '.') : '.',
+    dir: pr.kind === 'pr-create' && pr.dir !== undefined ? pr.dir : '.',
   };
 }
 
@@ -350,6 +351,12 @@ export function decidePr(pr, { readFile, reviewersNotRun }) {
   let body;
   if (pr.kind === 'mcp-create') {
     body = pr.body;
+  } else if (pr.dir === null) {
+    // The body file and the reviewer runs are both read from the PR's folder
+    // (#472), so an absolute body path is not enough.
+    return {
+      deny: "The hook cannot tell which folder this `gh pr create` runs in, so it cannot check the reviewer runs. Write the `cd` out with a path the hook can read (`cd <path> && gh pr create ...`), or run `gh pr create` from the PR's worktree.",
+    };
   } else if (pr.fill || pr.web) {
     return {
       deny: 'The hook cannot read a body from `--fill` or `--web`. Use `--body-file`.',
@@ -358,8 +365,6 @@ export function decidePr(pr, { readFile, reviewersNotRun }) {
     return {
       deny: 'Write the PR body to a file first, in its own step. Then run `gh pr create --body-file <path>`.',
     };
-  } else if (pr.dir === null && relative(pr.bodyFile)) {
-    return { deny: unknownDir };
   } else {
     body = readFile(pr.bodyFile);
     if (body === null) {
