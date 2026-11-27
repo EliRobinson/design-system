@@ -106,6 +106,12 @@ describe('parseCommands', () => {
     ['while(y) do z; done', ['y', 'z']],
     ['!(y) && z', ['y', 'z']],
     ['if !(y); then z; fi', ['y', 'z']],
+    ['time(y) && z', ['y', 'z']],
+    ['true && time(y)', ['true', 'y']],
+    ['coproc(y) && z', ['coproc', 'y', 'z']],
+    ['select(y); z', ['select', 'y', 'z']],
+    ['echo $(f( ) { y; }; f) z', ['f', 'y', 'f', 'echo']],
+    ['echo $(x a( ) y) z', ['x', 'y', 'echo']],
   ])('still reads a ( that is not a glob group as a shell group: %s', (script, expected) => {
     expect(names(script).filter((name) => name !== undefined)).toEqual(expected);
   });

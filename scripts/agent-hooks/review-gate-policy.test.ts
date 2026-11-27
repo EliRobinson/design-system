@@ -64,6 +64,11 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['repo flag before pr', `${GH} -R o/r pr create -F b.md`],
     ['in a function', `function f { ${CREATE} -F b.md; }; f`],
     ['after arithmetic with a shift', `(( n = 1 << 2 ))\n${CREATE} --fill`],
+    ['in a time( subshell', `time(${CREATE} -F b.md)`],
+    ['in a time( subshell after &&', `true && time(${CREATE} -F b.md)`],
+    ['in a coproc( subshell', `coproc(${CREATE} -F b.md)`],
+    ['in a time( subshell in bash -c', `bash -c 'time(${CREATE} -F b.md)'`],
+    ['in a f( ) function in a substitution', `echo $(f( ) { ${CREATE} -F b.md; }; f)`],
   ])('%s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
   });

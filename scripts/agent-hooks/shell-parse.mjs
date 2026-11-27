@@ -31,10 +31,12 @@ import { posix } from 'node:path';
  *   the parser keeps is not what runs.
  * - `splits`: whether the word may become several words, a flag among them.
  *   `'unquoted'`: an expansion, a brace expansion (`{a,b}`) or a filename
- *   pattern (`*`, `?`, `[ab]`, `[" "b]`, a glob group `a(b|c)` or `@(b)`) is
- *   unquoted, so double quotes would stop the split. A filename pattern also
- *   counts as `dynamic`: a file named `--admin` turns `--admi[n]`,
- *   `--admi(n)` or `*` into that flag. `'always'`: an
+ *   pattern is unquoted, so double quotes would stop the split. A filename
+ *   pattern is an unquoted `*` or `?`, an unquoted `[` closed by a later `]`
+ *   in the word, quoted or not (`[ab]`, `[" "b]`; a lone `[` or `[[` is not
+ *   one), or a `(` glued to a word past where the command starts, a glob
+ *   group (`a(b|c)`, `@(b)`). It also counts as `dynamic`: a file named
+ *   `--admin` turns `--admi[n]`, `--admi(n)` or `*` into that flag. `'always'`: an
  *   expansion splits even in double quotes (`"$@"`, `"${a[@]}"`, zsh's
  *   `"${=x}"`). `false`: it does not split.
  * @typedef {{ dynamic: boolean, splits: false | 'unquoted' | 'always' }} WordMark
@@ -65,6 +67,32 @@ const BRACE_EXPANSION = /^\{[^{}\s'"]*(,|\.\.)[^{}\s'"]*\}/;
 // The word before a `(` that opens a list, not a glob group: `a=(`, `a+=(`
 // (an array) and zsh's `=(` (a process substitution).
 const LIST_BEFORE_PAREN = /^(?:[A-Za-z_]\w*\+?)?=$/;
+
+/**
+ * The words at the front of a command that the shell reads as keywords
+ * (`if`, `!`, `{`) or compound openers (`while`, `for`, `case`), up to the
+ * first word that is not one. The word after them starts the command.
+ * @param {string[]} argv
+ */
+function leadingKeywords(argv) {
+  const end = argv.findIndex((each) => !COMPOUND_OPENERS.has(each) && !KEYWORDS.has(each));
+  return end === -1 ? argv : argv.slice(0, end);
+}
+
+/**
+ * Whether a `(` right after `word` opens a glob group in that word (zsh's
+ * `a(b|c)`, bash's extglob `@(b)`) rather than a subshell: a file named
+ * `--admin` turns `--admi(n|x)` into that flag. Not a glob group: no word
+ * before it, `f()` (a function), `a=(` (an array), or any word where a
+ * command starts, as in `time(...)`, `coproc(...)`, `while(...)`, `f( )`.
+ * @param {string | null} word  the word being read
+ * @param {string | undefined} next  the character after the `(`
+ * @param {string[]} argv  the command's words before `word`
+ */
+function opensGlobGroup(word, next, argv) {
+  if (word === null || next === ')' || LIST_BEFORE_PAREN.test(word)) return false;
+  return leadingKeywords(argv).length < argv.length;
+}
 
 /** Hands out scope ids, unique within one parse. @typedef {{ last: number }} ScopeIds */
 
@@ -118,6 +146,8 @@ function readLevel(script, start, closer, scope, ids) {
   // How many glob groups (`a(b|c)`, `@(b)`) are open in the word being read.
   let globDepth = 0;
 
+  // Adds text to the word being read. Side effect: a `]` in it, quoted or
+  // not, after an unquoted `[` in the word marks the word a filename pattern.
   const append = (/** @type {string} */ text) => {
     if (bracketOpen && text.includes(']')) expands('unquoted');
     word = (word ?? '') + text;
@@ -136,7 +166,9 @@ function readLevel(script, start, closer, scope, ids) {
     word = null;
     mark = { dynamic: false, splits: false };
     bracketOpen = false;
-    globDepth = 0;
+    // A glob group a space cuts short (`x( )`) is a shell syntax error. Keep
+    // its parens as groups, so its `)` does not close a `$(...)` early.
+    for (; globDepth > 0; globDepth--) groups.push(newScope());
   };
   const here = () => [...scope, ...groups];
   /** @type {number[]} How many `groups` entries each open compound body holds. */
@@ -147,14 +179,13 @@ function readLevel(script, start, closer, scope, ids) {
   const trackCompound = () => {
     if (COMPOUND_CLOSERS.has(argv[0] ?? '')) groups.splice(-(compoundSizes.pop() ?? 1));
     let opened = false;
-    for (const word of argv) {
-      if (COMPOUND_OPENERS.has(word)) {
-        const wrap = pipedIn && !opened;
-        if (wrap) groups.push(newScope());
-        groups.push(-newScope());
-        compoundSizes.push(wrap ? 2 : 1);
-        opened = true;
-      } else if (!KEYWORDS.has(word)) break;
+    for (const word of leadingKeywords(argv)) {
+      if (!COMPOUND_OPENERS.has(word)) continue;
+      const wrap = pipedIn && !opened;
+      if (wrap) groups.push(newScope());
+      groups.push(-newScope());
+      compoundSizes.push(wrap ? 2 : 1);
+      opened = true;
     }
     return opened;
   };
@@ -282,19 +313,7 @@ function readLevel(script, start, closer, scope, ids) {
       else if (ch === ')') globDepth--;
       append(ch);
       i++;
-    } else if (
-      ch === '(' &&
-      word !== null &&
-      next !== ')' &&
-      !LIST_BEFORE_PAREN.test(word) &&
-      !(
-        KEYWORDS.has(word) && argv.every((each) => COMPOUND_OPENERS.has(each) || KEYWORDS.has(each))
-      )
-    ) {
-      // A `(` glued to a word opens a glob group (zsh's `a(b|c)`, bash's
-      // extglob `@(b)`), not a subshell: a file named `--admin` turns
-      // `--admi(n|x)` into that flag. `f()` is a function, `a=(` an array,
-      // and `while(` or `!(` where a keyword is read is a subshell.
+    } else if (ch === '(' && opensGlobGroup(word, next, argv)) {
       expands('unquoted');
       globDepth = 1;
       append(ch);
