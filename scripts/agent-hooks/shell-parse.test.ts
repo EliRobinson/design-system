@@ -68,7 +68,7 @@ describe('parseCommands', () => {
     ['unquoted', 'x * a* ?b --admi[n] m[!a] "a"* \'b\'?'],
     ['dynamic', 'x "$a" "${b}" "$(c)" "`d`" $\'e\' $"f" "$*"'],
     ['always', 'x "$@" "${a[@]}" "$a[*]" "${=a}" "${(f)a}" $a"$@"'],
-  ])('marks every word in a %s case', (kind, script) => {
+  ])('marks every word in a %s case: %s', (kind, script) => {
     const marks = marksAfterX(script) ?? [];
     expect(marks.length).toBeGreaterThan(0);
     expect(new Set(marks)).toEqual(new Set([kind]));
