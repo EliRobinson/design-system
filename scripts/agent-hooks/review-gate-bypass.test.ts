@@ -178,39 +178,52 @@ describe('findBypass: refuses a gh command or pr action it cannot read', () => {
     ['{gh} $X create', UNREAD_COMMAND],
     ['{gh} p[r] create', UNREAD_COMMAND],
     ['{gh} $X', UNREAD_COMMAND],
-    ['{gh} -R o/r pr $X', FLAGS_FIRST],
-    ['{gh} --repo o/r $X create', FLAGS_FIRST],
-    ['{gh} -R "$R" pr list', FLAGS_FIRST],
+    // #461: an unquoted -R value splits, so `X='o/r pr'` makes gh's command
+    // word `pr`, or `X='o/r create'` makes the pr action `create`.
+    ['{gh} -R $X create', UNREAD_COMMAND],
+    ['{gh} --repo $X create -b y', UNREAD_COMMAND],
+    ['{gh} -R$X create', UNREAD_COMMAND],
+    ['{gh} --repo=$X create', UNREAD_COMMAND],
+    ['{gh} pr -R $X view', UNREAD_COMMAND],
+    ['{gh} pr --repo $X view 5', UNREAD_COMMAND],
+    ['{gh} pr -R$X list', UNREAD_COMMAND],
+    ['{gh} pr --repo=$X list', UNREAD_COMMAND],
+    // A flag built at run time may split into `-R o/r pr`, or take the next
+    // word as its value.
+    ['{gh} pr -$X o/r create', UNREAD_COMMAND],
+    ['{gh} pr "-$X" o/r create', UNREAD_COMMAND],
+    ['{gh} pr -$X o/r view', UNREAD_COMMAND],
+    ['{gh} -$X o/r pr create', UNREAD_COMMAND],
+    ['{gh} -$X o/r create', UNREAD_COMMAND],
+    ['{gh} "-$X" o/r create', UNREAD_COMMAND],
+    // Another flag first may take the next word as its value, so the command
+    // word may still be ahead of these.
+    ['{gh} -t T -R $X create -b y', UNREAD_COMMAND],
+    ['{gh} --title T -R $X create -b y', UNREAD_COMMAND],
+    ['{gh} -t T --repo=$X create', UNREAD_COMMAND],
+    ['{gh} -t T -$X create', UNREAD_COMMAND],
+    ['{gh} --foo x -$X create', UNREAD_COMMAND],
   ])('%s', (script, says) => {
     expect(reason(script)).toContain(says);
   });
 
-  // #461: an unquoted -R value splits, so `X='o/r pr'` makes gh's command
-  // word `pr`, or `X='o/r create'` makes the pr action `create`.
   it.each([
-    '{gh} -R $X create',
-    '{gh} --repo $X create -b y',
-    '{gh} -R$X create',
-    '{gh} --repo=$X create',
-    '{gh} pr -R $X view',
-    '{gh} pr --repo $X view 5',
-    '{gh} pr -R$X list',
-    '{gh} pr --repo=$X list',
-  ])('a -R value the shell splits: %s', (script) => {
-    expect(reason(script)).toContain(UNREAD_COMMAND);
+    ['{gh} -R o/r pr $X', FLAGS_FIRST],
+    ['{gh} --repo o/r $X create', FLAGS_FIRST],
+    ['{gh} -R "$R" pr list', FLAGS_FIRST],
+  ])('reads a flag before pr or a run-time command as flags first: %s', (script, says) => {
+    expect(reason(script)).toContain(says);
   });
 
-  // A flag built at run time may be `-R o/r pr` or `-R o/r create` once split,
-  // or a value flag that takes the next word.
   it.each([
-    '{gh} pr -$X o/r create',
-    '{gh} pr "-$X" o/r create',
-    '{gh} pr -$X o/r view',
-    '{gh} -$X o/r pr create',
-    '{gh} -$X o/r create',
-    '{gh} "-$X" o/r create',
-  ])('a flag built at run time before the command or action: %s', (script) => {
-    expect(reason(script)).not.toBeNull();
+    ['{gh} -R $X create', true],
+    ['{gh} --repo=$X create', true],
+    ['{gh} pr -R $X view', true],
+    ['{gh} -$X o/r create', false],
+    ['{gh} pr cre*', false],
+    ['{gh} pr $X', false],
+  ])('suggests double quotes only for a -R value: %s', (script, suggests) => {
+    expect(reason(script)?.includes('double quotes')).toBe(suggests);
   });
 
   it.each([
@@ -223,6 +236,7 @@ describe('findBypass: refuses a gh command or pr action it cannot read', () => {
     '{gh} issue view $N',
     '{gh} -R "$REPO" issue view $N',
     '{gh} --repo="$REPO" issue list',
+    '{gh} --repo=o/r issue -R $X list',
   ])('lets a literal command and action through: %s', (script) => {
     expect(reason(script)).toBeNull();
   });
