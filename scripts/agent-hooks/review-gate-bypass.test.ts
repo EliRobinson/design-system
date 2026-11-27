@@ -208,4 +208,16 @@ describe('findBypass: reads help as gh does', () => {
   ])('%s', (script) => {
     expect(reason(script)).toBeNull();
   });
+
+  // `-h"$X"` with X='=false' runs as `-h=false`: help off.
+  it.each([
+    ['{gh} pr merge 5 --admin -h"$X"', ADMIN_REASON],
+    ['{gh} pr merge 5 --admin -dh$X', ADMIN_REASON],
+  ])('does not take a run-time short help as help: %s', (script, says) => {
+    expect(reason(script)).toBe(says);
+  });
+
+  it('does not take a run-time short help on gh api as help', () => {
+    expect(reason('{gh} api -X PUT repos/o/r/pulls/5/merge -h"$X"')).toContain(UNREAD);
+  });
 });

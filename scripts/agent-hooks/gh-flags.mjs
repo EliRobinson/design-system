@@ -1,7 +1,9 @@
 // @ts-check
-// Reads a gh command's flags the way gh does (gh parses them with pflag).
-// Both review gate checks use it: the PR-open check in review-gate-policy.mjs
-// and the merge-bypass check in review-gate-bypass.mjs. No I/O.
+// Reads a gh command's flags the way gh does (gh parses them with pflag),
+// and a `gh api` call's endpoint and method. Both review gate checks use it:
+// the PR-open check in review-gate-policy.mjs and the merge-bypass check in
+// review-gate-bypass.mjs, which also uses `urlPath` for curl and httpie
+// URLs. No I/O.
 
 import { posix } from 'node:path';
 
@@ -30,105 +32,105 @@ const TRUE = /^(1|t|true)$/i;
  * It returns:
  * - `values(...aliases)`: the values given to a value flag, in command order.
  *   A value glued to its flag keeps that word's marks.
- * - `has(...aliases)`: whether pflag reads a boolean flag as set: its last
- *   use is bare or `=1`, `=t` or `=true`. `=false`, `=0`, or a value built
- *   at run time is not set.
+ * - `has(...aliases)`: whether pflag surely reads a boolean flag as set: its
+ *   last use is bare or `=1`, `=t` or `=true`. `=false`, `=0`, or a value
+ *   built at run time is not set. Pass one flag's aliases per call: for
+ *   different flags, call it once each.
+ * - `maybe(...aliases)`: like `has`, but a value built at run time counts as
+ *   set.
  * - `named(...aliases)`: whether the flag is written at all, with any value.
+ * - `help`: whether gh shows help and runs nothing (`has('-h', '--help')`).
  * - `positional`: the words that are not flags or flag values.
  * - `splitValues`: flag values the shell may split into more words.
- * - `unread`: words built at run time that are not a flag's value: a flag
- *   word with no value read from it, or a positional word. Each may become a
- *   flag the reader cannot see.
+ * - `unreadFlags`: flag words built at run time that no value was read from.
+ *   Each may become a flag the reader cannot see.
  * @param {Word[]} words
  * @param {Set<string>} valueFlags
  */
 export function readGhFlags(words, valueFlags) {
-  /** @type {{ name: string, value: Word | undefined, bare: boolean }[]} */
+  /** @type {{ name: string, kind: 'value' | 'bool', value: Word | undefined }[]} */
   const uses = [];
   /** @type {Word[]} */
   const positional = [];
   /** @type {Word[]} */
   const splitValues = [];
   /** @type {Word[]} */
-  const unread = [];
+  const unreadFlags = [];
   /**
    * @param {string} name
-   * @param {Word | undefined} value
+   * @param {'value' | 'bool'} kind
+   * @param {Word | undefined} value  undefined for a bare boolean flag
    */
-  const take = (name, value) => {
-    uses.push({ name, value, bare: false });
-    if (value?.splits) splitValues.push(value);
+  const record = (name, kind, value) => {
+    uses.push({ name, kind, value });
+    if (kind === 'value' && value?.splits) splitValues.push(value);
   };
-  /**
-   * @param {Word} word
-   * @param {string} name
-   * @param {string | undefined} value  after `=`, or undefined when bare
-   */
-  const flag = (word, name, value) =>
-    uses.push({
-      name,
-      value: value === undefined ? undefined : { ...word, text: value },
-      bare: value === undefined,
-    });
 
   for (let i = 0; i < words.length; i++) {
     const word = /** @type {Word} */ (words[i]);
     const { text } = word;
     if (text === '--') {
       positional.push(...words.slice(i + 1));
-      unread.push(...words.slice(i + 1).filter((each) => each.dynamic));
       break;
     }
     if (text.startsWith('--')) {
       const eq = text.indexOf('=');
       const name = eq === -1 ? text : text.slice(0, eq);
+      const glued = eq === -1 ? undefined : { ...word, text: text.slice(eq + 1) };
       if (valueFlags.has(name)) {
-        take(name, eq === -1 ? words[++i] : { ...word, text: text.slice(eq + 1) });
+        record(name, 'value', glued ?? words[++i]);
         continue;
       }
-      flag(word, name, eq === -1 ? undefined : text.slice(eq + 1));
-      if (word.dynamic) unread.push(word);
+      record(name, 'bool', glued);
+      if (word.dynamic) unreadFlags.push(word);
     } else if (text.startsWith('-') && text.length > 1) {
       let tookValue = false;
-      // gh's short flags are letters; a word built at run time may hide
-      // anything past the first other character.
+      // gh's short flags are letters. In a word built at run time, the first
+      // other character may start an expansion that becomes `=false`, so the
+      // flag before it gets that unknown rest as its value.
       for (let k = 1; k < text.length && /[a-zA-Z]/.test(text[k] ?? ''); k++) {
         const name = `-${text[k]}`;
-        const from = text[k + 1] === '=' ? k + 2 : k + 1;
+        const next = text[k + 1];
+        const rest = { ...word, text: text.slice(next === '=' ? k + 2 : k + 1) };
         if (valueFlags.has(name)) {
-          take(name, from < text.length ? { ...word, text: text.slice(from) } : words[++i]);
+          record(name, 'value', rest.text === '' ? words[++i] : rest);
           tookValue = true;
           break;
         }
-        if (text[k + 1] === '=') {
-          flag(word, name, text.slice(from));
-          break;
-        }
-        flag(word, name, undefined);
+        const unknownRest = word.dynamic && next !== undefined && !/[a-zA-Z]/.test(next);
+        record(name, 'bool', next === '=' || unknownRest ? rest : undefined);
+        if (next === '=') break;
       }
-      if (!tookValue && word.dynamic) unread.push(word);
+      if (!tookValue && word.dynamic) unreadFlags.push(word);
     } else {
       positional.push(word);
-      if (word.dynamic) unread.push(word);
     }
   }
 
-  const usesOf = (/** @type {string[]} */ aliases) =>
-    uses.filter(({ name }) => aliases.includes(name));
+  /** @param {string[]} aliases */
+  const lastBool = (aliases) =>
+    uses.filter(({ name, kind }) => kind === 'bool' && aliases.includes(name)).at(-1);
+  /** @param {string[]} aliases */
+  const has = (...aliases) => {
+    const last = lastBool(aliases);
+    if (!last) return false;
+    return !last.value || (!last.value.dynamic && TRUE.test(last.value.text));
+  };
   return {
     /** @param {string[]} aliases */
-    values: (...aliases) => usesOf(aliases).flatMap(({ value }) => value ?? []),
+    values: (...aliases) =>
+      uses.flatMap(({ name, kind, value }) =>
+        kind === 'value' && value && aliases.includes(name) ? [value] : [],
+      ),
+    has,
     /** @param {string[]} aliases */
-    has: (...aliases) => {
-      const last = usesOf(aliases).at(-1);
-      if (!last) return false;
-      return last.bare || (!last.value?.dynamic && TRUE.test(last.value?.text ?? ''));
-    },
+    maybe: (...aliases) => has(...aliases) || Boolean(lastBool(aliases)?.value?.dynamic),
     /** @param {string[]} aliases */
-    named: (...aliases) => usesOf(aliases).length > 0,
+    named: (...aliases) => uses.some(({ name }) => aliases.includes(name)),
+    help: has('-h', '--help'),
     positional,
     splitValues,
-    unread,
+    unreadFlags,
   };
 }
 

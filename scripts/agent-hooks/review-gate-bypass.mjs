@@ -146,8 +146,13 @@ function checkMerge(args, splitValues) {
   const merge = readGhFlags(args, MERGE_VALUE_FLAGS);
   // Any `--admin`, even `--admin=false`, is refused. The bypass reason wins
   // over the rewrite reason.
-  if (merge.named('--admin') && !merge.has('-h', '--help')) return ADMIN_REASON;
-  const unread = [...splitValues, ...merge.splitValues, ...merge.unread][0];
+  if (merge.named('--admin') && !merge.help) return ADMIN_REASON;
+  const unread = [
+    ...splitValues,
+    ...merge.splitValues,
+    ...merge.unreadFlags,
+    ...merge.positional.filter((word) => word.dynamic),
+  ][0];
   return unread ? unreadReason(unread, 'gh pr merge') : null;
 }
 
@@ -159,13 +164,10 @@ const MERGE_PATH = /\/pulls\/[^/]+\/merge$/;
  */
 function checkApi(args) {
   const api = readApiCall(args);
-  if (api.has('-h', '--help')) return null;
+  if (api.help) return null;
   const { endpoint, more, method } = api;
   /** @type {Word[]} Words that may carry a flag the hook cannot see. */
-  const hidden = [
-    ...api.splitValues,
-    ...api.unread.filter((word) => !api.positional.includes(word)),
-  ];
+  const hidden = [...api.splitValues, ...api.unreadFlags];
   // A run-time endpoint with more words after it may have been a flag.
   if (endpoint && (endpoint.splits || (endpoint.dynamic && more.length > 0))) hidden.push(endpoint);
   hidden.push(...more.filter((word) => word.dynamic));
