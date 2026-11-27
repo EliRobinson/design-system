@@ -12,6 +12,7 @@ const ASK_ELI = 'stop and ask Eli';
 const FLAGS_FIRST = 'flags come before the subcommand';
 const ACTION_FIRST = 'right after `gh pr`';
 const UNREAD = 'it may become a flag';
+const UNREAD_COMMAND = 'it may become `gh pr create` or `gh pr merge --admin`';
 
 describe('findBypass: refuses --admin in every form', () => {
   it.each([
@@ -118,10 +119,10 @@ describe('findBypass: refuses merge words it cannot read', () => {
     ['{gh} pr merge 5 -t "${(f)X}"', UNREAD],
     ['{gh} pr merge 5 -t "$a[@]"', UNREAD],
     ['{gh} pr merge 5 -- $X', UNREAD],
-    ['{gh} pr -R $R', UNREAD],
-    ['A=merge; {gh} pr $A 5', UNREAD],
-    ["{gh} pr $'merge' 5", UNREAD],
-    ["{gh} $'pr' merge 5", UNREAD],
+    ['{gh} pr -R $R', UNREAD_COMMAND],
+    ['A=merge; {gh} pr $A 5', UNREAD_COMMAND],
+    ["{gh} pr $'merge' 5", UNREAD_COMMAND],
+    ["{gh} $'pr' merge 5", UNREAD_COMMAND],
     ['{gh} pr merge 5 --{admin,rebase}', UNREAD],
     ['{gh} pr merge 5 --{admin..admin}', UNREAD],
     ['{gh} api {-XPUT,repos/o/r/pulls/5/merge}', UNREAD],
@@ -160,6 +161,70 @@ describe('findBypass: refuses merge words it cannot read', () => {
     ['{gh} pr merge 5 --body "${a[@]}"', false],
   ])('suggests double quotes only when they would help: %s', (script, suggests) => {
     expect(reason(script)?.includes('double quotes')).toBe(suggests);
+  });
+});
+
+// A word the shell builds at run time where gh reads its command or the pr
+// action may become `pr create` or `pr merge --admin`: the first skips the
+// review, the second bypasses branch protection.
+describe('findBypass: refuses a gh command or pr action it cannot read', () => {
+  it.each([
+    ['{gh} pr $X', UNREAD_COMMAND],
+    ['{gh} pr "$X"', UNREAD_COMMAND],
+    ['{gh} pr $(echo create)', UNREAD_COMMAND],
+    ['{gh} pr cre*', UNREAD_COMMAND],
+    ['{gh} pr -R o/r $X', UNREAD_COMMAND],
+    ['{gh} pr --repo=o/r $X', UNREAD_COMMAND],
+    ['{gh} $X create', UNREAD_COMMAND],
+    ['{gh} p[r] create', UNREAD_COMMAND],
+    ['{gh} $X', UNREAD_COMMAND],
+    ['{gh} -R o/r pr $X', FLAGS_FIRST],
+    ['{gh} --repo o/r $X create', FLAGS_FIRST],
+    ['{gh} -R "$R" pr list', FLAGS_FIRST],
+  ])('%s', (script, says) => {
+    expect(reason(script)).toContain(says);
+  });
+
+  // #461: an unquoted -R value splits, so `X='o/r pr'` makes gh's command
+  // word `pr`, or `X='o/r create'` makes the pr action `create`.
+  it.each([
+    '{gh} -R $X create',
+    '{gh} --repo $X create -b y',
+    '{gh} -R$X create',
+    '{gh} --repo=$X create',
+    '{gh} pr -R $X view',
+    '{gh} pr --repo $X view 5',
+    '{gh} pr -R$X list',
+    '{gh} pr --repo=$X list',
+  ])('a -R value the shell splits: %s', (script) => {
+    expect(reason(script)).toContain(UNREAD_COMMAND);
+  });
+
+  // A flag built at run time may be `-R o/r pr` or `-R o/r create` once split,
+  // or a value flag that takes the next word.
+  it.each([
+    '{gh} pr -$X o/r create',
+    '{gh} pr "-$X" o/r create',
+    '{gh} pr -$X o/r view',
+    '{gh} -$X o/r pr create',
+    '{gh} -$X o/r create',
+    '{gh} "-$X" o/r create',
+  ])('a flag built at run time before the command or action: %s', (script) => {
+    expect(reason(script)).not.toBeNull();
+  });
+
+  it.each([
+    '{gh} pr list',
+    '{gh} pr view $N',
+    '{gh} pr checkout "$B"',
+    '{gh} pr -R "$R" list',
+    '{gh} pr --repo="$R" view 5',
+    '{gh} issue create -t x -b y',
+    '{gh} issue view $N',
+    '{gh} -R "$REPO" issue view $N',
+    '{gh} --repo="$REPO" issue list',
+  ])('lets a literal command and action through: %s', (script) => {
+    expect(reason(script)).toBeNull();
   });
 });
 

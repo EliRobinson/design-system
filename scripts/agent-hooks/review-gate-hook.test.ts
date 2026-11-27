@@ -243,6 +243,30 @@ describe('Claude Code', () => {
     expect(run('claude', bash(command)).code).toBe(code);
   });
 
+  // The merge-bypass check runs first and owns this rule, for opening and
+  // merging alike, so its reason is the one the agent sees.
+  it.each([
+    `${GH} pr $X -F body.md`,
+    `${GH} pr cre* -F body.md`,
+    `${GH} $X create -F body.md`,
+    `${GH} -R $X create -F body.md`,
+    `${GH} pr -R $X view`,
+  ])('refuses a gh command or pr action it cannot read: %s', (command) => {
+    finishAllReviewers();
+    const result = run('claude', bash(command));
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(
+      /Blocked by the review gate\. The hook cannot read .* it may become `gh pr create`/,
+    );
+  });
+
+  it.each([`${GH} pr view $N`, `${GH} pr -R "$R" list`])(
+    'lets a run-time word after a literal pr action through: %s',
+    (command) => {
+      expect(run('claude', bash(command)).code).toBe(0);
+    },
+  );
+
   it('says why a merge bypass is refused, and to ask Eli', () => {
     const result = run('claude', bash(`${GH} pr merge 5 --admin`));
     expect(result.stderr).toMatch(/Blocked by the review gate\. .*stop and ask Eli/);

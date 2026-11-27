@@ -25,13 +25,39 @@ const FLAGS_FIRST_REASON =
 const ACTION_FIRST_REASON =
   'The hook cannot tell where the gh pr action is when a flag other than `-R` comes before it. Write the action right after `gh pr`, then the flags.';
 
+// What a word the hook cannot read may become, by where it stands.
+const MAY_BECOME = {
+  flag: 'a flag such as `--admin` or `-X PUT`. Write the PR number, the endpoint and every flag',
+  command:
+    '`gh pr create` or `gh pr merge --admin`. Write the gh command, the pr action and every flag before them',
+};
+
 /**
  * @param {Word} word
  * @param {string} where
+ * @param {keyof typeof MAY_BECOME} [stands]  `command` for a word in gh's
+ *   command or pr action position, or a flag before one
  */
-function unreadReason(word, where) {
+function unreadReason(word, where, stands = 'flag') {
   const quote = word.splits === 'unquoted' ? ', and put a flag value in double quotes' : '';
-  return `The hook cannot read \`${word.text}\` in this ${where}: the shell builds it at run time, and it may become a flag such as \`--admin\` or \`-X PUT\`. Write the PR number, the endpoint and every flag out in full${quote}.`;
+  return `The hook cannot read \`${word.text}\` in this ${where}: the shell builds it at run time, and it may become ${MAY_BECOME[stands]} out in full${quote}.`;
+}
+
+/**
+ * The first word before gh's command or pr action that the hook cannot
+ * read: a flag built at run time (`-$X`), or a `-R`/`--repo` value the shell
+ * splits (`-R $X` with `X='o/r pr'`). A split value may become the command
+ * word, and a run-time flag may take the next word as its value or split.
+ * A `-R` value glued to its flag (`-R"$R"`, `--repo=$R`) is a value, so it
+ * counts only when it splits.
+ * @param {Word} word  a word that starts with `-`
+ * @param {Word | undefined} value  the word after it, when it is `-R` or `--repo`
+ * @returns {Word | undefined}
+ */
+function unreadFlag(word, value) {
+  if (GH_VALUE_FLAGS.has(word.text)) return value?.splits ? value : undefined;
+  if (/^(-R.|--repo=)/.test(word.text)) return word.splits ? word : undefined;
+  return word.dynamic ? word : undefined;
 }
 
 // ---- Text that names a bypass ----
@@ -74,13 +100,19 @@ function leadingSubcommandWords(args) {
   /** @type {Word[]} */
   const others = [];
   let flags = 0;
+  /** @type {Word | undefined} */
+  let unread;
   for (let i = 0; i < args.length; i++) {
     const word = /** @type {Word} */ (args[i]);
-    if (!word.text.startsWith('-')) others.push(word);
-    else if (GH_VALUE_FLAGS.has(word.text)) i++;
+    if (!word.text.startsWith('-')) {
+      others.push(word);
+      continue;
+    }
+    if (others.length === 0) unread ??= unreadFlag(word, args[i + 1]);
+    if (GH_VALUE_FLAGS.has(word.text)) i++;
     else flags++;
   }
-  return others.slice(0, flags + 1);
+  return { words: others.slice(0, flags + 1), unread };
 }
 
 /**
@@ -91,12 +123,12 @@ function checkGh(args) {
   const [group] = args;
   if (!group) return null;
   if (group.text.startsWith('-')) {
-    const hidden = leadingSubcommandWords(args).some(
-      (word) => word.text === 'pr' || word.text === 'api' || word.dynamic,
-    );
+    const { words, unread } = leadingSubcommandWords(args);
+    if (unread) return unreadReason(unread, 'gh command', 'command');
+    const hidden = words.some((word) => word.text === 'pr' || word.text === 'api' || word.dynamic);
     return hidden ? FLAGS_FIRST_REASON : null;
   }
-  if (group.dynamic) return unreadReason(group, 'gh command');
+  if (group.dynamic) return unreadReason(group, 'gh command', 'command');
   if (group.text === 'pr') return checkPr(args.slice(1));
   if (group.text === 'api') return checkApi(args.slice(1));
   // `gh alias set m 'pr merge --admin'` makes `gh m` a bypass.
@@ -109,27 +141,23 @@ function checkGh(args) {
  * @returns {string | null}
  */
 function checkPr(args) {
-  /** @type {Word[]} */
-  const splitValues = [];
   let i = 0;
   for (; i < args.length; i++) {
     const word = /** @type {Word} */ (args[i]);
     if (!word.text.startsWith('-')) break;
-    if (GH_VALUE_FLAGS.has(word.text)) {
-      const value = args[++i];
-      if (value?.splits) splitValues.push(value);
-    } else if (/^(-R.|--repo=)/.test(word.text)) {
-      if (word.splits) splitValues.push(word);
-    } else {
+    const unread = unreadFlag(word, args[i + 1]);
+    if (unread) return unreadReason(unread, 'gh pr command', 'command');
+    if (GH_VALUE_FLAGS.has(word.text)) i++;
+    else if (!/^(-R.|--repo=)/.test(word.text)) {
       const rest = args.slice(i + 1);
       const hidden = rest.some((each) => GATED_PR_ACTIONS.has(each.text) || each.dynamic);
       return hidden ? ACTION_FIRST_REASON : null;
     }
   }
   const action = args[i];
-  if (action?.dynamic) return unreadReason(action, 'gh pr command');
+  if (action?.dynamic) return unreadReason(action, 'gh pr command', 'command');
   if (action && action.text !== 'merge') return null;
-  return checkMerge(args.slice(i + 1), splitValues);
+  return checkMerge(args.slice(i + 1));
 }
 
 const MERGE_VALUE_FLAGS = new Set([
@@ -139,16 +167,14 @@ const MERGE_VALUE_FLAGS = new Set([
 
 /**
  * @param {Word[]} args  the words after `gh pr merge`
- * @param {Word[]} splitValues  flag values already read that the shell splits
  * @returns {string | null}
  */
-function checkMerge(args, splitValues) {
+function checkMerge(args) {
   const merge = readGhFlags(args, MERGE_VALUE_FLAGS);
   // Any `--admin`, even `--admin=false`, is refused. The bypass reason wins
   // over the rewrite reason.
   if (merge.named('--admin') && !merge.help) return ADMIN_REASON;
   const unread = [
-    ...splitValues,
     ...merge.splitValues,
     ...merge.unreadFlags,
     ...merge.positional.filter((word) => word.dynamic),
