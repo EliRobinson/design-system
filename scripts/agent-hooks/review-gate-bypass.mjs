@@ -30,20 +30,21 @@ const ACTION_FIRST_REASON =
 // Why a word the hook cannot read is refused, by where it stands. A word in
 // gh's command or pr action position, or a flag before one, may become a
 // whole command; a word after `gh pr merge` or `gh api` may become a flag.
-// For a gh api write's endpoint, see checkApi.
+// For a gh api write's endpoint, see checkApi; for an HTTP client's URL,
+// checkHttp.
 const COMMAND_CLAUSE =
   'it may become `gh pr create` or `gh pr merge --admin`. Write the gh command, the pr action and any flag that comes before them out in full';
 const FLAG_CLAUSE =
   'it may become a flag such as `--admin` or `-X PUT`. Write the PR number, the endpoint and every flag out in full';
 const ENDPOINT_CLAUSE = 'it may open or merge a PR. Write the endpoint out in full';
+const URL_CLAUSE = 'it may become a merge path (`pulls/<N>/merge`). Write the URL out in full';
 const UNREAD_AT = {
   ghCommand: `in this gh command: the shell builds it at run time, and ${COMMAND_CLAUSE}`,
   prAction: `in this gh pr command: the shell builds it at run time, and ${COMMAND_CLAUSE}`,
   prMerge: `in this gh pr merge: the shell builds it at run time, and ${FLAG_CLAUSE}`,
   apiCall: `in this gh api call: the shell builds it at run time, and ${FLAG_CLAUSE}`,
   apiWrite: `in this gh api write's endpoint: the shell builds it at run time, and ${ENDPOINT_CLAUSE}`,
-  httpWrite:
-    'in this HTTP write to the GitHub API: the shell builds it at run time, and it may become a merge path (`pulls/<N>/merge`). Quote the URL or write it out in full',
+  httpWrite: `in this HTTP write to the GitHub API: the shell builds it at run time, and ${URL_CLAUSE}`,
 };
 
 /**
@@ -97,9 +98,9 @@ const namesAdminMerge = (text) =>
 /** @param {string} text */
 const namesMergePath = (text) => /pulls\/[^/\s'"]+\/merge\b/.test(text);
 
-// A URL that may be the GitHub API: one with `api.github.com` or a `repos/`
-// path (GitHub Enterprise serves it under `/api/v3/repos/`).
-const GITHUB_API_URL = /api\.github\.com|(?:^|\/)repos\//;
+// A URL that may be the GitHub API: `api.github.com`, or GitHub Enterprise's
+// `/api/v3/repos/`. Not caught: a URL that is all run time (`curl -X PUT $URL`).
+const GITHUB_API_URL = /api\.github\.com|\/api\/v3\/repos\//;
 
 /**
  * The refusal for text the hook does not parse as a command (an alias, a
@@ -260,56 +261,57 @@ function checkApi(args) {
 // ---- HTTP clients ----
 
 const HTTPIE = new Set(['http', 'https', 'xh', 'xhs']);
-const WRITE_METHOD = /^(PUT|POST|PATCH|DELETE)$/i;
+// HTTP methods that only read; any other method may write.
+const HTTP_READ_METHOD = /^(GET|HEAD)$/i;
 const ANY_METHOD = /^(GET|HEAD|PUT|POST|PATCH|DELETE|OPTIONS)$/i;
 
 /**
- * Whether an HTTP client call writes to a PR's `pulls/<N>/merge`. It reads
- * the last method named (`-X PUT`, `-XPUT`, `--request=PUT`,
- * `--method=PUT`, httpie's `PUT`) and the flags that send a body. A word the
- * shell splits (`{-XPUT,<url>}`) that names a merge path is refused too, and
- * so is a write (any method but GET and HEAD) to a GitHub API URL the shell
- * splits, as a variable or a filename pattern (`pulls/5/merg[e]`,
- * `pul[l]s/5/merge`): it may become a merge path.
+ * Whether an HTTP client call writes to a PR's `pulls/<N>/merge`, or may.
+ * - A word the shell splits that names a merge path is refused whatever the
+ *   method: the split can hide the method too (`{-XPUT,<url>}`).
+ * - A write (see `readHttpRequest`) to a GitHub API URL the shell builds at
+ *   run time (`pulls/5/merg[e]`, `pul[l]s/5/merge`, `"repos/o/r/$P"`) is
+ *   refused: it may become a merge path.
+ * - A write to a merge path written out is a REST merge.
  * @param {string} program
  * @param {Word[]} args
  */
 function checkHttp(program, args) {
   if (args.some((word) => word.splits && namesMergePath(word.text))) return REST_MERGE_REASON;
-  const { method, body } = readHttpWrite(program, args);
-  const hidden = args.find((word) => word.splits && GITHUB_API_URL.test(word.text));
-  if (hidden && (method ? !READ_METHOD.test(method) : body)) {
-    return unreadReason('httpWrite', hidden);
-  }
+  if (!readHttpRequest(program, args).writes) return null;
+  const hidden = args.find((word) => word.dynamic && GITHUB_API_URL.test(word.text));
+  if (hidden) return unreadReason('httpWrite', hidden);
   const names = args.map(({ text }) => text.replace(/^--?[\w-]+=/, ''));
-  if (!names.some((text) => MERGE_PATH.test(urlPath(text)))) return null;
-  const writes = method ? WRITE_METHOD.test(method) : body;
-  return writes ? REST_MERGE_REASON : null;
+  return names.some((text) => MERGE_PATH.test(urlPath(text))) ? REST_MERGE_REASON : null;
 }
 
 /**
- * The last method an HTTP client call names, and whether it sends a body.
+ * The last method an HTTP client call names (`-X PUT`, `-XPUT`,
+ * `--request=PUT`, `--method=PUT`, httpie's `PUT`), and whether it writes:
+ * a method built at run time (`-X "$M"`, `-X P[U]T`), any method but GET or
+ * HEAD, or no method and a flag or item that sends a body.
  * @param {string} program
  * @param {Word[]} args
- * @returns {{ method: string | undefined, body: boolean }}
+ * @returns {{ method: Word | undefined, writes: boolean }}
  */
-function readHttpWrite(program, args) {
-  /** @type {string | undefined} */
+function readHttpRequest(program, args) {
+  /** @type {Word | undefined} */
   let method;
   let body = false;
   for (let i = 0; i < args.length; i++) {
-    const text = args[i]?.text ?? '';
-    const glued =
-      /^-[a-zA-Z]*X=?([A-Za-z]+)$/.exec(text) ?? /^--(?:request|method)=(.+)$/.exec(text);
-    if (glued) method = glued[1];
-    else if (/^(-[a-zA-Z]*X|--request|--method)$/.test(text)) method = args[++i]?.text;
-    else if (ANY_METHOD.test(text)) method = text;
+    const word = /** @type {Word} */ (args[i]);
+    const { text } = word;
+    const glued = /^-[a-zA-Z]*X=?(.+)$/.exec(text) ?? /^--(?:request|method)=(.+)$/.exec(text);
+    if (glued) method = { ...word, text: glued[1] ?? '' };
+    else if (/^(-[a-zA-Z]*X|--request|--method)$/.test(text)) method = args[++i];
+    else if (ANY_METHOD.test(text)) method = word;
     else if (/^(--data|--json|--form|--upload-file|--post-|--body-)/.test(text)) body = true;
     else if (program === 'curl' && /^-[a-zA-Z]*[dFT]/.test(text)) body = true;
     // httpie and xh: a data item (`a=b`, `a:=1`, `a@file`) sends a body.
     else if (HTTPIE.has(program) && /^[\w.[\]-]+(?::?=(?!=)|@)/.test(text)) body = true;
   }
-  return { method, body };
+  const writes = method ? method.dynamic || !HTTP_READ_METHOD.test(method.text) : body;
+  return { method, writes };
 }
 
 // ---- Other programs ----

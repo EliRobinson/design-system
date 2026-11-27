@@ -12,7 +12,7 @@ const ASK_ELI = 'stop and ask Eli';
 const FLAGS_FIRST = 'flags come before the subcommand';
 const ACTION_FIRST = 'right after `gh pr`';
 const UNREAD = 'it may become a flag';
-const UNREAD_URL = 'Quote the URL or write it out in full';
+const UNREAD_URL = 'Write the URL out in full';
 const UNREAD_COMMAND = 'it may become `gh pr create` or `gh pr merge --admin`';
 
 describe('findBypass: refuses --admin in every form', () => {
@@ -152,6 +152,12 @@ describe('findBypass: refuses merge words it cannot read', () => {
     ['curl -X PUT https://api.github.com/repos/o/r/pulls/5/$X', UNREAD_URL],
     ['curl -d x https://api.github.com/repos/o/r/pulls/5/merg[e]', UNREAD_URL],
     ['http PUT api.github.com/repos/o/r/pulls/5/m*', UNREAD_URL],
+    ['curl -X PUT "https://api.github.com/repos/o/r/$P"', UNREAD_URL],
+    ['curl -X PUT https://ghe.example.com/api/v3/repos/o/r/pulls/5/m*', UNREAD_URL],
+    ['curl -X OPTIONS https://api.github.com/repos/o/r/pulls/5/merge', REST_MERGE_REASON],
+    ['curl -X P[U]T https://api.github.com/repos/o/r/pulls/5/merge', REST_MERGE_REASON],
+    ['curl -XP?T https://api.github.com/repos/o/r/pulls/5/merge', REST_MERGE_REASON],
+    ['curl -X "$M" https://api.github.com/repos/o/r/pulls/5/merge', REST_MERGE_REASON],
     ['{gh} pr merge 5 *', UNREAD],
     ['{gh} pr merge 5 -t fix?', UNREAD],
     ['{gh} api -X PUT repos/o/r/pulls/5/merg[e]', UNREAD],
@@ -360,6 +366,9 @@ describe('findBypass: lets plain merges, reads and text through', () => {
     'curl -X GET https://api.github.com/repos/o/r/pulls/5/merg[e]',
     "curl -X PUT 'https://api.github.com/repos/o/r/pulls/5/merg[e]'",
     'curl -X PUT https://example.com/up[l]oad',
+    'http get https://api.github.com/repos/o/r/pulls/$N',
+    'curl -X get https://api.github.com/repos/o/r/pulls/5/merg[e]',
+    'curl -X PUT http://localhost:3000/repos/$ID',
     "{gh} pr merge 5 '--admi(n)'",
     '{gh} pr merge 5 "--admi[n]"',
     '{gh} pr merge 5 --squash -t \\(fix\\)',
