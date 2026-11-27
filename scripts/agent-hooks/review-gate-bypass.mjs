@@ -6,10 +6,11 @@
 
 import { posix } from 'node:path';
 
-import { SHELLS, parseCommands, shellScriptOf } from './shell-parse.mjs';
+import { API_VALUE_FLAGS } from './review-gate-policy.mjs';
+import { GH_VALUE_FLAGS, SHELLS, parseCommands, shellScriptOf } from './shell-parse.mjs';
 
 /** @typedef {import('./shell-parse.mjs').Command} Command */
-/** @typedef {{ text: string, dynamic: boolean, splits: boolean }} Word */
+/** @typedef {import('./shell-parse.mjs').WordMark & { text: string }} Word */
 
 const ASK_ELI =
   'Never bypass branch protection. If a plain `gh pr merge` is refused because a check fails or a branch rule blocks it, stop and ask Eli in chat, and say what blocks it. Do not look for another way around it.';
@@ -18,6 +19,7 @@ const NOT_CLEARED =
 
 export const ADMIN_REASON = `\`gh pr merge --admin\` (even \`--admin=false\`) merges past required checks and branch rules. Remove \`--admin\`. ${ASK_ELI} ${NOT_CLEARED}`;
 export const REST_MERGE_REASON = `A merge through the REST API (\`pulls/<N>/merge\`) skips the branch protection check that \`gh pr merge\` makes, so with admin rights it is the same bypass as \`--admin\`. Use a plain \`gh pr merge\`. ${ASK_ELI} ${NOT_CLEARED}`;
+const THROUGH_ANOTHER_PROGRAM = ' Run gh directly, not through another program.';
 const FLAGS_FIRST_REASON =
   'The hook cannot tell which gh command this is when flags come before the subcommand. Write `gh pr ...` or `gh api ...` with the subcommand first and the flags after it.';
 const ACTION_FIRST_REASON =
@@ -28,14 +30,44 @@ const ACTION_FIRST_REASON =
  * @param {string} where
  */
 function unreadReason(word, where) {
-  const quote = word.splits && !/\$@|\[[@*]\]|\$\{[=(]/.test(word.text);
-  return `The hook cannot read \`${word.text}\` in this ${where}: the shell builds it at run time, and it may become a flag such as \`--admin\` or \`-X PUT\`. Write the PR number, the endpoint and every flag out in full${quote ? ', and put a flag value in double quotes' : ''}.`;
+  const quote = word.splits === 'unquoted' ? ', and put a flag value in double quotes' : '';
+  return `The hook cannot read \`${word.text}\` in this ${where}: the shell builds it at run time, and it may become a flag such as \`--admin\` or \`-X PUT\`. Write the PR number, the endpoint and every flag out in full${quote}.`;
 }
+
+/**
+ * Whether a word asks for help. Only a bare flag or `=true` does: pflag reads
+ * `--help=false` as help off, so the command runs.
+ * @param {string} text
+ */
+const asksHelp = (text) => text === '-h' || /^--help(=(true|1))?$/i.test(text);
+
+// ---- Text that names a bypass ----
+
+/** @param {string} text */
+const namesAdminMerge = (text) =>
+  /(?:^|[^\w-])--admin(?![\w-])/.test(text) && /\bmerge\b/.test(text);
+
+/** @param {string} text */
+const namesMergePath = (text) => /pulls\/[^/\s'"]+\/merge\b/.test(text);
+
+/**
+ * The refusal for text the hook does not parse as a command (an alias, a
+ * script handed to an interpreter) when it names a bypass, or null.
+ * @param {string} text
+ */
+function namedBypass(text) {
+  if (namesAdminMerge(text)) return ADMIN_REASON + THROUGH_ANOTHER_PROGRAM;
+  if (namesMergePath(text)) return REST_MERGE_REASON + THROUGH_ANOTHER_PROGRAM;
+  return null;
+}
+
+/** @param {Word[]} words */
+const wordsText = (words) => words.map(({ text }) => text).join(' ');
 
 // ---- gh ----
 
-const REPO_FLAGS = ['-R', '--repo'];
-// The gh pr actions the review gate checks. A flag before one of these hides it.
+// The gh pr actions that open, ready or merge a PR. A flag before one of
+// these hides which action runs.
 const GATED_PR_ACTIONS = new Set(['create', 'new', 'merge', 'ready']);
 
 /**
@@ -50,9 +82,9 @@ function leadingSubcommandWords(args) {
   const others = [];
   let flags = 0;
   for (let i = 0; i < args.length; i++) {
-    const text = args[i]?.text ?? '';
-    if (!text.startsWith('-')) others.push(/** @type {Word} */ (args[i]));
-    else if (REPO_FLAGS.includes(text)) i++;
+    const word = /** @type {Word} */ (args[i]);
+    if (!word.text.startsWith('-')) others.push(word);
+    else if (GH_VALUE_FLAGS.has(word.text)) i++;
     else flags++;
   }
   return others.slice(0, flags + 1);
@@ -74,6 +106,8 @@ function checkGh(args) {
   if (group.dynamic) return unreadReason(group, 'gh command');
   if (group.text === 'pr') return checkPr(args.slice(1));
   if (group.text === 'api') return checkApi(args.slice(1));
+  // `gh alias set m 'pr merge --admin'` makes `gh m` a bypass.
+  if (group.text === 'alias') return namedBypass(wordsText(args));
   return null;
 }
 
@@ -88,7 +122,7 @@ function checkPr(args) {
   for (; i < args.length; i++) {
     const word = /** @type {Word} */ (args[i]);
     if (!word.text.startsWith('-')) break;
-    if (REPO_FLAGS.includes(word.text)) {
+    if (GH_VALUE_FLAGS.has(word.text)) {
       const value = args[++i];
       if (value?.splits) splitValues.push(value);
     } else if (/^(-R.|--repo=)/.test(word.text)) {
@@ -115,8 +149,7 @@ const MERGE_VALUE_FLAGS = new Set([
   '-t',
   '--subject',
   '--match-head-commit',
-  '-R',
-  '--repo',
+  ...GH_VALUE_FLAGS,
 ]);
 
 /**
@@ -139,23 +172,20 @@ function checkMerge(args, splitValues) {
       runtime.push(...args.slice(i + 1).filter((each) => each.dynamic));
       break;
     }
+    if (asksHelp(text)) help = true;
     if (text.startsWith('--')) {
       const eq = text.indexOf('=');
       const name = eq === -1 ? text : text.slice(0, eq);
       if (name === '--admin') admin = true;
-      else if (name === '--help') help = true;
       else if (MERGE_VALUE_FLAGS.has(name)) {
-        if (eq === -1) takeValue(args[++i]);
-        else takeValue(word);
+        takeValue(eq === -1 ? args[++i] : word);
         continue;
       }
       if (word.dynamic) runtime.push(word);
     } else if (text.startsWith('-') && text.length > 1) {
       let tookValue = false;
       for (let k = 1; k < text.length; k++) {
-        const flag = `-${text[k]}`;
-        if (flag === '-h') help = true;
-        if (MERGE_VALUE_FLAGS.has(flag)) {
+        if (MERGE_VALUE_FLAGS.has(`-${text[k]}`)) {
           takeValue(k + 1 === text.length ? args[++i] : word);
           tookValue = true;
           break;
@@ -171,26 +201,6 @@ function checkMerge(args, splitValues) {
   const unread = splitValues[0] ?? runtime[0];
   return unread ? unreadReason(unread, 'gh pr merge') : null;
 }
-
-const API_VALUE_FLAGS = new Set([
-  '--method',
-  '--raw-field',
-  '--field',
-  '--header',
-  '--input',
-  '--jq',
-  '--template',
-  '--cache',
-  '--preview',
-  '--hostname',
-  '-X',
-  '-f',
-  '-F',
-  '-H',
-  '-q',
-  '-t',
-  '-p',
-]);
 
 /**
  * The first value flag in a short group, as gh reads it: `-iXPUT` and
@@ -223,6 +233,7 @@ export function urlPath(text) {
 }
 
 const MERGE_PATH = /\/pulls\/[^/]+\/merge$/;
+const BODY_FLAGS = new Set(['-f', '-F', '--field', '--raw-field', '--input']);
 
 /**
  * @param {Word[]} args  the words after `gh api`
@@ -241,7 +252,7 @@ function checkApi(args) {
     if (!value) return;
     if (value.splits) hidden.push(value);
     if (name === '-X' || name === '--method') methods.push(value);
-    if (['-f', '-F', '--field', '--raw-field', '--input'].includes(name)) body = true;
+    if (BODY_FLAGS.has(name)) body = true;
   };
   for (let i = 0; i < args.length; i++) {
     const word = /** @type {Word} */ (args[i]);
@@ -250,10 +261,10 @@ function checkApi(args) {
       positional.push(...args.slice(i + 1));
       break;
     }
+    if (asksHelp(text)) help = true;
     if (text.startsWith('--')) {
       const eq = text.indexOf('=');
       const name = eq === -1 ? text : text.slice(0, eq);
-      if (name === '--help') help = true;
       if (API_VALUE_FLAGS.has(name)) {
         take(name, eq === -1 ? args[++i] : { ...word, text: text.slice(eq + 1) });
       } else if (word.dynamic) {
@@ -261,7 +272,6 @@ function checkApi(args) {
       }
     } else if (text.startsWith('-') && text.length > 1) {
       const short = shortValueFlag(text);
-      if (text === '-h') help = true;
       if (short) {
         take(
           short.name,
@@ -297,18 +307,19 @@ function checkApi(args) {
 // ---- HTTP clients ----
 
 const HTTPIE = new Set(['http', 'https', 'xh', 'xhs']);
-const HTTP_CLIENTS = new Set(['curl', 'wget', ...HTTPIE]);
 const WRITE_METHOD = /^(PUT|POST|PATCH|DELETE)$/i;
 const ANY_METHOD = /^(GET|HEAD|PUT|POST|PATCH|DELETE|OPTIONS)$/i;
 
 /**
  * Whether an HTTP client call writes to a PR's `pulls/<N>/merge`. It reads
  * the last method named (`-X PUT`, `-XPUT`, `--request=PUT`,
- * `--method=PUT`, httpie's `PUT`) and the flags that send a body.
+ * `--method=PUT`, httpie's `PUT`) and the flags that send a body. A word the
+ * shell splits (`{-XPUT,<url>}`) that names a merge path is refused too.
  * @param {string} program
  * @param {Word[]} args
  */
 function checkHttp(program, args) {
+  if (args.some((word) => word.splits && namesMergePath(word.text))) return REST_MERGE_REASON;
   const names = args.map(({ text }) => text.replace(/^--?[\w-]+=/, ''));
   if (!names.some((text) => MERGE_PATH.test(urlPath(text)))) return null;
   /** @type {string | undefined} */
@@ -330,33 +341,72 @@ function checkHttp(program, args) {
   return writes ? REST_MERGE_REASON : null;
 }
 
-// ---- Text the hook cannot parse ----
+// ---- Other programs ----
 
-// Programs handed a command as text the parser does not read.
-const TEXT_RUNNERS =
-  /^(python[\d.]*|node|perl|ruby|deno|bun|php|osascript|lua|tclsh|alias|source|\.)$/;
+// Programs that only read or print text, so text in their words that names
+// a bypass is not run (a commit message, a note, a search).
+const READERS = new Set([
+  'echo',
+  'printf',
+  'cat',
+  'tee',
+  'grep',
+  'egrep',
+  'rg',
+  'sed',
+  'awk',
+  'head',
+  'tail',
+  'wc',
+  'jq',
+]);
 
 /**
- * Whether a command runs text the parser does not read: a shell with no
- * `-c` (it reads a pipe, a heredoc or a file), an interpreter, `alias`,
- * `source`, or a program built at run time.
+ * git runs other programs only through an alias set on its command line
+ * (`git -c alias.x='!gh ...' x`), so only those values are checked.
+ * @param {Word[]} args  the words after `git`
+ */
+function checkGit(args) {
+  const aliases = args.filter(
+    (word, i) => args[i - 1]?.text === '-c' && /^alias\./.test(word.text),
+  );
+  return namedBypass(wordsText(aliases));
+}
+
+// Interpreters that may read a script from stdin or a heredoc.
+const INTERPRETERS = /^(python[\d.]*|node|perl|ruby|deno|bun|php|osascript|lua|tclsh)$/;
+
+/**
+ * Whether a command may run text that is not in its own words: a shell with
+ * no `-c` or an interpreter (either may read a pipe, a heredoc or a file),
+ * or a program built at run time (`eval "$X"` after `X='...'`). For these the
+ * whole script is checked.
  * @param {Command} command
  */
-function runsUnreadText(command) {
+function runsScriptText(command) {
   const program = command.argv[0];
   if (program === undefined) return false;
   if (command.marks[0]?.dynamic) return true;
   const name = posix.basename(program);
   if (SHELLS.has(name)) return shellScriptOf(command.argv) === null;
-  return TEXT_RUNNERS.test(name);
+  return INTERPRETERS.test(name);
 }
 
-/** @param {string} text */
-const namesAdminMerge = (text) =>
-  /(?:^|[^\w-])--admin(?![\w-])/.test(text) && /\bmerge\b/.test(text);
+/**
+ * Whether the parser reads the script this command runs (`eval`, `bash -c`).
+ * @param {Command} command
+ */
+const runsParsedScript = (command) =>
+  command.argv[0] === 'eval' || shellScriptOf(command.argv) !== null;
 
-/** @param {string} text */
-const namesMergePath = (text) => /pulls\/[^/\s'"]+\/merge\b/.test(text);
+/** @type {Record<string, (args: Word[], program: string) => string | null>} */
+const CHECKERS = {
+  gh: checkGh,
+  git: checkGit,
+  curl: (args) => checkHttp('curl', args),
+  wget: (args) => checkHttp('wget', args),
+  ...Object.fromEntries([...HTTPIE].map((name) => [name, (args) => checkHttp(name, args)])),
+};
 
 // ---- Entry ----
 
@@ -370,23 +420,20 @@ export function findBypass(script) {
   const commands = parseCommands(script);
   for (const command of commands) {
     const program = posix.basename(command.argv[0] ?? '');
+    /** @type {Word[]} */
     const words = command.argv.map((text, i) => ({
       text,
-      dynamic: command.marks[i]?.dynamic ?? false,
-      splits: command.marks[i]?.splits ?? false,
+      .../** @type {import('./shell-parse.mjs').WordMark} */ (command.marks[i]),
     }));
-    const reason =
-      program === 'gh'
-        ? checkGh(words.slice(1))
-        : HTTP_CLIENTS.has(program)
-          ? checkHttp(program, words.slice(1))
-          : null;
+    const check = CHECKERS[program];
+    let reason = null;
+    if (check) reason = check(words.slice(1), program);
+    // Any other program (find -exec, pnpm exec, alias, python3 -c) may run
+    // gh from its own words. `eval` and `bash -c` scripts are parsed, so
+    // their commands come next in the list and get the checks above.
+    else if (!READERS.has(program) && !runsParsedScript(command))
+      reason = namedBypass(wordsText(words));
     if (reason) return reason;
   }
-  if (commands.some(runsUnreadText)) {
-    const run = ' Run gh directly, not through another program.';
-    if (namesAdminMerge(script)) return ADMIN_REASON + run;
-    if (namesMergePath(script)) return REST_MERGE_REASON + run;
-  }
-  return null;
+  return commands.some(runsScriptText) ? namedBypass(script) : null;
 }

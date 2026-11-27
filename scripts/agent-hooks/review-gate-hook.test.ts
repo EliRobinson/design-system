@@ -234,13 +234,18 @@ describe('Claude Code', () => {
     expect(run('claude', bash(`${GH} api graphql -f query=@m.graphql`)).code).toBe(2);
   });
 
-  it('refuses a merge that bypasses branch protection, even after every reviewer ran', () => {
+  it.each([
+    [`${GH} pr merge 5 --rebase --admin`, 2],
+    [`${GH} api -X PUT repos/o/r/pulls/5/merge`, 2],
+    [`${GH} pr merge 5 --rebase`, 0],
+  ])('after every reviewer ran, a merge bypass is still refused: %s exits %i', (command, code) => {
     finishAllReviewers();
-    const admin = run('claude', bash(`${GH} pr merge 5 --rebase --admin`));
-    expect(admin.code).toBe(2);
-    expect(admin.stderr).toMatch(/Blocked by the review gate\. .*stop and ask Eli/);
-    expect(run('claude', bash(`${GH} api -X PUT repos/o/r/pulls/5/merge`)).code).toBe(2);
-    expect(run('claude', bash(`${GH} pr merge 5 --rebase`)).code).toBe(0);
+    expect(run('claude', bash(command)).code).toBe(code);
+  });
+
+  it('says why a merge bypass is refused, and to ask Eli', () => {
+    const result = run('claude', bash(`${GH} pr merge 5 --admin`));
+    expect(result.stderr).toMatch(/Blocked by the review gate\. .*stop and ask Eli/);
   });
 
   it('lets bad stdin and unrelated tools through', () => {
@@ -290,6 +295,9 @@ describe('other tools check the body, and refuse merge bypasses', () => {
       cwd: repo,
     });
     expect(mcp.json).toMatchObject({ permission: 'deny' });
+  });
+
+  it('Cursor: denies a merge bypass with JSON on stdout', () => {
     const admin = run('cursor', { command: `${GH} pr merge 5 --admin`, cwd: repo });
     expect(admin.json).toMatchObject({ permission: 'deny' });
   });

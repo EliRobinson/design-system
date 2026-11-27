@@ -136,7 +136,7 @@ function classifyPrCreate(args, dir) {
   };
 }
 
-const API_VALUE_FLAGS = flagSet(
+export const API_VALUE_FLAGS = flagSet(
   'method raw-field field header input jq template cache preview hostname',
   ['-X', '-f', '-F', '-H', '-q', '-t', '-p'],
 );
