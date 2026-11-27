@@ -29,10 +29,12 @@ import { posix } from 'node:path';
  * - `dynamic`: some of it comes from an expansion (`$X`, `$(...)`, backticks,
  *   `$'...'`), so the text the parser keeps is not what runs.
  * - `splits`: whether the word may become several words, a flag among them.
- *   `'unquoted'`: an expansion or a brace expansion (`{a,b}`) is unquoted,
- *   so double quotes would stop the split. `'always'`: an expansion splits
- *   even in double quotes (`"$@"`, `"${a[@]}"`, zsh's `"${=x}"`). `false`:
- *   it does not split.
+ *   `'unquoted'`: an expansion, a brace expansion (`{a,b}`) or a filename
+ *   pattern (`*`, `?`, `[ab]`) is unquoted, so double quotes would stop the
+ *   split. A filename pattern also counts as `dynamic`: a file named
+ *   `--admin` turns `--admi[n]` or `*` into that flag. `'always'`: an
+ *   expansion splits even in double quotes (`"$@"`, `"${a[@]}"`, zsh's
+ *   `"${=x}"`). `false`: it does not split.
  * @typedef {{ dynamic: boolean, splits: false | 'unquoted' | 'always' }} WordMark
  */
 
@@ -58,6 +60,9 @@ const EXPANSION_START = /^[\w{@*#?$!-]$/;
 const QUOTE_START = /^['"]$/;
 // An unquoted brace expansion, `{a,b}` or `{1..3}`; not gh's `{owner}`.
 const BRACE_EXPANSION = /^\{[^{}\s'"]*(,|\.\.)[^{}\s'"]*\}/;
+// An unquoted `[` that opens a filename pattern: a `]` closes it later in the
+// same word. A lone `[` or `[[` is a command, not a pattern.
+const BRACKET_PATTERN = /^\[[^\s;&|()<>]+\]/;
 
 /** Hands out scope ids, unique within one parse. @typedef {{ last: number }} ScopeIds */
 
@@ -317,6 +322,8 @@ function readLevel(script, start, closer, scope, ids) {
         if (ch === '$' && EXPANSION_START.test(next ?? '')) expands('unquoted');
         else if (ch === '$' && QUOTE_START.test(next ?? '')) expands(false);
         else if (ch === '{' && BRACE_EXPANSION.test(script.slice(i))) expands('unquoted');
+        else if (ch === '*' || ch === '?') expands('unquoted');
+        else if (ch === '[' && BRACKET_PATTERN.test(script.slice(i))) expands('unquoted');
         append(ch);
         i++;
       }

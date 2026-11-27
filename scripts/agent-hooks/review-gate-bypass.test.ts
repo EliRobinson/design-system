@@ -125,6 +125,12 @@ describe('findBypass: refuses merge words it cannot read', () => {
     ['{gh} pr merge 5 --{admin,rebase}', UNREAD],
     ['{gh} pr merge 5 --{admin..admin}', UNREAD],
     ['{gh} api {-XPUT,repos/o/r/pulls/5/merge}', UNREAD],
+    ['{gh} pr merge 5 --admi[n]', UNREAD],
+    ['{gh} pr merge 5 --admin*', UNREAD],
+    ['{gh} pr merge 5 *', UNREAD],
+    ['{gh} pr merge 5 -t fix?', UNREAD],
+    ['{gh} api -X PUT repos/o/r/pulls/5/merg[e]', UNREAD],
+    ['{gh} api -X PUT repos/o/r/pulls/5/m*', UNREAD],
     ['{gh} --admin=true pr merge 5', FLAGS_FIRST],
     ['{gh} -R o/r pr merge 5 --admin', FLAGS_FIRST],
     ['{gh} --repo=o/r pr merge 5 --admin', FLAGS_FIRST],
@@ -169,6 +175,11 @@ describe('findBypass: lets plain merges, reads and text through', () => {
     '{gh} pr view 5 --json mergeStateStatus',
     '{gh} pr -R "$R" view 5',
     '{gh} pr create -F body.md',
+    '{gh} pr merge 5 --squash -t "fix?" --body \'* done\'',
+    '{gh} pr merge 5 --rebase -t \\*',
+    '{gh} pr list --search "is:open"',
+    '{gh} api "repos/o/r/pulls?state=open"',
+    'git commit -m "fix?"',
     '{gh} --version',
     '{gh} -R "$REPO" issue list',
     '{gh} api repos/o/r/pulls/5/merge',
@@ -215,12 +226,14 @@ describe('findBypass: reads help as gh does', () => {
     ['{gh} pr merge 5 --admin -dh$X', ADMIN_REASON],
     // A file named `-h=false` makes `-h*` run as `-h=false`.
     ['{gh} pr merge 5 --admin -h*', ADMIN_REASON],
-    ['{gh} api -X PUT repos/o/r/pulls/5/merge -h*', REST_MERGE_REASON],
   ])('does not take a run-time short help as help: %s', (script, says) => {
     expect(reason(script)).toBe(says);
   });
 
-  it('does not take a run-time short help on gh api as help', () => {
-    expect(reason('{gh} api -X PUT repos/o/r/pulls/5/merge -h"$X"')).toContain(UNREAD);
+  it.each([
+    '{gh} api -X PUT repos/o/r/pulls/5/merge -h"$X"',
+    '{gh} api -X PUT repos/o/r/pulls/5/merge -h*',
+  ])('does not take a run-time short help on gh api as help: %s', (script) => {
+    expect(reason(script)).toContain(UNREAD);
   });
 });

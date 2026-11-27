@@ -125,6 +125,9 @@ describe('findPrCommands: reads flags as gh does', () => {
     ['=false on a short flag', `${CREATE} -F b.md -w=false`, { web: false, fill: false }],
     ['web built at run time', `${CREATE} -F b.md --web="$X"`, { web: true }],
     ['fill built at run time', `${CREATE} -F b.md --fill="$X"`, { fill: true }],
+    ['web with a filename pattern', `${CREATE} -F b.md --web=t*`, { web: true }],
+    ['fill with a filename pattern', `${CREATE} -F b.md --fill=[t]`, { fill: true }],
+    ['quoted fill pattern', `${CREATE} -F b.md --fill='t*'`, { fill: false }],
   ])('reads %s', (_, script, read) => {
     expect(first(script)).toMatchObject(read);
   });
