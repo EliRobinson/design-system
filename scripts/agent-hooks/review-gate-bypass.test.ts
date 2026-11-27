@@ -213,6 +213,9 @@ describe('findBypass: reads help as gh does', () => {
   it.each([
     ['{gh} pr merge 5 --admin -h"$X"', ADMIN_REASON],
     ['{gh} pr merge 5 --admin -dh$X', ADMIN_REASON],
+    // A file named `-h=false` makes `-h*` run as `-h=false`.
+    ['{gh} pr merge 5 --admin -h*', ADMIN_REASON],
+    ['{gh} api -X PUT repos/o/r/pulls/5/merge -h*', REST_MERGE_REASON],
   ])('does not take a run-time short help as help: %s', (script, says) => {
     expect(reason(script)).toBe(says);
   });

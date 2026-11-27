@@ -114,6 +114,7 @@ describe('findPrCommands: reads flags as gh does', () => {
     ['dry run built at run time', `${CREATE} --dry-run="$X" -F b.md`],
     ['help set to f', `${CREATE} --help=f -F b.md`],
     ['short help built at run time', `${CREATE} -h"$X" -F b.md`],
+    ['short help with a filename pattern', `${CREATE} -h* -F b.md`],
   ])('gates a create that is not a dry run or help: %s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
   });
