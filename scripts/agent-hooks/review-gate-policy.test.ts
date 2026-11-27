@@ -133,6 +133,38 @@ describe('findPrCommands: reads flags as gh does', () => {
   });
 });
 
+// A word the shell builds at run time where gh reads `pr` or `create` may
+// become `pr create`, so the check cannot tell that no PR opens.
+describe('findPrCommands: cannot read a run-time gh command or subcommand', () => {
+  it.each([
+    ['a variable subcommand', `${GH} pr $X`, '$X'],
+    ['a quoted variable subcommand', `${GH} pr "$X"`, '$X'],
+    ['a substitution subcommand', `${GH} pr $(echo create)`, '$(echo create)'],
+    ['a filename pattern subcommand', `${GH} pr cre*`, 'cre*'],
+    ['a subcommand after -R', `${GH} pr -R o/r $X`, '$X'],
+    ['a subcommand after --repo=', `${GH} pr --repo=o/r $X`, '$X'],
+    ['a subcommand after a gh -R', `${GH} -R o/r pr $X`, '$X'],
+    ['a variable command', `${GH} $X create`, '$X'],
+    ['a filename pattern command', `${GH} p[r] create`, 'p[r]'],
+    ['a command after -R', `${GH} --repo o/r $X create`, '$X'],
+    ['a lone variable command', `${GH} $X`, '$X'],
+  ])('%s', (_, script, word) => {
+    expect(findPrCommands(script)).toEqual([{ kind: 'unread', word }]);
+  });
+
+  it.each([
+    ['pr list', `${GH} pr list`],
+    ['pr view with a run-time number', `${GH} pr view $N`],
+    ['pr checkout with a run-time branch', `${GH} pr checkout "$B"`],
+    ['issue create', `${GH} issue create -t x -b y`],
+    ['issue view with a run-time number', `${GH} issue view $N`],
+    ['api read with a run-time endpoint', `${GH} api "repos/o/r/pulls/$N"`],
+    ['a run-time repo before pr list', `${GH} -R "$R" pr list`],
+  ])('leaves %s alone', (_, script) => {
+    expect(kinds(script)).toEqual([]);
+  });
+});
+
 describe('findPrCommands: leaves other commands alone', () => {
   it.each([
     ['ls', 'ls -la'],
@@ -271,6 +303,10 @@ describe('branchRefsOf', () => {
       baseRefs: ['origin/dev', 'origin/main'],
       dir: 'sub',
     });
+  });
+
+  it('reads no refs for a gh command it cannot read', () => {
+    expect(branchRefsOf({ kind: 'unread', word: '$X' })).toEqual({ baseRefs: [], dir: '.' });
   });
 
   it('falls back to origin/HEAD and the working directory', () => {
@@ -526,6 +562,12 @@ describe('decidePr', () => {
 
   it('denies gh api creates', () => {
     expect(decidePr({ kind: 'api-create' }, deps)?.deny).toMatch(/gh api/);
+  });
+
+  it('denies a gh command it cannot read, naming the word', () => {
+    expect(decidePr({ kind: 'unread', word: 'cre*' }, deps)?.deny).toMatch(
+      /cannot read `cre\*`.*run time/,
+    );
   });
 
   it('denies a graphql file only when it creates a PR', () => {
