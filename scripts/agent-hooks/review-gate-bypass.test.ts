@@ -150,8 +150,6 @@ describe('findBypass: refuses merge words it cannot read', () => {
     ['{gh} api repos/o/r/pulls/5/merge --header=$H', UNREAD],
     ['{gh} api "$E" repos/o/r/pulls/5/merge', UNREAD],
     ['{gh} api repos/o/r/pulls/$N', UNREAD],
-    ['{gh} api -X POST repos/$R/pulls', UNREAD],
-    ['{gh} api repos/$R/pulls -f title=x', UNREAD],
   ])('%s', (script, says) => {
     expect(reason(script)).toContain(says);
   });
@@ -169,30 +167,48 @@ describe('findBypass: refuses merge words it cannot read', () => {
 // `repos/<o>/<r>/pulls` (a PR open) or `pulls/<N>/merge` (a merge), wherever
 // in the endpoint the run-time word stands.
 describe('findBypass: refuses a gh api write to a run-time endpoint', () => {
-  const apiWrite = (word: string) =>
-    `The hook cannot read \`${word}\` in this gh api write's endpoint: the shell builds it at run time, and it may become a PR open or a PR merge. Write the endpoint out in full.`;
+  const API_WRITE = "gh api write's endpoint";
+  const apiWrite = (word: string) => `\`${word}\` in this ${API_WRITE}`;
 
   it.each([
-    ['{gh} api -X POST "repos/$R/pulls"', 'repos/$R/pulls'],
-    ['{gh} api -X POST repos/"$R"/pulls', 'repos/$R/pulls'],
-    ['{gh} api --method=POST "repos/$R/pulls"', 'repos/$R/pulls'],
-    ['{gh} api -X post "repos/$R/pulls"', 'repos/$R/pulls'],
-    ['{gh} api "repos/$R/pulls" -f title=x', 'repos/$R/pulls'],
-    ['{gh} api "repos/$R/pulls" -F title=x', 'repos/$R/pulls'],
-    ['{gh} api "repos/$R/pulls" --field title=x', 'repos/$R/pulls'],
-    ['{gh} api "repos/$R/pulls" --raw-field title=x', 'repos/$R/pulls'],
-    ['{gh} api --input body.json "repos/$R/pulls"', 'repos/$R/pulls'],
-    ['{gh} api -X POST "repos/$(echo o/r)/pulls"', 'repos/$(echo o/r)/pulls'],
-    ["{gh} api -X POST $'repos/o/r/pulls'", '$repos/o/r/pulls'],
-    ['{gh} api -X PATCH "repos/o/r/pulls/$N"', 'repos/o/r/pulls/$N'],
-    ['{gh} api -X DELETE "repos/$R/pulls/5"', 'repos/$R/pulls/5'],
-    ['E=repos/o/r/pulls/5/merge; {gh} api -X PUT "$E"', '$E'],
-    ['{gh} api -X POST "repos/o/r/issues/$N/comments" -f body=x', 'repos/o/r/issues/$N/comments'],
-    ['{gh} api -X "$M" "repos/$R/pulls"', 'repos/$R/pulls'],
-    ['{gh} api "$G" -f query=x', '$G'],
-  ])('%s', (script, word) => {
-    expect(reason(script)).toBe(apiWrite(word));
+    ['{gh} api -X POST "repos/$R/pulls"', apiWrite('repos/$R/pulls')],
+    ['{gh} api -X POST repos/"$R"/pulls', apiWrite('repos/$R/pulls')],
+    ['{gh} api --method=POST "repos/$R/pulls"', apiWrite('repos/$R/pulls')],
+    ['{gh} api -X post "repos/$R/pulls"', apiWrite('repos/$R/pulls')],
+    ['{gh} api "repos/$R/pulls" -f title=x', apiWrite('repos/$R/pulls')],
+    ['{gh} api "repos/$R/pulls" -F title=x', apiWrite('repos/$R/pulls')],
+    ['{gh} api "repos/$R/pulls" --field title=x', apiWrite('repos/$R/pulls')],
+    ['{gh} api "repos/$R/pulls" --raw-field title=x', apiWrite('repos/$R/pulls')],
+    ['{gh} api --input body.json "repos/$R/pulls"', apiWrite('repos/$R/pulls')],
+    ['{gh} api -X POST "repos/$(echo o/r)/pulls"', apiWrite('repos/$(echo o/r)/pulls')],
+    ["{gh} api -X POST $'repos/o/r/pulls'", API_WRITE],
+    ['{gh} api -X PATCH "repos/o/r/pulls/$N"', apiWrite('repos/o/r/pulls/$N')],
+    ['{gh} api -X DELETE "repos/$R/pulls/5"', apiWrite('repos/$R/pulls/5')],
+    ['E=repos/o/r/pulls/5/merge; {gh} api -X PUT "$E"', apiWrite('$E')],
+    [
+      '{gh} api -X POST "repos/o/r/issues/$N/comments" -f body=x',
+      apiWrite('repos/o/r/issues/$N/comments'),
+    ],
+    ['{gh} api -X "$M" "repos/$R/pulls"', apiWrite('repos/$R/pulls')],
+    ['{gh} api "$G" -f query=x', apiWrite('$G')],
+  ])('%s', (script, says) => {
+    expect(reason(script)).toContain(says);
   });
+
+  it('says it may open or merge a PR', () => {
+    expect(reason('{gh} api -X POST "repos/$R/pulls"')).toContain(
+      'it may open or merge a PR. Write the endpoint out in full.',
+    );
+  });
+
+  // An unquoted run-time endpoint may also split into a flag, so the
+  // gh api call reason, checked first, refuses it.
+  it.each(['{gh} api -X POST repos/$R/pulls', '{gh} api repos/$R/pulls -f title=x'])(
+    'refuses an unquoted one as a word that may be a flag: %s',
+    (script) => {
+      expect(reason(script)).toContain(UNREAD);
+    },
+  );
 
   it.each([
     '{gh} api "repos/$R/pulls"',
@@ -200,6 +216,7 @@ describe('findBypass: refuses a gh api write to a run-time endpoint', () => {
     '{gh} api -X GET "repos/$R/pulls"',
     '{gh} api --method=get "repos/$R/pulls"',
     '{gh} api -X GET "repos/$R/pulls" -f state=open',
+    '{gh} api -X HEAD "repos/$R/pulls"',
     '{gh} api -X POST repos/{owner}/{repo}/issues -f title=x',
   ])('lets a read or a literal endpoint through: %s', (script) => {
     expect(reason(script)).toBeNull();

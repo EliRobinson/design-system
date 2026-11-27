@@ -269,7 +269,7 @@ describe('Claude Code', () => {
       const result = run('claude', bash(command));
       expect(result.code).toBe(2);
       expect(result.stderr).toMatch(
-        /Blocked by the review gate\. The hook cannot read `repos\/\$R\/pulls` .* it may become a PR open or a PR merge/,
+        /Blocked by the review gate\. The hook cannot read `repos\/\$R\/pulls` .* it may open or merge a PR/,
       );
     },
   );

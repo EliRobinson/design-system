@@ -1,7 +1,9 @@
 // @ts-check
-// Merges that bypass branch protection, which the review gate always
-// refuses, whatever the PR's Review section says. See
-// docs/agents/git-and-prs.md#merges-that-bypass-branch-protection.
+// Shell commands the review gate refuses whatever the PR's Review section
+// says: merges that bypass branch protection, and gh words or endpoints the
+// hook cannot read, which may hide a PR open or a merge. See
+// docs/agents/git-and-prs.md#merges-that-bypass-branch-protection and
+// docs/agents/git-and-prs.md#gh-commands-the-hook-cannot-read.
 // No I/O, like review-gate-policy.mjs.
 
 import { posix } from 'node:path';
@@ -28,19 +30,18 @@ const ACTION_FIRST_REASON =
 // Why a word the hook cannot read is refused, by where it stands. A word in
 // gh's command or pr action position, or a flag before one, may become a
 // whole command; a word after `gh pr merge` or `gh api` may become a flag.
-// A run-time endpoint of a gh api write may become `repos/<o>/<r>/pulls` or
-// `pulls/<N>/merge`, wherever in it the run-time part stands.
+// For a gh api write's endpoint, see checkApi.
 const COMMAND_CLAUSE =
   'it may become `gh pr create` or `gh pr merge --admin`. Write the gh command, the pr action and any flag that comes before them out in full';
 const FLAG_CLAUSE =
   'it may become a flag such as `--admin` or `-X PUT`. Write the PR number, the endpoint and every flag out in full';
+const ENDPOINT_CLAUSE = 'it may open or merge a PR. Write the endpoint out in full';
 const UNREAD_AT = {
   ghCommand: `in this gh command: the shell builds it at run time, and ${COMMAND_CLAUSE}`,
   prAction: `in this gh pr command: the shell builds it at run time, and ${COMMAND_CLAUSE}`,
   prMerge: `in this gh pr merge: the shell builds it at run time, and ${FLAG_CLAUSE}`,
   apiCall: `in this gh api call: the shell builds it at run time, and ${FLAG_CLAUSE}`,
-  apiWrite:
-    "in this gh api write's endpoint: the shell builds it at run time, and it may become a PR open or a PR merge. Write the endpoint out in full",
+  apiWrite: `in this gh api write's endpoint: the shell builds it at run time, and ${ENDPOINT_CLAUSE}`,
 };
 
 /**
@@ -215,6 +216,8 @@ function checkMerge(args) {
 }
 
 const MERGE_PATH = /\/pulls\/[^/]+\/merge$/;
+// gh upper-cases the method; these only read.
+const READ_METHOD = /^(GET|HEAD)$/;
 
 /**
  * @param {Word[]} args  the words after `gh api`
@@ -237,12 +240,14 @@ function checkApi(args) {
   }
   if (!endpoint) return null;
 
-  if (!method.dynamic && method.text === 'GET') return null;
+  if (!method.dynamic && READ_METHOD.test(method.text)) return null;
   const path = urlPath(endpoint.text);
   if (MERGE_PATH.test(path)) return REST_MERGE_REASON;
-  // A write to an endpoint built at run time may open or merge a PR. The
-  // PR-open check in review-gate-policy.mjs reads only a literal endpoint,
-  // and this check runs first on every shell call, so it covers both.
+  // A write to an endpoint built at run time may open or merge a PR,
+  // wherever in the endpoint the run-time part stands. The PR-open check in
+  // review-gate-policy.mjs reads only a literal endpoint, and findBypass runs
+  // on every shell call whatever the Review section says, so this refusal
+  // covers both.
   return endpoint.dynamic ? unreadReason('apiWrite', endpoint) : null;
 }
 
