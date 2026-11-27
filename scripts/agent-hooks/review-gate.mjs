@@ -289,7 +289,9 @@ function main() {
     recordRun(cwd, call.agent, call.output, call.transcript);
   } else if (call.kind === 'shell' || call.kind === 'mcp') {
     if (call.kind === 'shell') {
-      // A merge that bypasses branch protection is refused whatever the PR body says.
+      // A merge that bypasses branch protection, or a gh word or endpoint the
+      // hook cannot read that may hide a PR open or merge, is refused
+      // whatever the PR body says.
       const bypass = findBypass(call.command);
       if (bypass) block(adapter, bypass);
     }
