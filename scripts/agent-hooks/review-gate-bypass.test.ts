@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { ADMIN_REASON, REST_MERGE_REASON, findBypass, urlPath } from './review-gate-bypass.mjs';
+import { ADMIN_REASON, REST_MERGE_REASON, findBypass } from './review-gate-bypass.mjs';
 import { GH } from './review-gate-fixtures';
 
 // Every command is built from GH so no test file holds a literal gh command.
@@ -196,13 +196,16 @@ describe('findBypass: lets plain merges, reads and text through', () => {
   });
 });
 
-describe('urlPath', () => {
+// The two gate checks once read gh flags with two readers that disagreed on
+// these forms. Each now reads them as gh does: gh shows help and runs
+// nothing.
+describe('findBypass: reads help as gh does', () => {
   it.each([
-    ['https://api.github.com/repos/o/r/pulls/5/merge?x=1#y', '/repos/o/r/pulls/5/merge'],
-    ['repos/o/r/pulls/5/x/../merge/', '/repos/o/r/pulls/5/merge'],
-    ['repos/o/r/pulls/5/%6Derge', '/repos/o/r/pulls/5/merge'],
-    ['repos/o/r/%E0%A4%A', '/repos/o/r/%E0%A4%A'],
-  ])('%s', (text, path) => {
-    expect(urlPath(text)).toBe(path);
+    '{gh} pr merge 5 --admin -dh',
+    '{gh} pr merge 5 --admin --help=t',
+    '{gh} pr merge 5 --admin -h=1',
+    '{gh} api -X PUT repos/o/r/pulls/5/merge -h=true',
+  ])('%s', (script) => {
+    expect(reason(script)).toBeNull();
   });
 });
