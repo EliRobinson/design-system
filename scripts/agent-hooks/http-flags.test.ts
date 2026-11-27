@@ -77,6 +77,8 @@ describe('readHttpRequest: writes', () => {
     ['curl -X GET -HX-Foo:1 u', false],
     ['curl -HX-GitHub-Api-Version:2022-11-28 u', false],
     ['curl -oX.json u', false],
+    ['curl -H"X-A: $V" u', false],
+    ['curl -HX-A:$V u', false],
     ['http get u', false],
     ['http u a==b', false],
     ['http $URL', false],

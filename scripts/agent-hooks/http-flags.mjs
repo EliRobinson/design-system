@@ -153,7 +153,10 @@ function bundleWrites(word, next, client) {
   if (at === -1) return false;
   const value = (letters.slice(at + 1) + tail).replace(/^=/, '');
   if (value === '') return next !== undefined && methodWrites(next);
-  return (word.dynamic || METHOD_SHAPED.test(value)) && methodWrites({ ...word, text: value });
+  // `${M:-PUT}` and `$(echo PUT)` may be a method; `-A: $V` (the rest of a
+  // glued `-HX-A: $V` header) is not.
+  const shape = value.replace(EXPANSION_BODY, '$');
+  return METHOD_SHAPED.test(shape) && methodWrites({ ...word, text: value });
 }
 
 /**

@@ -395,6 +395,8 @@ describe('findBypass: lets plain merges, reads and text through', () => {
     'curl -HX-GitHub-Api-Version:2022-11-28 https://api.github.com/repos/o/r/pulls/5/merge',
     'curl -X GET -HX-Foo:1 https://api.github.com/repos/o/r/pulls/$N',
     'curl -oX.json https://api.github.com/repos/o/r/pulls/$N',
+    `curl -H"X-GitHub-Api-Version: $V" ${MERGE_URL}`,
+    'curl -sH"X-Api-Key: $KEY" "https://api.$DOMAIN/v1/items"',
     'curl -X POST "$API_URL/users"',
     'curl -X POST ${API_URL}/users',
     'curl -X POST "$SUPABASE_URL/rest/v1/items" -d x',
