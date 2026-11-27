@@ -28,6 +28,8 @@ const ACTION_FIRST_REASON =
 // Why a word the hook cannot read is refused, by where it stands. A word in
 // gh's command or pr action position, or a flag before one, may become a
 // whole command; a word after `gh pr merge` or `gh api` may become a flag.
+// A run-time endpoint of a gh api write may become `repos/<o>/<r>/pulls` or
+// `pulls/<N>/merge`, wherever in it the run-time part stands.
 const COMMAND_CLAUSE =
   'it may become `gh pr create` or `gh pr merge --admin`. Write the gh command, the pr action and any flag that comes before them out in full';
 const FLAG_CLAUSE =
@@ -37,6 +39,8 @@ const UNREAD_AT = {
   prAction: `in this gh pr command: the shell builds it at run time, and ${COMMAND_CLAUSE}`,
   prMerge: `in this gh pr merge: the shell builds it at run time, and ${FLAG_CLAUSE}`,
   apiCall: `in this gh api call: the shell builds it at run time, and ${FLAG_CLAUSE}`,
+  apiWrite:
+    "in this gh api write's endpoint: the shell builds it at run time, and it may become a PR open or a PR merge. Write the endpoint out in full",
 };
 
 /**
@@ -236,11 +240,10 @@ function checkApi(args) {
   if (!method.dynamic && method.text === 'GET') return null;
   const path = urlPath(endpoint.text);
   if (MERGE_PATH.test(path)) return REST_MERGE_REASON;
-  // A write whose last path segment is built at run time may be a merge.
-  if (endpoint.dynamic && /[$`]/.test(path.split('/').at(-1) ?? '')) {
-    return `The hook cannot tell which endpoint this gh api write goes to, and it may be a PR merge. Write the endpoint out in full.`;
-  }
-  return null;
+  // A write to an endpoint built at run time may open or merge a PR. The
+  // PR-open check in review-gate-policy.mjs reads only a literal endpoint,
+  // and this check runs first on every shell call, so it covers both.
+  return endpoint.dynamic ? unreadReason('apiWrite', endpoint) : null;
 }
 
 // ---- HTTP clients ----

@@ -260,6 +260,27 @@ describe('Claude Code', () => {
     );
   });
 
+  // #462: with R=o/r this opens a PR, and the PR-open check cannot see
+  // `pulls` in a run-time endpoint.
+  it.each([`${GH} api -X POST "repos/$R/pulls"`, `${GH} api "repos/$R/pulls" -f title=x`])(
+    'refuses a gh api write to a run-time endpoint: %s',
+    (command) => {
+      finishAllReviewers();
+      const result = run('claude', bash(command));
+      expect(result.code).toBe(2);
+      expect(result.stderr).toMatch(
+        /Blocked by the review gate\. The hook cannot read `repos\/\$R\/pulls` .* it may become a PR open or a PR merge/,
+      );
+    },
+  );
+
+  it.each([`${GH} api "repos/$R/pulls"`, `${GH} api -X GET "repos/$R/pulls"`])(
+    'lets a gh api read of a run-time endpoint through: %s',
+    (command) => {
+      expect(run('claude', bash(command)).code).toBe(0);
+    },
+  );
+
   it.each([`${GH} pr view $N`, `${GH} pr -R "$R" list`])(
     'lets a run-time word after a literal pr action through: %s',
     (command) => {
