@@ -80,6 +80,9 @@ describe('readGhFlags: boolean flags', () => {
     ['--help=t', true],
     ['--help=false', false],
     ['-h"$X"', false],
+    ['-h*', false],
+    ['-h?false', false],
+    ['-h[=]false', false],
   ])('help: %s', (args, help) => {
     expect(read(args).help).toBe(help);
   });

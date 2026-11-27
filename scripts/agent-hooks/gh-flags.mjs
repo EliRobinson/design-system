@@ -85,9 +85,9 @@ export function readGhFlags(words, valueFlags) {
       if (word.dynamic) unreadFlags.push(word);
     } else if (text.startsWith('-') && text.length > 1) {
       let tookValue = false;
-      // gh's short flags are letters. In a word built at run time, the first
-      // other character may start an expansion that becomes `=false`, so the
-      // flag before it gets that unknown rest as its value.
+      // gh's short flags are letters. Any other character may start an
+      // expansion or a filename pattern (`$X`, `*`, `[=]`) that becomes
+      // `=false`, so the flag before it gets that rest as an unknown value.
       for (let k = 1; k < text.length && /[a-zA-Z]/.test(text[k] ?? ''); k++) {
         const name = `-${text[k]}`;
         const next = text[k + 1];
@@ -97,9 +97,12 @@ export function readGhFlags(words, valueFlags) {
           tookValue = true;
           break;
         }
-        const unknownRest = word.dynamic && next !== undefined && !/[a-zA-Z]/.test(next);
-        record(name, 'bool', next === '=' || unknownRest ? rest : undefined);
-        if (next === '=') break;
+        if (next === '=') {
+          record(name, 'bool', rest);
+          break;
+        }
+        const unknown = next !== undefined && !/[a-zA-Z]/.test(next);
+        record(name, 'bool', unknown ? { ...rest, dynamic: true } : undefined);
       }
       if (!tookValue && word.dynamic) unreadFlags.push(word);
     } else {
