@@ -68,8 +68,6 @@ describe('parseCommands', () => {
     ['unquoted', 'x * a* ?b --admi[n] m[!a] "a"* \'b\'?'],
     // A `[` closed later in the word, with quoted members (#459).
     ['unquoted', 'x --admi[" "n] --admi[n\\ ] [a"]" [\'a b\']'],
-    // A `(` glued to a word: a zsh glob group or a bash extglob (#459).
-    ['unquoted', 'x --admi(n|x) --admi@(n) +(a) *(N) !(x) ?(a) "a"(b) a(b)c'],
     ['plain', 'x \'--admi(n)\' "--admi[n]" \\(a\\) a\\(b\\)'],
     ['dynamic', 'x "$a" "${b}" "$(c)" "`d`" $\'e\' $"f" "$*"'],
     ['always', 'x "$@" "${a[@]}" "$a[*]" "${=a}" "${(f)a}" $a"$@"'],
@@ -79,20 +77,13 @@ describe('parseCommands', () => {
     expect(new Set(marks)).toEqual(new Set([kind]));
   });
 
-  it.each([
-    ['x --admi(n|x) y', [['x', '--admi(n|x)', 'y']]],
-    ['x a@(b|c)d e', [['x', 'a@(b|c)d', 'e']]],
-    ['x --admi(n|$(y)) z', [['y'], ['x', '--admi(n|$(y))', 'z']]],
-    [
-      'echo $(x --admi(n)) y',
-      [
-        ['x', '--admi(n)'],
-        ['echo', '$(x --admi(n))', 'y'],
-      ],
-    ],
-  ])('reads a glob group glued to a word as part of it: %s', (script, expected) => {
-    expect(argvs(script)).toEqual(expected);
-  });
+  // A `(` glued to a word: a zsh glob group or a bash extglob (#459).
+  it.each(['--admi(n|x)', '--admi@(n)', '+(a)', '*(N)', '!(x)', '?(a)', '"a"(b)', 'a(b)c'])(
+    'marks the word a ( is glued to as a filename pattern: %s',
+    (form) => {
+      expect(marksAfterX(`x ${form}`)).toEqual(['unquoted']);
+    },
+  );
 
   it.each([
     ['( cd a; y )', ['cd', 'y']],
@@ -102,7 +93,8 @@ describe('parseCommands', () => {
     ['f() { y; }; z', ['f', 'y', 'z']],
     ['case a in a) y;; esac', ['case', 'y']],
     ['case a in (a) y;; esac', ['case', 'a', 'y']],
-    ['case a in @(a|b)) y;; esac', ['case', 'y']],
+    ['case a in @(a|b)) y;; esac', ['case', 'a', 'b', 'y']],
+    ['case x in(x) y;; esac', ['case', 'x', 'y']],
     ['while(y) do z; done', ['y', 'z']],
     ['!(y) && z', ['y', 'z']],
     ['if !(y); then z; fi', ['y', 'z']],
@@ -112,7 +104,12 @@ describe('parseCommands', () => {
     ['select(y); z', ['select', 'y', 'z']],
     ['echo $(f( ) { y; }; f) z', ['f', 'y', 'f', 'echo']],
     ['echo $(x a( ) y) z', ['x', 'y', 'echo']],
-  ])('still reads a ( that is not a glob group as a shell group: %s', (script, expected) => {
+    ['time -p(y) && z', ['y', 'z']],
+    ['! time -p(y)', ['y']],
+    ['echo $(time -p(y))', ['y', 'echo']],
+    ['coproc foo(y)', ['coproc', 'y']],
+    ['x --admi(n|y) z', ['x', 'n', 'y', 'z']],
+  ])('reads the commands in a ( glued to a word, as a subshell: %s', (script, expected) => {
     expect(names(script).filter((name) => name !== undefined)).toEqual(expected);
   });
 

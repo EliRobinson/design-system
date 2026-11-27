@@ -448,12 +448,19 @@ describe('what the parser sees', () => {
     expect(refused('if true; then git add .; fi')).toBe(true);
   });
 
-  it.each(['time(git add -A)', 'coproc(git stash)', 'echo $(f( ) { git add .; }; f)'])(
-    'reads commands in a ( glued to where a command starts: %s',
-    (command) => {
-      expect(refused(command)).toBe(true);
-    },
-  );
+  it.each([
+    'time(git add -A)',
+    'coproc(git stash)',
+    'select(git add -A)',
+    'echo $(f( ) { git add .; }; f)',
+    'time -p(git add -A)',
+    '! time -p(git add -A)',
+    'echo $(time -p(git add -A))',
+    'case x in(x) git add -A;; esac',
+    'coproc foo(git add -A)',
+  ])('reads commands in a ( glued to a word: %s', (command) => {
+    expect(refused(command)).toBe(true);
+  });
 
   it('allows a line with no git at all', () => {
     expect(refused('pnpm test')).toBe(false);

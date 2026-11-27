@@ -31,14 +31,15 @@ import { posix } from 'node:path';
  *   the parser keeps is not what runs.
  * - `splits`: whether the word may become several words, a flag among them.
  *   `'unquoted'`: an expansion, a brace expansion (`{a,b}`) or a filename
- *   pattern is unquoted, so double quotes would stop the split. A filename
- *   pattern is an unquoted `*` or `?`, an unquoted `[` closed by a later `]`
- *   in the word, quoted or not (`[ab]`, `[" "b]`; a lone `[` or `[[` is not
- *   one), or a `(` glued to a word past where the command starts, a glob
- *   group (`a(b|c)`, `@(b)`). It also counts as `dynamic`: a file named
- *   `--admin` turns `--admi[n]`, `--admi(n)` or `*` into that flag. `'always'`: an
- *   expansion splits even in double quotes (`"$@"`, `"${a[@]}"`, zsh's
+ *   pattern is unquoted, so double quotes would stop the split. `'always'`:
+ *   an expansion splits even in double quotes (`"$@"`, `"${a[@]}"`, zsh's
  *   `"${=x}"`). `false`: it does not split.
+ *
+ * A filename pattern is any of these, unquoted: a `*` or `?`; a `[` closed
+ * by a later `]` in the word, quoted or not (`[ab]`, `[" "b]`; a lone `[` or
+ * `[[` is not one); or a word with a `(` glued to it (zsh's `a(b|c)`, bash's
+ * extglob `@(b)`). It is `dynamic` and splits `'unquoted'`: a file named
+ * `--admin` turns `--admi[n]`, `--admi(n)` or `*` into that flag.
  * @typedef {{ dynamic: boolean, splits: false | 'unquoted' | 'always' }} WordMark
  */
 
@@ -64,9 +65,6 @@ const EXPANSION_START = /^[\w{@*#?$!-]$/;
 const QUOTE_START = /^['"]$/;
 // An unquoted brace expansion, `{a,b}` or `{1..3}`; not gh's `{owner}`.
 const BRACE_EXPANSION = /^\{[^{}\s'"]*(,|\.\.)[^{}\s'"]*\}/;
-// The word before a `(` that opens a list, not a glob group: `a=(`, `a+=(`
-// (an array) and zsh's `=(` (a process substitution).
-const LIST_BEFORE_PAREN = /^(?:[A-Za-z_]\w*\+?)?=$/;
 
 /**
  * The words at the front of a command that the shell reads as keywords
@@ -77,21 +75,6 @@ const LIST_BEFORE_PAREN = /^(?:[A-Za-z_]\w*\+?)?=$/;
 function leadingKeywords(argv) {
   const end = argv.findIndex((each) => !COMPOUND_OPENERS.has(each) && !KEYWORDS.has(each));
   return end === -1 ? argv : argv.slice(0, end);
-}
-
-/**
- * Whether a `(` right after `word` opens a glob group in that word (zsh's
- * `a(b|c)`, bash's extglob `@(b)`) rather than a subshell: a file named
- * `--admin` turns `--admi(n|x)` into that flag. Not a glob group: no word
- * before it, `f()` (a function), `a=(` (an array), or any word where a
- * command starts, as in `time(...)`, `coproc(...)`, `while(...)`, `f( )`.
- * @param {string | null} word  the word being read
- * @param {string | undefined} next  the character after the `(`
- * @param {string[]} argv  the command's words before `word`
- */
-function opensGlobGroup(word, next, argv) {
-  if (word === null || next === ')' || LIST_BEFORE_PAREN.test(word)) return false;
-  return leadingKeywords(argv).length < argv.length;
 }
 
 /** Hands out scope ids, unique within one parse. @typedef {{ last: number }} ScopeIds */
@@ -140,14 +123,12 @@ function readLevel(script, start, closer, scope, ids) {
   let redirectTarget = false;
   // Whether the command being read takes its stdin from a pipe.
   let pipedIn = false;
-  // Whether the word being read has an unquoted `[`. A `]` after it, quoted
-  // or not, makes the word a filename pattern; a lone `[` or `[[` is not one.
+  // Whether the word being read has an unquoted `[`, which a later `]` makes
+  // a filename pattern (see WordMark).
   let bracketOpen = false;
-  // How many glob groups (`a(b|c)`, `@(b)`) are open in the word being read.
-  let globDepth = 0;
 
-  // Adds text to the word being read. Side effect: a `]` in it, quoted or
-  // not, after an unquoted `[` in the word marks the word a filename pattern.
+  // Adds text to the word being read. Side effect: a `]` in it after an
+  // unquoted `[` marks the word a filename pattern (see WordMark).
   const append = (/** @type {string} */ text) => {
     if (bracketOpen && text.includes(']')) expands('unquoted');
     word = (word ?? '') + text;
@@ -166,9 +147,6 @@ function readLevel(script, start, closer, scope, ids) {
     word = null;
     mark = { dynamic: false, splits: false };
     bracketOpen = false;
-    // A glob group a space cuts short (`x( )`) is a shell syntax error. Keep
-    // its parens as groups, so its `)` does not close a `$(...)` early.
-    for (; globDepth > 0; globDepth--) groups.push(newScope());
   };
   const here = () => [...scope, ...groups];
   /** @type {number[]} How many `groups` entries each open compound body holds. */
@@ -262,8 +240,7 @@ function readLevel(script, start, closer, scope, ids) {
       (ch === '$' && next === '(' && script[i + 2] === '(') ||
       (ch === '(' && next === '(' && word === null);
 
-    const closes = ch === ')' && groups.length === 0 && globDepth === 0;
-    if ((closer === '`' && ch === '`') || (closer === ')' && closes)) {
+    if ((closer === '`' && ch === '`') || (closer === ')' && ch === ')' && groups.length === 0)) {
       endCommand();
       return { commands, end: i + 1 };
     }
@@ -307,17 +284,6 @@ function readLevel(script, start, closer, scope, ids) {
         }
       }
       i++;
-    } else if (globDepth > 0 && (ch === '(' || ch === ')' || ch === '|')) {
-      // Inside a glob group, `|` separates patterns and parens nest.
-      if (ch === '(') globDepth++;
-      else if (ch === ')') globDepth--;
-      append(ch);
-      i++;
-    } else if (ch === '(' && opensGlobGroup(word, next, argv)) {
-      expands('unquoted');
-      globDepth = 1;
-      append(ch);
-      i++;
     } else if (arithmetic) {
       if (ch === '$') expands('unquoted');
       i = skipArithmetic(i, ch === '$' ? 3 : 2);
@@ -354,6 +320,11 @@ function readLevel(script, start, closer, scope, ids) {
       while (/[<>&|]/.test(script[i] ?? '')) i++;
       redirectTarget = true;
     } else if (ch === '(') {
+      // A `(` glued to a word may be a glob group in it (`--admi(n|x)`, see
+      // WordMark) or a subshell (`time(...)`, `time -p(...)`, `case x in(x)`).
+      // Read both: mark the word, then read the group as a subshell, so no
+      // command in it is missed. `f()` is a function name.
+      if (word !== null && next !== ')') expands('unquoted');
       endCommand();
       groups.push(newScope());
       i++;

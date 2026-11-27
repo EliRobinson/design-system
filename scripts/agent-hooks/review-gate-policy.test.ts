@@ -69,6 +69,13 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['in a coproc( subshell', `coproc(${CREATE} -F b.md)`],
     ['in a time( subshell in bash -c', `bash -c 'time(${CREATE} -F b.md)'`],
     ['in a f( ) function in a substitution', `echo $(f( ) { ${CREATE} -F b.md; }; f)`],
+    ['in a select( subshell', `select(${CREATE} -F b.md)`],
+    ['in a time -p( subshell', `time -p(${CREATE} -F b.md)`],
+    ['in a ! time -p( subshell', `! time -p(${CREATE} -F b.md)`],
+    ['in a time -p( subshell in a substitution', `echo $(time -p(${CREATE} -F b.md))`],
+    ['in a case pattern glued to in(', `case x in(x) ${CREATE} -F b.md;; esac`],
+    ['in a coproc name( subshell', `coproc foo(${CREATE} -F b.md)`],
+    ['in a ( glued to an argument', `x a(${CREATE} -F b.md)`],
   ])('%s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
   });
