@@ -476,6 +476,45 @@ describe('what the parser sees', () => {
     expect(refused('coproc foo { cd ../../..; git add -A; }', wt)).toBe(true);
   });
 
+  // A coproc's body runs in a subshell, so a cd in it does not move what
+  // comes after, and its closer does not close the group around it.
+  it.each([
+    '(coproc foo { :; }; cd .claude/worktrees/wt); git add -A',
+    '(coproc { :; }; cd .claude/worktrees/wt); git add -A',
+    'coproc { true; cd .claude/worktrees/wt; }; git add -A',
+    'coproc foo { true; cd .claude/worktrees/wt; }; git add -A',
+    'coproc cd .claude/worktrees/wt; git add -A',
+    'if x; then coproc foo { y; }; cd .claude/worktrees/wt; fi; git add -A',
+    'coproc foo while x; do cd .claude/worktrees/wt; done; git add -A',
+    'time coproc foo { true; cd .claude/worktrees/wt; }; git add -A',
+    '{ coproc foo { true; }; cd .claude/worktrees/wt; }; git add -A',
+  ])(
+    'keeps a cd inside a coproc or a group around it from moving later commands: %s',
+    (command) => {
+      expect(refused(command)).toBe(true);
+    },
+  );
+
+  // A coprocess runs while the line goes on: its worktree (NEW) may not exist yet.
+  it.each([
+    'coproc git worktree add NEW; cd NEW && git commit -m x',
+    'coproc foo { git worktree add NEW; }; cd NEW && git commit -m x',
+    'coproc { git worktree add NEW; }; cd NEW && git commit -m x',
+    'coproc foo ( git worktree add NEW ); cd NEW && git commit -m x',
+    'coproc git worktree add NEW; git -C NEW commit -m x',
+    'coproc echo $(git worktree add NEW); git -C NEW commit -m x',
+    'coproc foo { bash -c "git worktree add NEW"; }; git -C NEW commit -m x',
+  ])('does not count a worktree a coproc makes as made: %s', (form) => {
+    expect(refused(form.replaceAll('NEW', join(main, '.claude/worktrees/zz-new-wt')))).toBe(true);
+  });
+
+  it('counts a worktree made before a coproc on the line', () => {
+    const made = join(main, '.claude/worktrees/zz-new-wt');
+    expect(refused(`git worktree add ${made}; coproc foo { git -C ${made} commit -m x; }`)).toBe(
+      false,
+    );
+  });
+
   it('allows a line with no git at all', () => {
     expect(refused('pnpm test')).toBe(false);
     expect(refused('')).toBe(false);

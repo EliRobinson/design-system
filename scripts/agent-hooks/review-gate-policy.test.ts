@@ -223,6 +223,16 @@ describe('findPrCommands: reads pr create flags', () => {
     expect(dir(`ls | cat; cd sub && ${CREATE} -F x.md`)).toBe('sub');
   });
 
+  it.each([
+    [`cd ../wtA && coproc { cd /tmp; }; ${CREATE} --body-file b.md`, '../wtA'],
+    [`cd ../wtA && coproc foo { cd /tmp; }; ${CREATE} --body-file b.md`, '../wtA'],
+    [`cd ../wtA && coproc cd /tmp; ${CREATE} --body-file b.md`, '../wtA'],
+    [`cd ../wtA && coproc foo { ${CREATE} --body-file b.md; }`, '../wtA'],
+    [`coproc { cd sub; ${CREATE} --body-file b.md; }`, 'sub'],
+  ])('keeps a cd inside a coproc to the coprocess: %s', (script, expected) => {
+    expect(dir(script)).toBe(expected);
+  });
+
   it('does not follow a cd in a subshell, a substitution, a pipe, or a background job', () => {
     expect(dir(`(cd sub && ls); ${CREATE} -F b.md`)).toBe('.');
     expect(dir(`echo $(${CREATE} -F b.md); cd sub`)).toBe('.');

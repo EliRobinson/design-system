@@ -510,6 +510,9 @@ function refusedIn(line, cwd, mainRoot, aliasOf, depth, added) {
     const { git } = resolved;
     const path = worktreeAddPath(git);
     if (path !== null) {
+      // A coprocess runs while the line goes on, so its worktree may not
+      // exist yet when the next command runs.
+      if (command.async) continue;
       for (const at of folders) {
         // A path that exists already is not a new worktree.
         const made = cdTarget(at, path);
