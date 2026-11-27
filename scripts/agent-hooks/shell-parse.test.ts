@@ -78,12 +78,19 @@ describe('parseCommands', () => {
   });
 
   // A `(` glued to a word: a zsh glob group or a bash extglob (#459).
-  it.each(['--admi(n|x)', '--admi@(n)', '+(a)', '*(N)', '!(x)', '?(a)', '"a"(b)', 'a(b)c'])(
-    'marks the word a ( is glued to as a filename pattern: %s',
-    (form) => {
-      expect(marksAfterX(`x ${form}`)).toEqual(['unquoted']);
-    },
-  );
+  it.each([
+    '--admi(n|x)',
+    '--admi@(n)',
+    '+(a)',
+    '*(N)',
+    '!(x)',
+    '?(a)',
+    '"a"(b)',
+    'a(b)c',
+    '(a|b)',
+  ])('marks the word a ( is glued to as a filename pattern: %s', (form) => {
+    expect(marksAfterX(`x ${form}`)).toEqual(['unquoted']);
+  });
 
   it.each([
     ['( cd a; y )', ['cd', 'y']],

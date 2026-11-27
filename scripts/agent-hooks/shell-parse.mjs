@@ -37,9 +37,11 @@ import { posix } from 'node:path';
  *
  * A filename pattern is any of these, unquoted: a `*` or `?`; a `[` closed
  * by a later `]` in the word, quoted or not (`[ab]`, `[" "b]`; a lone `[` or
- * `[[` is not one); or a word with a `(` glued to it (zsh's `a(b|c)`, bash's
- * extglob `@(b)`). It is `dynamic` and splits `'unquoted'`: a file named
- * `--admin` turns `--admi[n]`, `--admi(n)` or `*` into that flag.
+ * `[[` is not one); a word with a `(` glued to it (zsh's `a(b|c)`, bash's
+ * extglob `@(b)`); or, past where a command starts, a `(` that stands alone
+ * (zsh's `(a|b)`, kept as the word `(...)`). It is `dynamic` and splits
+ * `'unquoted'`: a file named `--admin` turns `--admi[n]`, `--admi(n)` or `*`
+ * into that flag.
  * @typedef {{ dynamic: boolean, splits: false | 'unquoted' | 'always' }} WordMark
  */
 
@@ -322,9 +324,17 @@ function readLevel(script, start, closer, scope, ids) {
     } else if (ch === '(') {
       // A `(` glued to a word may be a glob group in it (`--admi(n|x)`, see
       // WordMark) or a subshell (`time(...)`, `time -p(...)`, `case x in(x)`).
-      // Read both: mark the word, then read the group as a subshell, so no
-      // command in it is missed. `f()` is a function name.
-      if (word !== null && next !== ')') expands('unquoted');
+      // So may a `(` that stands alone past where a command starts, a word of
+      // its own in zsh (`gh pr merge 5 (--admin|x)`); it is kept as a `(...)`
+      // word. Read both: mark the word, then read the group as a subshell, so
+      // no command in it is missed. `f()` is a function name.
+      if (next !== ')') {
+        if (word !== null) expands('unquoted');
+        else if (!redirectTarget && leadingKeywords(argv).length < argv.length) {
+          argv.push('(...)');
+          marks.push({ dynamic: true, splits: 'unquoted' });
+        }
+      }
       endCommand();
       groups.push(newScope());
       i++;
