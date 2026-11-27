@@ -27,7 +27,8 @@ import { posix } from 'node:path';
 /**
  * How the shell builds a word.
  * - `dynamic`: some of it comes from an expansion (`$X`, `$(...)`, backticks,
- *   `$'...'`), so the text the parser keeps is not what runs.
+ *   `$'...'`), a brace expansion, or an unquoted filename pattern, so the text
+ *   the parser keeps is not what runs.
  * - `splits`: whether the word may become several words, a flag among them.
  *   `'unquoted'`: an expansion, a brace expansion (`{a,b}`) or a filename
  *   pattern (`*`, `?`, `[ab]`) is unquoted, so double quotes would stop the
@@ -60,8 +61,8 @@ const EXPANSION_START = /^[\w{@*#?$!-]$/;
 const QUOTE_START = /^['"]$/;
 // An unquoted brace expansion, `{a,b}` or `{1..3}`; not gh's `{owner}`.
 const BRACE_EXPANSION = /^\{[^{}\s'"]*(,|\.\.)[^{}\s'"]*\}/;
-// An unquoted `[` that opens a filename pattern: a `]` closes it later in the
-// same word. A lone `[` or `[[` is a command, not a pattern.
+// An unquoted `[` that opens a filename pattern: a `]` closes it before the
+// next space or operator. A lone `[` or `[[` is a command, not a pattern.
 const BRACKET_PATTERN = /^\[[^\s;&|()<>]+\]/;
 
 /** Hands out scope ids, unique within one parse. @typedef {{ last: number }} ScopeIds */
