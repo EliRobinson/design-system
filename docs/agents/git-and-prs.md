@@ -48,18 +48,19 @@ It also refuses merge forms it cannot read, because they may hide `--admin` or a
 - A flag before the `gh` subcommand (`gh -R o/r pr merge 5`), or before the `pr` action (`gh pr -t x merge 5`). `-R` and `--repo` between `pr` and the action (`gh pr -R o/r merge 5`) still pass.
 - A `gh api` run-time word that may carry a flag (`gh api repos/o/r/pulls/5/merge $X`, an unquoted `repos/o/r/pulls/$N`; an unquoted `?` in a URL, as in `pulls?state=open`; quote it), and a `gh api` write whose endpoint ends in a run-time word.
 
-#### gh commands the hook cannot read
+Text that only names `--admin` passes when a program that just prints or searches holds it (`echo`, `git commit -m`, `grep`). When a shell with no `-c`, an interpreter, or a program built at run time (`"$X"`) is in the command, the hook checks the whole command's text, so a commit message there that names `--admin` and `merge` is refused too: run it in its own call. Not caught: a merge through an MCP tool, a GraphQL `mergePullRequest` mutation, an HTTP client whose URL is a variable, and a script file. When a plain `gh pr merge` is refused, see [Merge](#merge).
 
-This rule covers opening and merging alike. A word the shell builds at run time where gh reads its command or the `pr` action may become `gh pr create`, which skips the review, or `gh pr merge --admin`. So the hook refuses:
+### gh commands the hook cannot read
+
+Every tool's hook refuses these, whether the command opens a PR or merges one. A word the shell builds at run time where gh reads its command or the `pr` action may become `gh pr create`, which skips the review, or `gh pr merge --admin`. So the hook refuses:
 
 - A run-time command or action: `gh $X`, `gh pr $X`, `gh pr "$X"`, `gh pr $(...)`, `gh pr $'merge'`.
 - An unquoted filename pattern there: `gh pr cre*`, `gh p[r] create`. A file named `create` turns it into `create`.
 - A `-R` or `--repo` value the shell splits, before the command or the action: `gh -R $X create`, `gh --repo=$X create`, `gh pr -R $X view`. `X='o/r pr'` makes the command `pr`. Quote it: `gh pr -R "$R" view` passes.
 - A flag built at run time before the command or the action: `gh -$X o/r create`, `gh pr "-$X" o/r view`.
+- Either of these after another flag that may take the next word as its value: `gh -t T -R $X create`, `gh --foo x -$X create`.
 
-A run-time word after a literal action passes: `gh pr view $N`, `gh issue view $N`.
-
-Text that only names `--admin` passes when a program that just prints or searches holds it (`echo`, `git commit -m`, `grep`). When a shell with no `-c`, an interpreter, or a program built at run time (`"$X"`) is in the command, the hook checks the whole command's text, so a commit message there that names `--admin` and `merge` is refused too: run it in its own call. Not caught: a merge through an MCP tool, a GraphQL `mergePullRequest` mutation, an HTTP client whose URL is a variable, and a script file. When a plain `gh pr merge` is refused, see [Merge](#merge).
+A run-time word after a literal action other than `merge` passes: `gh pr view $N`, `gh issue view $N`. For `gh pr merge`, see [Merges that bypass branch protection](#merges-that-bypass-branch-protection).
 
 ## Right before the PR
 
