@@ -34,6 +34,8 @@ describe('findBypass: refuses --admin in every form', () => {
     "bash -c '{gh} pr merge 5 --admin'",
     "sh -euo pipefail -c '{gh} pr merge 5 --squash --admin'",
     'echo "$({gh} pr merge 5 --admin)"',
+    '{gh} pr merge 5 --admin --help=false',
+    '{gh} pr merge 5 --admin -h=false',
   ])('%s', (script) => {
     expect(reason(script)).toBe(ADMIN_REASON);
   });
@@ -46,14 +48,17 @@ describe('findBypass: refuses --admin in every form', () => {
     'python3 -c "import os; os.system(\'{gh} pr merge 5 --admin\')"',
     "python3 -c \"import subprocess; subprocess.run(['{gh}','pr','merge','5','--admin'])\"",
     "alias m='{gh} pr merge 5 --admin'",
+    "{gh} alias set m 'pr merge 5 --admin'",
+    'find . -maxdepth 0 -exec {gh} pr merge 5 --admin \\;',
+    'pnpm exec {gh} pr merge 5 --admin',
+    'script -q /dev/null {gh} pr merge 5 --admin',
+    "git -c alias.x='!{gh} pr merge 5 --admin' x",
   ])('through another program: %s', (script) => {
-    expect(reason(script)).toContain(ADMIN_REASON);
-    expect(reason(script)).toContain('not through another program');
+    expect(reason(script)).toBe(`${ADMIN_REASON} Run gh directly, not through another program.`);
   });
 
-  it('tells the agent to stop and ask Eli', () => {
-    expect(ADMIN_REASON).toContain(ASK_ELI);
-    expect(REST_MERGE_REASON).toContain(ASK_ELI);
+  it.each([ADMIN_REASON, REST_MERGE_REASON])('tells the agent to stop and ask Eli: %s', (text) => {
+    expect(text).toContain(ASK_ELI);
   });
 });
 
@@ -85,6 +90,8 @@ describe('findBypass: refuses a REST merge', () => {
     'wget --method=PUT https://api.github.com/repos/o/r/pulls/5/merge',
     'http PUT https://api.github.com/repos/o/r/pulls/5/merge',
     'http https://api.github.com/repos/o/r/pulls/5/merge merge_method=squash',
+    '{gh} api -X PUT repos/o/r/pulls/5/merge --help=false',
+    'curl {-XPUT,https://api.github.com/repos/o/r/pulls/5/merge}',
   ])('%s', (script) => {
     expect(reason(script)).toBe(REST_MERGE_REASON);
   });
@@ -115,6 +122,9 @@ describe('findBypass: refuses merge words it cannot read', () => {
     ['A=merge; {gh} pr $A 5', UNREAD],
     ["{gh} pr $'merge' 5", UNREAD],
     ["{gh} $'pr' merge 5", UNREAD],
+    ['{gh} pr merge 5 --{admin,rebase}', UNREAD],
+    ['{gh} pr merge 5 --{admin..admin}', UNREAD],
+    ['{gh} api {-XPUT,repos/o/r/pulls/5/merge}', UNREAD],
     ['{gh} --admin=true pr merge 5', FLAGS_FIRST],
     ['{gh} -R o/r pr merge 5 --admin', FLAGS_FIRST],
     ['{gh} --repo=o/r pr merge 5 --admin', FLAGS_FIRST],
@@ -138,9 +148,12 @@ describe('findBypass: refuses merge words it cannot read', () => {
     expect(reason(script)).toContain(says);
   });
 
-  it('suggests double quotes only when they would help', () => {
-    expect(reason('{gh} pr merge 5 --body $B')).toContain('double quotes');
-    expect(reason('{gh} pr merge 5 --body "$@"')).not.toContain('double quotes');
+  it.each([
+    ['{gh} pr merge 5 --body $B', true],
+    ['{gh} pr merge 5 --body "$@"', false],
+    ['{gh} pr merge 5 --body "${a[@]}"', false],
+  ])('suggests double quotes only when they would help: %s', (script, suggests) => {
+    expect(reason(script)?.includes('double quotes')).toBe(suggests);
   });
 });
 

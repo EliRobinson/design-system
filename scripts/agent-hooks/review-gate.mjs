@@ -288,9 +288,11 @@ function main() {
   } else if (call.kind === 'agent-stop') {
     recordRun(cwd, call.agent, call.output, call.transcript);
   } else if (call.kind === 'shell' || call.kind === 'mcp') {
-    // A merge that bypasses branch protection is refused whatever the PR body says.
-    const bypass = call.kind === 'shell' ? findBypass(call.command) : null;
-    if (bypass) block(adapter, bypass);
+    if (call.kind === 'shell') {
+      // A merge that bypasses branch protection is refused whatever the PR body says.
+      const bypass = findBypass(call.command);
+      if (bypass) block(adapter, bypass);
+    }
     for (const pr of prCommandsOf(call)) checkPr(pr, cwd, tool);
   }
 }

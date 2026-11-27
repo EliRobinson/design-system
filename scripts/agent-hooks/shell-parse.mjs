@@ -28,16 +28,22 @@ import { posix } from 'node:path';
  * How the shell builds a word.
  * - `dynamic`: some of it comes from an expansion (`$X`, `$(...)`, backticks,
  *   `$'...'`), so the text the parser keeps is not what runs.
- * - `splits`: an expansion is unquoted, or is one that splits even in double
- *   quotes (`"$@"`, `"${a[@]}"`, zsh's `"${=x}"`), so the word may become
- *   several words, a flag among them.
- * @typedef {{ dynamic: boolean, splits: boolean }} WordMark
+ * - `splits`: whether the word may become several words, a flag among them.
+ *   `'unquoted'`: an expansion or a brace expansion (`{a,b}`) is unquoted,
+ *   so double quotes would stop the split. `'always'`: an expansion splits
+ *   even in double quotes (`"$@"`, `"${a[@]}"`, zsh's `"${=x}"`). `false`:
+ *   it does not split.
+ * @typedef {{ dynamic: boolean, splits: false | 'unquoted' | 'always' }} WordMark
  */
 
 // After a `$` inside double quotes: the expansions that still split.
 const SPLITS_IN_QUOTES = /^\$(@|\{[=(]|\{[^}]*\[[@*]\]|\w+\[[@*]\])/;
-// After an unquoted `$`: the characters that start an expansion.
-const EXPANSION_START = /^[\w{@*#?$!'"-]$/;
+// After a `$`: the characters that start an expansion.
+const EXPANSION_START = /^[\w{@*#?$!-]$/;
+// After an unquoted `$`: `$'...'` and `$"..."`, read as quotes.
+const QUOTE_START = /^['"]$/;
+// An unquoted brace expansion, `{a,b}` or `{1..3}`; not gh's `{owner}`.
+const BRACE_EXPANSION = /^\{[^{}\s'"]*(,|\.\.)[^{}\s'"]*\}/;
 
 /** Hands out scope ids, unique within one parse. @typedef {{ last: number }} ScopeIds */
 
@@ -81,7 +87,7 @@ function readLevel(script, start, closer, scope, ids) {
   /** @type {string | null} */
   let word = null;
   /** @type {WordMark} The word being read. */
-  let mark = { dynamic: false, splits: false };
+  let mark = /** @type {WordMark} */ ({ dynamic: false, splits: false });
   let redirectTarget = false;
   // Whether the command being read takes its stdin from a pipe.
   let pipedIn = false;
@@ -90,8 +96,8 @@ function readLevel(script, start, closer, scope, ids) {
     word = (word ?? '') + text;
   };
   // The word being read has an expansion. `splits`: it may split into words.
-  const expands = (/** @type {boolean} */ splits) => {
-    mark = { dynamic: true, splits: mark.splits || splits };
+  const expands = (/** @type {WordMark['splits']} */ splits) => {
+    mark = { dynamic: true, splits: mark.splits === 'always' ? 'always' : splits || mark.splits };
   };
   const endWord = () => {
     if (word === null) return;
@@ -230,8 +236,8 @@ function readLevel(script, start, closer, scope, ids) {
         } else if (inner === '`') {
           expands(false);
           i = readNested(i + 1, '`');
-        } else if (inner === '$' && /^[\w{@*#?$!-]$/.test(script[i + 1] ?? '')) {
-          expands(SPLITS_IN_QUOTES.test(script.slice(i)));
+        } else if (inner === '$' && EXPANSION_START.test(script[i + 1] ?? '')) {
+          expands(SPLITS_IN_QUOTES.test(script.slice(i)) ? 'always' : false);
           append(inner);
           i++;
         } else {
@@ -241,13 +247,13 @@ function readLevel(script, start, closer, scope, ids) {
       }
       i++;
     } else if (arithmetic) {
-      if (ch === '$') expands(true);
+      if (ch === '$') expands('unquoted');
       i = skipArithmetic(i, ch === '$' ? 3 : 2);
     } else if (ch === '$' && next === '(') {
-      expands(true);
+      expands('unquoted');
       i = readNested(i + 2, ')');
     } else if (ch === '`') {
-      expands(true);
+      expands('unquoted');
       i = readNested(i + 1, '`');
     } else if (script.startsWith('<<<', i)) {
       endWord();
@@ -294,7 +300,9 @@ function readLevel(script, start, closer, scope, ids) {
       } else {
         // `$'...'` and `$"..."` are read as quotes, but their text is not
         // what runs, so they count as built at run time; they do not split.
-        if (ch === '$' && EXPANSION_START.test(next ?? '')) expands(next !== "'" && next !== '"');
+        if (ch === '$' && EXPANSION_START.test(next ?? '')) expands('unquoted');
+        else if (ch === '$' && QUOTE_START.test(next ?? '')) expands(false);
+        else if (ch === '{' && BRACE_EXPANSION.test(script.slice(i))) expands('unquoted');
         append(ch);
         i++;
       }
@@ -498,7 +506,7 @@ export function afterFlags(args, valueFlags) {
 }
 
 /** `gh` flags that take a value and may come before its command. */
-const GH_VALUE_FLAGS = new Set(['-R', '--repo']);
+export const GH_VALUE_FLAGS = new Set(['-R', '--repo']);
 
 /**
  * The parts of a `gh` command: `group` is the first word past gh's own
