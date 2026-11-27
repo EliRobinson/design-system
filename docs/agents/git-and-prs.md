@@ -40,11 +40,11 @@ Every tool gets the Review section check. Claude Code also checks reviewer runs 
 Every tool's hook refuses these shell commands, in any repo, whatever the PR's Review section says:
 
 - `gh pr merge` with `--admin`, in any position or spelling (`--admin=true`, even `--admin=false`), also inside `eval`, `bash -c`, `$(...)`, a pipe or heredoc into a shell or an interpreter, `python3 -c`, a shell `alias`, `gh alias set`, `git -c alias.<x>=...`, or any other program whose words run gh (`find -exec`, `pnpm exec`). `--admin` merges past required checks and branch rules.
-- A REST merge: `gh api`, `curl`, `wget`, `http` or `xh` writing to a PR's `pulls/<N>/merge`. That endpoint skips the branch protection check that `gh pr merge` makes, so with admin rights it is the same bypass. A read (`gh api repos/o/r/pulls/5/merge`) passes.
+- A REST merge: `gh api`, `curl`, `wget`, `http` or `xh` writing to a PR's `pulls/<N>/merge`. That endpoint skips the branch protection check that `gh pr merge` makes, so with admin rights it is the same bypass. A read (`gh api repos/o/r/pulls/5/merge`) passes. An HTTP client write (any method but GET or HEAD) to a GitHub API URL the shell builds at run time is refused too, since it may become that path: `curl -X PUT .../pulls/5/m*`, `.../pul[l]s/5/merge`, an unquoted `.../pulls/$N`. Quote the URL or write it out. A read with an unquoted `?` (`curl .../pulls/5/files?page=2`) passes.
 
 It also refuses merge forms it cannot read, because they may hide `--admin` or a REST merge. Write the command out in full:
 
-- A `gh pr merge` word the shell builds at run time that is not a flag's value (`gh pr merge 5 $FLAGS`, `"$N"`), or a flag value the shell splits (`-t $T`, `-t $(cat f)`, `"$@"`, `"${a[@]}"`, zsh's `"${=x}"`), or a brace expansion (`--{admin,rebase}`), or an unquoted filename pattern (`--admi[n]`, `--admi[" "n]`, `--admin*`, `*`, a glob group `--admi(n|x)` or `--admi@(n)`, `pulls/5/m*`), which a file of that name turns into a flag or a merge path. A quoted value (`--body "$B"`, `-t 'fix?'`) passes. `--help=false` is not help: the merge runs, so it is checked.
+- A `gh pr merge` word the shell builds at run time that is not a flag's value (`gh pr merge 5 $FLAGS`, `"$N"`), or a flag value the shell splits (`-t $T`, `-t $(cat f)`, `"$@"`, `"${a[@]}"`, zsh's `"${=x}"`), or a brace expansion (`--{admin,rebase}`), or an unquoted filename pattern (`--admi[n]`, `--admi[" "n]`, `--admin*`, `*`, a glob group `--admi(n|x)` or `--admi@(n)`), which a file of that name turns into a flag. A quoted value (`--body "$B"`, `-t 'fix?'`) passes. `--help=false` is not help: the merge runs, so it is checked.
 - A flag before the `gh` subcommand (`gh -R o/r pr merge 5`), or before the `pr` action (`gh pr -t x merge 5`). `-R` and `--repo` between `pr` and the action (`gh pr -R o/r merge 5`) still pass.
 - A `gh api` run-time word that may carry a flag (`gh api repos/o/r/pulls/5/merge $X`, an unquoted `repos/o/r/pulls/$N`; an unquoted `?` in a URL, as in `pulls?state=open`; quote it), and a `gh api` write whose endpoint holds a run-time word (see [gh commands the hook cannot read](#gh-commands-the-hook-cannot-read)).
 
@@ -55,7 +55,7 @@ Text that only names `--admin` passes when a program that just prints or searche
 Every tool's hook refuses these, whether the command opens a PR or merges one. A word the shell builds at run time where gh reads its command or the `pr` action may become `gh pr create`, which skips the review, or `gh pr merge --admin`. So the hook refuses:
 
 - A run-time command or action: `gh $X`, `gh pr $X`, `gh pr "$X"`, `gh pr $(...)`, `gh pr $'merge'`.
-- An unquoted filename pattern there: `gh pr cre*`, `gh p[r] create`. A file named `create` turns it into `create`.
+- An unquoted filename pattern there: `gh pr cre*`, `gh p[r] create`, a glob group `gh pr merg(e)`. A file named `create` turns it into `create`.
 - A `-R` or `--repo` value the shell splits, before the command or the action: `gh -R $X create`, `gh --repo=$X create`, `gh pr -R $X view`. `X='o/r pr'` makes the command `pr`. Quote it: `gh pr -R "$R" view` passes.
 - A flag built at run time before the command or the action: `gh -$X o/r create`, `gh pr "-$X" o/r view`.
 - Either of these after another flag that may take the next word as its value: `gh -t T -R $X create`, `gh --foo x -$X create`.
