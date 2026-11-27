@@ -261,12 +261,15 @@ const ANY_METHOD = /^(GET|HEAD|PUT|POST|PATCH|DELETE|OPTIONS)$/i;
  * Whether an HTTP client call writes to a PR's `pulls/<N>/merge`. It reads
  * the last method named (`-X PUT`, `-XPUT`, `--request=PUT`,
  * `--method=PUT`, httpie's `PUT`) and the flags that send a body. A word the
- * shell splits (`{-XPUT,<url>}`) that names a merge path is refused too.
+ * shell splits (`{-XPUT,<url>}`) that names a merge path, or may as a
+ * filename pattern (`pulls/5/merg[e]`), is refused too.
  * @param {string} program
  * @param {Word[]} args
  */
 function checkHttp(program, args) {
-  if (args.some((word) => word.splits && namesMergePath(word.text))) return REST_MERGE_REASON;
+  const mayNameMergePath = (/** @type {string} */ text) =>
+    namesMergePath(text) || /pulls\/[^/\s'"]+\/[^/\s'"]*[*?[({]/.test(text);
+  if (args.some((word) => word.splits && mayNameMergePath(word.text))) return REST_MERGE_REASON;
   const names = args.map(({ text }) => text.replace(/^--?[\w-]+=/, ''));
   if (!names.some((text) => MERGE_PATH.test(urlPath(text)))) return null;
   /** @type {string | undefined} */

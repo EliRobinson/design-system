@@ -374,3 +374,34 @@ describe('findBypass: reads help as gh does', () => {
     expect(reason(script)).toContain(UNREAD);
   });
 });
+
+// A file named `--admin` (or a merge path) turns each of these filename
+// patterns into it (#459).
+describe('findBypass: refuses a filename pattern the shell builds a flag from', () => {
+  it.each([
+    ['{gh} pr merge 5 --admi(n|x)', UNREAD],
+    ['{gh} pr merge 5 --admi@(n)', UNREAD],
+    ['{gh} pr merge 5 --admi+(n)', UNREAD],
+    ['{gh} pr merge 5 --admi*(n)', UNREAD],
+    ['{gh} pr merge 5 --admi?(n)', UNREAD],
+    ['{gh} pr merge 5 --admi!(x)', UNREAD],
+    ['{gh} pr merge 5 --admi[" "n]', UNREAD],
+    ['{gh} pr merge 5 --admi[n\\ ]', UNREAD],
+    ['{gh} pr merge 5 --admi(n) --squash', UNREAD],
+    ['{gh} pr merg(e) 5 --admin', UNREAD_COMMAND],
+    ['curl -X PUT https://api.github.com/repos/o/r/pulls/5/merg[e]', REST_MERGE_REASON],
+    ['curl -X PUT https://api.github.com/repos/o/r/pulls/5/m*', REST_MERGE_REASON],
+    ['curl -X PUT https://api.github.com/repos/o/r/pulls/5/merg@(e)', REST_MERGE_REASON],
+  ])('%s', (script, says) => {
+    expect(reason(script)).toContain(says);
+  });
+
+  it.each([
+    "{gh} pr merge 5 '--admi(n)'",
+    '{gh} pr merge 5 "--admi[n]"',
+    '{gh} pr merge 5 --squash -t \\(fix\\)',
+    "curl -X PUT 'https://api.github.com/repos/o/r/pulls/5/merg[e]'",
+  ])('passes a quoted pattern: %s', (script) => {
+    expect(reason(script)).toBeNull();
+  });
+});
