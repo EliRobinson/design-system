@@ -36,6 +36,20 @@ import { posix } from 'node:path';
  * @typedef {{ dynamic: boolean, splits: false | 'unquoted' | 'always' }} WordMark
  */
 
+/** A word with its text and how the shell builds it. @typedef {WordMark & { text: string }} Word */
+
+/**
+ * A command's words, each `argv` entry with its mark.
+ * @param {Command} command
+ * @returns {Word[]}
+ */
+export function wordsOf(command) {
+  return command.argv.map((text, i) => ({
+    text,
+    .../** @type {WordMark} */ (command.marks[i]),
+  }));
+}
+
 // After a `$` inside double quotes: the expansions that still split.
 const SPLITS_IN_QUOTES = /^\$(@|\{[=(]|\{[^}]*\[[@*]\]|\w+\[[@*]\])/;
 // After a `$`: the characters that start an expansion.

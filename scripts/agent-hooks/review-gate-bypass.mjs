@@ -6,11 +6,11 @@
 
 import { posix } from 'node:path';
 
-import { API_VALUE_FLAGS } from './review-gate-policy.mjs';
-import { GH_VALUE_FLAGS, SHELLS, parseCommands, shellScriptOf } from './shell-parse.mjs';
+import { flagSet, readApiCall, readGhFlags, urlPath } from './gh-flags.mjs';
+import { GH_VALUE_FLAGS, SHELLS, parseCommands, shellScriptOf, wordsOf } from './shell-parse.mjs';
 
 /** @typedef {import('./shell-parse.mjs').Command} Command */
-/** @typedef {import('./shell-parse.mjs').WordMark & { text: string }} Word */
+/** @typedef {import('./shell-parse.mjs').Word} Word */
 
 const ASK_ELI =
   'Never bypass branch protection. If a plain `gh pr merge` is refused because a check fails or a branch rule blocks it, stop and ask Eli in chat, and say what blocks it. Do not look for another way around it.';
@@ -33,13 +33,6 @@ function unreadReason(word, where) {
   const quote = word.splits === 'unquoted' ? ', and put a flag value in double quotes' : '';
   return `The hook cannot read \`${word.text}\` in this ${where}: the shell builds it at run time, and it may become a flag such as \`--admin\` or \`-X PUT\`. Write the PR number, the endpoint and every flag out in full${quote}.`;
 }
-
-/**
- * Whether a word asks for help. Only a bare flag or `=true` does: pflag reads
- * `--help=false` as help off, so the command runs.
- * @param {string} text
- */
-const asksHelp = (text) => text === '-h' || /^--help(=(true|1))?$/i.test(text);
 
 // ---- Text that names a bypass ----
 
@@ -140,15 +133,7 @@ function checkPr(args) {
 }
 
 const MERGE_VALUE_FLAGS = new Set([
-  '-A',
-  '--author-email',
-  '-b',
-  '--body',
-  '-F',
-  '--body-file',
-  '-t',
-  '--subject',
-  '--match-head-commit',
+  ...flagSet('author-email body body-file subject match-head-commit', ['-A', '-b', '-F', '-t']),
   ...GH_VALUE_FLAGS,
 ]);
 
@@ -158,143 +143,36 @@ const MERGE_VALUE_FLAGS = new Set([
  * @returns {string | null}
  */
 function checkMerge(args, splitValues) {
-  let admin = false;
-  let help = false;
-  /** @type {Word[]} Words built at run time that are not a flag's value. */
-  const runtime = [];
-  const takeValue = (/** @type {Word | undefined} */ value) => {
-    if (value?.splits) splitValues.push(value);
-  };
-  for (let i = 0; i < args.length; i++) {
-    const word = /** @type {Word} */ (args[i]);
-    const { text } = word;
-    if (text === '--') {
-      runtime.push(...args.slice(i + 1).filter((each) => each.dynamic));
-      break;
-    }
-    if (asksHelp(text)) help = true;
-    if (text.startsWith('--')) {
-      const eq = text.indexOf('=');
-      const name = eq === -1 ? text : text.slice(0, eq);
-      if (name === '--admin') admin = true;
-      else if (MERGE_VALUE_FLAGS.has(name)) {
-        takeValue(eq === -1 ? args[++i] : word);
-        continue;
-      }
-      if (word.dynamic) runtime.push(word);
-    } else if (text.startsWith('-') && text.length > 1) {
-      let tookValue = false;
-      for (let k = 1; k < text.length; k++) {
-        if (MERGE_VALUE_FLAGS.has(`-${text[k]}`)) {
-          takeValue(k + 1 === text.length ? args[++i] : word);
-          tookValue = true;
-          break;
-        }
-      }
-      if (!tookValue && word.dynamic) runtime.push(word);
-    } else if (word.dynamic) {
-      runtime.push(word);
-    }
-  }
-  // The bypass reason wins over the rewrite reason.
-  if (admin && !help) return ADMIN_REASON;
-  const unread = splitValues[0] ?? runtime[0];
+  const merge = readGhFlags(args, MERGE_VALUE_FLAGS);
+  // Any `--admin`, even `--admin=false`, is refused. The bypass reason wins
+  // over the rewrite reason.
+  if (merge.named('--admin') && !merge.has('-h', '--help')) return ADMIN_REASON;
+  const unread = [...splitValues, ...merge.splitValues, ...merge.unread][0];
   return unread ? unreadReason(unread, 'gh pr merge') : null;
 }
 
-/**
- * The first value flag in a short group, as gh reads it: `-iXPUT` and
- * `-X=PUT` both give `-X`, with `from` just past the letter (and past one
- * `=`). Null when the word is not a short group with a value flag.
- * @param {string} text
- */
-function shortValueFlag(text) {
-  if (!/^-[a-zA-Z]/.test(text)) return null;
-  for (let k = 1; k < text.length && /[a-zA-Z]/.test(text[k] ?? ''); k++) {
-    const name = `-${text[k]}`;
-    if (API_VALUE_FLAGS.has(name)) return { name, from: text[k + 1] === '=' ? k + 2 : k + 1 };
-  }
-  return null;
-}
-
-/**
- * A URL or endpoint as a path: no scheme, host, query or fragment, with
- * `%`-encoding and `..` resolved.
- * @param {string} text
- */
-export function urlPath(text) {
-  let path = text.replace(/^[a-z][\w+.-]*:\/\/[^/]*/i, '').replace(/[?#].*$/, '');
-  try {
-    path = decodeURIComponent(path);
-  } catch {
-    // Keep it as written.
-  }
-  return posix.normalize(`/${path}`).replace(/\/+$/, '');
-}
-
 const MERGE_PATH = /\/pulls\/[^/]+\/merge$/;
-const BODY_FLAGS = new Set(['-f', '-F', '--field', '--raw-field', '--input']);
 
 /**
  * @param {Word[]} args  the words after `gh api`
  * @returns {string | null}
  */
 function checkApi(args) {
-  /** @type {Word[]} */
-  const methods = [];
-  /** @type {Word[]} */
-  const positional = [];
+  const api = readApiCall(args);
+  if (api.has('-h', '--help')) return null;
+  const { endpoint, more, method } = api;
   /** @type {Word[]} Words that may carry a flag the hook cannot see. */
-  const hidden = [];
-  let body = false;
-  let help = false;
-  const take = (/** @type {string} */ name, /** @type {Word | undefined} */ value) => {
-    if (!value) return;
-    if (value.splits) hidden.push(value);
-    if (name === '-X' || name === '--method') methods.push(value);
-    if (BODY_FLAGS.has(name)) body = true;
-  };
-  for (let i = 0; i < args.length; i++) {
-    const word = /** @type {Word} */ (args[i]);
-    const { text } = word;
-    if (text === '--') {
-      positional.push(...args.slice(i + 1));
-      break;
-    }
-    if (asksHelp(text)) help = true;
-    if (text.startsWith('--')) {
-      const eq = text.indexOf('=');
-      const name = eq === -1 ? text : text.slice(0, eq);
-      if (API_VALUE_FLAGS.has(name)) {
-        take(name, eq === -1 ? args[++i] : { ...word, text: text.slice(eq + 1) });
-      } else if (word.dynamic) {
-        hidden.push(word);
-      }
-    } else if (text.startsWith('-') && text.length > 1) {
-      const short = shortValueFlag(text);
-      if (short) {
-        take(
-          short.name,
-          short.from < text.length ? { ...word, text: text.slice(short.from) } : args[++i],
-        );
-      } else if (word.dynamic) {
-        hidden.push(word);
-      }
-    } else {
-      positional.push(word);
-    }
-  }
-  if (help) return null;
-  const [endpoint, ...more] = positional;
+  const hidden = [
+    ...api.splitValues,
+    ...api.unread.filter((word) => !api.positional.includes(word)),
+  ];
   // A run-time endpoint with more words after it may have been a flag.
   if (endpoint && (endpoint.splits || (endpoint.dynamic && more.length > 0))) hidden.push(endpoint);
   hidden.push(...more.filter((word) => word.dynamic));
   if (hidden[0]) return unreadReason(hidden[0], 'gh api call');
   if (!endpoint) return null;
 
-  const method = methods.at(-1);
-  const isGet = method ? !method.dynamic && method.text.toUpperCase() === 'GET' : !body;
-  if (isGet) return null;
+  if (!method.dynamic && method.text === 'GET') return null;
   const path = urlPath(endpoint.text);
   if (MERGE_PATH.test(path)) return REST_MERGE_REASON;
   // A write whose last path segment is built at run time may be a merge.
@@ -420,11 +298,7 @@ export function findBypass(script) {
   const commands = parseCommands(script);
   for (const command of commands) {
     const program = posix.basename(command.argv[0] ?? '');
-    /** @type {Word[]} */
-    const words = command.argv.map((text, i) => ({
-      text,
-      .../** @type {import('./shell-parse.mjs').WordMark} */ (command.marks[i]),
-    }));
+    const words = wordsOf(command);
     const check = CHECKERS[program];
     let reason = null;
     if (check) reason = check(words.slice(1), program);

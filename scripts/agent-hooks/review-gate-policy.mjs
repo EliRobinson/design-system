@@ -3,7 +3,10 @@
 // No I/O: the entry script (review-gate.mjs) reads files and git and passes
 // the results in, so every rule here is unit-tested.
 
-import { ghCommand, placeCommands } from './shell-parse.mjs';
+import { flagSet, readApiCall, readGhFlags, urlPath } from './gh-flags.mjs';
+import { ghCommand, placeCommands, wordsOf } from './shell-parse.mjs';
+
+/** @typedef {import('./shell-parse.mjs').Word} Word */
 
 /** The reviewers, in the order the PR template lists them. */
 export const REVIEWERS = /** @type {const} */ ([
@@ -56,60 +59,6 @@ export function isMcpCreatePr(name) {
 
 /** @typedef {{ deny: string } | null} Decision */
 
-// ---- Flags ----
-
-/**
- * Reads flags from argv. A value flag takes `--flag=value`, `--flag value`,
- * `-fvalue`, or `-f value`. Short flags can be bundled, as in `-dw` or
- * `-dF body.md`. A boolean flag set to `false` or `0` counts as not set.
- * @param {string[]} args
- * @param {Set<string>} valueFlags
- */
-function readFlags(args, valueFlags) {
-  /** @type {Map<string, string[]>} */
-  const flags = new Map();
-  /** @type {string[]} */
-  const positional = [];
-  const add = (/** @type {string} */ name, /** @type {string} */ value) => {
-    flags.set(name, [...(flags.get(name) ?? []), value]);
-  };
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i] ?? '';
-    if (arg.startsWith('--')) {
-      const eq = arg.indexOf('=');
-      const name = eq === -1 ? arg : arg.slice(0, eq);
-      if (valueFlags.has(name)) add(name, eq === -1 ? (args[++i] ?? '') : arg.slice(eq + 1));
-      else if (eq === -1 || !/^(false|0)$/i.test(arg.slice(eq + 1))) add(name, 'true');
-    } else if (arg.startsWith('-') && arg.length > 1) {
-      for (let k = 1; k < arg.length; k++) {
-        const flag = `-${arg[k]}`;
-        if (valueFlags.has(flag)) {
-          const rest = arg.slice(k + 1);
-          add(flag, rest === '' ? (args[++i] ?? '') : rest);
-          break;
-        }
-        add(flag, 'true');
-      }
-    } else {
-      positional.push(arg);
-    }
-  }
-  const all = (/** @type {string[]} */ ...names) => names.flatMap((name) => flags.get(name) ?? []);
-  return {
-    all,
-    has: (/** @type {string[]} */ ...names) => all(...names).length > 0,
-    positional,
-  };
-}
-
-/**
- * @param {string} longNames  space-separated, without the `--`
- * @param {string[]} shortFlags
- */
-function flagSet(longNames, shortFlags) {
-  return new Set([...longNames.split(' ').map((name) => `--${name}`), ...shortFlags]);
-}
-
 // ---- gh commands ----
 
 const PR_CREATE_VALUE_FLAGS = flagSet(
@@ -118,50 +67,48 @@ const PR_CREATE_VALUE_FLAGS = flagSet(
 );
 
 /**
- * @param {string[]} args  argv after `gh pr create`
+ * @param {Word[]} args  the words after `gh pr create`
  * @param {string | null | undefined} dir
  * @returns {PrCommand | null}
  */
 function classifyPrCreate(args, dir) {
-  const { all, has } = readFlags(args, PR_CREATE_VALUE_FLAGS);
-  if (has('-h', '--help', '--dry-run')) return null;
+  const { values, has } = readGhFlags(args, PR_CREATE_VALUE_FLAGS);
+  if (has('-h', '--help') || has('--dry-run')) return null;
+  const last = (/** @type {string[]} */ ...aliases) => values(...aliases).at(-1)?.text;
   return {
     kind: 'pr-create',
-    bodyFile: all('-F', '--body-file').at(-1),
-    fill: has('-f', '--fill', '--fill-first', '--fill-verbose'),
+    bodyFile: last('-F', '--body-file'),
+    fill: has('-f', '--fill') || has('--fill-first') || has('--fill-verbose'),
     web: has('-w', '--web'),
-    head: all('-H', '--head').at(-1),
-    base: all('-B', '--base').at(-1),
+    head: last('-H', '--head'),
+    base: last('-B', '--base'),
     dir,
   };
 }
 
-export const API_VALUE_FLAGS = flagSet(
-  'method raw-field field header input jq template cache preview hostname',
-  ['-X', '-f', '-F', '-H', '-q', '-t', '-p'],
-);
-const PULLS_ENDPOINT = /^(https?:\/\/[^/]+\/(api\/v3\/)?)?\/?repos\/[^/]+\/[^/]+\/pulls\/?(\?.*)?$/;
+// The endpoint that lists and opens PRs, as `urlPath` writes it. GitHub
+// Enterprise serves the API under `/api/v3`.
+const PULLS_ENDPOINT = /^(\/api\/v3)?\/repos\/[^/]+\/[^/]+\/pulls$/;
 
 /**
- * @param {string[]} args  argv after `gh api`
+ * @param {Word[]} args  the words after `gh api`
  * @param {string | null | undefined} dir
  * @returns {PrCommand | null}
  */
 function classifyApi(args, dir) {
-  const { all, positional } = readFlags(args, API_VALUE_FLAGS);
-  const endpoint = positional[0] ?? '';
-  const fields = all('-f', '--raw-field', '-F', '--field');
-  const inputs = all('--input');
-  const method = (
-    all('-X', '--method').at(-1) ?? (fields.length + inputs.length > 0 ? 'POST' : 'GET')
-  ).toUpperCase();
+  const { endpoint, fields, inputs, method } = readApiCall(args);
+  const texts = fields.map(({ text }) => text);
 
-  if (endpoint === 'graphql') {
-    if (fields.some((field) => field.includes('createPullRequest'))) return { kind: 'api-create' };
-    const files = [...fields.flatMap((field) => /^[^=]+=@(.+)$/.exec(field)?.[1] ?? []), ...inputs];
+  if (endpoint?.text === 'graphql') {
+    if (texts.some((field) => field.includes('createPullRequest'))) return { kind: 'api-create' };
+    const files = [
+      ...texts.flatMap((field) => /^[^=]+=@(.+)$/.exec(field)?.[1] ?? []),
+      ...inputs.map(({ text }) => text),
+    ];
     return files.length > 0 ? { kind: 'graphql-files', files, dir } : null;
   }
-  return PULLS_ENDPOINT.test(endpoint) && method === 'POST' ? { kind: 'api-create' } : null;
+  const opens = endpoint && PULLS_ENDPOINT.test(urlPath(endpoint.text)) && method.text === 'POST';
+  return opens ? { kind: 'api-create' } : null;
 }
 
 /**
@@ -175,13 +122,16 @@ export function findPrCommands(script) {
   /** @type {PrCommand[]} */
   const found = [];
   for (const { command, folder: dir } of placeCommands(script, '.')) {
-    const { argv } = command;
-    const gh = ghCommand(argv);
-    if (gh?.group === 'pr' && (gh.sub === 'create' || gh.sub === 'new')) {
-      const pr = classifyPrCreate(gh.subArgs, dir);
+    const gh = ghCommand(command.argv);
+    if (!gh) continue;
+    const words = wordsOf(command);
+    // The words of a tail of argv, such as `gh.rest`.
+    const tail = (/** @type {string[]} */ args) => words.slice(words.length - args.length);
+    if (gh.group === 'pr' && (gh.sub === 'create' || gh.sub === 'new')) {
+      const pr = classifyPrCreate(tail(gh.subArgs), dir);
       if (pr) found.push(pr);
-    } else if (gh?.group === 'api') {
-      const api = classifyApi(gh.rest, dir);
+    } else if (gh.group === 'api') {
+      const api = classifyApi(tail(gh.rest), dir);
       if (api) found.push(api);
     }
   }

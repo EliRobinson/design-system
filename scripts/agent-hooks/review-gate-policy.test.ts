@@ -97,6 +97,36 @@ describe('findPrCommands: detects PR-opening commands', () => {
   });
 });
 
+// The two gate checks once read gh flags with two readers that disagreed on
+// these forms. Each now reads them as gh does.
+describe('findPrCommands: reads flags as gh does', () => {
+  it.each([
+    ['glued -X=POST', `${GH} api -X=POST repos/o/r/pulls`],
+    ['endpoint with ..', `${GH} api -X POST repos/o/r/pulls/x/..`],
+    ['%-encoded endpoint', `${GH} api -X POST repos/o/r/%70ulls`],
+    ['endpoint with a fragment', `${GH} api -X POST 'repos/o/r/pulls#x'`],
+  ])('gh api: %s', (_, script) => {
+    expect(kinds(script)).toEqual(['api-create']);
+  });
+
+  it.each([
+    ['dry run set to f', `${CREATE} --dry-run=f -F b.md`],
+    ['dry run built at run time', `${CREATE} --dry-run="$X" -F b.md`],
+    ['help set to f', `${CREATE} --help=f -F b.md`],
+  ])('gates a create that is not a dry run or help: %s', (_, script) => {
+    expect(kinds(script)).toEqual(['pr-create']);
+  });
+
+  it('reads the body file gh reads', () => {
+    expect(first(`${CREATE} -F=b.md`)).toMatchObject({ bodyFile: 'b.md' });
+    expect(first(`${CREATE} --body-file a.md -F b.md`)).toMatchObject({ bodyFile: 'b.md' });
+  });
+
+  it('reads =false on a short flag', () => {
+    expect(first(`${CREATE} -F b.md -w=false`)).toMatchObject({ web: false, fill: false });
+  });
+});
+
 describe('findPrCommands: leaves other commands alone', () => {
   it.each([
     ['ls', 'ls -la'],
