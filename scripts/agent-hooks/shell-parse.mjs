@@ -31,9 +31,10 @@ import { posix } from 'node:path';
  *   the parser keeps is not what runs.
  * - `splits`: whether the word may become several words, a flag among them.
  *   `'unquoted'`: an expansion, a brace expansion (`{a,b}`) or a filename
- *   pattern (`*`, `?`, `[ab]`) is unquoted, so double quotes would stop the
- *   split. A filename pattern also counts as `dynamic`: a file named
- *   `--admin` turns `--admi[n]` or `*` into that flag. `'always'`: an
+ *   pattern (`*`, `?`, `[ab]`, `[" "b]`, a glob group `a(b|c)` or `@(b)`) is
+ *   unquoted, so double quotes would stop the split. A filename pattern also
+ *   counts as `dynamic`: a file named `--admin` turns `--admi[n]`,
+ *   `--admi(n)` or `*` into that flag. `'always'`: an
  *   expansion splits even in double quotes (`"$@"`, `"${a[@]}"`, zsh's
  *   `"${=x}"`). `false`: it does not split.
  * @typedef {{ dynamic: boolean, splits: false | 'unquoted' | 'always' }} WordMark
@@ -61,9 +62,9 @@ const EXPANSION_START = /^[\w{@*#?$!-]$/;
 const QUOTE_START = /^['"]$/;
 // An unquoted brace expansion, `{a,b}` or `{1..3}`; not gh's `{owner}`.
 const BRACE_EXPANSION = /^\{[^{}\s'"]*(,|\.\.)[^{}\s'"]*\}/;
-// An unquoted `[` that opens a filename pattern: a `]` closes it before the
-// next space or operator. A lone `[` or `[[` is a command, not a pattern.
-const BRACKET_PATTERN = /^\[[^\s;&|()<>]+\]/;
+// The word before a `(` that opens a list, not a glob group: `a=(`, `a+=(`
+// (an array) and zsh's `=(` (a process substitution).
+const LIST_BEFORE_PAREN = /^(?:[A-Za-z_]\w*\+?)?=$/;
 
 /** Hands out scope ids, unique within one parse. @typedef {{ last: number }} ScopeIds */
 
@@ -111,8 +112,14 @@ function readLevel(script, start, closer, scope, ids) {
   let redirectTarget = false;
   // Whether the command being read takes its stdin from a pipe.
   let pipedIn = false;
+  // Whether the word being read has an unquoted `[`. A `]` after it, quoted
+  // or not, makes the word a filename pattern; a lone `[` or `[[` is not one.
+  let bracketOpen = false;
+  // How many glob groups (`a(b|c)`, `@(b)`) are open in the word being read.
+  let globDepth = 0;
 
   const append = (/** @type {string} */ text) => {
+    if (bracketOpen && text.includes(']')) expands('unquoted');
     word = (word ?? '') + text;
   };
   // The word being read has an expansion. `splits`: it may split into words.
@@ -128,6 +135,8 @@ function readLevel(script, start, closer, scope, ids) {
     }
     word = null;
     mark = { dynamic: false, splits: false };
+    bracketOpen = false;
+    globDepth = 0;
   };
   const here = () => [...scope, ...groups];
   /** @type {number[]} How many `groups` entries each open compound body holds. */
@@ -222,7 +231,8 @@ function readLevel(script, start, closer, scope, ids) {
       (ch === '$' && next === '(' && script[i + 2] === '(') ||
       (ch === '(' && next === '(' && word === null);
 
-    if ((closer === '`' && ch === '`') || (closer === ')' && ch === ')' && groups.length === 0)) {
+    const closes = ch === ')' && groups.length === 0 && globDepth === 0;
+    if ((closer === '`' && ch === '`') || (closer === ')' && closes)) {
       endCommand();
       return { commands, end: i + 1 };
     }
@@ -265,6 +275,29 @@ function readLevel(script, start, closer, scope, ids) {
           i++;
         }
       }
+      i++;
+    } else if (globDepth > 0 && (ch === '(' || ch === ')' || ch === '|')) {
+      // Inside a glob group, `|` separates patterns and parens nest.
+      if (ch === '(') globDepth++;
+      else if (ch === ')') globDepth--;
+      append(ch);
+      i++;
+    } else if (
+      ch === '(' &&
+      word !== null &&
+      next !== ')' &&
+      !LIST_BEFORE_PAREN.test(word) &&
+      !(
+        KEYWORDS.has(word) && argv.every((each) => COMPOUND_OPENERS.has(each) || KEYWORDS.has(each))
+      )
+    ) {
+      // A `(` glued to a word opens a glob group (zsh's `a(b|c)`, bash's
+      // extglob `@(b)`), not a subshell: a file named `--admin` turns
+      // `--admi(n|x)` into that flag. `f()` is a function, `a=(` an array,
+      // and `while(` or `!(` where a keyword is read is a subshell.
+      expands('unquoted');
+      globDepth = 1;
+      append(ch);
       i++;
     } else if (arithmetic) {
       if (ch === '$') expands('unquoted');
@@ -324,8 +357,8 @@ function readLevel(script, start, closer, scope, ids) {
         else if (ch === '$' && QUOTE_START.test(next ?? '')) expands(false);
         else if (ch === '{' && BRACE_EXPANSION.test(script.slice(i))) expands('unquoted');
         else if (ch === '*' || ch === '?') expands('unquoted');
-        else if (ch === '[' && BRACKET_PATTERN.test(script.slice(i))) expands('unquoted');
         append(ch);
+        if (ch === '[') bracketOpen = true;
         i++;
       }
     }

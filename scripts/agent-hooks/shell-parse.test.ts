@@ -66,12 +66,48 @@ describe('parseCommands', () => {
     ['unquoted', 'x $a ${b} $(c) `d` $((1+2)) a$b {a,b} pre{1..3}'],
     ['plain', 'x \'*\' "a?b" \\* a\\?b \\[ab] "[ab]" [ [[ ]] a]'],
     ['unquoted', 'x * a* ?b --admi[n] m[!a] "a"* \'b\'?'],
+    // A `[` closed later in the word, with quoted members (#459).
+    ['unquoted', 'x --admi[" "n] --admi[n\\ ] [a"]" [\'a b\']'],
+    // A `(` glued to a word: a zsh glob group or a bash extglob (#459).
+    ['unquoted', 'x --admi(n|x) --admi@(n) +(a) *(N) !(x) ?(a) "a"(b) a(b)c'],
+    ['plain', 'x \'--admi(n)\' "--admi[n]" \\(a\\) a\\(b\\)'],
     ['dynamic', 'x "$a" "${b}" "$(c)" "`d`" $\'e\' $"f" "$*"'],
     ['always', 'x "$@" "${a[@]}" "$a[*]" "${=a}" "${(f)a}" $a"$@"'],
   ])('marks every word in a %s case: %s', (kind, script) => {
     const marks = marksAfterX(script) ?? [];
     expect(marks.length).toBeGreaterThan(0);
     expect(new Set(marks)).toEqual(new Set([kind]));
+  });
+
+  it.each([
+    ['x --admi(n|x) y', [['x', '--admi(n|x)', 'y']]],
+    ['x a@(b|c)d e', [['x', 'a@(b|c)d', 'e']]],
+    ['x --admi(n|$(y)) z', [['y'], ['x', '--admi(n|$(y))', 'z']]],
+    [
+      'echo $(x --admi(n)) y',
+      [
+        ['x', '--admi(n)'],
+        ['echo', '$(x --admi(n))', 'y'],
+      ],
+    ],
+  ])('reads a glob group glued to a word as part of it: %s', (script, expected) => {
+    expect(argvs(script)).toEqual(expected);
+  });
+
+  it.each([
+    ['( cd a; y )', ['cd', 'y']],
+    ['a=(1 $(y)) && z', ['y', '1', 'z']],
+    ['local a+=(1) && z', ['local', '1', 'z']],
+    ['diff =(y) z', ['diff', 'y', 'z']],
+    ['f() { y; }; z', ['f', 'y', 'z']],
+    ['case a in a) y;; esac', ['case', 'y']],
+    ['case a in (a) y;; esac', ['case', 'a', 'y']],
+    ['case a in @(a|b)) y;; esac', ['case', 'y']],
+    ['while(y) do z; done', ['y', 'z']],
+    ['!(y) && z', ['y', 'z']],
+    ['if !(y); then z; fi', ['y', 'z']],
+  ])('still reads a ( that is not a glob group as a shell group: %s', (script, expected) => {
+    expect(names(script).filter((name) => name !== undefined)).toEqual(expected);
   });
 
   it('keeps one mark per word past dropped env assignments and wrappers', () => {
