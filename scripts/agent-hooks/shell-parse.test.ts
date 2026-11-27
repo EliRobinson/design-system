@@ -64,6 +64,8 @@ describe('parseCommands', () => {
   it.each([
     ['plain', 'x a \'$b\' \\$c "d" repos/{owner}/{repo} a$ { y; }'],
     ['unquoted', 'x $a ${b} $(c) `d` $((1+2)) a$b {a,b} pre{1..3}'],
+    ['plain', 'x \'*\' "a?b" \\* a\\?b \\[ab] "[ab]" [ [[ ]] a]'],
+    ['unquoted', 'x * a* ?b --admi[n] m[!a] "a"* \'b\'?'],
     ['dynamic', 'x "$a" "${b}" "$(c)" "`d`" $\'e\' $"f" "$*"'],
     ['always', 'x "$@" "${a[@]}" "$a[*]" "${=a}" "${(f)a}" $a"$@"'],
   ])('marks every word in a %s case', (kind, script) => {
