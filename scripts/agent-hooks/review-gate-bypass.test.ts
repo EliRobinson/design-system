@@ -12,6 +12,7 @@ const ASK_ELI = 'stop and ask Eli';
 const FLAGS_FIRST = 'flags come before the subcommand';
 const ACTION_FIRST = 'right after `gh pr`';
 const UNREAD = 'it may become a flag';
+const UNREAD_URL = 'Quote the URL or write it out in full';
 const UNREAD_COMMAND = 'it may become `gh pr create` or `gh pr merge --admin`';
 
 describe('findBypass: refuses --admin in every form', () => {
@@ -129,6 +130,28 @@ describe('findBypass: refuses merge words it cannot read', () => {
     ['{gh} api {-XPUT,repos/o/r/pulls/5/merge}', UNREAD],
     ['{gh} pr merge 5 --admi[n]', UNREAD],
     ['{gh} pr merge 5 --admin*', UNREAD],
+    ['{gh} pr merge 5 --admi[" "n]', UNREAD],
+    ['{gh} pr merge 5 --admi[n\\ ]', UNREAD],
+    ['{gh} pr merge 5 --admi(n|x)', UNREAD],
+    ['{gh} pr merge 5 --admi(n) --squash', UNREAD],
+    ['{gh} pr merge 5 --admi@(n)', UNREAD],
+    ['{gh} pr merge 5 --admi+(n)', UNREAD],
+    ['{gh} pr merge 5 --admi*(n)', UNREAD],
+    ['{gh} pr merge 5 --admi?(n)', UNREAD],
+    ['{gh} pr merge 5 --admi!(x)', UNREAD],
+    ['{gh} pr merg(e) 5 --admin', UNREAD_COMMAND],
+    ['time({gh} pr merge 5 $F)', UNREAD],
+    ['coproc({gh} pr merge 5 $F)', UNREAD],
+    ['time({gh} pr merge 5 --admi[n])', UNREAD],
+    ['curl -X PUT https://api.github.com/repos/o/r/pulls/5/merg[e]', UNREAD_URL],
+    ['curl -X PUT https://api.github.com/repos/o/r/pulls/5/m*', UNREAD_URL],
+    ['curl -X PUT https://api.github.com/repos/o/r/pulls/5/merg@(e)', UNREAD_URL],
+    ['curl -X PUT https://api.github.com/repos/o/r/pull?/5/merge', UNREAD_URL],
+    ['curl -X PUT https://api.github.com/repos/o/r/pul[l]s/5/merge', UNREAD_URL],
+    ['curl -X PUT https://api.github.com/repos/o/r/*/*/*', UNREAD_URL],
+    ['curl -X PUT https://api.github.com/repos/o/r/pulls/5/$X', UNREAD_URL],
+    ['curl -d x https://api.github.com/repos/o/r/pulls/5/merg[e]', UNREAD_URL],
+    ['http PUT api.github.com/repos/o/r/pulls/5/m*', UNREAD_URL],
     ['{gh} pr merge 5 *', UNREAD],
     ['{gh} pr merge 5 -t fix?', UNREAD],
     ['{gh} api -X PUT repos/o/r/pulls/5/merg[e]', UNREAD],
@@ -332,6 +355,14 @@ describe('findBypass: lets plain merges, reads and text through', () => {
     'curl -XGET https://api.github.com/repos/o/r/pulls/5/merge',
     'curl -X PUT https://example.com/upload',
     'http GET https://api.github.com/repos/o/r/pulls/5/merge',
+    'curl https://api.github.com/repos/o/r/pulls/5/comments?per_page=100',
+    'curl -s https://api.github.com/repos/o/r/pulls/5/files?page=2',
+    'curl -X GET https://api.github.com/repos/o/r/pulls/5/merg[e]',
+    "curl -X PUT 'https://api.github.com/repos/o/r/pulls/5/merg[e]'",
+    'curl -X PUT https://example.com/up[l]oad',
+    "{gh} pr merge 5 '--admi(n)'",
+    '{gh} pr merge 5 "--admi[n]"',
+    '{gh} pr merge 5 --squash -t \\(fix\\)',
     'echo {gh} pr merge 5 --admin',
     "git commit -m 'refuse {gh} pr merge --admin'",
     "{gh} issue create --title '{gh} pr merge --admin is refused' --body x",
@@ -372,36 +403,5 @@ describe('findBypass: reads help as gh does', () => {
     '{gh} api -X PUT repos/o/r/pulls/5/merge -h*',
   ])('does not take a run-time short help on gh api as help: %s', (script) => {
     expect(reason(script)).toContain(UNREAD);
-  });
-});
-
-// A file named `--admin` (or a merge path) turns each of these filename
-// patterns into it (#459).
-describe('findBypass: refuses a filename pattern the shell builds a flag from', () => {
-  it.each([
-    ['{gh} pr merge 5 --admi(n|x)', UNREAD],
-    ['{gh} pr merge 5 --admi@(n)', UNREAD],
-    ['{gh} pr merge 5 --admi+(n)', UNREAD],
-    ['{gh} pr merge 5 --admi*(n)', UNREAD],
-    ['{gh} pr merge 5 --admi?(n)', UNREAD],
-    ['{gh} pr merge 5 --admi!(x)', UNREAD],
-    ['{gh} pr merge 5 --admi[" "n]', UNREAD],
-    ['{gh} pr merge 5 --admi[n\\ ]', UNREAD],
-    ['{gh} pr merge 5 --admi(n) --squash', UNREAD],
-    ['{gh} pr merg(e) 5 --admin', UNREAD_COMMAND],
-    ['curl -X PUT https://api.github.com/repos/o/r/pulls/5/merg[e]', REST_MERGE_REASON],
-    ['curl -X PUT https://api.github.com/repos/o/r/pulls/5/m*', REST_MERGE_REASON],
-    ['curl -X PUT https://api.github.com/repos/o/r/pulls/5/merg@(e)', REST_MERGE_REASON],
-  ])('%s', (script, says) => {
-    expect(reason(script)).toContain(says);
-  });
-
-  it.each([
-    "{gh} pr merge 5 '--admi(n)'",
-    '{gh} pr merge 5 "--admi[n]"',
-    '{gh} pr merge 5 --squash -t \\(fix\\)',
-    "curl -X PUT 'https://api.github.com/repos/o/r/pulls/5/merg[e]'",
-  ])('passes a quoted pattern: %s', (script) => {
-    expect(reason(script)).toBeNull();
   });
 });

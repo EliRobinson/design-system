@@ -95,6 +95,10 @@ const namesAdminMerge = (text) =>
 /** @param {string} text */
 const namesMergePath = (text) => /pulls\/[^/\s'"]+\/merge\b/.test(text);
 
+// A URL that may be the GitHub API: one with `api.github.com` or a `repos/`
+// path (GitHub Enterprise serves it under `/api/v3/repos/`).
+const GITHUB_API_URL = /api\.github\.com|(?:^|\/)repos\//;
+
 /**
  * The refusal for text the hook does not parse as a command (an alias, a
  * script handed to an interpreter) when it names a bypass, or null.
@@ -255,23 +259,40 @@ function checkApi(args) {
 
 const HTTPIE = new Set(['http', 'https', 'xh', 'xhs']);
 const WRITE_METHOD = /^(PUT|POST|PATCH|DELETE)$/i;
+const READ_METHOD = /^(GET|HEAD)$/i;
 const ANY_METHOD = /^(GET|HEAD|PUT|POST|PATCH|DELETE|OPTIONS)$/i;
 
 /**
  * Whether an HTTP client call writes to a PR's `pulls/<N>/merge`. It reads
  * the last method named (`-X PUT`, `-XPUT`, `--request=PUT`,
  * `--method=PUT`, httpie's `PUT`) and the flags that send a body. A word the
- * shell splits (`{-XPUT,<url>}`) that names a merge path, or may as a
- * filename pattern (`pulls/5/merg[e]`), is refused too.
+ * shell splits (`{-XPUT,<url>}`) that names a merge path is refused too, and
+ * so is a write (any method but GET and HEAD) to a GitHub API URL the shell
+ * splits, as a variable or a filename pattern (`pulls/5/merg[e]`,
+ * `pul[l]s/5/merge`): it may become a merge path.
  * @param {string} program
  * @param {Word[]} args
  */
 function checkHttp(program, args) {
-  const mayNameMergePath = (/** @type {string} */ text) =>
-    namesMergePath(text) || /pulls\/[^/\s'"]+\/[^/\s'"]*[*?[({]/.test(text);
-  if (args.some((word) => word.splits && mayNameMergePath(word.text))) return REST_MERGE_REASON;
+  if (args.some((word) => word.splits && namesMergePath(word.text))) return REST_MERGE_REASON;
+  const { method, body } = readHttpWrite(program, args);
+  const hidden = args.find((word) => word.splits && GITHUB_API_URL.test(word.text));
+  if (hidden && (method ? !READ_METHOD.test(method) : body)) {
+    return `The hook cannot read \`${hidden.text}\` in this ${program} write to the GitHub API: the shell builds it at run time, and it may become a merge path (\`pulls/<N>/merge\`). Quote the URL or write it out in full.`;
+  }
   const names = args.map(({ text }) => text.replace(/^--?[\w-]+=/, ''));
   if (!names.some((text) => MERGE_PATH.test(urlPath(text)))) return null;
+  const writes = method ? WRITE_METHOD.test(method) : body;
+  return writes ? REST_MERGE_REASON : null;
+}
+
+/**
+ * The last method an HTTP client call names, and whether it sends a body.
+ * @param {string} program
+ * @param {Word[]} args
+ * @returns {{ method: string | undefined, body: boolean }}
+ */
+function readHttpWrite(program, args) {
   /** @type {string | undefined} */
   let method;
   let body = false;
@@ -287,8 +308,7 @@ function checkHttp(program, args) {
     // httpie and xh: a data item (`a=b`, `a:=1`, `a@file`) sends a body.
     else if (HTTPIE.has(program) && /^[\w.[\]-]+(?::?=(?!=)|@)/.test(text)) body = true;
   }
-  const writes = method ? WRITE_METHOD.test(method) : body;
-  return writes ? REST_MERGE_REASON : null;
+  return { method, body };
 }
 
 // ---- Other programs ----
