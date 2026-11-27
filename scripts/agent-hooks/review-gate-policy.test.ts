@@ -77,6 +77,7 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['in a coproc name( subshell', `coproc foo(${CREATE} -F b.md)`],
     ['in a ( glued to an argument', `x a(${CREATE} -F b.md)`],
     ['in a ( standing alone as an argument', `x (${CREATE} -F b.md)`],
+    ['in a case pattern with a leading (', `case x in (a) ${CREATE} -F b.md;; esac`],
   ])('%s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
   });

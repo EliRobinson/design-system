@@ -65,6 +65,9 @@ const SPLITS_IN_QUOTES = /^\$(@|\{[=(]|\{[^}]*\[[@*]\]|\w+\[[@*]\])/;
 const EXPANSION_START = /^[\w{@*#?$!-]$/;
 // After an unquoted `$`: `$'...'` and `$"..."`, read as quotes.
 const QUOTE_START = /^['"]$/;
+// The word kept for a `(` that stands alone past where a command starts,
+// which zsh may read as a glob group (see WordMark).
+const GLOB_GROUP_WORD = '(...)';
 // An unquoted brace expansion, `{a,b}` or `{1..3}`; not gh's `{owner}`.
 const BRACE_EXPANSION = /^\{[^{}\s'"]*(,|\.\.)[^{}\s'"]*\}/;
 
@@ -139,13 +142,14 @@ function readLevel(script, start, closer, scope, ids) {
   const expands = (/** @type {WordMark['splits']} */ splits) => {
     mark = { dynamic: true, splits: mark.splits === 'always' ? 'always' : splits || mark.splits };
   };
+  const pushWord = (/** @type {string} */ text, /** @type {WordMark} */ wordMark) => {
+    argv.push(text);
+    marks.push(wordMark);
+  };
   const endWord = () => {
     if (word === null) return;
     if (redirectTarget) redirectTarget = false;
-    else {
-      argv.push(word);
-      marks.push(mark);
-    }
+    else pushWord(word, mark);
     word = null;
     mark = { dynamic: false, splits: false };
     bracketOpen = false;
@@ -331,8 +335,7 @@ function readLevel(script, start, closer, scope, ids) {
       if (next !== ')') {
         if (word !== null) expands('unquoted');
         else if (!redirectTarget && leadingKeywords(argv).length < argv.length) {
-          argv.push('(...)');
-          marks.push({ dynamic: true, splits: 'unquoted' });
+          pushWord(GLOB_GROUP_WORD, { dynamic: true, splits: 'unquoted' });
         }
       }
       endCommand();
