@@ -113,17 +113,19 @@ describe('findPrCommands: reads flags as gh does', () => {
     ['dry run set to f', `${CREATE} --dry-run=f -F b.md`],
     ['dry run built at run time', `${CREATE} --dry-run="$X" -F b.md`],
     ['help set to f', `${CREATE} --help=f -F b.md`],
+    ['short help built at run time', `${CREATE} -h"$X" -F b.md`],
   ])('gates a create that is not a dry run or help: %s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
   });
 
-  it('reads the body file gh reads', () => {
-    expect(first(`${CREATE} -F=b.md`)).toMatchObject({ bodyFile: 'b.md' });
-    expect(first(`${CREATE} --body-file a.md -F b.md`)).toMatchObject({ bodyFile: 'b.md' });
-  });
-
-  it('reads =false on a short flag', () => {
-    expect(first(`${CREATE} -F b.md -w=false`)).toMatchObject({ web: false, fill: false });
+  it.each([
+    ['glued -F=', `${CREATE} -F=b.md`, { bodyFile: 'b.md' }],
+    ['last body file wins', `${CREATE} --body-file a.md -F b.md`, { bodyFile: 'b.md' }],
+    ['=false on a short flag', `${CREATE} -F b.md -w=false`, { web: false, fill: false }],
+    ['web built at run time', `${CREATE} -F b.md --web="$X"`, { web: true }],
+    ['fill built at run time', `${CREATE} -F b.md --fill="$X"`, { fill: true }],
+  ])('reads %s', (_, script, read) => {
+    expect(first(script)).toMatchObject(read);
   });
 });
 

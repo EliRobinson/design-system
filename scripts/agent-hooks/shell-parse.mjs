@@ -509,13 +509,18 @@ export function cdTarget(dir, target) {
 
 /**
  * The args after any leading flags, skipping the values of `valueFlags`.
- * @param {string[]} args
+ * Args are strings, or words read through `textOf`.
+ * @template T
+ * @param {T[]} args
  * @param {Set<string>} valueFlags
- * @returns {string[]}
+ * @param {(arg: T) => string} [textOf]
+ * @returns {T[]}
  */
-export function afterFlags(args, valueFlags) {
+export function afterFlags(args, valueFlags, textOf = String) {
+  const text = (/** @type {number} */ i) =>
+    i < args.length ? textOf(/** @type {T} */ (args[i])) : '';
   let i = 0;
-  while (args[i]?.startsWith('-')) i += valueFlags.has(args[i] ?? '') ? 2 : 1;
+  while (text(i).startsWith('-')) i += valueFlags.has(text(i)) ? 2 : 1;
   return args.slice(i);
 }
 
@@ -526,15 +531,17 @@ export const GH_VALUE_FLAGS = new Set(['-R', '--repo']);
  * The parts of a `gh` command: `group` is the first word past gh's own
  * flags, `rest` the args after it, and `sub` and `subArgs` the same walk
  * once more, as in `gh pr create ...`. Null when it is not `gh` or has no
- * group.
- * @param {string[]} argv
- * @returns {{ group: string, rest: string[], sub: string | undefined, subArgs: string[] } | null}
+ * group. Args are strings, or words read through `textOf`.
+ * @template T
+ * @param {T[]} argv
+ * @param {(arg: T) => string} [textOf]
+ * @returns {{ group: T, rest: T[], sub: T | undefined, subArgs: T[] } | null}
  */
-export function ghCommand(argv) {
-  if (posix.basename(argv[0] ?? '') !== 'gh') return null;
-  const [group, ...rest] = afterFlags(argv.slice(1), GH_VALUE_FLAGS);
+export function ghCommand(argv, textOf = String) {
+  if (argv.length === 0 || posix.basename(textOf(/** @type {T} */ (argv[0]))) !== 'gh') return null;
+  const [group, ...rest] = afterFlags(argv.slice(1), GH_VALUE_FLAGS, textOf);
   if (group === undefined) return null;
-  const [sub, ...subArgs] = afterFlags(rest, GH_VALUE_FLAGS);
+  const [sub, ...subArgs] = afterFlags(rest, GH_VALUE_FLAGS, textOf);
   return { group, rest, sub, subArgs };
 }
 

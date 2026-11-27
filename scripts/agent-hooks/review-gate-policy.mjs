@@ -4,7 +4,7 @@
 // the results in, so every rule here is unit-tested.
 
 import { flagSet, readApiCall, readGhFlags, urlPath } from './gh-flags.mjs';
-import { ghCommand, placeCommands, wordsOf } from './shell-parse.mjs';
+import { GH_VALUE_FLAGS, ghCommand, placeCommands, wordsOf } from './shell-parse.mjs';
 
 /** @typedef {import('./shell-parse.mjs').Word} Word */
 
@@ -61,10 +61,13 @@ export function isMcpCreatePr(name) {
 
 // ---- gh commands ----
 
-const PR_CREATE_VALUE_FLAGS = flagSet(
-  'title body body-file base head assignee label milestone project reviewer repo template recover',
-  ['-t', '-b', '-F', '-B', '-H', '-a', '-l', '-m', '-p', '-r', '-R', '-T'],
-);
+const PR_CREATE_VALUE_FLAGS = new Set([
+  ...flagSet(
+    'title body body-file base head assignee label milestone project reviewer template recover',
+    ['-t', '-b', '-F', '-B', '-H', '-a', '-l', '-m', '-p', '-r', '-T'],
+  ),
+  ...GH_VALUE_FLAGS,
+]);
 
 /**
  * @param {Word[]} args  the words after `gh pr create`
@@ -72,14 +75,16 @@ const PR_CREATE_VALUE_FLAGS = flagSet(
  * @returns {PrCommand | null}
  */
 function classifyPrCreate(args, dir) {
-  const { values, has } = readGhFlags(args, PR_CREATE_VALUE_FLAGS);
-  if (has('-h', '--help') || has('--dry-run')) return null;
+  const { values, has, maybe, help } = readGhFlags(args, PR_CREATE_VALUE_FLAGS);
+  // Help and dry run skip the gate only when surely set; fill and web are
+  // refused when they may be set. One call per flag: see `readGhFlags`.
+  if (help || has('--dry-run')) return null;
   const last = (/** @type {string[]} */ ...aliases) => values(...aliases).at(-1)?.text;
   return {
     kind: 'pr-create',
     bodyFile: last('-F', '--body-file'),
-    fill: has('-f', '--fill') || has('--fill-first') || has('--fill-verbose'),
-    web: has('-w', '--web'),
+    fill: maybe('-f', '--fill') || maybe('--fill-first') || maybe('--fill-verbose'),
+    web: maybe('-w', '--web'),
     head: last('-H', '--head'),
     base: last('-B', '--base'),
     dir,
@@ -122,16 +127,13 @@ export function findPrCommands(script) {
   /** @type {PrCommand[]} */
   const found = [];
   for (const { command, folder: dir } of placeCommands(script, '.')) {
-    const gh = ghCommand(command.argv);
+    const gh = ghCommand(wordsOf(command), ({ text }) => text);
     if (!gh) continue;
-    const words = wordsOf(command);
-    // The words of a tail of argv, such as `gh.rest`.
-    const tail = (/** @type {string[]} */ args) => words.slice(words.length - args.length);
-    if (gh.group === 'pr' && (gh.sub === 'create' || gh.sub === 'new')) {
-      const pr = classifyPrCreate(tail(gh.subArgs), dir);
+    if (gh.group.text === 'pr' && (gh.sub?.text === 'create' || gh.sub?.text === 'new')) {
+      const pr = classifyPrCreate(gh.subArgs, dir);
       if (pr) found.push(pr);
-    } else if (gh.group === 'api') {
-      const api = classifyApi(tail(gh.rest), dir);
+    } else if (gh.group.text === 'api') {
+      const api = classifyApi(gh.rest, dir);
       if (api) found.push(api);
     }
   }

@@ -52,13 +52,36 @@ describe('readGhFlags: boolean flags', () => {
     ['--web=$X', false],
     ['--web --web=false', false],
     ['--web=false --web', true],
-  ])('%s', (args, set) => {
+    ['-w"$X"', false],
+    ['-dw$X', false],
+  ])('has: %s', (args, set) => {
     expect(read(args).has('-w', '--web')).toBe(set);
   });
 
-  it('names a flag whatever its value', () => {
-    expect(read('--web=false').named('--web')).toBe(true);
-    expect(read('-x').named('--web')).toBe(false);
+  it.each([
+    ['--web=$X', true],
+    ['-w"$X"', true],
+    ['--web=false', false],
+    ['-d', false],
+  ])('maybe: %s', (args, set) => {
+    expect(read(args).maybe('-w', '--web')).toBe(set);
+  });
+
+  it.each([
+    ['--web=false', true],
+    ['-x', false],
+  ])('named: %s', (args, named) => {
+    expect(read(args).named('--web')).toBe(named);
+  });
+
+  it.each([
+    ['-h', true],
+    ['-dh', true],
+    ['--help=t', true],
+    ['--help=false', false],
+    ['-h"$X"', false],
+  ])('help: %s', (args, help) => {
+    expect(read(args).help).toBe(help);
   });
 });
 
@@ -67,13 +90,13 @@ describe('readGhFlags: run-time words', () => {
     const flags = read('-d -- --web "$X"');
     expect(flags.has('--web')).toBe(false);
     expect(texts(flags.positional)).toEqual(['--web', '$X']);
-    expect(texts(flags.unread)).toEqual(['$X']);
+    expect(flags.unreadFlags).toEqual([]);
   });
 
-  it('lists values the shell splits, and run-time words that are not values', () => {
+  it('lists values the shell splits, and run-time flags no value was read from', () => {
     const flags = read('-F $A -X "$B" --$C "$D" -d$E');
     expect(texts(flags.splitValues)).toEqual(['$A']);
-    expect(texts(flags.unread)).toEqual(['--$C', '$D', '-d$E']);
+    expect(texts(flags.unreadFlags)).toEqual(['--$C', '-d$E']);
   });
 });
 
