@@ -234,6 +234,15 @@ describe('Claude Code', () => {
     expect(run('claude', bash(`${GH} api graphql -f query=@m.graphql`)).code).toBe(2);
   });
 
+  it('refuses a merge that bypasses branch protection, even after every reviewer ran', () => {
+    finishAllReviewers();
+    const admin = run('claude', bash(`${GH} pr merge 5 --rebase --admin`));
+    expect(admin.code).toBe(2);
+    expect(admin.stderr).toMatch(/Blocked by the review gate\. .*stop and ask Eli/);
+    expect(run('claude', bash(`${GH} api -X PUT repos/o/r/pulls/5/merge`)).code).toBe(2);
+    expect(run('claude', bash(`${GH} pr merge 5 --rebase`)).code).toBe(0);
+  });
+
   it('lets bad stdin and unrelated tools through', () => {
     expect(run('claude', 'not json').code).toBe(0);
     expect(run('claude', { tool_name: 'Read', tool_input: {}, cwd: repo }).code).toBe(0);
@@ -241,7 +250,7 @@ describe('Claude Code', () => {
   });
 });
 
-describe('other tools check the body only', () => {
+describe('other tools check the body, and refuse merge bypasses', () => {
   it('Codex: with a string or argv command', () => {
     expect(run('codex', bash(`${CREATE} -F body.md`)).code).toBe(0);
     expect(run('codex', bash(`${CREATE} -F empty.md`)).code).toBe(2);
@@ -281,6 +290,8 @@ describe('other tools check the body only', () => {
       cwd: repo,
     });
     expect(mcp.json).toMatchObject({ permission: 'deny' });
+    const admin = run('cursor', { command: `${GH} pr merge 5 --admin`, cwd: repo });
+    expect(admin.json).toMatchObject({ permission: 'deny' });
   });
 
   it('Copilot: denies with JSON on stdout, with object or string toolArgs', () => {

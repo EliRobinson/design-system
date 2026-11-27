@@ -53,6 +53,54 @@ describe('parseCommands', () => {
     expect(names('eval "x y"')).toContain('x');
   });
 
+  it('marks the words the shell builds at run time, and the ones that may split', () => {
+    // A substitution's commands come first, so find `x` itself.
+    const marks = (script: string) =>
+      parseCommands(script)
+        .find(({ argv }) => argv[0] === 'x')
+        ?.marks.map(({ dynamic, splits }) => (splits ? 'splits' : dynamic ? 'dynamic' : 'plain'));
+    expect(marks('x a \'$b\' \\$c "d"')).toEqual(['plain', 'plain', 'plain', 'plain', 'plain']);
+    expect(marks('x $a ${b} $(c) `d` $((1+2)) a$b')).toEqual([
+      'plain',
+      'splits',
+      'splits',
+      'splits',
+      'splits',
+      'splits',
+      'splits',
+    ]);
+    expect(marks('x "$a" "${b}" "$(c)" "`d`" $\'e\' $"f" "$*"')).toEqual([
+      'plain',
+      'dynamic',
+      'dynamic',
+      'dynamic',
+      'dynamic',
+      'dynamic',
+      'dynamic',
+      'dynamic',
+    ]);
+    expect(marks('x "$@" "${a[@]}" "$a[*]" "${=a}" "${(f)a}"')).toEqual([
+      'plain',
+      'splits',
+      'splits',
+      'splits',
+      'splits',
+      'splits',
+    ]);
+  });
+
+  it('keeps one mark per word past dropped env assignments and wrappers', () => {
+    const [command] = parseCommands('A=$x timeout 5 gh "$y" z');
+    expect(command?.argv).toEqual(['gh', '$y', 'z']);
+    expect(command?.marks.map(({ dynamic }) => dynamic)).toEqual([false, true, false]);
+  });
+
+  it('does not mark a redirect target as a word', () => {
+    const [command] = parseCommands('x > $out a');
+    expect(command?.argv).toEqual(['x', 'a']);
+    expect(command?.marks.map(({ dynamic }) => dynamic)).toEqual([false, false]);
+  });
+
   it('marks which commands run in the script’s own shell', () => {
     const top = (script: string) =>
       parseCommands(script).map(({ argv, top: isTop }) => `${argv[0]}:${isTop}`);

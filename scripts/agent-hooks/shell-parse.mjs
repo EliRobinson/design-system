@@ -19,8 +19,25 @@ import { posix } from 'node:path';
  *   Bash runs those in the current shell unless they are piped or sent to
  *   the background, so a `cd` in one may or may not move what comes after.
  * - `top` is true when `scope` is empty. It is derived from `scope`.
- * @typedef {{ argv: string[], env: string[], scope: number[], top: boolean }} Command
+ * - `marks` has one entry per `argv` word: whether the shell builds it at run
+ *   time, and whether it may split into more words.
+ * @typedef {{ argv: string[], env: string[], scope: number[], top: boolean, marks: WordMark[] }} Command
  */
+
+/**
+ * How the shell builds a word.
+ * - `dynamic`: some of it comes from an expansion (`$X`, `$(...)`, backticks,
+ *   `$'...'`), so the text the parser keeps is not what runs.
+ * - `splits`: an expansion is unquoted, or is one that splits even in double
+ *   quotes (`"$@"`, `"${a[@]}"`, zsh's `"${=x}"`), so the word may become
+ *   several words, a flag among them.
+ * @typedef {{ dynamic: boolean, splits: boolean }} WordMark
+ */
+
+// After a `$` inside double quotes: the expansions that still split.
+const SPLITS_IN_QUOTES = /^\$(@|\{[=(]|\{[^}]*\[[@*]\]|\w+\[[@*]\])/;
+// After an unquoted `$`: the characters that start an expansion.
+const EXPANSION_START = /^[\w{@*#?$!'"-]$/;
 
 /** Hands out scope ids, unique within one parse. @typedef {{ last: number }} ScopeIds */
 
@@ -59,8 +76,12 @@ function readLevel(script, start, closer, scope, ids) {
   const heredocs = [];
   /** @type {string[]} */
   let argv = [];
+  /** @type {WordMark[]} One per `argv` word. */
+  let marks = [];
   /** @type {string | null} */
   let word = null;
+  /** @type {WordMark} The word being read. */
+  let mark = { dynamic: false, splits: false };
   let redirectTarget = false;
   // Whether the command being read takes its stdin from a pipe.
   let pipedIn = false;
@@ -68,11 +89,19 @@ function readLevel(script, start, closer, scope, ids) {
   const append = (/** @type {string} */ text) => {
     word = (word ?? '') + text;
   };
+  // The word being read has an expansion. `splits`: it may split into words.
+  const expands = (/** @type {boolean} */ splits) => {
+    mark = { dynamic: true, splits: mark.splits || splits };
+  };
   const endWord = () => {
     if (word === null) return;
     if (redirectTarget) redirectTarget = false;
-    else argv.push(word);
+    else {
+      argv.push(word);
+      marks.push(mark);
+    }
     word = null;
+    mark = { dynamic: false, splits: false };
   };
   const here = () => [...scope, ...groups];
   /** @type {number[]} How many `groups` entries each open compound body holds. */
@@ -103,9 +132,11 @@ function readLevel(script, start, closer, scope, ids) {
     const piped = op === '|' || op === '|&';
     const own = (pipedIn && !opened) || piped ? [...here(), newScope()] : here();
     const { argv: command, env } = unwrap(argv);
+    // `unwrap` drops words only from the front.
+    const commandMarks = marks.slice(argv.length - command.length);
     // A bare `NAME=value` is kept: it sets a variable in the current shell.
     if (command.length > 0 || env.length > 0)
-      commands.push({ argv: command, env, scope: own, top: false });
+      commands.push({ argv: command, env, scope: own, top: false, marks: commandMarks });
     if (op === '&') {
       const id = newScope();
       const prefix = here();
@@ -119,6 +150,7 @@ function readLevel(script, start, closer, scope, ids) {
     }
     if (op !== null && LIST_ENDS.has(op)) listStart = commands.length;
     argv = [];
+    marks = [];
     pipedIn = piped;
   };
   // Reads a nested script and keeps its source text in the current word.
@@ -190,11 +222,18 @@ function readLevel(script, start, closer, scope, ids) {
           append(script[i + 1] ?? '');
           i += 2;
         } else if (inner === '$' && script[i + 1] === '(' && script[i + 2] === '(') {
+          expands(false);
           i = skipArithmetic(i, 3);
         } else if (inner === '$' && script[i + 1] === '(') {
+          expands(false);
           i = readNested(i + 2, ')');
         } else if (inner === '`') {
+          expands(false);
           i = readNested(i + 1, '`');
+        } else if (inner === '$' && /^[\w{@*#?$!-]$/.test(script[i + 1] ?? '')) {
+          expands(SPLITS_IN_QUOTES.test(script.slice(i)));
+          append(inner);
+          i++;
         } else {
           append(inner ?? '');
           i++;
@@ -202,10 +241,13 @@ function readLevel(script, start, closer, scope, ids) {
       }
       i++;
     } else if (arithmetic) {
+      if (ch === '$') expands(true);
       i = skipArithmetic(i, ch === '$' ? 3 : 2);
     } else if (ch === '$' && next === '(') {
+      expands(true);
       i = readNested(i + 2, ')');
     } else if (ch === '`') {
+      expands(true);
       i = readNested(i + 1, '`');
     } else if (script.startsWith('<<<', i)) {
       endWord();
@@ -250,6 +292,9 @@ function readLevel(script, start, closer, scope, ids) {
         endCommand(op);
         i += op.length;
       } else {
+        // `$'...'` and `$"..."` are read as quotes, but their text is not
+        // what runs, so they count as built at run time; they do not split.
+        if (ch === '$' && EXPANSION_START.test(next ?? '')) expands(next !== "'" && next !== '"');
         append(ch);
         i++;
       }
@@ -311,7 +356,7 @@ const WRAPPERS = {
   },
   xargs: { valueFlags: ['-I', '-L', '-n', '-P', '-d', '-E', '-s', '-a'] },
 };
-const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh']);
+export const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh']);
 const ASSIGNMENT = /^[A-Za-z_]\w*=/;
 
 /**

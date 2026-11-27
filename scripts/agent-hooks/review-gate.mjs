@@ -26,6 +26,7 @@ import {
   prCommandsOf,
   reviewersWithoutRun,
 } from './review-gate-policy.mjs';
+import { findBypass } from './review-gate-bypass.mjs';
 import { quoteArgv, shellScriptOf } from './shell-parse.mjs';
 
 /** @typedef {import('./review-gate-policy.mjs').PrCall} PrCall */
@@ -287,6 +288,9 @@ function main() {
   } else if (call.kind === 'agent-stop') {
     recordRun(cwd, call.agent, call.output, call.transcript);
   } else if (call.kind === 'shell' || call.kind === 'mcp') {
+    // A merge that bypasses branch protection is refused whatever the PR body says.
+    const bypass = call.kind === 'shell' ? findBypass(call.command) : null;
+    if (bypass) block(adapter, bypass);
     for (const pr of prCommandsOf(call)) checkPr(pr, cwd, tool);
   }
 }
