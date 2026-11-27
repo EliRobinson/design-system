@@ -9,6 +9,7 @@
 import { posix } from 'node:path';
 
 import { flagSet, readApiCall, readGhFlags, urlPath } from './gh-flags.mjs';
+import { HTTP_PROGRAMS, hasRunTimeHost, methodWrites, readHttpRequest } from './http-flags.mjs';
 import { GH_VALUE_FLAGS, SHELLS, parseCommands, shellScriptOf, wordsOf } from './shell-parse.mjs';
 
 /** @typedef {import('./shell-parse.mjs').Command} Command */
@@ -223,15 +224,6 @@ function checkMerge(args) {
 }
 
 const MERGE_PATH = /\/pulls\/[^/]+\/merge$/;
-// HTTP methods that only read, in gh api or an HTTP client.
-const READ_METHOD = /^(GET|HEAD)$/i;
-
-/**
- * Whether a method may write: one built at run time (`-X "$M"`, `P[U]T`), or
- * any method but GET or HEAD.
- * @param {{ text: string, dynamic: boolean }} method
- */
-const methodWrites = (method) => method.dynamic || !READ_METHOD.test(method.text);
 
 /**
  * @param {Word[]} args  the words after `gh api`
@@ -267,148 +259,30 @@ function checkApi(args) {
 
 // ---- HTTP clients ----
 
-const HTTPIE = new Set(['http', 'https', 'xh', 'xhs']);
-const ANY_METHOD = /^(GET|HEAD|PUT|POST|PATCH|DELETE|OPTIONS)$/i;
-// Short options that take a value, glued (`-HAccept:x`, `-oX.json`) or as the
-// next word, per client. curl's `X` and httpie's none name the method; curl's
-// `d`, `F` and `T` send a body.
-/** @type {Record<string, string>} */
-const SHORT_VALUE_FLAGS = { curl: 'XHodFTuAebcxwKErmCDPYyzUQ', wget: 'oaiBeOPUtTwQlARDIX' };
-const HTTPIE_SHORT_VALUE_FLAGS = 'aoApsS';
-// Long options that take a value as the next word (`--header x`).
-const LONG_VALUE_FLAGS = new Set([
-  'request',
-  'method',
-  'header',
-  'output',
-  'output-document',
-  'user',
-  'password',
-  'user-agent',
-  'referer',
-  'cookie',
-  'cookie-jar',
-  'data',
-  'data-raw',
-  'data-binary',
-  'data-urlencode',
-  'data-ascii',
-  'json',
-  'form',
-  'form-string',
-  'upload-file',
-  'post-data',
-  'post-file',
-  'body-data',
-  'body-file',
-  'auth',
-  'auth-type',
-  'session',
-  'config',
-  'write-out',
-  'proxy',
-]);
-// Long options that send a body.
-const LONG_BODY = /^(data|json|form|upload-file|post-|body-)/;
-// An httpie or xh item that sends a body: `a=b`, `a:=1`, `a@file`.
-const HTTPIE_BODY_ITEM = /^[\w.[\]-]+(?::?=(?!=)|@)/;
-
 /**
  * Whether an HTTP client call writes to a PR's `pulls/<N>/merge`, or may.
  * - A word the shell splits that names a merge path is refused whatever the
  *   method: the split can hide the method too (`{-XPUT,<url>}`).
- * - A write to a URL the shell builds at run time is refused when it may be
- *   the GitHub API (`pulls/5/merg[e]`, `pul[l]s/5/merge`, `"repos/o/r/$P"`,
- *   `api.github.c[o]m`, `https://$H/api/v3/$P`): it may become a merge path.
+ * - A write (see http-flags.mjs) with a run-time word that names the GitHub
+ *   API (`pulls/5/merg[e]`, `"repos/o/r/$P"`, `https://$H/api/v3/$P`), or a
+ *   run-time host where the URL goes (`api.github.c[o]m`), may become a
+ *   merge path.
  * - A write to a merge path written out is a REST merge.
+ * The merge-path and GitHub API checks read every word, flag values too, so
+ * an option missing from the tables in http-flags.mjs cannot hide a URL.
  * @param {string} program
  * @param {Word[]} args
  */
 function checkHttp(program, args) {
   if (args.some((word) => word.splits && namesMergePath(word.text))) return REST_MERGE_REASON;
   const request = readHttpRequest(program, args);
-  if (!request.writes) return null;
-  const hidden = request.urls.find((word) => word.dynamic && mayBeGitHubApi(word.text));
+  if (!request?.writes) return null;
+  const hidden =
+    args.find((word) => word.dynamic && GITHUB_API_URL.test(word.text)) ??
+    request.urls.find((word) => word.dynamic && hasRunTimeHost(word.text));
   if (hidden) return unreadReason('httpWrite', hidden);
   const names = args.map(({ text }) => text.replace(/^--?[\w-]+=/, ''));
   return names.some((text) => MERGE_PATH.test(urlPath(text))) ? REST_MERGE_REASON : null;
-}
-
-/**
- * Whether a run-time URL may be the GitHub API: it names it, or its host is
- * built at run time (`https://$H/...`, `api.github.c[o]m/...`). A word that
- * is all run time (`$URL`) is not taken for a URL.
- * @param {string} text
- */
-function mayBeGitHubApi(text) {
-  if (GITHUB_API_URL.test(text)) return true;
-  const url = /^(?:([a-z][\w+.-]*):\/\/)?([^/]*)(\/)?/i.exec(text);
-  const isUrl = url?.[1] !== undefined || url?.[3] !== undefined;
-  return isUrl && /[$`*?[{(]/.test(url?.[2] ?? '');
-}
-
-/**
- * Reads an HTTP client call: whether it writes (a method that may write, see
- * `methodWrites`, or no method and a body), and its URL words. The values of
- * flags (`-H`, `-o`, `-d`) and httpie's items (`a=b`, `h:v`) are not URLs.
- * @param {string} program
- * @param {Word[]} args
- * @returns {{ writes: boolean, urls: Word[] }}
- */
-function readHttpRequest(program, args) {
-  const httpie = HTTPIE.has(program);
-  const shortValues = httpie ? HTTPIE_SHORT_VALUE_FLAGS : (SHORT_VALUE_FLAGS[program] ?? '');
-  /** @type {Word | undefined} */
-  let method;
-  let body = false;
-  /** @type {Word[]} */
-  const positional = [];
-  for (let i = 0; i < args.length; i++) {
-    const word = /** @type {Word} */ (args[i]);
-    const { text } = word;
-    // The value a flag takes: the rest of the word, or the next word.
-    const value = (/** @type {string} */ rest) =>
-      rest === '' ? args[++i] : { ...word, text: rest };
-    const long = /^--([\w-]+)(?:=(.*))?$/.exec(text);
-    if (long) {
-      const name = long[1] ?? '';
-      const taken =
-        long[2] !== undefined ? value(long[2]) : LONG_VALUE_FLAGS.has(name) ? value('') : undefined;
-      if (name === 'request' || name === 'method') method = taken;
-      else if (name === 'url' && taken) positional.push(taken);
-      else if (LONG_BODY.test(name)) body = true;
-      continue;
-    }
-    if (/^-[^-]/.test(text)) {
-      for (let c = 1; c < text.length; c++) {
-        const flag = text[c] ?? '';
-        if (!shortValues.includes(flag)) continue;
-        const taken = value(text.slice(c + 1));
-        if (program === 'curl' && flag === 'X') method = taken;
-        else if (program === 'curl' && 'dFT'.includes(flag)) body = true;
-        break;
-      }
-      continue;
-    }
-    positional.push(word);
-  }
-  if (!httpie) {
-    const writes = method ? methodWrites(method) : body;
-    return { writes, urls: positional };
-  }
-  // httpie and xh: `[METHOD] URL [ITEM...]`. A first word built at run time
-  // that is followed by another and is not URL-shaped is the method.
-  const [first, second] = positional;
-  const named =
-    first !== undefined &&
-    second !== undefined &&
-    (ANY_METHOD.test(first.text) || (first.dynamic && !/[/.:]/.test(first.text)));
-  if (named) method = first;
-  const url = named ? second : first;
-  const items = positional.slice(named ? 2 : 1);
-  if (items.some(({ text }) => HTTPIE_BODY_ITEM.test(text))) body = true;
-  const writes = method ? methodWrites(method) : body;
-  return { writes, urls: url ? [url] : [] };
 }
 
 // ---- Other programs ----
@@ -473,9 +347,7 @@ const runsParsedScript = (command) =>
 const CHECKERS = {
   gh: checkGh,
   git: checkGit,
-  curl: (args) => checkHttp('curl', args),
-  wget: (args) => checkHttp('wget', args),
-  ...Object.fromEntries([...HTTPIE].map((name) => [name, (args) => checkHttp(name, args)])),
+  ...Object.fromEntries(HTTP_PROGRAMS.map((name) => [name, (args) => checkHttp(name, args)])),
 };
 
 // ---- Entry ----
