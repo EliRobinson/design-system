@@ -75,6 +75,7 @@ describe('findBypass: refuses a REST merge', () => {
     '{gh} api -X PUT repos/o/r/pulls/5/%6Derge',
     '{gh} api -X PUT https://api.github.com/repos/o/r/pulls/5/merge',
     '{gh} api -X PUT "repos/o/r/pulls/$N/merge"',
+    '{gh} api -X PUT "repos/$R/pulls/5/merge"',
     '{gh} api -iXPUT repos/o/r/pulls/5/merge',
     '{gh} api -iX PUT repos/o/r/pulls/5/merge',
     '{gh} api -X=PUT repos/o/r/pulls/5/merge',
@@ -149,8 +150,8 @@ describe('findBypass: refuses merge words it cannot read', () => {
     ['{gh} api repos/o/r/pulls/5/merge --header=$H', UNREAD],
     ['{gh} api "$E" repos/o/r/pulls/5/merge', UNREAD],
     ['{gh} api repos/o/r/pulls/$N', UNREAD],
-    ['E=repos/o/r/pulls/5/merge; {gh} api -X PUT "$E"', 'which endpoint'],
-    ['{gh} api --method PATCH "repos/o/r/pulls/$N"', 'which endpoint'],
+    ['{gh} api -X POST repos/$R/pulls', UNREAD],
+    ['{gh} api repos/$R/pulls -f title=x', UNREAD],
   ])('%s', (script, says) => {
     expect(reason(script)).toContain(says);
   });
@@ -161,6 +162,47 @@ describe('findBypass: refuses merge words it cannot read', () => {
     ['{gh} pr merge 5 --body "${a[@]}"', false],
   ])('suggests double quotes only when they would help: %s', (script, suggests) => {
     expect(reason(script)?.includes('double quotes')).toBe(suggests);
+  });
+});
+
+// #462: a gh api write whose endpoint the shell builds at run time may go to
+// `repos/<o>/<r>/pulls` (a PR open) or `pulls/<N>/merge` (a merge), wherever
+// in the endpoint the run-time word stands.
+describe('findBypass: refuses a gh api write to a run-time endpoint', () => {
+  const apiWrite = (word: string) =>
+    `The hook cannot read \`${word}\` in this gh api write's endpoint: the shell builds it at run time, and it may become a PR open or a PR merge. Write the endpoint out in full.`;
+
+  it.each([
+    ['{gh} api -X POST "repos/$R/pulls"', 'repos/$R/pulls'],
+    ['{gh} api -X POST repos/"$R"/pulls', 'repos/$R/pulls'],
+    ['{gh} api --method=POST "repos/$R/pulls"', 'repos/$R/pulls'],
+    ['{gh} api -X post "repos/$R/pulls"', 'repos/$R/pulls'],
+    ['{gh} api "repos/$R/pulls" -f title=x', 'repos/$R/pulls'],
+    ['{gh} api "repos/$R/pulls" -F title=x', 'repos/$R/pulls'],
+    ['{gh} api "repos/$R/pulls" --field title=x', 'repos/$R/pulls'],
+    ['{gh} api "repos/$R/pulls" --raw-field title=x', 'repos/$R/pulls'],
+    ['{gh} api --input body.json "repos/$R/pulls"', 'repos/$R/pulls'],
+    ['{gh} api -X POST "repos/$(echo o/r)/pulls"', 'repos/$(echo o/r)/pulls'],
+    ["{gh} api -X POST $'repos/o/r/pulls'", '$repos/o/r/pulls'],
+    ['{gh} api -X PATCH "repos/o/r/pulls/$N"', 'repos/o/r/pulls/$N'],
+    ['{gh} api -X DELETE "repos/$R/pulls/5"', 'repos/$R/pulls/5'],
+    ['E=repos/o/r/pulls/5/merge; {gh} api -X PUT "$E"', '$E'],
+    ['{gh} api -X POST "repos/o/r/issues/$N/comments" -f body=x', 'repos/o/r/issues/$N/comments'],
+    ['{gh} api -X "$M" "repos/$R/pulls"', 'repos/$R/pulls'],
+    ['{gh} api "$G" -f query=x', '$G'],
+  ])('%s', (script, word) => {
+    expect(reason(script)).toBe(apiWrite(word));
+  });
+
+  it.each([
+    '{gh} api "repos/$R/pulls"',
+    '{gh} api "repos/o/r/pulls/$N"',
+    '{gh} api -X GET "repos/$R/pulls"',
+    '{gh} api --method=get "repos/$R/pulls"',
+    '{gh} api -X GET "repos/$R/pulls" -f state=open',
+    '{gh} api -X POST repos/{owner}/{repo}/issues -f title=x',
+  ])('lets a read or a literal endpoint through: %s', (script) => {
+    expect(reason(script)).toBeNull();
   });
 });
 
@@ -267,7 +309,6 @@ describe('findBypass: lets plain merges, reads and text through', () => {
     '{gh} api -H"$H" repos/o/r',
     '{gh} api repos/{owner}/{repo}/pulls',
     '{gh} api repos/o/r/issues -f title="$T"',
-    '{gh} api -X POST "repos/o/r/issues/$N/comments" -f body=x',
     "{gh} api graphql -f query='query { viewer { login } }'",
     'curl -s -H "Authorization: Bearer $T" https://api.github.com/repos/o/r/pulls/5/merge',
     'curl -sI https://api.github.com/repos/o/r/pulls/5/merge',
