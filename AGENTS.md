@@ -25,6 +25,7 @@ Nothing we publish may require a consumer to update prose when this repo changes
 - Do not edit files in the main checkout or commit on `main`, not even a one-line doc fix. Many sessions share that checkout, and the guard hook sees only git, not an editor.
 - Do not open a PR before the review gate runs: use the `review-gate` skill (`.agents/skills/review-gate/SKILL.md`). It catches what tests and lint cannot, and a hook enforces it.
 - Do not skip or disable a hook (`--no-verify`, `HUSKY=0`). A failing hook means something is wrong: fix the cause. Skip one only when Eli says so. The main checkout guard's documented escape is not a skip: see [Git workflow](docs/agents/git-workflow.md).
+- Do not bypass branch protection: never `gh pr merge --admin`, and never a REST merge. If GitHub refuses a merge, stop and ask Eli in chat. See [Merge](docs/agents/git-and-prs.md#merge).
 - Do not force push or rebase a pushed branch. An issue keeps one branch and one PR; catch up with `git merge origin/main`. See [Git workflow](docs/agents/git-workflow.md#one-branch-one-pr), and [Commits](docs/agents/git-workflow.md#commits) for the one force-push exception.
 - Do not use Fable for any agent: it costs too much. Use Opus, Sonnet or Haiku, and pass `model`, except to `review-*` agents, whose file pins it. See [Models](docs/agents/parallel-agents.md#models).
 - Do not edit files another agent owns. Two agents editing one file overwrite each other.

@@ -19,7 +19,7 @@ Read `AGENTS.md` first. Load a topic doc only when a task needs it.
   - The branch name rule in [Parallel agents](parallel-agents.md#one-agent-one-worktree-one-lane).
   - Every brief carries the heavy-run slot rule in [How to brief a subagent](parallel-agents.md#how-to-brief-a-subagent).
   - Merge on green (section 4).
-  - Filing an issue needs no yes from Eli ([Issue tracker](issue-tracker.md#rules)), and agents open PRs once the review gate has run. Neither is an ask.
+  - Filing an issue needs no yes from Eli ([Issue tracker](issue-tracker.md#rules)), and agents open PRs once the review gate has run. Neither is an ask. So do not route issue filing to `agent-roster:ticket-writer`, which refuses without a yes.
   - The model rule in [Parallel agents](parallel-agents.md#models).
 - Send the depth to subagents. Keep the plan, the backlog and the PR links in your own context. Keep the diffs out.
 - Start one fresh session per issue. Do not chain many issues in one long session.
@@ -50,6 +50,7 @@ Rules: [Git workflow](git-workflow.md) and [Git, hooks, and pull requests](git-a
 - A hook that fails on a file the agent does not own comes to you. You tell the owner.
 - No PR opens before the review gate runs. You check that every finding is answered in the PR's `## Review` section.
 - You merge on green, without asking Eli first. The rule and the merge method: [Merge](git-and-prs.md#merge).
+- Never add `--admin` and never merge another way. If GitHub refuses a merge, stop and ask Eli in this chat, and say what blocks it.
 
 ## 5. Proof
 
@@ -65,6 +66,7 @@ Rules: [Quality bar](quality-bar.md). Your part:
 - A chat-only row already on the board is never the answer. Handle it as the `asks-board` skill's "A chat-only row is never the answer" says.
 - In chat, for a board ask, one line: "Added to your Asks board: <title>." Do not nag.
 - While a chat-only ask waits, end each check-in with one line that lists them and what to type, for example "Waiting on you in chat: yes or no to the force push on #123."
+- Keep the board's count of chat-only asks true: the `chatWaiting` field on the `routes/design-system` row. Set it when you ask a chat-only question, lower it when Eli answers, and rewrite it, with `updatedAt` now, at every check-in. Write only that row, with `update` and its `if_version`, never a `set` that would replace it. How: the `asks-board` skill's "Waiting in your chats".
 - Only you write to the board. Subagents send their asks to you.
 - At each check-in, read the board and act on what Eli answered.
 - Never watch the board for live pings: only the Board Router does. Never message the router back. Handle a ping as the `asks-board` skill's "If you are a project coordinator" section says.
