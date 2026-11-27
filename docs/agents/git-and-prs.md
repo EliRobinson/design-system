@@ -12,7 +12,7 @@ Anything that needs Eli's decision gets the `needs-eli` label. The coordinator a
 
 - **Reviewer instructions:** `.agents/skills/review-gate/`. `SKILL.md` says how to run the gate. `reviewers/*.md` holds one prompt per reviewer, and `reviewers/_protocol.md` the steps they share. Cursor, Codex, Gemini CLI, and Copilot read `.agents/skills/`. Claude Code reads it through the symlink `.claude/skills/review-gate`.
 - **Claude Code reviewer agents:** `.claude/agents/review-*.md`. Each pins its model and points at its prompt in the skill. Cursor reads these files too.
-- **Hook:** `scripts/agent-hooks/review-gate-policy.mjs` holds the rules, with no I/O. `scripts/agent-hooks/shell-parse.mjs` finds the commands in a shell script. `scripts/agent-hooks/review-gate.mjs` reads each tool's input, git, and files, and writes each tool's output. Tests: `scripts/agent-hooks/review-gate-hook.test.ts`, `scripts/agent-hooks/review-gate-policy.test.ts`, and `scripts/agent-hooks/shell-parse.test.ts`.
+- **Hook:** `scripts/agent-hooks/review-gate-policy.mjs` holds the rules, with no I/O. `scripts/agent-hooks/review-gate-bypass.mjs` holds the [merge bypass](#merges-that-bypass-branch-protection) rules. `scripts/agent-hooks/shell-parse.mjs` finds the commands in a shell script. `scripts/agent-hooks/review-gate.mjs` reads each tool's input, git, and files, and writes each tool's output. Tests: `scripts/agent-hooks/review-gate-hook.test.ts`, `scripts/agent-hooks/review-gate-policy.test.ts`, `scripts/agent-hooks/review-gate-bypass.test.ts`, and `scripts/agent-hooks/shell-parse.test.ts`.
 
 ### How the gate is enforced
 
@@ -35,6 +35,21 @@ Every tool gets the Review section check. Claude Code also checks reviewer runs 
 - **Failures:** input the hook cannot parse passes through, so a broken hook never locks an agent out of the shell. Once a call is known to open a PR, any error blocks it.
 - Humans are not blocked. The hooks run only inside AI agents.
 
+### Merges that bypass branch protection
+
+Every tool's hook refuses these shell commands, in any repo, whatever the PR's Review section says:
+
+- `gh pr merge` with `--admin`, in any position or spelling (`--admin=true`, even `--admin=false`), also inside `eval`, `bash -c`, `$(...)`, a pipe or heredoc into a shell, `python3 -c` or an `alias`. `--admin` merges past required checks and branch rules.
+- A REST merge: `gh api`, `curl`, `wget`, `http` or `xh` writing to a PR's `pulls/<N>/merge`. That endpoint skips the branch protection check that `gh pr merge` makes, so with admin rights it is the same bypass. A read (`gh api repos/o/r/pulls/5/merge`) passes.
+
+It also refuses merge forms it cannot read, because they may hide `--admin` or a REST merge. Write the command out in full:
+
+- A `gh pr merge` word the shell builds at run time that is not a flag's value (`gh pr merge 5 $FLAGS`, `"$N"`), or a flag value the shell splits (`-t $T`, `-t $(cat f)`, `"$@"`, `"${a[@]}"`, zsh's `"${=x}"`). A quoted value (`--body "$B"`) passes.
+- A flag before the `gh` subcommand (`gh -R o/r pr merge 5`), or before the `pr` action (`gh pr -t x merge 5`). `-R` and `--repo` between `pr` and the action (`gh pr -R o/r merge 5`) still pass.
+- A `gh api` run-time word that may carry a flag (`gh api repos/o/r/pulls/5/merge $X`, an unquoted `repos/o/r/pulls/$N`; quote it), and a `gh api` write whose endpoint ends in a run-time word.
+
+Not caught: a merge through an MCP tool, a GraphQL `mergePullRequest` mutation, an HTTP client whose URL is a variable, and a script file. When a plain `gh pr merge` is refused, see [Merge](#merge).
+
 ## Right before the PR
 
 Read what landed on `main` since you branched:
@@ -50,6 +65,7 @@ git fetch origin && git log --oneline HEAD..origin/main
 
 - The coordinator merges on green, without a "merge N" from Eli: a clean CI run on the PR's exact head commit (`quality` is the required check; "no checks reported" is not a pass, and a pass on an older head does not count), and the local checks passing in the PR's worktree, run by the agent that owns it. It asks Eli, as [Talking to Eli](coordinator.md#6-talking-to-eli) says, only when a check is red, skipped for an odd reason, or failing locally. A red `Visual` run is settled as [Visual regression](visual-regression.md) says.
 - Merge with `gh pr merge <N> --rebase`, or `--squash` for a branch with a merge commit from `main`. See [Git workflow](git-workflow.md#merge-method-rebase-by-default-squash-for-a-merge-commit).
+- Branch protection is never bypassed: never add `--admin`, and never merge another way, such as a REST merge. If GitHub refuses a merge because a check fails or a branch rule blocks it, stop and ask Eli in chat, and say what blocks it. He can fix the check or the rule, or merge the PR himself. The hook refuses both bypasses: see [Merges that bypass branch protection](#merges-that-bypass-branch-protection).
 
 ## After merge
 
