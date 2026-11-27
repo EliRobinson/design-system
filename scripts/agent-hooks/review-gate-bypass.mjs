@@ -9,6 +9,7 @@
 import { posix } from 'node:path';
 
 import { flagSet, readApiCall, readGhFlags, urlPath } from './gh-flags.mjs';
+import { HTTP_PROGRAMS, hasRunTimeHost, methodWrites, readHttpRequest } from './http-flags.mjs';
 import { GH_VALUE_FLAGS, SHELLS, parseCommands, shellScriptOf, wordsOf } from './shell-parse.mjs';
 
 /** @typedef {import('./shell-parse.mjs').Command} Command */
@@ -30,18 +31,21 @@ const ACTION_FIRST_REASON =
 // Why a word the hook cannot read is refused, by where it stands. A word in
 // gh's command or pr action position, or a flag before one, may become a
 // whole command; a word after `gh pr merge` or `gh api` may become a flag.
-// For a gh api write's endpoint, see checkApi.
+// For a gh api write's endpoint, see checkApi; for an HTTP client's URL,
+// checkHttp.
 const COMMAND_CLAUSE =
   'it may become `gh pr create` or `gh pr merge --admin`. Write the gh command, the pr action and any flag that comes before them out in full';
 const FLAG_CLAUSE =
   'it may become a flag such as `--admin` or `-X PUT`. Write the PR number, the endpoint and every flag out in full';
 const ENDPOINT_CLAUSE = 'it may open or merge a PR. Write the endpoint out in full';
+const URL_CLAUSE = 'it may become a merge path (`pulls/<N>/merge`). Write the URL out in full';
 const UNREAD_AT = {
   ghCommand: `in this gh command: the shell builds it at run time, and ${COMMAND_CLAUSE}`,
   prAction: `in this gh pr command: the shell builds it at run time, and ${COMMAND_CLAUSE}`,
   prMerge: `in this gh pr merge: the shell builds it at run time, and ${FLAG_CLAUSE}`,
   apiCall: `in this gh api call: the shell builds it at run time, and ${FLAG_CLAUSE}`,
   apiWrite: `in this gh api write's endpoint: the shell builds it at run time, and ${ENDPOINT_CLAUSE}`,
+  httpWrite: `in this HTTP write to the GitHub API: the shell builds it at run time, and ${URL_CLAUSE}`,
 };
 
 /**
@@ -94,6 +98,10 @@ const namesAdminMerge = (text) =>
 
 /** @param {string} text */
 const namesMergePath = (text) => /pulls\/[^/\s'"]+\/merge\b/.test(text);
+
+// A URL that names the GitHub API: `api.github.com`, or GitHub Enterprise's
+// `/api/v3`. Not caught: a URL that is all run time (`curl -X PUT $URL`).
+const GITHUB_API_URL = /api\.github\.com|\/api\/v3(?:\/|$|\$)/i;
 
 /**
  * The refusal for text the hook does not parse as a command (an alias, a
@@ -216,8 +224,6 @@ function checkMerge(args) {
 }
 
 const MERGE_PATH = /\/pulls\/[^/]+\/merge$/;
-// gh upper-cases the method; these only read.
-const READ_METHOD = /^(GET|HEAD)$/;
 
 /**
  * @param {Word[]} args  the words after `gh api`
@@ -240,7 +246,7 @@ function checkApi(args) {
   }
   if (!endpoint) return null;
 
-  if (!method.dynamic && READ_METHOD.test(method.text)) return null;
+  if (!methodWrites(method)) return null;
   const path = urlPath(endpoint.text);
   if (MERGE_PATH.test(path)) return REST_MERGE_REASON;
   // A write to an endpoint built at run time may open or merge a PR,
@@ -253,39 +259,30 @@ function checkApi(args) {
 
 // ---- HTTP clients ----
 
-const HTTPIE = new Set(['http', 'https', 'xh', 'xhs']);
-const WRITE_METHOD = /^(PUT|POST|PATCH|DELETE)$/i;
-const ANY_METHOD = /^(GET|HEAD|PUT|POST|PATCH|DELETE|OPTIONS)$/i;
-
 /**
- * Whether an HTTP client call writes to a PR's `pulls/<N>/merge`. It reads
- * the last method named (`-X PUT`, `-XPUT`, `--request=PUT`,
- * `--method=PUT`, httpie's `PUT`) and the flags that send a body. A word the
- * shell splits (`{-XPUT,<url>}`) that names a merge path is refused too.
+ * Whether an HTTP client call writes to a PR's `pulls/<N>/merge`, or may.
+ * - A word the shell splits that names a merge path is refused whatever the
+ *   method: the split can hide the method too (`{-XPUT,<url>}`).
+ * - A write (see http-flags.mjs) with a run-time word that names the GitHub
+ *   API (`pulls/5/merg[e]`, `"repos/o/r/$P"`, `https://$H/api/v3/$P`), or a
+ *   run-time host where the URL goes (`api.github.c[o]m`), may become a
+ *   merge path.
+ * - A write to a merge path written out is a REST merge.
+ * The merge-path and GitHub API checks read every word, flag values too, so
+ * an option missing from the tables in http-flags.mjs cannot hide a URL.
  * @param {string} program
  * @param {Word[]} args
  */
 function checkHttp(program, args) {
   if (args.some((word) => word.splits && namesMergePath(word.text))) return REST_MERGE_REASON;
+  const request = readHttpRequest(program, args);
+  if (!request?.writes) return null;
+  const hidden =
+    args.find((word) => word.dynamic && GITHUB_API_URL.test(word.text)) ??
+    request.urls.find((word) => word.dynamic && hasRunTimeHost(word.text));
+  if (hidden) return unreadReason('httpWrite', hidden);
   const names = args.map(({ text }) => text.replace(/^--?[\w-]+=/, ''));
-  if (!names.some((text) => MERGE_PATH.test(urlPath(text)))) return null;
-  /** @type {string | undefined} */
-  let method;
-  let body = false;
-  for (let i = 0; i < args.length; i++) {
-    const text = args[i]?.text ?? '';
-    const glued =
-      /^-[a-zA-Z]*X=?([A-Za-z]+)$/.exec(text) ?? /^--(?:request|method)=(.+)$/.exec(text);
-    if (glued) method = glued[1];
-    else if (/^(-[a-zA-Z]*X|--request|--method)$/.test(text)) method = args[++i]?.text;
-    else if (ANY_METHOD.test(text)) method = text;
-    else if (/^(--data|--json|--form|--upload-file|--post-|--body-)/.test(text)) body = true;
-    else if (program === 'curl' && /^-[a-zA-Z]*[dFT]/.test(text)) body = true;
-    // httpie and xh: a data item (`a=b`, `a:=1`, `a@file`) sends a body.
-    else if (HTTPIE.has(program) && /^[\w.[\]-]+(?::?=(?!=)|@)/.test(text)) body = true;
-  }
-  const writes = method ? WRITE_METHOD.test(method) : body;
-  return writes ? REST_MERGE_REASON : null;
+  return names.some((text) => MERGE_PATH.test(urlPath(text))) ? REST_MERGE_REASON : null;
 }
 
 // ---- Other programs ----
@@ -350,9 +347,7 @@ const runsParsedScript = (command) =>
 const CHECKERS = {
   gh: checkGh,
   git: checkGit,
-  curl: (args) => checkHttp('curl', args),
-  wget: (args) => checkHttp('wget', args),
-  ...Object.fromEntries([...HTTPIE].map((name) => [name, (args) => checkHttp(name, args)])),
+  ...Object.fromEntries(HTTP_PROGRAMS.map((name) => [name, (args) => checkHttp(name, args)])),
 };
 
 // ---- Entry ----

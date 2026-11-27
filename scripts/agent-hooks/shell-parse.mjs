@@ -31,11 +31,17 @@ import { posix } from 'node:path';
  *   the parser keeps is not what runs.
  * - `splits`: whether the word may become several words, a flag among them.
  *   `'unquoted'`: an expansion, a brace expansion (`{a,b}`) or a filename
- *   pattern (`*`, `?`, `[ab]`) is unquoted, so double quotes would stop the
- *   split. A filename pattern also counts as `dynamic`: a file named
- *   `--admin` turns `--admi[n]` or `*` into that flag. `'always'`: an
- *   expansion splits even in double quotes (`"$@"`, `"${a[@]}"`, zsh's
+ *   pattern is unquoted, so double quotes would stop the split. `'always'`:
+ *   an expansion splits even in double quotes (`"$@"`, `"${a[@]}"`, zsh's
  *   `"${=x}"`). `false`: it does not split.
+ *
+ * A filename pattern is any of these, unquoted: a `*` or `?`; a `[` closed
+ * by a later `]` in the word, quoted or not (`[ab]`, `[" "b]`; a lone `[` or
+ * `[[` is not one); a word with a `(` glued to it (zsh's `a(b|c)`, bash's
+ * extglob `@(b)`); or, past where a command starts, a `(` that stands alone
+ * (zsh's `(a|b)`, kept as the word `(...)`). It is `dynamic` and splits
+ * `'unquoted'`: a file named `--admin` turns `--admi[n]`, `--admi(n)` or `*`
+ * into that flag.
  * @typedef {{ dynamic: boolean, splits: false | 'unquoted' | 'always' }} WordMark
  */
 
@@ -59,11 +65,22 @@ const SPLITS_IN_QUOTES = /^\$(@|\{[=(]|\{[^}]*\[[@*]\]|\w+\[[@*]\])/;
 const EXPANSION_START = /^[\w{@*#?$!-]$/;
 // After an unquoted `$`: `$'...'` and `$"..."`, read as quotes.
 const QUOTE_START = /^['"]$/;
+// The word kept for a `(` that stands alone past where a command starts,
+// which zsh may read as a glob group (see WordMark).
+const GLOB_GROUP_WORD = '(...)';
 // An unquoted brace expansion, `{a,b}` or `{1..3}`; not gh's `{owner}`.
 const BRACE_EXPANSION = /^\{[^{}\s'"]*(,|\.\.)[^{}\s'"]*\}/;
-// An unquoted `[` that opens a filename pattern: a `]` closes it before the
-// next space or operator. A lone `[` or `[[` is a command, not a pattern.
-const BRACKET_PATTERN = /^\[[^\s;&|()<>]+\]/;
+
+/**
+ * The words at the front of a command that the shell reads as keywords
+ * (`if`, `!`, `{`) or compound openers (`while`, `for`, `case`), up to the
+ * first word that is not one. The word after them starts the command.
+ * @param {string[]} argv
+ */
+function leadingKeywords(argv) {
+  const end = argv.findIndex((each) => !COMPOUND_OPENERS.has(each) && !KEYWORDS.has(each));
+  return end === -1 ? argv : argv.slice(0, end);
+}
 
 /** Hands out scope ids, unique within one parse. @typedef {{ last: number }} ScopeIds */
 
@@ -111,23 +128,31 @@ function readLevel(script, start, closer, scope, ids) {
   let redirectTarget = false;
   // Whether the command being read takes its stdin from a pipe.
   let pipedIn = false;
+  // Whether the word being read has an unquoted `[`, which a later `]` makes
+  // a filename pattern (see WordMark).
+  let bracketOpen = false;
 
+  // Adds text to the word being read. Side effect: a `]` in it after an
+  // unquoted `[` marks the word a filename pattern (see WordMark).
   const append = (/** @type {string} */ text) => {
+    if (bracketOpen && text.includes(']')) expands('unquoted');
     word = (word ?? '') + text;
   };
   // The word being read has an expansion. `splits`: it may split into words.
   const expands = (/** @type {WordMark['splits']} */ splits) => {
     mark = { dynamic: true, splits: mark.splits === 'always' ? 'always' : splits || mark.splits };
   };
+  const pushWord = (/** @type {string} */ text, /** @type {WordMark} */ wordMark) => {
+    argv.push(text);
+    marks.push(wordMark);
+  };
   const endWord = () => {
     if (word === null) return;
     if (redirectTarget) redirectTarget = false;
-    else {
-      argv.push(word);
-      marks.push(mark);
-    }
+    else pushWord(word, mark);
     word = null;
     mark = { dynamic: false, splits: false };
+    bracketOpen = false;
   };
   const here = () => [...scope, ...groups];
   /** @type {number[]} How many `groups` entries each open compound body holds. */
@@ -138,14 +163,13 @@ function readLevel(script, start, closer, scope, ids) {
   const trackCompound = () => {
     if (COMPOUND_CLOSERS.has(argv[0] ?? '')) groups.splice(-(compoundSizes.pop() ?? 1));
     let opened = false;
-    for (const word of argv) {
-      if (COMPOUND_OPENERS.has(word)) {
-        const wrap = pipedIn && !opened;
-        if (wrap) groups.push(newScope());
-        groups.push(-newScope());
-        compoundSizes.push(wrap ? 2 : 1);
-        opened = true;
-      } else if (!KEYWORDS.has(word)) break;
+    for (const word of leadingKeywords(argv)) {
+      if (!COMPOUND_OPENERS.has(word)) continue;
+      const wrap = pipedIn && !opened;
+      if (wrap) groups.push(newScope());
+      groups.push(-newScope());
+      compoundSizes.push(wrap ? 2 : 1);
+      opened = true;
     }
     return opened;
   };
@@ -302,6 +326,18 @@ function readLevel(script, start, closer, scope, ids) {
       while (/[<>&|]/.test(script[i] ?? '')) i++;
       redirectTarget = true;
     } else if (ch === '(') {
+      // A `(` glued to a word may be a glob group in it (`--admi(n|x)`, see
+      // WordMark) or a subshell (`time(...)`, `time -p(...)`, `case x in(x)`).
+      // So may a `(` that stands alone past where a command starts, a word of
+      // its own in zsh (`gh pr merge 5 (--admin|x)`); it is kept as a `(...)`
+      // word. Read both: mark the word, then read the group as a subshell, so
+      // no command in it is missed. `f()` is a function name.
+      if (next !== ')') {
+        if (word !== null) expands('unquoted');
+        else if (!redirectTarget && leadingKeywords(argv).length < argv.length) {
+          pushWord(GLOB_GROUP_WORD, { dynamic: true, splits: 'unquoted' });
+        }
+      }
       endCommand();
       groups.push(newScope());
       i++;
@@ -324,8 +360,8 @@ function readLevel(script, start, closer, scope, ids) {
         else if (ch === '$' && QUOTE_START.test(next ?? '')) expands(false);
         else if (ch === '{' && BRACE_EXPANSION.test(script.slice(i))) expands('unquoted');
         else if (ch === '*' || ch === '?') expands('unquoted');
-        else if (ch === '[' && BRACKET_PATTERN.test(script.slice(i))) expands('unquoted');
         append(ch);
+        if (ch === '[') bracketOpen = true;
         i++;
       }
     }

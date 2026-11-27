@@ -64,6 +64,20 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['repo flag before pr', `${GH} -R o/r pr create -F b.md`],
     ['in a function', `function f { ${CREATE} -F b.md; }; f`],
     ['after arithmetic with a shift', `(( n = 1 << 2 ))\n${CREATE} --fill`],
+    ['in a time( subshell', `time(${CREATE} -F b.md)`],
+    ['in a time( subshell after &&', `true && time(${CREATE} -F b.md)`],
+    ['in a coproc( subshell', `coproc(${CREATE} -F b.md)`],
+    ['in a time( subshell in bash -c', `bash -c 'time(${CREATE} -F b.md)'`],
+    ['in a f( ) function in a substitution', `echo $(f( ) { ${CREATE} -F b.md; }; f)`],
+    ['in a select( subshell', `select(${CREATE} -F b.md)`],
+    ['in a time -p( subshell', `time -p(${CREATE} -F b.md)`],
+    ['in a ! time -p( subshell', `! time -p(${CREATE} -F b.md)`],
+    ['in a time -p( subshell in a substitution', `echo $(time -p(${CREATE} -F b.md))`],
+    ['in a case pattern glued to in(', `case x in(x) ${CREATE} -F b.md;; esac`],
+    ['in a coproc name( subshell', `coproc foo(${CREATE} -F b.md)`],
+    ['in a ( glued to an argument', `x a(${CREATE} -F b.md)`],
+    ['in a ( standing alone as an argument', `x (${CREATE} -F b.md)`],
+    ['in a case pattern with a leading (', `case x in (a) ${CREATE} -F b.md;; esac`],
   ])('%s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
   });
