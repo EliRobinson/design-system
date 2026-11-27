@@ -48,7 +48,6 @@ export function isMcpCreatePr(name) {
  * @typedef {{ kind: 'pr-create', bodyFile?: string, fill: boolean, web: boolean, head?: string, base?: string, dir?: string | null }
  *   | { kind: 'mcp-create', body: string, head?: string, base?: string }
  *   | { kind: 'api-create' }
- *   | { kind: 'unread', word: string }
  *   | { kind: 'graphql-files', files: string[], dir?: string | null }} PrCommand
  */
 
@@ -130,14 +129,7 @@ export function findPrCommands(script) {
   for (const { command, folder: dir } of placeCommands(script, '.')) {
     const gh = ghCommand(wordsOf(command), ({ text }) => text);
     if (!gh) continue;
-    // A word built at run time where gh reads its command or the pr
-    // subcommand may become `pr create`.
-    const unread = [gh.group, gh.group.text === 'pr' ? gh.sub : undefined].find(
-      (word) => word?.dynamic,
-    );
-    if (unread) {
-      found.push({ kind: 'unread', word: unread.text });
-    } else if (gh.group.text === 'pr' && (gh.sub?.text === 'create' || gh.sub?.text === 'new')) {
+    if (gh.group.text === 'pr' && (gh.sub?.text === 'create' || gh.sub?.text === 'new')) {
       const pr = classifyPrCreate(gh.subArgs, dir);
       if (pr) found.push(pr);
     } else if (gh.group.text === 'api') {
@@ -201,7 +193,7 @@ export function unfilledReviewLabels(markdown) {
  * @returns {{ head?: string, baseRefs: string[], dir: string | null }}
  */
 export function branchRefsOf(pr) {
-  if (pr.kind === 'api-create' || pr.kind === 'graphql-files' || pr.kind === 'unread') {
+  if (pr.kind === 'api-create' || pr.kind === 'graphql-files') {
     return {
       baseRefs: [],
       dir: pr.kind === 'graphql-files' ? (pr.dir ?? '.') : '.',
@@ -339,11 +331,6 @@ const REVIEW_FORMAT =
  * @returns {Decision}
  */
 export function decidePr(pr, { readFile, reviewersNotRun }) {
-  if (pr.kind === 'unread') {
-    return {
-      deny: `The hook cannot read \`${pr.word}\` in this gh command: the shell builds it at run time, and it may become \`pr create\`. Write the gh command and its subcommand out in full.`,
-    };
-  }
   if (pr.kind === 'api-create') {
     return { deny: 'Open PRs with `gh pr create --body-file`, not `gh api`.' };
   }
