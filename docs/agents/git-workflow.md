@@ -27,8 +27,8 @@ An issue keeps one branch and one PR until it merges.
 
 The main checkout is the folder whose `.git` is a folder. Every worktree's `.git` is a file that points back to it. It is shared: the coordinator lives there, and every worktree hangs off it. A write there can commit another agent's files or delete their unstaged edits, with no reflog entry to get them back. So a Claude Code `PreToolUse` hook refuses tree-changing git there.
 
-- Code: `scripts/agent-hooks/guard-main-checkout.mjs` (the entry) and `guard-main-checkout-policy.mjs` (the rules). Wired in `.claude/settings.json`, next to the review gate.
-- The full list of refused verbs is `MUTATING_GIT_VERBS` in the policy file. It includes `commit`, `add`, `checkout`, `switch`, `reset`, `stash`, `merge`, `rebase`, `pull`, `restore`, `clean`, `worktree remove` and `worktree prune`. It also refuses `gh pr checkout`.
+- Code: `scripts/agent-hooks/guard-main-checkout.mjs` (the entry), `guard-main-checkout-policy.mjs` (the rules), `checkouts.mjs` (which checkout a folder is in), `git-write-verbs.mjs` (the verb names) and `hook-failure.mjs` (the crash fallback and its message). Wired in `.claude/settings.json`, next to the review gate.
+- The full list of refused verbs is `MUTATING_GIT_VERB_NAMES` in `git-write-verbs.mjs`. The policy file's `VERB_TESTS` says which calls of a verb count, such as `stash` but not `stash list`. It includes `commit`, `add`, `checkout`, `switch`, `reset`, `stash`, `merge`, `rebase`, `pull`, `restore`, `clean`, `worktree remove` and `worktree prune`. It also refuses `gh pr checkout`.
 - Allowed in the main checkout: every other git command. For example `status`, `log`, `diff`, `show`, `fetch`, `push`, `branch`, `worktree add`, `stash list` and `apply --check`.
 - Git aliases count as what they run. `git cm` for `commit -m` is refused. A shell alias (`!...`) is refused when its command would be.
 - In a worktree, or any folder outside the main checkout, nothing is refused.
@@ -65,7 +65,7 @@ Then say in your next message that you used it, and why. It covers only the comm
 - It reads aliases from this repo's git config, not from the config of a repo named with `-C`.
 - A `cd` that fails is read as if it worked. With `;` the next command then runs in the old folder.
 - It runs for Claude Code only. Codex, Gemini, Cursor and Copilot do not have it yet.
-- If its rules or its parser throw, while they load or while they run, it blocks the call only when the call may write in the main checkout: it runs there, names a folder there (by its path, or a `~/` or `$HOME/` path), or holds `git` with any verb the guard can refuse (even one it would normally allow, like `stash list`), or `gh` with `checkout`. Any other call, and stdin that is not JSON, is allowed with `guard-main-checkout: hook crashed` on stderr, because a guard that refused every Bash call would leave no way to run the fix. The fallback is in `scripts/agent-hooks/hook-failure.mjs`.
+- If its rules or its parser throw, while they load or while they run, it blocks the call only when the call may write in the main checkout: it runs there, names a folder there (by its path, or a `~/`, `$HOME/` or `${HOME}/` path), or holds `git` with any verb the guard can refuse (even one it would normally allow, like `stash list`), or `gh` with `checkout`. Any other call, and stdin that is not JSON, is allowed with `guard-main-checkout: hook crashed` on stderr, because a guard that refused every Bash call would leave no way to run the fix. The fallback does not catch a relative path, a `..` path, a spelling through a symlink, or a path in another variable. It is in `scripts/agent-hooks/hook-failure.mjs`.
 
 ## Merge method: rebase by default, squash for a merge commit
 
