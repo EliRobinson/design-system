@@ -5,7 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { OVERRIDE, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
+import { CRASH_ON_LOAD, CRASH_ON_PARSE } from './crash-fixture/node-args';
+import { mainCheckoutOf } from './checkouts.mjs';
+import { OVERRIDE } from './guard-main-checkout-policy.mjs';
+import { hookFailed } from './hook-failure.mjs';
 
 // End-to-end: runs the hook script the way Claude Code does. The hook guards
 // the main checkout of the repo it sits in, so these tests point `cwd` at that
@@ -19,8 +22,8 @@ const elsewhere = realpathSync(mkdtempSync(join(tmpdir(), 'guard-hook-')));
 
 afterAll(() => rmSync(elsewhere, { recursive: true, force: true }));
 
-function run(stdin: unknown, env: Record<string, string> = {}) {
-  const result = spawnSync('node', [HOOK], {
+function run(stdin: unknown, env: Record<string, string> = {}, nodeArgs: string[] = []) {
+  const result = spawnSync('node', [...nodeArgs, HOOK], {
     input: typeof stdin === 'string' ? stdin : JSON.stringify(stdin),
     encoding: 'utf8',
     env: { ...process.env, ...env },
@@ -75,11 +78,54 @@ describe('guard-main-checkout hook', () => {
     expect(run('')).toEqual({ code: 0, stderr: '' });
   });
 
-  it('fails open on its own crash, and says so on stderr', () => {
-    const { code, stderr } = run('{not json');
+  it.each([
+    ['not JSON', '{not json'],
+    [
+      'cut-off JSON that holds `git commit`',
+      '{"tool_name":"Bash","tool_input":{"command":"git commit -m x',
+    ],
+  ])('allows stdin that is %s, and says it crashed', (_name, stdin) => {
+    const { code, stderr } = run(stdin);
     expect(code).toBe(0);
     expect(stderr).toContain('guard-main-checkout: hook crashed, allowing the call');
   });
+});
+
+// What the guard prints when it blocks or allows after `injected <what>`.
+const blocked = (what: string) =>
+  `guard-main-checkout: ${hookFailed(new Error(`injected ${what}`))} Run it from your worktree.\n`;
+const allowed = (what: string) =>
+  `guard-main-checkout: hook crashed, allowing the call: injected ${what}\n`;
+
+describe.each([
+  ['its parser throws', CRASH_ON_PARSE, 'parser failure in guardDecision'],
+  [
+    'its rules throw while they load',
+    CRASH_ON_LOAD,
+    'load failure in guard-main-checkout-policy.mjs',
+  ],
+])('guard-main-checkout hook, when %s', (_when, nodeArgs, what) => {
+  const crash = (command: string, cwd: string) => run(bash(command, cwd), {}, nodeArgs);
+
+  it.each([
+    ['a read in the main checkout', 'ls -la', MAIN],
+    ['a call that names a folder in the main checkout', `ls ${MAIN}/packages`, elsewhere],
+    ['a git write word', 'cd ~/Code/x && git add -A', elsewhere],
+    ['gh pr checkout', 'gh pr checkout 5', elsewhere],
+  ])('blocks %s with exit 2', (_name, command, cwd) => {
+    const { code, stderr } = crash(command, cwd as string);
+    expect(code).toBe(2);
+    expect(stderr).toBe(blocked(what));
+  });
+
+  it.each(['ls -la', 'git status && git log'])(
+    'allows `%s` outside the main checkout, and says it crashed',
+    (command) => {
+      const { code, stderr } = crash(command, elsewhere);
+      expect(code).toBe(0);
+      expect(stderr).toBe(allowed(what));
+    },
+  );
 });
 
 describe('.claude/settings.json', () => {

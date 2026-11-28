@@ -6,17 +6,25 @@
 //
 // Exit 2 refuses the call and shows stderr to the agent. Exit 0 allows it.
 //
-// It fails OPEN, and only on its own crash. This hook sees every Bash call
-// in the repo, so a bug that made it throw would refuse all of them, in
-// every session, with no way to run the fix. The crash is named on stderr,
-// so it is not mistaken for a clean allow.
+// When the policy or its shell parser throws, while it loads or while it
+// runs, the guard blocks only a call that may write in the main checkout:
+// one that runs there, names a folder there, or holds a git or gh write word
+// (mayWriteMainCheckout in hook-failure.mjs, which reads the raw text with
+// no parser). Every other call is allowed, and the crash is named on stderr.
+// This hook sees every Bash call in the repo, so blocking them all on a crash
+// would lock every session out of the shell, with no way to run the fix.
+// Blocking none would let a write through to the one folder this hook exists
+// to guard (#479). So the policy is loaded with import() inside the try, and
+// this file imports only modules with no parser. Stdin that cannot be read,
+// or is not JSON, holds no call to check, so it is allowed.
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import { mainCheckoutOf } from './checkouts.mjs';
 import { withoutGitRepoEnv } from './git-env.mjs';
-import { guardDecision, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
+import { hookFailed, mayWriteMainCheckout, messageOf } from './hook-failure.mjs';
 
 // The repo this file sits in: the main checkout, or a worktree of it.
 const OWN_CHECKOUT = fileURLToPath(new URL('../..', import.meta.url));
@@ -43,26 +51,75 @@ function aliasOf(name) {
   }
 }
 
-function main() {
-  const raw = readFileSync(0, 'utf8');
-  if (raw.trim() === '') return;
-  const event = JSON.parse(raw);
-  const command = event?.tool_input?.command;
-  if (event?.tool_name !== 'Bash' || typeof command !== 'string') return;
-  const decision = guardDecision(
-    { command, cwd: typeof event.cwd === 'string' ? event.cwd : process.cwd() },
-    mainCheckoutOf(OWN_CHECKOUT),
-    aliasOf,
-  );
-  if (decision.blocked) {
-    // exitCode, not exit(): exit() can cut off a stderr pipe write.
-    process.stderr.write(`${decision.reason}\n`);
-    process.exitCode = 2;
+/**
+ * The main checkout to guard, or null when it cannot be read. Null makes
+ * every main checkout count, so the guard keeps guarding.
+ */
+function ownMainCheckout() {
+  try {
+    return mainCheckoutOf(OWN_CHECKOUT);
+  } catch {
+    return null;
   }
 }
 
-try {
-  main();
-} catch (error) {
-  process.stderr.write(`guard-main-checkout: hook crashed, allowing the call: ${error}\n`);
+/**
+ * Allows the call, and names the crash on stderr so it is not mistaken for a
+ * clean allow.
+ * @param {unknown} error
+ */
+function allowAfterCrash(error) {
+  process.stderr.write(
+    `guard-main-checkout: hook crashed, allowing the call: ${messageOf(error)}\n`,
+  );
 }
+
+/**
+ * @param {unknown} error
+ * @param {{ text: string, cwd: string }} crashInput
+ * @param {string | null} mainRoot
+ */
+function onCrash(error, crashInput, mainRoot) {
+  let block = true;
+  try {
+    block = mayWriteMainCheckout(crashInput, mainRoot);
+  } catch {
+    // The fallback itself failed, so nothing is known: block.
+  }
+  if (!block) {
+    allowAfterCrash(error);
+    return;
+  }
+  process.stderr.write(`guard-main-checkout: ${hookFailed(error)} Run it from your worktree.\n`);
+  process.exitCode = 2;
+}
+
+async function main() {
+  let event;
+  try {
+    const raw = readFileSync(0, 'utf8');
+    if (raw.trim() === '') return;
+    event = JSON.parse(raw);
+  } catch (error) {
+    // Stdin that cannot be read, or is not JSON, holds no call to check.
+    allowAfterCrash(error);
+    return;
+  }
+  const command = event?.tool_input?.command;
+  if (event?.tool_name !== 'Bash' || typeof command !== 'string') return;
+  const cwd = typeof event.cwd === 'string' ? event.cwd : process.cwd();
+  const mainRoot = ownMainCheckout();
+  try {
+    const { guardDecision } = await import('./guard-main-checkout-policy.mjs');
+    const decision = guardDecision({ command, cwd }, mainRoot, aliasOf);
+    if (decision.blocked) {
+      // exitCode, not exit(): exit() can cut off a stderr pipe write.
+      process.stderr.write(`${decision.reason}\n`);
+      process.exitCode = 2;
+    }
+  } catch (error) {
+    onCrash(error, { text: command, cwd }, mainRoot);
+  }
+}
+
+await main();

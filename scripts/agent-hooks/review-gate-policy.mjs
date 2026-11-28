@@ -1,7 +1,7 @@
 // @ts-check
 // Rules for the pre-PR review gate. See docs/agents/git-and-prs.md.
-// No I/O: the entry script (review-gate.mjs) reads files and git and passes
-// the results in, so every rule here is unit-tested.
+// No I/O: review-gate-run.mjs reads files and git and passes the results
+// in, so every rule here is unit-tested.
 
 import { flagSet, readApiCall, readGhFlags, urlPath } from './gh-flags.mjs';
 import {
@@ -61,7 +61,7 @@ export function isMcpCreatePr(name) {
  */
 
 /**
- * A tool call, as an adapter in review-gate.mjs reads it.
+ * A tool call, as TO_CALL in review-gate-run.mjs reads it.
  * @typedef {{ kind: 'shell', command: string }
  *   | { kind: 'mcp', input: Record<string, unknown> }} PrCall
  */
