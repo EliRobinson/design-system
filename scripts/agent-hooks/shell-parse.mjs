@@ -305,7 +305,7 @@ function readLevel(script, start, closer, scope, state) {
   // Group `id` is out of the level's groups. If it is a glob group, it closes
   // at its `)` at `end`, or ends without one when `end` is undefined.
   // Returns whether it was a glob group.
-  const closeGroupId = (/** @type {number} */ id, /** @type {number | undefined} */ end) => {
+  const closeGroupId = (/** @type {number} */ id, /** @type {number=} */ end = undefined) => {
     if (id === pastNestingLimit) pastNestingLimit = null;
     if (!glob.isOpen(id)) return false;
     if (end === undefined) {
@@ -373,7 +373,7 @@ function readLevel(script, start, closer, scope, state) {
   // where `coproc` reads its command.
   const trackCompound = (/** @type {string[]} */ front, /** @type {Coproc | null} */ coproc) => {
     if (COMPOUND_CLOSERS.has(argv[0] ?? '')) {
-      for (const id of closeGroups(compoundSizes.pop() ?? 1)) closeGroupId(id, undefined);
+      for (const id of closeGroups(compoundSizes.pop() ?? 1)) closeGroupId(id);
     }
     let opened = false;
     const open = (/** @type {number | null} */ subshell) => {
@@ -917,7 +917,7 @@ const keyOf = (scope) => scope.join('/');
  */
 
 /**
- * The commands of a script by the shell they run in, as a tree of shells.
+ * A tree of shells. `commands` holds the indexes in `earlier` of the commands run in each.
  * @typedef {{ shells: Map<number, ShellNode>, commands: number[] }} ShellNode
  */
 

@@ -207,6 +207,28 @@ describe('parseCommands', () => {
     expect(runTimePrograms(script)).toEqual(expected);
   });
 
+  // Each glob group built at run time gets its own mark, in the scope its code runs in.
+  const globMarks = (script: string) =>
+    parseCommands(script).filter(({ argv }) => argv[0] === GLOB_GROUP_WORD);
+
+  it('marks each glob group built at run time', () => {
+    expect(globMarks('x *($X) *($Y)')).toHaveLength(2);
+  });
+
+  it('marks a glob group built at run time in the subshell it runs in', () => {
+    const [ls] = parseCommands('(ls *($X))');
+    expect(globMarks('(ls *($X))').map(({ scope }) => scope[0])).toEqual([ls?.scope[0]]);
+  });
+
+  it('marks glob groups built at run time in a background job and a coproc', () => {
+    const script = 'x *($X) & coproc ls *($Y)';
+    const [x] = parseCommands(script);
+    expect(globMarks(script).map(({ scope, async }) => [scope[0] === x?.scope[0], async])).toEqual([
+      [true, true],
+      [false, true],
+    ]);
+  });
+
   it.each([
     'x *(N)',
     'x *(.om[1])',
@@ -264,10 +286,20 @@ describe('parseCommands', () => {
 
   // #480: past the depth, a plain eval's script is not read at all. Whoever
   // fixes #480 changes this test and the "does not catch" line in the docs.
-  it('reads nothing from a plain eval nested past the depth (#480)', () => {
+  const nestedEval = (depth: number) => {
     let script = 'y';
-    for (let depth = 0; depth <= MAX_EVAL_DEPTH; depth++) script = `eval ${quoteArgv([script])}`;
-    expect(parseCommands(script).map(({ argv }) => argv[0])).not.toContain('y');
+    for (let at = 0; at < depth; at++) script = `eval ${quoteArgv([script])}`;
+    return script;
+  };
+
+  it('reads a plain eval nested 4 deep', () => {
+    expect(parseCommands(nestedEval(4)).map(({ argv }) => argv[0])).toContain('y');
+  });
+
+  it('reads nothing from a plain eval nested past the depth, and marks nothing (#480)', () => {
+    const commands = parseCommands(nestedEval(MAX_EVAL_DEPTH + 1));
+    expect(commands.map(({ argv }) => argv[0])).not.toContain('y');
+    expect(commands.some(({ marks }) => marks.some(({ dynamic }) => dynamic))).toBe(false);
   });
 
   it('counts e strings past the work limit as built at run time', () => {
