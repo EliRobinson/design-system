@@ -65,7 +65,7 @@ Then say in your next message that you used it, and why. It covers only the comm
 - It reads aliases from this repo's git config, not from the config of a repo named with `-C`.
 - A `cd` that fails is read as if it worked. With `;` the next command then runs in the old folder.
 - It runs for Claude Code only. Codex, Gemini, Cursor and Copilot do not have it yet.
-- If the hook crashes, it allows the call and prints `guard-main-checkout: hook crashed` on stderr. A guard that refused every Bash call would leave no way to run the fix.
+- If the hook crashes, it blocks the call only when the call may write in the main checkout: it runs there, names a folder there, or holds `git` with a refused verb or `gh` with `checkout`. Any other call is allowed with `guard-main-checkout: hook crashed` on stderr, because a guard that refused every Bash call would leave no way to run the fix.
 
 ## Merge method: rebase by default, squash for a merge commit
 
