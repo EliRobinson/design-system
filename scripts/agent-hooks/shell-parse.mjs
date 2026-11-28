@@ -7,7 +7,8 @@
 
 import { posix } from 'node:path';
 
-import { ARRAY_ASSIGNMENT, ARRAY_DECLARERS, globQualifierCode } from './zsh-glob-qualifiers.mjs';
+import { BRACE_EXPANSION, EXPANSION_START, QUOTE_START } from './shell-lexemes.mjs';
+import { globGroupTracker } from './zsh-glob-qualifiers.mjs';
 
 /**
  * A simple command.
@@ -26,7 +27,8 @@ import { ARRAY_ASSIGNMENT, ARRAY_DECLARERS, globQualifierCode } from './zsh-glob
  *   may not exist yet when the next command runs. It is derived from `scope`.
  * - `marks` has one entry per `argv` word: whether the shell builds it at run
  *   time, and whether it may split into more words.
- * @typedef {{ argv: string[], env: string[], scope: number[], top: boolean, async: boolean, marks: WordMark[] }} Command
+ * - `origin` is `'glob'` for the `eval` of a zsh glob qualifier's `e` string.
+ * @typedef {{ argv: string[], env: string[], scope: number[], top: boolean, async: boolean, marks: WordMark[], origin?: 'glob' }} Command
  */
 
 /**
@@ -66,24 +68,21 @@ export function wordsOf(command) {
 
 // After a `$` inside double quotes: the expansions that still split.
 const SPLITS_IN_QUOTES = /^\$(@|\{[=(]|\{[^}]*\[[@*]\]|\w+\[[@*]\])/;
-// After a `$`: the characters that start an expansion.
-const EXPANSION_START = /^[\w{@*#?$!-]$/;
-// After an unquoted `$`: `$'...'` and `$"..."`, read as quotes.
-const QUOTE_START = /^['"]$/;
 // The word kept for a `(` that stands alone past where a command starts,
 // which zsh may read as a glob group (see WordMark).
 const GLOB_GROUP_WORD = '(...)';
-// An unquoted brace expansion, `{a,b}` or `{1..3}`; not gh's `{owner}`.
-const BRACE_EXPANSION = /^\{[^{}\s'"]*(,|\.\.)[^{}\s'"]*\}/;
 // The mark of a word the shell does not build at run time.
 const PLAIN_MARK = /** @type {WordMark} */ (Object.freeze({ dynamic: false, splits: false }));
 // The mark of a word built at run time that may split, such as `$X`.
 const RUN_TIME_MARK = /** @type {WordMark} */ (
   Object.freeze({ dynamic: true, splits: 'unquoted' })
 );
-// How many commands the glob qualifier reading may add to one parse. Past it,
-// a glob group counts as one command built at run time (#465).
-const GLOB_WORK_LIMIT = 500;
+// How deep `eval` and `bash -c` scripts are read.
+const MAX_EVAL_DEPTH = 5;
+// How many commands reading glob qualifiers' `e` strings may add to one
+// parse (#465). Past it, or past MAX_EVAL_DEPTH, an `e` string counts as a
+// command built at run time.
+const GLOB_WORK_LIMIT = 10000;
 
 /**
  * Whether a `(` glued to `word` opens an array, as in `a=(1 2)`: in an
@@ -102,53 +101,21 @@ function isArrayAssignment(word, argv) {
  * Whether a `(` may open a zsh glob group, whose qualifiers may run code: one
  * glued to a word that is not an array assignment, one that stands alone
  * past where a command starts, or one right after a glob group's `)`, as in
- * `(a|b)(e:...:)`.
- * @param {{ word: string | null, argv: string[], standalone: boolean, afterGlobGroup: boolean }} at
+ * `(a|b)(e:...:)`. `f()` is a function name.
+ * @param {{ next: string | undefined, word: string | null, argv: string[], standalone: boolean, afterGlobGroup: boolean }} at
  */
-function opensGlobGroup({ word, argv, standalone, afterGlobGroup }) {
+function opensGlobGroup({ next, word, argv, standalone, afterGlobGroup }) {
+  if (next === ')') return false;
   if (word !== null) return !isArrayAssignment(word, argv);
   return standalone || afterGlobGroup;
 }
 
 /**
- * The text of a glob group as zsh reads its qualifiers: its quotes removed.
- * `dynamic`: an expansion the shell runs first (`$X`, `"$X"`, `$(...)`,
- * backticks, `$'...'`, a brace expansion) builds part of it at run time, so
- * it may hold any qualifier.
- * @param {string} raw The source between the group's parentheses.
- * @returns {{ text: string, dynamic: boolean }}
+ * A command built at run time, one word long.
+ * @param {string} word
+ * @param {number[]} scope
  */
-export function readGlobGroupText(raw) {
-  let text = '';
-  let dynamic = false;
-  /** @type {string | null} */
-  let quote = null;
-  for (let i = 0; i < raw.length; i++) {
-    const ch = raw[i] ?? '';
-    const next = raw[i + 1] ?? '';
-    if (quote === "'") {
-      if (ch === "'") quote = null;
-      else text += ch;
-    } else if (ch === '\\') {
-      // In double quotes a backslash escapes only these; it stays before others.
-      if (quote === '"' && !/[$`"\\\n]/.test(next)) text += ch;
-      if (next !== '\n') text += next;
-      i++;
-    } else if (quote === null && QUOTE_START.test(ch)) {
-      quote = ch;
-    } else if (quote === '"' && ch === '"') {
-      quote = null;
-    } else {
-      const expansion = ch === '$' && (EXPANSION_START.test(next) || next === '(');
-      if (ch === '`' || expansion) dynamic = true;
-      // `$'...'` and `$"..."`, outside double quotes.
-      if (quote === null && ch === '$' && QUOTE_START.test(next)) dynamic = true;
-      if (quote === null && ch === '{' && BRACE_EXPANSION.test(raw.slice(i))) dynamic = true;
-      text += ch;
-    }
-  }
-  return { text, dynamic };
-}
+const runTimeCommand = (word, scope) => makeCommand([word], scope, [RUN_TIME_MARK]);
 
 /**
  * The words at the front of a command that the shell reads as keywords
@@ -214,18 +181,11 @@ function coprocOf(argv, { beforeSubshell }) {
 }
 
 /**
- * Hands out scope ids, unique within one parse, and keeps the ids of the
- * shells the line does not wait for: coprocesses and background jobs.
- * `glob` keeps the work the glob qualifier reading has done in the parse:
- * how many commands it added, and the `eval` commands it made for `e`
- * strings.
- * @typedef {{ last: number, async: Set<number>, glob: { work: number, evals: WeakSet<Command> } }} ScopeIds
- */
-
-/**
- * A closed zsh glob group: its source between the parentheses, and the scope
- * its qualifiers' code runs in.
- * @typedef {{ raw: string, at: number[] }} GlobGroup
+ * What one parse keeps across its levels. `last` hands out scope ids, unique
+ * within the parse; `async` keeps the ids of the shells the line does not
+ * wait for: coprocesses and background jobs. `globWork` counts the commands
+ * read from glob qualifiers' `e` strings.
+ * @typedef {{ last: number, async: Set<number>, globWork: number }} ParseState
  */
 
 /**
@@ -259,11 +219,11 @@ const HEREDOC = /^<<(-?)[ \t]*(?:'([^']*)'|"([^"]*)"|([^\s;&|()<>]+))/;
  * @param {number} start
  * @param {')' | '`' | null} closer
  * @param {number[]} scope The shells this level runs in.
- * @param {ScopeIds} ids
+ * @param {ParseState} state
  * @returns {{ commands: Command[], end: number }}
  */
-function readLevel(script, start, closer, scope, ids) {
-  const newScope = () => ++ids.last;
+function readLevel(script, start, closer, scope, state) {
+  const newScope = () => ++state.last;
   /** @type {Command[]} */
   const commands = [];
   /** @type {number[]} The open `(...)` groups and compound bodies. */
@@ -284,9 +244,7 @@ function readLevel(script, start, closer, scope, ids) {
     const closed = groups.splice(-count);
     const outer = listStarts.splice(-count)[0];
     if (outer !== undefined) listStart = outer;
-    // A glob group closed by anything but its `)` (a `}` read as a closer)
-    // is not read, so the groups inside it are read on their own.
-    for (const id of closed.reverse()) dropGlobGroup(id);
+    return closed;
   };
   /** @type {Array<{ delimiter: string, dash: boolean }>} */
   const heredocs = [];
@@ -304,13 +262,22 @@ function readLevel(script, start, closer, scope, ids) {
   // Whether the word being read has an unquoted `[`, which a later `]` makes
   // a filename pattern (see WordMark).
   let bracketOpen = false;
-  /** @type {Map<number, number>} Each open glob group's id, with where its `(` is. */
-  const globGroups = new Map();
-  /** @type {Map<number, GlobGroup[]>} The closed glob groups inside each open one. */
-  const innerGlobGroups = new Map();
-  // Whether the last character read is a `)` that closed a glob group. A `(`
-  // right after it opens another, as in zsh's `(a|b)(e:...:)`.
-  let closedGlobGroup = false;
+  // Adds the code a closed glob group's qualifiers run (see
+  // globGroupTracker). zsh runs it in the shell that expands the word, for
+  // each file the pattern matches, so it may not run at all: it goes in a
+  // compound body there (`at`), and a `cd` in it leaves the folder unknown.
+  // An `e` string is read as an `eval` script; code the parser cannot read is
+  // a command built at run time.
+  const glob = globGroupTracker(script, groups, ({ code, at }) => {
+    for (const each of code.scripts) {
+      commands.push({
+        ...makeCommand(['eval', each], at, [PLAIN_MARK, PLAIN_MARK]),
+        origin: 'glob',
+      });
+    }
+    for (const each of code.programs) commands.push(runTimeCommand(each, at));
+    if (code.unreadable || code.dynamic) commands.push(runTimeCommand(code.text, at));
+  });
 
   // Adds text to the word being read. Side effect: a `]` in it after an
   // unquoted `[` marks the word a filename pattern (see WordMark).
@@ -340,10 +307,10 @@ function readLevel(script, start, closer, scope, ids) {
   // Where the substitutions read in the current command's words start in
   // `commands`.
   let commandStart = 0;
-  // A shell id the line does not wait for, kept in `ids.async`.
+  // A shell id the line does not wait for, kept in `state.async`.
   const newAsyncScope = () => {
     const id = newScope();
-    ids.async.add(id);
+    state.async.add(id);
     return id;
   };
   // Puts `id` into the scope of each command, at depth `at`.
@@ -361,7 +328,9 @@ function readLevel(script, start, closer, scope, ids) {
   // ends the body pops both. `front`: the words past what `unwrap` drops,
   // where `coproc` reads its command.
   const trackCompound = (/** @type {string[]} */ front, /** @type {Coproc | null} */ coproc) => {
-    if (COMPOUND_CLOSERS.has(argv[0] ?? '')) closeGroups(compoundSizes.pop() ?? 1);
+    if (COMPOUND_CLOSERS.has(argv[0] ?? '')) {
+      for (const id of closeGroups(compoundSizes.pop() ?? 1)) glob.drop(id);
+    }
     let opened = false;
     const open = (/** @type {number | null} */ subshell) => {
       if (subshell !== null) openGroup(subshell);
@@ -444,55 +413,11 @@ function readLevel(script, start, closer, scope, ids) {
   };
   // Reads a nested script and keeps its source text in the current word.
   const readNested = (/** @type {number} */ from, /** @type {')' | '`'} */ close) => {
-    const level = readLevel(script, from, close, [...here(), newScope()], ids);
+    const level = readLevel(script, from, close, [...here(), newScope()], state);
+    // A loop, not a spread: a spread of a long list overflows the stack.
     for (const command of level.commands) commands.push(command);
     append(script.slice(from - (close === '`' ? 1 : 2), level.end));
     return level.end;
-  };
-  // Adds the code a glob group's qualifiers run, once its `)` has closed it
-  // (see globQualifierCode). zsh runs it in the shell that expands the word,
-  // for each file the pattern matches, so it may not run at all: it goes in
-  // a compound body there (`at`), and a `cd` in it leaves the folder unknown.
-  // In a coprocess's group it runs in the coprocess. An `e` string is read as
-  // an `eval` script; code the parser cannot read is a command built at run
-  // time. Past GLOB_WORK_LIMIT, a group is one command built at run time.
-  const pushGlobCode = (/** @type {GlobGroup} */ { raw, at }) => {
-    const { text, dynamic } = readGlobGroupText(raw);
-    if (ids.glob.work >= GLOB_WORK_LIMIT) {
-      commands.push(makeCommand([text], at, [RUN_TIME_MARK]));
-      return;
-    }
-    const { scripts, programs, unreadable } = globQualifierCode(text);
-    const added = [
-      ...scripts.map((each) => makeCommand(['eval', each], at, [PLAIN_MARK, PLAIN_MARK])),
-      ...programs.map((each) => makeCommand([each], at, [RUN_TIME_MARK])),
-      ...(unreadable || dynamic ? [makeCommand([text], at, [RUN_TIME_MARK])] : []),
-    ];
-    for (const command of added) {
-      if (command.argv[0] === 'eval') ids.glob.evals.add(command);
-      commands.push(command);
-    }
-    ids.glob.work += added.length;
-  };
-  // Reads a closed glob group's code, or keeps it for the glob group around
-  // it. zsh runs an inner group's code only from an `e` string of the group
-  // around it, whose `eval` reads the inner group again; reading it at every
-  // level too made the work grow with the fifth power of the depth.
-  const readGlobCode = (/** @type {GlobGroup} */ group) => {
-    const outer = [...groups].reverse().find((open) => globGroups.has(open));
-    if (outer === undefined) pushGlobCode(group);
-    else innerGlobGroups.set(outer, [...(innerGlobGroups.get(outer) ?? []), group]);
-  };
-  // A glob group that will not be read: the groups kept inside it are.
-  const dropGlobGroup = (/** @type {number} */ id) => {
-    if (!globGroups.delete(id)) return;
-    const inner = innerGlobGroups.get(id) ?? [];
-    innerGlobGroups.delete(id);
-    for (const group of inner) readGlobCode(group);
-  };
-  // Drops the glob groups still open where this level ends.
-  const dropOpenGlobGroups = () => {
-    for (const id of [...groups].reverse()) dropGlobGroup(id);
   };
   // Skips `((...))` or `$((...))`, whose `<<` is a shift, not a heredoc.
   const skipArithmetic = (/** @type {number} */ from, /** @type {number} */ open) => {
@@ -526,15 +451,14 @@ function readLevel(script, start, closer, scope, ids) {
   while (i < script.length) {
     const ch = script[i] ?? '';
     const next = script[i + 1];
-    const afterGlobGroup = closedGlobGroup;
-    closedGlobGroup = false;
+    const afterGlobGroup = glob.takeClosed();
     const arithmetic =
       (ch === '$' && next === '(' && script[i + 2] === '(') ||
       (ch === '(' && next === '(' && word === null);
 
     if (closer === '`' && ch === '`') {
       endCommand();
-      dropOpenGlobGroups();
+      glob.dropAll();
       return { commands, end: i + 1 };
     }
     if (ch === ')') {
@@ -542,17 +466,10 @@ function readLevel(script, start, closer, scope, ids) {
       // with it a `coproc`'s subshell, before this `)` closes the `$(`.
       endCommand();
       if (closer === ')' && groups.length === 0) return { commands, end: i + 1 };
-      const closing = groups.at(-1) ?? 0;
-      const globStart = globGroups.get(closing);
-      // Its own `e` strings read the groups inside it.
-      globGroups.delete(closing);
-      innerGlobGroups.delete(closing);
-      closeGroups(1);
-      if (globStart !== undefined) {
-        const at = [...here(), ...(ids.async.has(closing) ? [closing] : []), -newScope()];
-        readGlobCode({ raw: script.slice(globStart + 1, i), at });
-      }
-      closedGlobGroup = globStart !== undefined;
+      const [closing = 0] = closeGroups(1);
+      // A coprocess's group runs its glob code in the coprocess.
+      const inGroup = state.async.has(closing) ? [closing] : [];
+      glob.close(closing, i, () => [...here(), ...inGroup, -newScope()]);
       i++;
       continue;
     }
@@ -643,11 +560,9 @@ function readLevel(script, start, closer, scope, ids) {
       // assignment's place is an array.
       const standalone =
         word === null && !redirectTarget && leadingKeywords(argv).length < argv.length;
-      const glob = next !== ')' && opensGlobGroup({ word, argv, standalone, afterGlobGroup });
-      if (next !== ')') {
-        if (word !== null) expands('unquoted');
-        else if (standalone) pushWord(GLOB_GROUP_WORD, RUN_TIME_MARK);
-      }
+      const opensGlob = opensGlobGroup({ next, word, argv, standalone, afterGlobGroup });
+      if (opensGlob && word !== null) expands('unquoted');
+      else if (opensGlob && standalone) pushWord(GLOB_GROUP_WORD, RUN_TIME_MARK);
       // After any `coproc`, the group runs in a coprocess: it is the
       // coprocess in `coproc ( ... )` and `coproc NAME ( ... )`, inside one in
       // `coproc { (...); }`, and in `coproc x a(...)`, which zsh may read as a
@@ -655,7 +570,7 @@ function readLevel(script, start, closer, scope, ids) {
       const coproc = endCommand(null, { beforeSubshell: true });
       const id = coproc === null ? newScope() : newAsyncScope();
       openGroup(id);
-      if (glob) globGroups.set(id, i);
+      if (opensGlob) glob.open(id, i);
       i++;
     } else if (ch === '\n') {
       endCommand('\n');
@@ -679,7 +594,7 @@ function readLevel(script, start, closer, scope, ids) {
     }
   }
   endCommand();
-  dropOpenGlobGroups();
+  glob.dropAll();
   return { commands, end: script.length };
 }
 
@@ -737,6 +652,19 @@ const WRAPPERS = {
 };
 export const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh']);
 const ASSIGNMENT = /^[A-Za-z_]\w*=/;
+// The word before a `(` that makes it an array, as in `a=(1 2)` or `a+=(1)`.
+const ARRAY_ASSIGNMENT = /^[A-Za-z_]\w*(\[[^\]]*\])?\+?=$/;
+// Commands whose `NAME=(...)` words are array assignments in zsh.
+const ARRAY_DECLARERS = new Set([
+  'local',
+  'typeset',
+  'declare',
+  'export',
+  'readonly',
+  'integer',
+  'float',
+  'private',
+]);
 
 /**
  * Drops env assignments, shell keywords, `function <name>`, and wrapper
@@ -801,43 +729,44 @@ export function quoteArgv(argv) {
  * @param {string} script
  * @param {number} [depth]
  * @param {number[]} [scope]
- * @param {ScopeIds} [ids]
+ * @param {ParseState} [state]
  * @returns {Command[]}
  */
 export function parseCommands(
   script,
   depth = 0,
   scope = [],
-  ids = { last: 0, async: new Set(), glob: { work: 0, evals: new WeakSet() } },
+  state = { last: 0, async: new Set(), globWork: 0 },
 ) {
-  if (depth > 5) return [];
+  if (depth > MAX_EVAL_DEPTH) return [];
   /** @type {Command[]} */
   const all = [];
+  // A loop, not a spread: a spread of a long list overflows the stack.
   const add = (/** @type {Command[]} */ list) => {
     for (const command of list) all.push(command);
   };
-  for (const command of readLevel(script, 0, null, scope, ids).commands) {
+  for (const command of readLevel(script, 0, null, scope, state).commands) {
     all.push(command);
     const { argv } = command;
     const shellScript = shellScriptOf(argv);
     if (shellScript !== null) {
-      add(parseCommands(shellScript, depth + 1, [...command.scope, ++ids.last], ids));
-    } else if (ids.glob.evals.has(command)) {
-      // A glob qualifier's `e` string: past the depth or the work it may
-      // take, it is a command built at run time.
-      const tooMuch = depth >= 5 || ids.glob.work >= GLOB_WORK_LIMIT;
-      const inner = tooMuch
-        ? [makeCommand(argv.slice(1), command.scope, [RUN_TIME_MARK])]
-        : parseCommands(argv.slice(1).join(' '), depth + 1, command.scope, ids);
-      ids.glob.work += inner.length;
-      add(inner);
+      add(parseCommands(shellScript, depth + 1, [...command.scope, ++state.last], state));
     } else if (argv[0] === 'eval') {
-      add(parseCommands(argv.slice(1).join(' '), depth + 1, command.scope, ids));
+      // A glob qualifier's `e` string past the depth or the work it may take
+      // is a command built at run time.
+      const fromGlob = command.origin === 'glob';
+      const capped = fromGlob && (depth >= MAX_EVAL_DEPTH || state.globWork >= GLOB_WORK_LIMIT);
+      const text = argv.slice(1).join(' ');
+      const inner = capped
+        ? [runTimeCommand(text, command.scope)]
+        : parseCommands(text, depth + 1, command.scope, state);
+      if (fromGlob) state.globWork += inner.length;
+      add(inner);
     }
   }
   for (const command of all) {
     command.top = command.scope.length === 0;
-    command.async = command.scope.some((id) => ids.async.has(id));
+    command.async = command.scope.some((id) => state.async.has(id));
   }
   return all;
 }
