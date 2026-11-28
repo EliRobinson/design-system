@@ -493,7 +493,6 @@ function refusedIn(line, cwd, mainRoot, aliasOf, depth, added) {
   const inMain = (/** @type {string | null} */ folder) => inMainCheckout(folder, mainRoot, added);
   for (const item of placeCommands(line, cwd)) {
     const { command, folder } = item;
-    const placed = placementOf(item);
     if (command.env.includes(`${OVERRIDE}=1`)) continue;
     if (isGhPrCheckout(command.argv)) {
       if (inMain(folder)) return '`gh pr checkout`';
@@ -502,7 +501,8 @@ function refusedIn(line, cwd, mainRoot, aliasOf, depth, added) {
     const call = gitCallOf(command.argv, command.env);
     if (call === null) continue;
     const resolved = resolveAliases(call, aliasOf);
-    const folders = foldersOf(resolved.git, placed);
+    // Only for a git call: working it out for every command is quadratic.
+    const folders = foldersOf(resolved.git, placementOf(item));
     if (resolved.kind === 'shell') {
       // A shell alias runs from the top of the checkout git was in.
       const refused =

@@ -43,6 +43,11 @@ const ARGUMENT_QUALIFIERS = {
   P: { number: null, string: true },
 };
 
+// Runs of characters readGlobGroupText copies as they are: inside single
+// quotes, and elsewhere.
+const SINGLE_QUOTED_RUN = /[^']+/y;
+const PLAIN_RUN = /[^\\'"$`{]+/y;
+
 // The closing delimiter of a qualifier string that a bracket opens.
 /** @type {Record<string, string>} */
 const CLOSING_DELIMITERS = { '[': ']', '{': '}', '<': '>', '(': ')' };
@@ -165,6 +170,14 @@ export function readGlobGroupText(raw) {
     return found === -1 ? Infinity : found;
   };
   for (let i = 0; i < raw.length; i++) {
+    const run = quote === "'" ? SINGLE_QUOTED_RUN : PLAIN_RUN;
+    run.lastIndex = i;
+    const plain = run.exec(raw)?.[0];
+    if (plain !== undefined) {
+      text += plain;
+      i += plain.length - 1;
+      continue;
+    }
     const ch = raw[i] ?? '';
     const next = raw[i + 1] ?? '';
     if (quote === "'") {
@@ -217,18 +230,16 @@ export function readGlobGroupText(raw) {
  * around that group. So a closed group inside an open glob group is kept
  * until the open one closes or ends; see `close`.
  * @param {string} script
- * @param {() => number[]} outerIds The level's open groups, innermost last.
+ * @param {number[]} groups The level's open groups, innermost last.
  * @param {(group: ClosedGlobGroup) => void} read
- * @param {(chars: number) => void} count Counts the characters read.
  */
-export function globGroupTracker(script, outerIds, read, count) {
+export function globGroupTracker(script, groups, read) {
   /** @type {Map<number, { start: number, standalone: boolean, inner: ClosedGlobGroup[] }>} */
   const open = new Map();
   // The innermost open glob group, if any.
   const outer = () => {
-    const ids = outerIds();
-    for (let i = ids.length - 1; i >= 0; i--) {
-      const entry = open.get(ids[i] ?? 0);
+    for (let i = groups.length - 1; i >= 0; i--) {
+      const entry = open.get(groups[i] ?? 0);
       if (entry) return entry;
     }
     return undefined;
@@ -248,6 +259,8 @@ export function globGroupTracker(script, outerIds, read, count) {
     },
     /** @param {number} id */
     isOpen: (id) => open.has(id),
+    /** Whether `id` is an open glob group that may be a list. @param {number} id */
+    isList: (id) => open.get(id)?.standalone === true,
     /**
      * A glob group opens at `start`. `standalone`: its `(` stands alone, so
      * it may be a list or a subshell.
@@ -267,22 +280,22 @@ export function globGroupTracker(script, outerIds, read, count) {
      */
     close(id, end, at) {
       const entry = open.get(id);
-      if (!entry) return;
+      if (!entry) throw new Error(`glob group ${id} is not open`);
       open.delete(id);
-      const raw = script.slice(entry.start + 1, end);
-      count(raw.length);
-      const { text, dynamic } = readGlobGroupText(raw);
+      const { text, dynamic } = readGlobGroupText(script.slice(entry.start + 1, end));
       const code = { text, dynamic, ...globQualifierCode(text) };
       // With an `e` string, its eval reads the inner groups again. Without
-      // one, or in a group that may be a list or a subshell, the inner groups
-      // run in the shell around this group, so they are read here, under its
-      // scope; a standalone group's own `e` strings never run then.
-      const list = entry.standalone && entry.inner.length > 0;
-      if (list || code.scripts.length === 0) {
+      // one, the inner groups run in the shell around this group, so they are
+      // read here, under its scope. So are they in a group that may be a list
+      // or a subshell, whose own `e` strings never run then.
+      const mayRunInner = entry.standalone && entry.inner.length > 0;
+      const ownScripts = mayRunInner ? [] : code.scripts;
+      const runsInner = mayRunInner || ownScripts.length === 0;
+      if (runsInner) {
         for (const group of entry.inner) group.at = at;
         file(entry.inner);
       }
-      file([{ code: list ? { ...code, scripts: [] } : code, at }]);
+      file([{ code: { ...code, scripts: ownScripts }, at }]);
     },
     /** The open glob group `id`, already out of the level's groups, ends without its `)`. @param {number} id */
     drop(id) {
