@@ -1,7 +1,5 @@
 // @vitest-environment node
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   REVIEWERS,
@@ -25,16 +23,12 @@ import {
   handbackResultLine,
   promptLine,
 } from './review-gate-fixtures';
-import { NESTED_GLOB_NAMES, nestedGlob } from './shell-parse-fixtures';
-import { GLOB_WORK_LIMIT } from './shell-parse.mjs';
-
-// This file lives at scripts/agent-hooks/, two levels below the repo root.
-// Reads below are repo-root-relative, not cwd-relative: nx runs this
-// project's `test` target with cwd `scripts/`, and vitest's own root is the
-// directory holding this config, so a plain relative path would resolve
-// against the wrong directory.
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const atRoot = (path: string) => join(repoRoot, path);
+import {
+  NESTED_GLOB_NAMES,
+  atRoot,
+  nestedGlob,
+  nestedSubstitutionGlobs,
+} from './shell-parse-fixtures';
 
 const kinds = (script: string) => findPrCommands(script).map((pr) => pr.kind);
 // A glob qualifier group whose e string opens a PR (#465).
@@ -91,7 +85,7 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['in a glob qualifier’s e string', `ls *(e:"${CREATE} -t x -b y":)`],
     ['in a glob qualifier’s e[ ] string', `ls *(e['${CREATE} -F b.md'])`],
     ['in a glob qualifier’s sort e string', `ls *(oe:'${CREATE} -F b.md':)`],
-    ['in an e string after a glob group', `ls (a|b)(e:'${CREATE} -F b.md':)`],
+    ['in an e string after a glob group', `ls (a|b)${E_CREATE}`],
     ['in an e string in a repeat subshell', `repeat 1 (ls *${E_CREATE})`],
     ['in an e string in a coproc subshell', `coproc (ls *${E_CREATE})`],
     ['in an e string in a for list', `for f (*${E_CREATE}) :`],
@@ -106,10 +100,8 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['after an e-like word in a select list', `select f (e:true: *${E_CREATE}) echo`],
     ['after an e-like command in a repeat subshell', `repeat 1 (e:true:; ls *${E_CREATE})`],
     ['after an e-like command in a coproc subshell', `coproc (e:true:; ls *${E_CREATE})`],
-    [
-      'cheap glob groups do not use up the e string cap',
-      `ls ${'x(+a)'.repeat(GLOB_WORK_LIMIT + 1)} *${E_CREATE}`,
-    ],
+    ['in a glob group at a word start in a for list', `for f ( (a)(e:${GH}\\ pr\\ create:) ) echo`],
+    ['after many cheap glob groups', `ls ${'x(+a)'.repeat(500)} *${E_CREATE}`],
   ])('%s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
   });
@@ -282,6 +274,13 @@ describe('findPrCommands: reads pr create flags', () => {
   // Deeply nested glob groups do not stop the parser (#465).
   it.each(NESTED_GLOB_NAMES)('finds a PR open before a deeply nested glob group: %s', (form) => {
     expect(kinds(`${CREATE} -F b.md; ${nestedGlob(form)}`)).toEqual(['pr-create']);
+  });
+
+  // Main took seconds on this shape: placing each command was quadratic.
+  it('finds PR commands in nested glob groups with a $(...) in a time budget', () => {
+    const start = performance.now();
+    findPrCommands(nestedSubstitutionGlobs(1000));
+    expect(performance.now() - start).toBeLessThan(5000);
   });
 
   it('reads every cd form the guard reads, the same way', () => {

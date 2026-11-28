@@ -1,9 +1,8 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  GLOB_GROUP_WORD,
   GLOB_NESTING_LIMIT,
   GLOB_WORK_LIMIT,
   MAX_EVAL_DEPTH,
@@ -11,19 +10,12 @@ import {
   cdTarget,
   cdWord,
   ghCommand,
+  newParseState,
   parseCommands,
   quoteArgv,
   shellScriptOf,
 } from './shell-parse.mjs';
-import { NESTED_GLOB_NAMES, nestedGlobOf, unclosedGlobChain } from './shell-parse-fixtures';
-
-// Repo-root-relative, like review-gate-policy.test.ts: vitest's cwd is not the root.
-const gitAndPrs = join(
-  dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-  'docs/agents/git-and-prs.md',
-);
+import { atRoot, nestedPlainGroups, unclosedGlobChain } from './shell-parse-fixtures';
 
 const argvs = (script: string) => parseCommands(script).map(({ argv }) => argv);
 const names = (script: string) => argvs(script).map((argv) => argv[0]);
@@ -168,6 +160,7 @@ describe('parseCommands', () => {
     "echo `x a(b(e:'y a':)`",
     "case w in w) x a(b(e:'y a':) ;; esac",
     "for f (*(e:'y a':)) :",
+    "for f ( (a)(e:'y a':) ) echo",
   ])('reads the e string of a glob qualifier as commands: %s', (script) => {
     const commands = parseCommands(script);
     const y = commands.findIndex(({ argv }) => argv[0] === 'y');
@@ -192,18 +185,24 @@ describe('parseCommands', () => {
     ['x *(+fn)', ['fn']],
     ['x *(+fn:t)', ['fn']],
     ["x *(+'fn')", ['fn']],
-    ['x *($X)', ['$X']],
-    ['x *(e:"$X":)', ['$X', 'e:$X:']],
-    ['x *(e:$X:)', ['$X', 'e:$X:']],
+    ['x *($X)', [GLOB_GROUP_WORD]],
+    ['x *(e:"$X":)', ['$X', GLOB_GROUP_WORD]],
+    ['x *(e:$X:)', ['$X', GLOB_GROUP_WORD]],
     // The e string `y` runs, and so does the substitution in it first.
-    ['x *(e:`y`:)', ['`y`', 'e:`y`:']],
-    ["x *(e:$'y':)", ['$y', 'e:$y:']],
-    ['x *(e:{y,z}:)', ['{y,z}', 'e:{y,z}:']],
-    ["x *({'d'..f}1y)", ['{d..f}1y']],
-    ['x *(e:y)', ['e:y']],
-    ['x *(e)', ['e']],
+    ['x *(e:`y`:)', ['`y`', GLOB_GROUP_WORD]],
+    ["x *(e:$'y':)", ['$y', GLOB_GROUP_WORD]],
+    ['x *(e:{y,z}:)', ['{y,z}', GLOB_GROUP_WORD]],
+    ["x *({'d'..f}1y)", [GLOB_GROUP_WORD]],
+    ['x *(e:y)', [GLOB_GROUP_WORD]],
+    ['x *(e)', [GLOB_GROUP_WORD]],
   ])('reads a glob qualifier it cannot follow as built at run time: %s', (script, expected) => {
     expect(runTimePrograms(script)).toEqual(expected);
+  });
+
+  // One command built at run time stands for all of a level's glob groups:
+  // any one makes the bypass check read the whole script.
+  it('counts glob groups built at run time once in a level', () => {
+    expect(runTimePrograms('x *($X) *($Y); y *(e)')).toEqual([GLOB_GROUP_WORD]);
   });
 
   it.each([
@@ -250,24 +249,16 @@ describe('parseCommands', () => {
   });
 
   // Each nested group is read once, from the e string around it, and each
-  // group's text once (#465). The work, the characters the parse reads,
-  // grows with the length of the script, not faster.
-  const workOf = (script: string) => {
-    const state = { last: 0, async: new Set<number>(), globWork: 0, read: 0 };
-    parseCommands(script, 0, [], state);
-    return state.read;
-  };
+  // group's text once (#465). Linear work keeps the hooks inside their
+  // timeouts; quadratic work on these took minutes.
   it.each([
-    ['nested groups', (n: number) => `ls ${'a('.repeat(n)}${')'.repeat(n)}`],
-    [
-      'nested groups with e strings',
-      (n: number) => `ls ${'a(e:true:b('.repeat(n)}${')'.repeat(2 * n)}`,
-    ],
-    ['glob groups that never close', unclosedGlobChain],
-    ...NESTED_GLOB_NAMES.map((form) => [form, (n: number) => nestedGlobOf(form, n)] as const),
-  ])('reads %s in work linear in the script length', (_, make) => {
-    const n = 500;
-    expect(workOf(make(2 * n)) / workOf(make(n))).toBeLessThan(2.5);
+    ['nested groups', nestedPlainGroups(8000)],
+    ['nested groups with e strings', `ls ${'a(e:true:b('.repeat(3000)}${')'.repeat(6000)}`],
+    ['glob groups that never close', unclosedGlobChain(8000)],
+  ])('parses %s in a time budget', (_, script) => {
+    const start = performance.now();
+    parseCommands(script);
+    expect(performance.now() - start).toBeLessThan(5000);
   });
 
   it('counts e strings past the work limit as built at run time', () => {
@@ -275,11 +266,24 @@ describe('parseCommands', () => {
     expect(runTimePrograms(script).at(-1)).toBe('y');
   });
 
-  it('counts a glob group nested past the limit as built at run time', () => {
-    // The innermost `a()` is a function name, not a group.
-    const n = GLOB_NESTING_LIMIT + 2;
-    const script = `x ${'a('.repeat(n)}${')'.repeat(n)}`;
-    expect(parseCommands(script).filter(({ argv }) => argv[0] === '(...)')).toHaveLength(1);
+  it('does not count cheap glob groups toward the e string limit', () => {
+    const script = `ls ${'x(+a)'.repeat(GLOB_WORK_LIMIT + 1)} *(e:'y':)`;
+    const y = parseCommands(script).find(({ argv }) => argv[1] === 'y');
+    expect(y?.origin).toBe('glob');
+  });
+
+  const nestingMarkers = (script: string) =>
+    parseCommands(script).filter(({ argv }) => argv[0] === GLOB_GROUP_WORD).length;
+
+  // The innermost `a()` is a function name, not a group, so 2 more than the limit.
+  it.each([
+    [nestedPlainGroups(GLOB_NESTING_LIMIT + 2), 1],
+    [
+      `${nestedPlainGroups(GLOB_NESTING_LIMIT + 2)}; ${nestedPlainGroups(GLOB_NESTING_LIMIT + 2)}`,
+      2,
+    ],
+  ])('counts each glob group nest past the limit as built at run time', (script, markers) => {
+    expect(nestingMarkers(script)).toBe(markers);
   });
 
   it('marks an array assignment as built at run time, as before glob groups were read', () => {
@@ -289,13 +293,21 @@ describe('parseCommands', () => {
     ]);
   });
 
+  it('takes a parse state from newParseState', () => {
+    const state = newParseState();
+    parseCommands("x *(e:'y':)", 0, [], state);
+    expect(state.globWork).toBe(1);
+  });
+
   // The limits the hook docs name are the ones the parser uses.
   it.each([
-    [`up to ${MAX_EVAL_DEPTH} levels`],
-    [`${GLOB_WORK_LIMIT.toLocaleString('en-US')} commands`],
-    [`more than ${GLOB_NESTING_LIMIT} deep`],
+    [`Past ${MAX_EVAL_DEPTH} levels of nested \`eval\` or \`bash -c\``],
+    [
+      `past ${GLOB_WORK_LIMIT.toLocaleString('en-US')} commands in all the \`e\` strings one call reads`,
+    ],
+    [`a glob group nested more than ${GLOB_NESTING_LIMIT} deep in another`],
   ])('names its limit in git-and-prs.md: %s', (phrase) => {
-    expect(readFileSync(gitAndPrs, 'utf8')).toContain(phrase);
+    expect(readFileSync(atRoot('docs/agents/git-and-prs.md'), 'utf8')).toContain(phrase);
   });
 
   // bash's `coproc [NAME] command` (#468). zsh reads only the forms with no NAME.

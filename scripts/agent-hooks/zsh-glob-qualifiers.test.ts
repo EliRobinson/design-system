@@ -65,4 +65,14 @@ describe('readGlobGroupText', () => {
   ])('%s', (raw, expected) => {
     expect(readGlobGroupText(raw)).toEqual(expected);
   });
+
+  // Each brace test reads only up to its `}`, so the text is read once (#465).
+  it.each([
+    ['unclosed braces', '{'.repeat(200_000)],
+    ['brace expansions', '{a,b}'.repeat(200_000)],
+  ])('reads %s in a time budget', (_, raw) => {
+    const start = performance.now();
+    readGlobGroupText(raw);
+    expect(performance.now() - start).toBeLessThan(5000);
+  });
 });

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { OVERRIDE, guardDecision, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
-import { NESTED_GLOB_NAMES, nestedGlob } from './shell-parse-fixtures';
+import { NESTED_GLOB_NAMES, nestedGlob, nestedSubstitutionGlobs } from './shell-parse-fixtures';
 
 // On-disk fixtures, shaped the way git lays them out:
 //   main/          a main checkout (`.git` is a directory)
@@ -489,6 +489,13 @@ describe('what the parser sees', () => {
 
   it.each(NESTED_GLOB_NAMES)('refuses a commit before a deeply nested glob group: %s', (form) => {
     expect(refused(`git commit -m x; ${nestedGlob(form)}`)).toBe(true);
+  });
+
+  // Main took seconds on this shape: placing each command was quadratic.
+  it('decides on nested glob groups with a $(...) in a time budget', () => {
+    const start = performance.now();
+    decide(nestedSubstitutionGlobs(1000));
+    expect(performance.now() - start).toBeLessThan(5000);
   });
 
   it.each([
