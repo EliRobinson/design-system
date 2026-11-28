@@ -304,6 +304,8 @@ function readLevel(script, start, closer, scope, state) {
   // Where the `)` that last closed a glob group is. A `(` right after it
   // opens another, as in zsh's `(a|b)(e:...:)`.
   let globClosedAt = -1;
+  // Whether a glob group has opened past GLOB_NESTING_LIMIT in this level.
+  let pastNestingLimit = false;
   // Ends the level at `end`: the glob groups still open end without their
   // `)`, and the characters read are counted.
   const finish = (/** @type {number} */ end) => {
@@ -605,7 +607,9 @@ function readLevel(script, start, closer, scope, state) {
       const id = coproc === null ? newScope() : newAsyncScope();
       openGroup(id);
       if (opensGlob && glob.depth >= GLOB_NESTING_LIMIT) {
-        commands.push(runTimeCommand(GLOB_GROUP_WORD, here()));
+        // One command built at run time stands for every group past it.
+        if (!pastNestingLimit) commands.push(runTimeCommand(GLOB_GROUP_WORD, here()));
+        pastNestingLimit = true;
       } else if (opensGlob) {
         glob.open(id, i, standalone);
       }
