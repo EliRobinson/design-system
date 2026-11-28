@@ -1,0 +1,112 @@
+// @ts-check
+// What the agent hooks do when they fail (#479): the shared message, and the
+// guard's crash fallback. This file imports no shell parser and no policy,
+// so the hooks can still load it when those throw while they load or run.
+// See docs/agents/git-and-prs.md and docs/agents/git-workflow.md.
+
+import { homedir } from 'node:os';
+
+import { inMainCheckout, truePath } from './checkouts.mjs';
+
+/**
+ * Git verbs that change the working tree, the index, or the checked-out
+ * branch. guard-main-checkout-policy.mjs pairs each with the test for whether
+ * a call of it does. Everything else is allowed: a blocklist, because a false
+ * refusal on a harmless read is how a guard gets switched off. Absent on
+ * purpose:
+ * - `fetch`, `push` and `branch`: they change no working tree, and the
+ *   coordinator runs them in the main checkout.
+ * - `update-ref` and `symbolic-ref`: plumbing no agent workflow uses, and
+ *   `git symbolic-ref HEAD` is a common read.
+ */
+export const MUTATING_GIT_VERB_NAMES = [
+  'add',
+  'am',
+  'checkout',
+  'cherry-pick',
+  'clean',
+  'commit',
+  'merge',
+  'mv',
+  'pull',
+  'rebase',
+  'reset',
+  'restore',
+  'revert',
+  'rm',
+  'switch',
+  'read-tree',
+  'checkout-index',
+  'update-index',
+  'stash',
+  'bisect',
+  'sparse-checkout',
+  'submodule',
+  'apply',
+  'worktree',
+];
+
+/**
+ * The refusal for a call a hook failed to read, the same in both hooks.
+ * @param {unknown} error
+ */
+export function hookFailed(error) {
+  const why = error instanceof Error ? error.message : String(error);
+  return [
+    `The hook failed (${why}), so this call is blocked.`,
+    'File an issue in this repo (label area:ci) with the shape of the command, never secrets or tokens.',
+    'A simpler command may run.',
+  ].join(' ');
+}
+
+/** @param {string} text */
+const escaped = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const WORD_EDGE = String.raw`(?<![\w.-])`;
+const WORD_END = String.raw`(?![\w.-])`;
+const GIT_WORD = new RegExp(`${WORD_EDGE}git${WORD_END}`);
+const GH_WORD = new RegExp(`${WORD_EDGE}gh${WORD_END}`);
+const CHECKOUT_WORD = new RegExp(`${WORD_EDGE}checkout${WORD_END}`);
+const WRITE_VERB_WORD = new RegExp(
+  `${WORD_EDGE}(?:${MUTATING_GIT_VERB_NAMES.map(escaped).join('|')})${WORD_END}`,
+);
+// A path in raw text runs up to the first character a shell would split on.
+const PATH_TAIL = String.raw`[^\s'"\x60;&|()<>]*`;
+
+/**
+ * The ways raw text may spell the main checkout: its real path, and, when it
+ * is under the home folder, `~/`, `$HOME/` and `${HOME}/` forms of it.
+ * @param {string} mainRoot
+ * @param {string} home
+ */
+function spellingsOf(mainRoot, home) {
+  const realHome = truePath(home);
+  if (!mainRoot.startsWith(`${realHome}/`)) return [mainRoot];
+  const below = mainRoot.slice(realHome.length + 1);
+  return [mainRoot, `~/${below}`, `$HOME/${below}`, `\${HOME}/${below}`];
+}
+
+/**
+ * Whether a Bash call may write in the main checkout, read from the raw text
+ * alone, with no shell parser. The guard asks this only when its parser or
+ * policy failed. It errs towards yes: the call runs in the main checkout, or
+ * the text names a folder in it (by its path, or by a `~/`, `$HOME/` or
+ * `${HOME}/` path), or holds `git` with any verb in
+ * {@link MUTATING_GIT_VERB_NAMES}, or `gh` with `checkout`. It does not
+ * catch a relative path such as `cd ../..`, or a path in another variable.
+ * @param {{ text: string, cwd: string }} input
+ * @param {string | null} mainRoot Null counts every main checkout.
+ * @param {string} [home] The home folder. Tests pass their own.
+ */
+export function mayWriteMainCheckout({ text, cwd }, mainRoot, home = homedir()) {
+  if (inMainCheckout(cwd, mainRoot, [])) return true;
+  if (mainRoot !== null) {
+    for (const spelling of spellingsOf(mainRoot, home)) {
+      for (const [path] of text.matchAll(new RegExp(`${escaped(spelling)}${PATH_TAIL}`, 'g'))) {
+        if (inMainCheckout(mainRoot + path.slice(spelling.length), mainRoot, [])) return true;
+      }
+    }
+  }
+  if (GIT_WORD.test(text) && WRITE_VERB_WORD.test(text)) return true;
+  return GH_WORD.test(text) && CHECKOUT_WORD.test(text);
+}

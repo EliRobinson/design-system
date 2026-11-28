@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { withoutGitRepoEnv } from './git-env.mjs';
+import { CRASH_ON_LOAD, CRASH_ON_PARSE } from './crash-fixture/node-args';
 import { REVIEWERS } from './review-gate-policy.mjs';
 import { CREATE, GH, filledReview, handbackLine } from './review-gate-fixtures';
 
@@ -14,8 +15,6 @@ import { CREATE, GH, filledReview, handbackLine } from './review-gate-fixtures';
 // review-gate-policy.test.ts.
 
 const HOOK = fileURLToPath(new URL('./review-gate.mjs', import.meta.url));
-// Loads the hook with shell-parse functions that throw. See crash-fixture/.
-const CRASH = ['--import', fileURLToPath(new URL('./crash-fixture/register.mjs', import.meta.url))];
 
 let repo: string;
 
@@ -382,39 +381,70 @@ describe('other tools check the body, and refuse merge bypasses', () => {
 
 describe('when the shell parser throws', () => {
   const FAILED =
-    /^Blocked by the review gate\. The hook failed \(injected parser failure in (findBypass|prCommandsOf)\), so this call is blocked\. File an issue .*never secrets/;
+    /^Blocked by the review gate\. The hook failed \(injected parser failure in (findBypass|prCommandsOf)\), so this call is blocked\. File an issue in this repo \(label area:ci\) .*never secrets or tokens\. A simpler command may run\.$/;
 
-  it.each([
-    ['a merge bypass', `${GH} pr merge 5 --admin`],
-    ['a PR open', `${CREATE} -F body.md`],
-    ['a plain read', 'ls -la'],
-  ])('blocks %s with exit 2', (_name, command) => {
-    const result = run('claude', bash(command), CRASH);
-    expect(result.code).toBe(2);
-    expect(result.stderr).toMatch(FAILED);
-  });
-
-  it('blocks an MCP PR open with exit 2', () => {
-    const result = run(
+  it.each<[string, string, () => unknown]>([
+    ['a merge bypass', 'claude', () => bash(`${GH} pr merge 5 --admin`)],
+    ['a PR open', 'claude', () => bash(`${CREATE} -F body.md`)],
+    ['a plain read', 'claude', () => bash('ls -la')],
+    [
+      'an MCP PR open',
       'claude',
-      { tool_name: 'mcp__github__create_pull_request', tool_input: {}, cwd: repo },
-      CRASH,
-    );
+      () => ({ tool_name: 'mcp__github__create_pull_request', tool_input: {}, cwd: repo }),
+    ],
+    ['a Codex shell call', 'codex', () => bash('ls -la')],
+    [
+      'a Gemini shell call',
+      'gemini',
+      () => ({ tool_name: 'run_shell_command', tool_input: { command: 'ls' }, cwd: repo }),
+    ],
+  ])('blocks %s with exit 2', (_name, agent, event) => {
+    const result = run(agent, event(), CRASH_ON_PARSE);
     expect(result.code).toBe(2);
-    expect(result.stderr).toMatch(/injected parser failure in prCommandsOf/);
+    expect(result.stderr.trim()).toMatch(FAILED);
   });
 
-  it('denies with JSON on stdout for Cursor', () => {
-    const result = run('cursor', { command: `${GH} pr merge 5 --admin`, cwd: repo }, CRASH);
+  it.each<[string, () => unknown, object]>([
+    [
+      'Cursor',
+      () => ({ command: `${GH} pr merge 5 --admin`, cwd: repo }),
+      { permission: 'deny', agent_message: expect.stringMatching(FAILED) },
+    ],
+    [
+      'Copilot',
+      () => ({ toolName: 'bash', toolArgs: { command: 'ls' }, cwd: repo }),
+      { permissionDecision: 'deny', permissionDecisionReason: expect.stringMatching(FAILED) },
+    ],
+  ])('denies with JSON on stdout for %s', (agent, event, denial) => {
+    const result = run(agent.toLowerCase(), event(), CRASH_ON_PARSE);
     expect(result.code).toBe(0);
-    expect(result.json).toMatchObject({
-      permission: 'deny',
-      agent_message: expect.stringMatching(FAILED),
-    });
+    expect(result.json).toMatchObject(denial);
   });
 
   it('still lets bad stdin through', () => {
-    expect(run('claude', 'not json', CRASH).code).toBe(0);
+    expect(run('claude', 'not json', CRASH_ON_PARSE).code).toBe(0);
+  });
+});
+
+describe('when the rules throw while they load', () => {
+  it('blocks a shell call with exit 2', () => {
+    const result = run('claude', bash('ls -la'), CRASH_ON_LOAD);
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(
+      /^Blocked by the review gate\. The hook failed \(injected load failure in review-gate-bypass\.mjs\), so this call is blocked\./,
+    );
+  });
+
+  it('does not block a SubagentStop: exits 1 with nothing on stdout', () => {
+    const result = spawnSync('node', [...CRASH_ON_LOAD, HOOK, '--agent=claude'], {
+      input: JSON.stringify(stop('review-dry')),
+      cwd: repo,
+      encoding: 'utf8',
+      env: childEnv,
+    });
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toMatch(/injected load failure/);
   });
 });
 

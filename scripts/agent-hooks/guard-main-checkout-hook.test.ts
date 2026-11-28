@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
+import { CRASH_ON_LOAD, CRASH_ON_PARSE } from './crash-fixture/node-args';
 import { OVERRIDE, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
 
 // End-to-end: runs the hook script the way Claude Code does. The hook guards
@@ -13,8 +14,6 @@ import { OVERRIDE, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
 // The rules themselves are covered in guard-main-checkout-policy.test.ts.
 
 const HOOK = fileURLToPath(new URL('./guard-main-checkout.mjs', import.meta.url));
-// Loads the hook with a guardDecision that throws. See crash-fixture/.
-const CRASH = ['--import', fileURLToPath(new URL('./crash-fixture/register.mjs', import.meta.url))];
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
 const MAIN = mainCheckoutOf(REPO);
 const elsewhere = realpathSync(mkdtempSync(join(tmpdir(), 'guard-hook-')));
@@ -77,15 +76,33 @@ describe('guard-main-checkout hook', () => {
     expect(run('')).toEqual({ code: 0, stderr: '' });
   });
 
-  it('allows stdin that is not JSON, and says it crashed', () => {
-    const { code, stderr } = run('{not json');
+  it.each([
+    ['not JSON', '{not json'],
+    [
+      'cut-off JSON that holds `git commit`',
+      '{"tool_name":"Bash","tool_input":{"command":"git commit -m x',
+    ],
+  ])('allows stdin that is %s, and says it crashed', (_name, stdin) => {
+    const { code, stderr } = run(stdin);
     expect(code).toBe(0);
     expect(stderr).toContain('guard-main-checkout: hook crashed, allowing the call');
   });
 });
 
-describe('guard-main-checkout hook, when its parser throws', () => {
-  const crash = (command: string, cwd: string) => run(bash(command, cwd), {}, CRASH);
+const BLOCKED = (what: string) =>
+  new RegExp(
+    `^guard-main-checkout: The hook failed \\(injected ${what}\\), so this call is blocked\\. File an issue in this repo \\(label area:ci\\) .*never secrets or tokens\\. A simpler command may run\\. Run it from your worktree, or split the call\\.$`,
+  );
+
+describe.each([
+  ['its parser throws', CRASH_ON_PARSE, 'parser failure in guardDecision'],
+  [
+    'its rules throw while they load',
+    CRASH_ON_LOAD,
+    'load failure in guard-main-checkout-policy\\.mjs',
+  ],
+])('guard-main-checkout hook, when %s', (_when, nodeArgs, what) => {
+  const crash = (command: string, cwd: string) => run(bash(command, cwd), {}, nodeArgs);
 
   it.each([
     ['a read in the main checkout', 'ls -la', MAIN],
@@ -95,9 +112,7 @@ describe('guard-main-checkout hook, when its parser throws', () => {
   ])('blocks %s with exit 2', (_name, command, cwd) => {
     const { code, stderr } = crash(command, cwd as string);
     expect(code).toBe(2);
-    expect(stderr).toMatch(
-      /^guard-main-checkout: the hook failed \(Error: injected parser failure in guardDecision\), so this call is blocked: .*File an issue .*never secrets/,
-    );
+    expect(stderr.trim()).toMatch(BLOCKED(what));
   });
 
   it.each(['ls -la', 'git status && git log'])(
@@ -105,8 +120,8 @@ describe('guard-main-checkout hook, when its parser throws', () => {
     (command) => {
       const { code, stderr } = crash(command, elsewhere);
       expect(code).toBe(0);
-      expect(stderr).toMatch(
-        /^guard-main-checkout: hook crashed, allowing the call: Error: injected parser failure/,
+      expect(stderr.trim()).toMatch(
+        new RegExp(`^guard-main-checkout: hook crashed, allowing the call: injected ${what}$`),
       );
     },
   );

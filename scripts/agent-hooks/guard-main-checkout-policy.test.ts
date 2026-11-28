@@ -3,12 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import {
-  OVERRIDE,
-  guardDecision,
-  mainCheckoutOf,
-  mayWriteMainCheckout,
-} from './guard-main-checkout-policy.mjs';
+import { OVERRIDE, guardDecision, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
 import {
   NESTED_GLOB_NAMES,
   TIME_BUDGET_MS,
@@ -659,32 +654,5 @@ describe('when the main checkout cannot be found', () => {
   it('guards every main checkout rather than none', () => {
     expect(guardDecision({ command: 'git add .', cwd: other }, null).blocked).toBe(true);
     expect(guardDecision({ command: 'git add .', cwd: wt }, null).blocked).toBe(false);
-  });
-});
-
-// What the hook reads from the raw text when its parser throws.
-describe('mayWriteMainCheckout', () => {
-  type Row = [string, () => string, () => string | null, boolean];
-  it.each<Row>([
-    ['a read run in the main checkout', () => 'ls', () => main, true],
-    ['a read run in a subfolder of it', () => 'ls', () => join(main, 'packages'), true],
-    ['a read that names a folder in it', () => `cat ${main}/packages/x`, () => wt, true],
-    ['a read that names it, quoted', () => `ls "${main}"`, () => wt, true],
-    ['git with a write verb', () => 'cd $D && git add -A', () => wt, true],
-    ['git with a write verb, the call unread', () => 'git commit -m x', () => null, true],
-    ['gh pr checkout', () => 'gh pr checkout 5', () => wt, true],
-    ['a read in a worktree', () => 'ls -la', () => wt, false],
-    ['a read that names a worktree', () => `ls ${wt}/src`, () => other, false],
-    ['git with no write verb', () => 'git status && git log', () => wt, false],
-    ['a write verb with no git', () => 'pnpm add react', () => wt, false],
-    ['a verb inside a longer word', () => 'git status --add-ons', () => wt, false],
-    ['nothing known', () => '{not json', () => null, false],
-  ])('%s', (_name, command, cwd, expected) => {
-    expect(mayWriteMainCheckout(command(), cwd(), main)).toBe(expected);
-  });
-
-  it('counts every main checkout when its own cannot be found', () => {
-    expect(mayWriteMainCheckout('ls', other, null)).toBe(true);
-    expect(mayWriteMainCheckout('ls', wt, null)).toBe(false);
   });
 });
