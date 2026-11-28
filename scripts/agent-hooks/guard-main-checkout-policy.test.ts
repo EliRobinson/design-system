@@ -4,7 +4,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { OVERRIDE, guardDecision, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
-import { NESTED_GLOB_NAMES, nestedGlob, nestedSubstitutionGlobs } from './shell-parse-fixtures';
+import {
+  NESTED_GLOB_NAMES,
+  TIME_BUDGET_MS,
+  msToRun,
+  nestedEGroups,
+  nestedGlob,
+  nestedSubstitutionGlobs,
+} from './shell-parse-fixtures';
 
 // On-disk fixtures, shaped the way git lays them out:
 //   main/          a main checkout (`.git` is a directory)
@@ -492,10 +499,11 @@ describe('what the parser sees', () => {
   });
 
   // Main took seconds on this shape: placing each command was quadratic.
-  it('decides on nested glob groups with a $(...) in a time budget', () => {
-    const start = performance.now();
-    decide(nestedSubstitutionGlobs(1000));
-    expect(performance.now() - start).toBeLessThan(5000);
+  it.each([
+    ['with a $(...)', nestedSubstitutionGlobs(1000)],
+    ['running git', nestedEGroups(400)],
+  ])('decides on nested glob groups %s in a time budget', (_, command) => {
+    expect(msToRun(() => decide(command))).toBeLessThan(TIME_BUDGET_MS);
   });
 
   it.each([

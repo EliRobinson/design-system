@@ -42,6 +42,19 @@ export const unclosedGlobChain = (n: number) => `ls ${'a(b(e:true:)'.repeat(n)}`
 /** `x` and `n` plain groups nested in each other, with no qualifiers. */
 export const nestedPlainGroups = (n: number) => `x ${'a('.repeat(n)}${')'.repeat(n)}`;
 
+/** `n` glob groups nested in each other, each with an `e` string running git and a `$(...)` in it. */
+export const nestedEGroups = (n: number) => `ls ${'a(e:git status;$('.repeat(n)}x${'))'.repeat(n)}`;
+
+/** The time a hook may take on one of the shapes above, in ms. */
+export const TIME_BUDGET_MS = 5000;
+
+/** How long `run` takes, in ms. */
+export function msToRun(run: () => unknown) {
+  const start = performance.now();
+  run();
+  return performance.now() - start;
+}
+
 /** `n` glob groups nested in each other, each with an `e` string and a `$(...)` in it. */
 export const nestedSubstitutionGlobs = (n: number) =>
   `ls ${'a(e:true:$('.repeat(n)}x${'))'.repeat(n)}`;

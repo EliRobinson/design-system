@@ -25,7 +25,10 @@ import {
 } from './review-gate-fixtures';
 import {
   NESTED_GLOB_NAMES,
+  TIME_BUDGET_MS,
   atRoot,
+  msToRun,
+  nestedEGroups,
   nestedGlob,
   nestedSubstitutionGlobs,
 } from './shell-parse-fixtures';
@@ -100,7 +103,7 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['after an e-like word in a select list', `select f (e:true: *${E_CREATE}) echo`],
     ['after an e-like command in a repeat subshell', `repeat 1 (e:true:; ls *${E_CREATE})`],
     ['after an e-like command in a coproc subshell', `coproc (e:true:; ls *${E_CREATE})`],
-    ['in a glob group at a word start in a for list', `for f ( (a)(e:${GH}\\ pr\\ create:) ) echo`],
+    ['in a glob group at a word start in a for list', `for f ( (a)${E_CREATE} ) echo`],
     ['after many cheap glob groups', `ls ${'x(+a)'.repeat(500)} *${E_CREATE}`],
   ])('%s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
@@ -277,10 +280,11 @@ describe('findPrCommands: reads pr create flags', () => {
   });
 
   // Main took seconds on this shape: placing each command was quadratic.
-  it('finds PR commands in nested glob groups with a $(...) in a time budget', () => {
-    const start = performance.now();
-    findPrCommands(nestedSubstitutionGlobs(1000));
-    expect(performance.now() - start).toBeLessThan(5000);
+  it.each([
+    ['with a $(...)', nestedSubstitutionGlobs(1000)],
+    ['running git', nestedEGroups(400)],
+  ])('finds PR commands in nested glob groups %s in a time budget', (_, script) => {
+    expect(msToRun(() => findPrCommands(script))).toBeLessThan(TIME_BUDGET_MS);
   });
 
   it('reads every cd form the guard reads, the same way', () => {

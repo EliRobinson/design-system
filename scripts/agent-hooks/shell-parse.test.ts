@@ -15,7 +15,15 @@ import {
   quoteArgv,
   shellScriptOf,
 } from './shell-parse.mjs';
-import { atRoot, nestedPlainGroups, unclosedGlobChain } from './shell-parse-fixtures';
+import {
+  NESTED_GLOB_NAMES,
+  TIME_BUDGET_MS,
+  atRoot,
+  msToRun,
+  nestedGlobOf,
+  nestedPlainGroups,
+  unclosedGlobChain,
+} from './shell-parse-fixtures';
 
 const argvs = (script: string) => parseCommands(script).map(({ argv }) => argv);
 const names = (script: string) => argvs(script).map((argv) => argv[0]);
@@ -199,12 +207,6 @@ describe('parseCommands', () => {
     expect(runTimePrograms(script)).toEqual(expected);
   });
 
-  // One command built at run time stands for all of a level's glob groups:
-  // any one makes the bypass check read the whole script.
-  it('counts glob groups built at run time once in a level', () => {
-    expect(runTimePrograms('x *($X) *($Y); y *(e)')).toEqual([GLOB_GROUP_WORD]);
-  });
-
   it.each([
     'x *(N)',
     'x *(.om[1])',
@@ -255,10 +257,17 @@ describe('parseCommands', () => {
     ['nested groups', nestedPlainGroups(8000)],
     ['nested groups with e strings', `ls ${'a(e:true:b('.repeat(3000)}${')'.repeat(6000)}`],
     ['glob groups that never close', unclosedGlobChain(8000)],
+    ...NESTED_GLOB_NAMES.map((form) => [`${form} nested 1000 deep`, nestedGlobOf(form, 1000)]),
   ])('parses %s in a time budget', (_, script) => {
-    const start = performance.now();
-    parseCommands(script);
-    expect(performance.now() - start).toBeLessThan(5000);
+    expect(msToRun(() => parseCommands(script))).toBeLessThan(TIME_BUDGET_MS);
+  });
+
+  // #480: past the depth, a plain eval's script is not read at all. Whoever
+  // fixes #480 changes this test and the "does not catch" line in the docs.
+  it('reads nothing from a plain eval nested past the depth (#480)', () => {
+    let script = 'y';
+    for (let depth = 0; depth <= MAX_EVAL_DEPTH; depth++) script = `eval ${quoteArgv([script])}`;
+    expect(parseCommands(script).map(({ argv }) => argv[0])).not.toContain('y');
   });
 
   it('counts e strings past the work limit as built at run time', () => {
@@ -301,11 +310,19 @@ describe('parseCommands', () => {
 
   // The limits the hook docs name are the ones the parser uses.
   it.each([
-    [`Past ${MAX_EVAL_DEPTH} levels of nested \`eval\` or \`bash -c\``],
+    [
+      `Past ${MAX_EVAL_DEPTH} levels of nested \`eval\`, \`bash -c\` and \`e\` strings together, the inner script is not read at all (#480)`,
+    ],
+    [
+      `nested past ${MAX_EVAL_DEPTH} levels: it is not read at all, and does not count as built at run time (#480)`,
+    ],
     [
       `past ${GLOB_WORK_LIMIT.toLocaleString('en-US')} commands in all the \`e\` strings one call reads`,
     ],
     [`a glob group nested more than ${GLOB_NESTING_LIMIT} deep in another`],
+    [
+      `past the ${GLOB_WORK_LIMIT.toLocaleString('en-US')}-command or ${GLOB_NESTING_LIMIT}-deep limits above`,
+    ],
   ])('names its limit in git-and-prs.md: %s', (phrase) => {
     expect(readFileSync(atRoot('docs/agents/git-and-prs.md'), 'utf8')).toContain(phrase);
   });

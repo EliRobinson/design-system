@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
+import { TIME_BUDGET_MS, msToRun } from './shell-parse-fixtures';
 import { globQualifierCode, readGlobGroupText } from './zsh-glob-qualifiers.mjs';
 
 const none = { scripts: [], programs: [], unreadable: false };
@@ -71,8 +72,6 @@ describe('readGlobGroupText', () => {
     ['unclosed braces', '{'.repeat(200_000)],
     ['brace expansions', '{a,b}'.repeat(200_000)],
   ])('reads %s in a time budget', (_, raw) => {
-    const start = performance.now();
-    readGlobGroupText(raw);
-    expect(performance.now() - start).toBeLessThan(5000);
+    expect(msToRun(() => readGlobGroupText(raw))).toBeLessThan(TIME_BUDGET_MS);
   });
 });
