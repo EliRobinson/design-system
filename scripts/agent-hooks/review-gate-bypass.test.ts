@@ -49,6 +49,7 @@ describe('findBypass: refuses --admin in every form', () => {
     '={gh} pr merge 5 --admin',
     'sudo ={gh} pr merge 5 --admin',
     '=x/{gh} pr merge 5 --admin',
+    '=/usr/bin/sudo {gh} pr merge 5 --admin',
   ])('%s', (script) => {
     expect(reason(script)).toBe(ADMIN_REASON);
   });

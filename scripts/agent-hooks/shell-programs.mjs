@@ -71,28 +71,26 @@ const PLAIN_NAME = /^[^/=]+$/;
 const SHELL_ONLY = new Set(['cd', 'pushd', 'popd']);
 
 /**
- * The program a word in a command's place runs when it starts with `=`.
- * zsh replaces `=name` with the path of the program `name` (its EQUALS
- * option, on by default), so `=gh pr create` runs gh. Returns null when the
- * word does not start with `=`, `{ name }` for a plain name, and
- * `{ name: null }` when the parser cannot tell what runs (`=`, `=a/b`,
- * `=cd`): a word built at run time.
+ * The program a word that starts with `=` runs in a command's place. zsh
+ * replaces `=name` with the path of the program `name` (its EQUALS option,
+ * on by default), so `=gh pr create` runs gh. Null when the parser cannot
+ * tell what runs (`=`, `=a/b`, `=cd`): a word built at run time.
  * @param {string} word
- * @returns {{ name: string | null } | null}
+ * @returns {string | null}
  */
-export function equalsProgram(word) {
-  if (!word.startsWith('=')) return null;
+function equalsProgram(word) {
   const name = word.slice(1);
-  return { name: PLAIN_NAME.test(name) && !SHELL_ONLY.has(name) ? name : null };
+  return PLAIN_NAME.test(name) && !SHELL_ONLY.has(name) ? name : null;
 }
 
 /**
  * Drops env assignments, shell keywords, `function <name>`, and wrapper
  * commands (with their flags) from the front of a command, and reads a zsh
  * `=name` there as `name` (see equalsProgram). Returns the assignments it
- * dropped as `env`.
+ * dropped as `env`. `programAtRunTime`: the program is a `=` word it cannot
+ * read, built at run time.
  * @param {string[]} argv
- * @returns {{ argv: string[], env: string[] }}
+ * @returns {{ argv: string[], env: string[], programAtRunTime: boolean }}
  */
 export function unwrap(argv) {
   let rest = argv;
@@ -100,11 +98,12 @@ export function unwrap(argv) {
   const env = [];
   for (;;) {
     const first = rest[0];
-    if (first === undefined) return { argv: rest, env };
+    if (first === undefined) return { argv: rest, env, programAtRunTime: false };
     const wrapper = WRAPPERS[posix.basename(first)];
-    const equals = equalsProgram(first)?.name;
-    if (equals) {
-      rest = [equals, ...rest.slice(1)];
+    // A `=` word it cannot read may still name a wrapper (`=/usr/bin/sudo`).
+    const name = first.startsWith('=') ? equalsProgram(first) : null;
+    if (name !== null) {
+      rest = [name, ...rest.slice(1)];
     } else if (ASSIGNMENT.test(first)) {
       env.push(first);
       rest = rest.slice(1);
@@ -121,7 +120,7 @@ export function unwrap(argv) {
       }
       rest = rest.slice(wrapper.positional ?? 0);
     } else {
-      return { argv: rest, env };
+      return { argv: rest, env, programAtRunTime: first.startsWith('=') };
     }
   }
 }

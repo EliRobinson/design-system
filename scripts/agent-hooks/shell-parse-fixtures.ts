@@ -59,8 +59,16 @@ export const nestedEGroups = (n: number) => `ls ${'a(e:git status;$('.repeat(n)}
 export const nestedSubstitutionGlobs = (n: number) =>
   `ls ${'a(e:true:$('.repeat(n)}x${'))'.repeat(n)}`;
 
-/** `cat` and `n` process substitutions nested in each other, with `y` in the innermost (#469). */
-export const nestedProcessSubstitutions = (n: number) => `cat ${'<('.repeat(n)}y${')'.repeat(n)}`;
+/** `cat` and `n` process substitutions nested in each other, with `inner` in the innermost (#469). */
+export const nestedProcessSubstitutions = (n: number, inner = 'y') =>
+  `cat ${'<('.repeat(n)}${inner}${')'.repeat(n)}`;
+
+/** `cat` and `n` process substitutions nested in each other, each with a `cd` first (#469). */
+export const nestedCdProcessSubstitutions = (n: number) =>
+  `cat ${'<(cd a; cat '.repeat(n)}${')'.repeat(n)}; git add -A`;
+
+/** `n` subshells nested in each other, each with a `cd` first, `git add -A` in the innermost. */
+export const nestedCdSubshells = (n: number) => `${'(cd a; '.repeat(n)}git add -A${')'.repeat(n)}`;
 
 /** `cat` and `n` process substitutions in a row, each running `y` (#469). */
 export const processSubstitutionRow = (n: number) => `cat ${'<(y) '.repeat(n)}`;

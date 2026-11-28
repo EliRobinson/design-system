@@ -245,8 +245,19 @@ describe('parseCommands', () => {
     ['sudo =y a', ['y', 'a']],
     ['=sudo -u me y a', ['y', 'a']],
     ['A=1 =env y a', ['y', 'a']],
+    // A `=` word it cannot read still counts as a wrapper by its name.
+    ['=/usr/bin/sudo y a', ['y', 'a']],
   ])('reads a leading =name as the program name: %s', (script, expected) => {
     expect(argvs(script)).toEqual([expected]);
+  });
+
+  // zsh's `=(...)` is a word built at run time, the path of a file holding
+  // the output of the commands in it, which are read.
+  it('reads =(...) as a word built at run time and its commands', () => {
+    expect(parseCommands('=(y a)').map(({ argv, marks }) => [argv, marks[0]?.dynamic])).toEqual([
+      [['='], true],
+      [['y', 'a'], false],
+    ]);
   });
 
   // `=cd` runs `/usr/bin/cd` in a process of its own, which moves no folder.

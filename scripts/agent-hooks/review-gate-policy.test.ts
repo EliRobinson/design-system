@@ -30,10 +30,12 @@ import {
   msToRun,
   nestedEGroups,
   nestedGlob,
+  nestedCdProcessSubstitutions,
   nestedProcessSubstitutions,
   nestedSubstitutionGlobs,
   processSubstitutionRow,
 } from './shell-parse-fixtures';
+import { NESTED_READ_LIMIT } from './shell-parse.mjs';
 
 const kinds = (script: string) => findPrCommands(script).map((pr) => pr.kind);
 // A glob qualifier group whose e string opens a PR (#465).
@@ -115,7 +117,7 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['in a zsh >>( process substitution', `echo >>(${CREATE} -F b.md)`],
     [
       'in a process substitution past the nesting limit',
-      `cat ${'<('.repeat(40)}${CREATE} -F b.md${')'.repeat(40)}`,
+      nestedProcessSubstitutions(NESTED_READ_LIMIT + 8, `${CREATE} -F b.md`),
     ],
     ['as zsh =gh', `=${CREATE} -F b.md`],
     ['as zsh =gh after sudo', `sudo =${CREATE} -F b.md`],
@@ -305,6 +307,7 @@ describe('findPrCommands: reads pr create flags', () => {
   it.each([
     ['nested 4000 deep', nestedProcessSubstitutions(4000)],
     ['4000 in a row', processSubstitutionRow(4000)],
+    ['nested 2000 deep, each with a cd', nestedCdProcessSubstitutions(2000)],
   ])('finds PR commands in process substitutions %s in a time budget', (_, script) => {
     expect(msToRun(() => findPrCommands(script))).toBeLessThan(TIME_BUDGET_MS);
   });
@@ -352,6 +355,7 @@ describe('branchRefsOf', () => {
     expect(
       branchRefsOf({
         kind: 'pr-create',
+        bodyFileAtRunTime: false,
         fill: false,
         web: false,
         head: 'me:feat',
@@ -366,7 +370,15 @@ describe('branchRefsOf', () => {
   });
 
   it('keeps an unknown folder unknown, not the working directory', () => {
-    expect(branchRefsOf({ kind: 'pr-create', fill: false, web: false, dir: null }).dir).toBeNull();
+    expect(
+      branchRefsOf({
+        kind: 'pr-create',
+        bodyFileAtRunTime: false,
+        fill: false,
+        web: false,
+        dir: null,
+      }).dir,
+    ).toBeNull();
     const files = { kind: 'graphql-files' as const, files: [], dir: null };
     expect(branchRefsOf(files).dir).toBeNull();
   });
@@ -608,6 +620,7 @@ describe('decidePr', () => {
   const pr = {
     kind: 'pr-create',
     bodyFile: 'b.md',
+    bodyFileAtRunTime: false,
     fill: false,
     web: false,
   } as const;
@@ -731,6 +744,7 @@ describe('decidePr', () => {
     `${CREATE} --body-file <(cat b.md)`,
     `${CREATE} -F "$F"`,
     `${CREATE} --body-file=$(echo b.md)`,
+    `${CREATE} --body-file b*.md`,
   ])('denies a body file whose path is built at run time: %s', (script) => {
     expect(decideScript(script).decision?.deny).toMatch(/builds at run time/);
   });

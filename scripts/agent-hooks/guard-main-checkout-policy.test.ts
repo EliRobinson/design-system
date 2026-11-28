@@ -10,10 +10,13 @@ import {
   msToRun,
   nestedEGroups,
   nestedGlob,
+  nestedCdProcessSubstitutions,
+  nestedCdSubshells,
   nestedProcessSubstitutions,
   nestedSubstitutionGlobs,
   processSubstitutionRow,
 } from './shell-parse-fixtures';
+import { NESTED_READ_LIMIT } from './shell-parse.mjs';
 
 // On-disk fixtures, shaped the way git lays them out:
 //   main/          a main checkout (`.git` is a directory)
@@ -486,7 +489,7 @@ describe('what the parser sees', () => {
     'cat < <(git add -A)',
     'cat <(x <(git add -A))',
     'echo >>(git add -A)',
-    `cat ${'<('.repeat(40)}git add -A${')'.repeat(40)}`,
+    nestedProcessSubstitutions(NESTED_READ_LIMIT + 8, 'git add -A'),
     '=git add -A',
     'sudo =git add -A',
   ])('reads commands in a process substitution or as =git: %s', (command) => {
@@ -513,6 +516,8 @@ describe('what the parser sees', () => {
   it.each([
     ['nested 4000 deep', nestedProcessSubstitutions(4000)],
     ['4000 in a row', processSubstitutionRow(4000)],
+    ['nested 2000 deep, each with a cd', nestedCdProcessSubstitutions(2000)],
+    ['in subshells nested 2000 deep, each with a cd', nestedCdSubshells(2000)],
   ])('decides on process substitutions %s in a time budget', (_, command) => {
     expect(msToRun(() => decide(command))).toBeLessThan(TIME_BUDGET_MS);
   });

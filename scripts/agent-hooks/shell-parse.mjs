@@ -8,7 +8,7 @@
 import { posix } from 'node:path';
 
 import { BRACE_EXPANSION, EXPANSION_START, QUOTE_START } from './shell-lexemes.mjs';
-import { ASSIGNMENT, KEYWORDS, equalsProgram, unwrap } from './shell-programs.mjs';
+import { ASSIGNMENT, KEYWORDS, unwrap } from './shell-programs.mjs';
 import { globGroupTracker } from './zsh-glob-qualifiers.mjs';
 
 /**
@@ -91,7 +91,9 @@ export const GLOB_WORK_LIMIT = 10000;
 export const GLOB_NESTING_LIMIT = 32;
 // How many `$(...)`, backticks and process substitutions may be open inside
 // each other before a process substitution is read in its level, so that
-// reading it adds no deep recursion (see readLevel).
+// reading it adds no deep recursion (see readLevel). Only a process
+// substitution falls back past it: a `$(...)` or backtick still nests, and
+// one nested some thousands deep overflows the stack (#485).
 export const NESTED_READ_LIMIT = 32;
 
 /**
@@ -309,6 +311,12 @@ function readLevel(script, start, closer, scope, state) {
   // it is open: one command built at run time stands for every group in it.
   /** @type {number | null} */
   let pastNestingLimit = null;
+  // Group `id`, just opened, is past a nesting limit. The first in a nest
+  // adds a command built at run time, `word`, that stands for them all.
+  const passLimit = (/** @type {number} */ id, /** @type {string} */ word) => {
+    if (pastNestingLimit === null) commands.push(runTimeCommand(word, here()));
+    pastNestingLimit ??= id;
+  };
   // Group `id` is out of the level's groups. If it is a glob group, it closes
   // at its `)` at `end`, or ends without one when `end` is undefined.
   // Returns whether it was a glob group.
@@ -416,11 +424,11 @@ function readLevel(script, start, closer, scope, state) {
     /** @type {number[]} */ commandScope,
     /** @type {Coproc | null} */ coproc,
   ) => {
-    const { argv: command, env } = unwrap(words);
-    // `unwrap` drops words only from the front.
+    const { argv: command, env, programAtRunTime } = unwrap(words);
+    // `unwrap` drops words from the front and may rewrite the first one it
+    // keeps (`=gh` to `gh`), so the marks line up from the end.
     const commandMarks = wordMarks.slice(words.length - command.length);
-    // `unwrap` reads a plain `=name`; any other is built at run time.
-    if (equalsProgram(command[0] ?? '')?.name === null) commandMarks[0] = RUN_TIME_MARK;
+    if (programAtRunTime) commandMarks[0] = RUN_TIME_MARK;
     const inCoproc = coproc?.form === 'simple' ? [...commandScope, coproc.id] : commandScope;
     // A bare `NAME=value` is kept: it sets a variable in the current shell.
     if (command.length > 0 || env.length > 0) {
@@ -488,12 +496,11 @@ function readLevel(script, start, closer, scope, state) {
       expands(false);
       return readNested(from + 2, ')', newAsyncScope());
     }
-    if (pastNestingLimit === null) commands.push(runTimeCommand(`${script[from]}(...)`, here()));
     endCommand();
     redirectTarget = false;
     const id = newAsyncScope();
     openGroup(id);
-    pastNestingLimit ??= id;
+    passLimit(id, `${script[from]}(...)`);
     return from + 2;
   };
   // Skips `((...))` or `$((...))`, whose `<<` is a shift, not a heredoc.
@@ -658,9 +665,7 @@ function readLevel(script, start, closer, scope, state) {
       const id = coproc === null ? newScope() : newAsyncScope();
       openGroup(id);
       if (opensGlob && glob.depth >= GLOB_NESTING_LIMIT) {
-        // One command built at run time stands for every group in this nest.
-        if (pastNestingLimit === null) commands.push(runTimeCommand(GLOB_GROUP_WORD, here()));
-        pastNestingLimit ??= id;
+        passLimit(id, GLOB_GROUP_WORD);
       } else if (opensGlob) {
         glob.open(id, i, standalone);
       }
@@ -873,8 +878,9 @@ export function ghCommand(argv, textOf = String) {
  */
 
 /**
- * A tree of scopes, with the folder each is in: null when a parser cannot tell.
- * @typedef {{ folder: string | null, inner: Map<number, FolderNode> }} FolderNode
+ * A scope, with the folder it is in (null when a parser cannot tell) and the
+ * scope around it (null at the top).
+ * @typedef {{ folder: string | null, outer: FolderNode | null }} FolderNode
  */
 
 /**
@@ -893,30 +899,42 @@ export function ghCommand(argv, textOf = String) {
  */
 export function placeCommands(script, cwd) {
   /** @type {FolderNode} */
-  const folders = { folder: cwd, inner: new Map() };
-  // The nodes from the top to `scope`. A scope met for the first time starts
-  // in the folder its parent is in. A loop, not recursion: a deep nest of
-  // shells overflows the stack.
-  const foldersTo = (/** @type {number[]} */ scope) => {
-    const path = [folders];
-    for (const id of scope) {
-      const at = /** @type {FolderNode} */ (path.at(-1));
-      let next = at.inner.get(id);
-      if (!next) at.inner.set(id, (next = { folder: at.folder, inner: new Map() }));
-      path.push(next);
+  const top = { folder: cwd, outer: null };
+  // Each scope's node, by its last id. Scope ids are unique within a parse,
+  // and an id always has the same scopes around it, so a known scope costs
+  // one lookup, however deep it is: walking the scope from the top took time
+  // quadratic in the depth of a nest (#469).
+  /** @type {Map<number, FolderNode>} */
+  const nodes = new Map();
+  // The node of `scope`. A scope met for the first time starts in the folder
+  // the one around it is in. A loop, not recursion: a deep nest of shells
+  // overflows the stack.
+  const nodeOf = (/** @type {number[]} */ scope) => {
+    let known = scope.length;
+    while (known > 0 && !nodes.has(/** @type {number} */ (scope[known - 1]))) known--;
+    let node = known === 0 ? top : /** @type {FolderNode} */ (nodes.get(scope[known - 1] ?? 0));
+    // Not the scope around it that `scope` names: a folder it cannot tell.
+    const outerId = scope[known - 2];
+    const outer = outerId === undefined ? top : nodes.get(outerId);
+    if (known > 0 && node.outer !== outer) return { folder: null, outer: null };
+    for (let at = known; at < scope.length; at++) {
+      node = { folder: node.folder, outer: node };
+      nodes.set(/** @type {number} */ (scope[at]), node);
     }
-    return path;
+    return node;
   };
-  /** @type {(scope: number[]) => string | null} */
-  const folderIn = (scope) => /** @type {FolderNode} */ (foldersTo(scope).at(-1)).folder;
-  /** @type {(scope: number[], next: string | null) => void} */
-  const move = (scope, next) => {
-    const path = foldersTo(scope);
-    /** @type {FolderNode} */ (path.at(-1)).folder = next;
+  // Moves the scope `node` of `scope` to `next`.
+  const move = (
+    /** @type {FolderNode} */ node,
+    /** @type {number[]} */ scope,
+    /** @type {string | null} */ next,
+  ) => {
+    node.folder = next;
     // Each compound body at the end of `scope` leaves the folder around it unknown.
-    for (let at = scope.length; (scope[at - 1] ?? 0) < 0; at--) {
-      const outer = /** @type {FolderNode} */ (path[at - 1]);
-      if (outer.folder !== next) outer.folder = null;
+    let inner = node;
+    for (let at = scope.length; (scope[at - 1] ?? 0) < 0 && inner.outer; at--) {
+      inner = inner.outer;
+      if (inner.folder !== next) inner.folder = null;
     }
   };
   /** @type {Placed[]} */
@@ -954,10 +972,11 @@ export function placeCommands(script, cwd) {
     const path = pathTo(shellOf(command.scope));
     path.at(-1)?.commands.push(index);
     earlier.push(command);
-    const folder = folderIn(command.scope);
+    const node = nodeOf(command.scope);
+    const { folder } = node;
     const program = command.argv[0];
     if (program === 'cd' || program === 'pushd' || program === 'popd') {
-      move(command.scope, program === 'popd' ? null : cdTarget(folder, cdWord(command.argv)));
+      move(node, command.scope, program === 'popd' ? null : cdTarget(folder, cdWord(command.argv)));
       continue;
     }
     placed.push({ command, folder, beforeOf: () => before(path, index) });
