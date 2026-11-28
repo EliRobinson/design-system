@@ -552,7 +552,7 @@ describe('decidePr', () => {
   const deps = { readFile: () => filledReview(), reviewersNotRun: () => [] };
   // The first PR command in a script, and the decision on it.
   const decideScript = (script: string) => {
-    const [command] = findPrCommands(script);
+    const command = first(script);
     if (command === undefined) throw new Error(`no PR command in ${script}`);
     return { command, decision: decidePr(command, deps) };
   };
@@ -614,6 +614,12 @@ describe('decidePr', () => {
       `x=$(case a in a) cd /tmp;; esac); ${CREATE} --body-file b.md`,
       '.',
     ],
+    // A `;` inside the group does not keep its cd out of the background job.
+    [
+      'a cd in a group sent to the background',
+      `(cd /other; ${CREATE} --body-file b.md) & wait`,
+      '/other',
+    ],
   ])('lets a pr create through with %s', (_, script, folder) => {
     const { command, decision } = decideScript(script);
     expect(command).toMatchObject({ dir: folder });
@@ -639,6 +645,21 @@ describe('decidePr', () => {
     };
     expect(decidePr(files, deps)?.deny).toMatch(/absolute path/);
   });
+
+  // `~` does not depend on the folder: the hook reads it from the home folder.
+  it.each(['/abs/q.graphql', '~/q.graphql', '~'])(
+    'reads a graphql file at %s after a cd it cannot follow',
+    (file) => {
+      const files = { kind: 'graphql-files' as const, files: [file], dir: null };
+      const read: string[] = [];
+      const readFile = (path: string) => {
+        read.push(path);
+        return 'mutation { createPullRequest }';
+      };
+      expect(decidePr(files, { ...deps, readFile })?.deny).toMatch(/GraphQL mutation/);
+      expect(read).toEqual([file]);
+    },
+  );
 
   it('denies a missing body file', () => {
     expect(decidePr(pr, { ...deps, readFile: () => null })?.deny).toMatch(/does not exist/);

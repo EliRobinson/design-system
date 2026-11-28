@@ -233,6 +233,14 @@ describe('Claude Code', () => {
     expect(review.code).toBe(0);
   });
 
+  it('reads an absolute graphql file after a cd it cannot follow, with no folder', () => {
+    const file = join(repo, 'abs.graphql');
+    writeFileSync(file, 'mutation { createPullRequest(input: {}) { clientMutationId } }');
+    const result = run('claude', bash(`cd "$X" && ${GH} api graphql -F query=@${file}`));
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/not a GraphQL mutation/);
+  });
+
   it('reads graphql query files', () => {
     writeFileSync(
       join(repo, 'm.graphql'),

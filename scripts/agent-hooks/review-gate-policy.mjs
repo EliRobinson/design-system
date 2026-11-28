@@ -4,7 +4,13 @@
 // the results in, so every rule here is unit-tested.
 
 import { flagSet, readApiCall, readGhFlags, urlPath } from './gh-flags.mjs';
-import { GH_VALUE_FLAGS, ghCommand, placeCommands, wordsOf } from './shell-parse.mjs';
+import {
+  GH_VALUE_FLAGS,
+  ghCommand,
+  isAbsolutePath,
+  placeCommands,
+  wordsOf,
+} from './shell-parse.mjs';
 
 /** @typedef {import('./shell-parse.mjs').Word} Word */
 
@@ -186,16 +192,6 @@ export function unfilledReviewLabels(markdown) {
 // ---- Reviewer runs ----
 
 /**
- * Whether a path the hook reads does not depend on the folder a command runs
- * in. A `~` path counts as relative: the hook reads it from the home folder,
- * which a `cd` cannot change, but the parser does not expand it.
- * @param {string} path
- */
-export function isAbsolutePath(path) {
-  return path.startsWith('/');
-}
-
-/**
  * The folder a PR command runs in: its `dir`, null when the parser cannot
  * tell, and the hook's own (`.`) when the command has none, as an MCP call.
  * @param {PrCommand} pr
@@ -214,16 +210,12 @@ function dirOf(pr) {
  * @returns {{ head?: string, baseRefs: string[], dir: string | null }}
  */
 export function branchRefsOf(pr) {
-  if (pr.kind === 'api-create' || pr.kind === 'graphql-files') {
-    return {
-      baseRefs: [],
-      dir: dirOf(pr),
-    };
-  }
+  const dir = dirOf(pr);
+  if (pr.kind === 'api-create' || pr.kind === 'graphql-files') return { baseRefs: [], dir };
   return {
     head: pr.head?.replace(/^[^:]+:/, ''),
     baseRefs: [`origin/${pr.base ?? 'HEAD'}`, 'origin/main'],
-    dir: dirOf(pr),
+    dir,
   };
 }
 
@@ -359,9 +351,10 @@ export function decidePr(pr, { readFile, reviewersNotRun }) {
   // `cd "$DIR"` or a `cd` inside `{ ... }`.
   const unknownFolder = (/** @type {string} */ command, /** @type {string} */ fix) =>
     `The hook cannot tell which folder this \`${command}\` runs in: a \`cd\` before it is one the hook cannot follow. ${fix}`;
+  const folderUnknown = dirOf(pr) === null;
   if (pr.kind === 'graphql-files') {
     const relative = pr.files.find((file) => !isAbsolutePath(file));
-    if (pr.dir === null && relative !== undefined) {
+    if (folderUnknown && relative !== undefined) {
       return {
         deny: unknownFolder(
           'gh api graphql',
@@ -380,7 +373,7 @@ export function decidePr(pr, { readFile, reviewersNotRun }) {
   let body;
   if (pr.kind === 'mcp-create') {
     body = pr.body;
-  } else if (pr.dir === null) {
+  } else if (folderUnknown) {
     // The body file and the reviewer runs are both read from the PR's folder
     // (#472), so an absolute body path is not enough.
     return {
