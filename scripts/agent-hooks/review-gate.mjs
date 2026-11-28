@@ -3,9 +3,11 @@
 // Entry for the pre-PR review gate hook. See docs/agents/git-and-prs.md.
 // Usage: node review-gate.mjs --agent=<claude|codex|gemini|cursor|copilot>
 //
-// Stdin that does not parse passes through, so a broken hook never locks an
-// agent out of the shell. Once a call is known to open a PR, any error
-// blocks it.
+// Stdin that is not a JSON object passes through, so a broken hook never
+// locks an agent out of the shell. Any other error while it reads a tool
+// call, such as the shell parser throwing, blocks that call (#479): the
+// parser is what finds a PR open or a merge bypass, so a call it could not
+// read may hide one.
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
@@ -279,6 +281,18 @@ function checkPr(pr, cwd, tool) {
   if (decision) block(ADAPTERS[tool], decision.deny);
 }
 
+/**
+ * The refusal for a call the hook failed to read.
+ * @param {unknown} error
+ */
+function hookFailed(error) {
+  const why = error instanceof Error ? error.message : String(error);
+  return [
+    `The hook failed (${why}), so this call is blocked.`,
+    'File an issue with the shape of the command (its programs and flags), never secrets or tokens.',
+  ].join(' ');
+}
+
 /** @param {string} name @returns {name is ToolName} */
 function isTool(name) {
   return Object.hasOwn(TOOLS, name);
@@ -303,22 +317,30 @@ function main() {
   }
   if (!event || typeof event !== 'object') return;
   const cwd = typeof event.cwd === 'string' ? event.cwd : process.cwd();
-  const call = adapter.toCall(event);
-
-  if (call.kind === 'agent-start') {
-    const decision = decideReviewerStart(call.input);
-    if (decision) block(adapter, decision.deny);
-  } else if (call.kind === 'agent-stop') {
-    recordRun(cwd, call.agent, call.output, call.transcript);
-  } else if (call.kind === 'shell' || call.kind === 'mcp') {
-    if (call.kind === 'shell') {
-      // A merge that bypasses branch protection, or a gh word or endpoint the
-      // hook cannot read that may hide a PR open or merge, is refused
-      // whatever the PR body says.
-      const bypass = findBypass(call.command);
-      if (bypass) block(adapter, bypass);
+  /** @type {Call | undefined} */
+  let call;
+  try {
+    call = adapter.toCall(event);
+    if (call.kind === 'agent-start') {
+      const decision = decideReviewerStart(call.input);
+      if (decision) block(adapter, decision.deny);
+    } else if (call.kind === 'agent-stop') {
+      recordRun(cwd, call.agent, call.output, call.transcript);
+    } else if (call.kind === 'shell' || call.kind === 'mcp') {
+      if (call.kind === 'shell') {
+        // A merge that bypasses branch protection, or a gh word or endpoint the
+        // hook cannot read that may hide a PR open or merge, is refused
+        // whatever the PR body says.
+        const bypass = findBypass(call.command);
+        if (bypass) block(adapter, bypass);
+      }
+      for (const pr of prCommandsOf(call)) checkPr(pr, cwd, tool);
     }
-    for (const pr of prCommandsOf(call)) checkPr(pr, cwd, tool);
+  } catch (error) {
+    // A reviewer that has stopped is no call to block: exit 2 there would
+    // keep it running. Its run is just not recorded.
+    if (call?.kind === 'agent-stop') throw error;
+    block(adapter, hookFailed(error));
   }
 }
 

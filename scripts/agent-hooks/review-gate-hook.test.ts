@@ -14,6 +14,8 @@ import { CREATE, GH, filledReview, handbackLine } from './review-gate-fixtures';
 // review-gate-policy.test.ts.
 
 const HOOK = fileURLToPath(new URL('./review-gate.mjs', import.meta.url));
+// Loads the hook with shell-parse functions that throw. See crash-fixture/.
+const CRASH = ['--import', fileURLToPath(new URL('./crash-fixture/register.mjs', import.meta.url))];
 
 let repo: string;
 
@@ -29,8 +31,8 @@ const git = (...args: string[]) =>
     env: childEnv,
   });
 
-function run(agent: string, event: unknown) {
-  const result = spawnSync('node', [HOOK, `--agent=${agent}`], {
+function run(agent: string, event: unknown, nodeArgs: string[] = []) {
+  const result = spawnSync('node', [...nodeArgs, HOOK, `--agent=${agent}`], {
     input: typeof event === 'string' ? event : JSON.stringify(event),
     cwd: repo,
     encoding: 'utf8',
@@ -375,6 +377,44 @@ describe('other tools check the body, and refuse merge bypasses', () => {
     expect(call(JSON.stringify({ command: `${CREATE} -F empty.md` })).json).toMatchObject({
       permissionDecision: 'deny',
     });
+  });
+});
+
+describe('when the shell parser throws', () => {
+  const FAILED =
+    /^Blocked by the review gate\. The hook failed \(injected parser failure in (findBypass|prCommandsOf)\), so this call is blocked\. File an issue .*never secrets/;
+
+  it.each([
+    ['a merge bypass', `${GH} pr merge 5 --admin`],
+    ['a PR open', `${CREATE} -F body.md`],
+    ['a plain read', 'ls -la'],
+  ])('blocks %s with exit 2', (_name, command) => {
+    const result = run('claude', bash(command), CRASH);
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(FAILED);
+  });
+
+  it('blocks an MCP PR open with exit 2', () => {
+    const result = run(
+      'claude',
+      { tool_name: 'mcp__github__create_pull_request', tool_input: {}, cwd: repo },
+      CRASH,
+    );
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/injected parser failure in prCommandsOf/);
+  });
+
+  it('denies with JSON on stdout for Cursor', () => {
+    const result = run('cursor', { command: `${GH} pr merge 5 --admin`, cwd: repo }, CRASH);
+    expect(result.code).toBe(0);
+    expect(result.json).toMatchObject({
+      permission: 'deny',
+      agent_message: expect.stringMatching(FAILED),
+    });
+  });
+
+  it('still lets bad stdin through', () => {
+    expect(run('claude', 'not json', CRASH).code).toBe(0);
   });
 });
 
