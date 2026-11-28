@@ -8,7 +8,14 @@ export const NESTED_GLOB_FORMS = {
   'standalone (e[...])': (inner: string) => `ls (e[${inner}])`,
 };
 
-/** @param form one of NESTED_GLOB_FORMS */
+/** `form` nested `depth` deep. @param form one of NESTED_GLOB_FORMS */
+export function nestedGlobOf(form: keyof typeof NESTED_GLOB_FORMS, depth: number) {
+  let script = 'true';
+  for (let i = 0; i < depth; i++) script = NESTED_GLOB_FORMS[form](script);
+  return script;
+}
+
+/** `form` nested about 300 characters deep. @param form one of NESTED_GLOB_FORMS */
 export function nestedGlob(form: keyof typeof NESTED_GLOB_FORMS) {
   let script = 'true';
   while (script.length < 300) script = NESTED_GLOB_FORMS[form](script);

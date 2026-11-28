@@ -26,6 +26,7 @@ import {
   promptLine,
 } from './review-gate-fixtures';
 import { NESTED_GLOB_NAMES, nestedGlob } from './shell-parse-fixtures';
+import { GLOB_WORK_LIMIT } from './shell-parse.mjs';
 
 // This file lives at scripts/agent-hooks/, two levels below the repo root.
 // Reads below are repo-root-relative, not cwd-relative: nx runs this
@@ -36,6 +37,8 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const atRoot = (path: string) => join(repoRoot, path);
 
 const kinds = (script: string) => findPrCommands(script).map((pr) => pr.kind);
+// A glob qualifier group whose e string opens a PR (#465).
+const E_CREATE = `(e:'${CREATE} -F b.md':)`;
 const first = (script: string) => findPrCommands(script)[0];
 const labels = REVIEWERS.map(({ label }) => label);
 const agents = REVIEWERS.map(({ agent }) => agent);
@@ -89,15 +92,23 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['in a glob qualifier’s e[ ] string', `ls *(e['${CREATE} -F b.md'])`],
     ['in a glob qualifier’s sort e string', `ls *(oe:'${CREATE} -F b.md':)`],
     ['in an e string after a glob group', `ls (a|b)(e:'${CREATE} -F b.md':)`],
-    ['in an e string in a repeat subshell', `repeat 1 (ls *(e:'${CREATE} -F b.md':))`],
-    ['in an e string in a coproc subshell', `coproc (ls *(e:'${CREATE} -F b.md':))`],
-    ['in an e string in a for list', `for f (*(e:'${CREATE} -F b.md':)) :`],
-    ['in an e string in a foreach list', `foreach f (*(e:'${CREATE} -F b.md':)) :; end`],
-    ['in an e string in a select list', `select f (*(e:'${CREATE} -F b.md':)) :`],
-    ['in an e string in a two-name for list', `for f g (*(e:'${CREATE} -F b.md':)) :`],
+    ['in an e string in a repeat subshell', `repeat 1 (ls *${E_CREATE})`],
+    ['in an e string in a coproc subshell', `coproc (ls *${E_CREATE})`],
+    ['in an e string in a for list', `for f (*${E_CREATE}) :`],
+    ['in an e string in a foreach list', `foreach f (*${E_CREATE}) :; end`],
+    ['in an e string in a select list', `select f (*${E_CREATE}) :`],
+    ['in an e string in a two-name for list', `for f g (*${E_CREATE}) :`],
+    // A list or subshell whose first word reads as an e string still runs
+    // the glob group in it.
+    ['after an e-like word in a for list', `for f (e:true: *${E_CREATE}) echo`],
+    ['after an e glob in a for list', `for f (e*.txt x/*${E_CREATE}) echo`],
+    ['after an e-like word in a foreach list', `foreach f (e:true: *${E_CREATE}) echo; end`],
+    ['after an e-like word in a select list', `select f (e:true: *${E_CREATE}) echo`],
+    ['after an e-like command in a repeat subshell', `repeat 1 (e:true:; ls *${E_CREATE})`],
+    ['after an e-like command in a coproc subshell', `coproc (e:true:; ls *${E_CREATE})`],
     [
-      'in an e string after many cheap glob groups',
-      `ls ${'x(+a)'.repeat(500)} *(e:'${CREATE} -F b.md':)`,
+      'cheap glob groups do not use up the e string cap',
+      `ls ${'x(+a)'.repeat(GLOB_WORK_LIMIT + 1)} *${E_CREATE}`,
     ],
   ])('%s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
