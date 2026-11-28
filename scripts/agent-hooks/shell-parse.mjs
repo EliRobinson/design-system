@@ -95,10 +95,26 @@ function leadingKeywords(argv) {
  */
 
 /**
- * A `coproc` readLevel reads: its form, with `id`, the coprocess's shell,
- * for the forms whose command comes in the same words.
- * @typedef {{ form: 'compound' | 'simple', at: number, id: number } | { form: 'subshell' }} Coproc
+ * The forms whose command comes in the same words as the `coproc`, so it
+ * gets a shell of its own there.
+ * @typedef {Exclude<CoprocForm, { form: 'subshell' }>} ShellForm
  */
+
+/**
+ * A `coproc` readLevel reads: its form, with `id`, the coprocess's shell,
+ * for a ShellForm.
+ * @typedef {(ShellForm & { id: number }) | Extract<CoprocForm, { form: 'subshell' }>} Coproc
+ */
+
+/**
+ * Whether a `coproc` runs its command in the same words, in a shell of its own.
+ * @template {{ form: string }} T
+ * @param {T | null} coproc
+ * @returns {coproc is Exclude<T, { form: 'subshell' }>}
+ */
+function hasShell(coproc) {
+  return coproc !== null && coproc.form !== 'subshell';
+}
 
 /**
  * How a `coproc` at the front of `argv` (past keywords, assignments and
@@ -259,7 +275,7 @@ function readLevel(script, start, closer, scope, ids) {
   // A `coproc`'s form with a new shell for it, when its command comes in the
   // same words.
   const withShell = (/** @type {CoprocForm | null} */ form) =>
-    form === null || form.form === 'subshell' ? form : { ...form, id: newAsyncScope() };
+    hasShell(form) ? { ...form, id: newAsyncScope() } : form;
   // Adds the command in `words`, past what `unwrap` drops. For a `coproc`,
   // the record of the `coproc` itself and the command it runs both go in the
   // coprocess's shell, so the hook reads both. A compound body is in it
@@ -288,7 +304,7 @@ function readLevel(script, start, closer, scope, ids) {
         marks: commandMarks,
       });
     }
-    if (coproc === null || coproc.form === 'subshell') return;
+    if (!hasShell(coproc)) return;
     const inner = command.slice(coproc.at);
     const nested = coprocOf(unwrap(inner).argv, { beforeSubshell: false });
     pushCommand(inner, commandMarks.slice(coproc.at), inCoproc, withShell(nested));
@@ -308,7 +324,7 @@ function readLevel(script, start, closer, scope, ids) {
     const substitutionsEnd = commands.length;
     pushCommand(argv, marks, own, coproc);
     // A substitution in a coproc's words runs in the coprocess too.
-    if (coproc !== null && coproc.form !== 'subshell')
+    if (hasShell(coproc))
       wrapScopes(commands.slice(commandStart, substitutionsEnd), depth, coproc.id);
     if (op === '&') {
       const prefix = here();
@@ -672,13 +688,13 @@ export function cdWord(argv) {
 
 /**
  * Whether a path does not depend on the folder a command runs in: it starts
- * with `/`, or is `~` or starts with `~/`, which the hooks read from the home
- * folder. A `cd` to a `~` path is still one the parser cannot follow (see
- * cdTarget): it does not know the home folder.
+ * with `/`. A `~` path is relative here: the shell does not expand `~` after
+ * `=@` (`-F query=@~/q.graphql`) or in quotes (`--input "~/q.json"`), so gh
+ * reads it from the folder the command runs in.
  * @param {string} path
  */
 export function isAbsolutePath(path) {
-  return /^(\/|~(\/|$))/.test(path);
+  return path.startsWith('/');
 }
 
 /**
@@ -691,6 +707,7 @@ export function isAbsolutePath(path) {
  * @returns {string | null}
  */
 export function cdTarget(dir, target) {
+  // A `~` target was ruled out here: the parser does not know the home folder.
   if (dir === null || target === undefined || /^[-~]|[$`]/.test(target)) return null;
   const folder = isAbsolutePath(target) ? posix.normalize(target) : posix.join(dir, target);
   // `join` and `normalize` keep a trailing slash; a folder is the same one without it.

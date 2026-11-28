@@ -241,6 +241,13 @@ describe('Claude Code', () => {
     expect(result.stderr).toMatch(/not a GraphQL mutation/);
   });
 
+  // The shell leaves `~` after `=@` alone, so gh reads `<folder>/~/q.graphql`.
+  it('refuses a ~ graphql file after a cd it cannot follow', () => {
+    const result = run('claude', bash(`cd "$X"; ${GH} api graphql -F query=@~/q.graphql`));
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/cannot tell which folder/);
+  });
+
   it('reads graphql query files', () => {
     writeFileSync(
       join(repo, 'm.graphql'),

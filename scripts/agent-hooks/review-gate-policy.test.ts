@@ -551,10 +551,10 @@ describe('decidePr', () => {
   } as const;
   const deps = { readFile: () => filledReview(), reviewersNotRun: () => [] };
   // The first PR command in a script, and the decision on it.
-  const decideScript = (script: string) => {
+  const decideScript = (script: string, using = deps) => {
     const command = first(script);
     if (command === undefined) throw new Error(`no PR command in ${script}`);
-    return { command, decision: decidePr(command, deps) };
+    return { command, decision: decidePr(command, using) };
   };
 
   it('allows a filled body file with every reviewer run', () => {
@@ -646,20 +646,23 @@ describe('decidePr', () => {
     expect(decidePr(files, deps)?.deny).toMatch(/absolute path/);
   });
 
-  // `~` does not depend on the folder: the hook reads it from the home folder.
-  it.each(['/abs/q.graphql', '~/q.graphql', '~'])(
-    'reads a graphql file at %s after a cd it cannot follow',
-    (file) => {
-      const files = { kind: 'graphql-files' as const, files: [file], dir: null };
-      const read: string[] = [];
-      const readFile = (path: string) => {
-        read.push(path);
-        return 'mutation { createPullRequest }';
-      };
-      expect(decidePr(files, { ...deps, readFile })?.deny).toMatch(/GraphQL mutation/);
-      expect(read).toEqual([file]);
-    },
-  );
+  // The shell does not expand `~` after `=@` or in quotes, so gh reads a `~`
+  // file from the folder the command runs in, which the hook cannot tell.
+  it.each([
+    [`${GH} api graphql -F query=@/abs/q.graphql`, /GraphQL mutation/, ['/abs/q.graphql']],
+    [`${GH} api graphql -F query=@~/q.graphql`, /cannot tell which folder/, []],
+    [`${GH} api graphql --input "~/q.json"`, /cannot tell which folder/, []],
+    [`${GH} api graphql -F query=@~`, /cannot tell which folder/, []],
+  ])('after a cd it cannot follow, decides %s', (call, expected, reads) => {
+    const read: string[] = [];
+    const readFile = (path: string) => {
+      read.push(path);
+      return 'mutation { createPullRequest }';
+    };
+    const { decision } = decideScript(`cd "$X" && ${call}`, { ...deps, readFile });
+    expect(decision?.deny).toMatch(expected);
+    expect(read).toEqual(reads);
+  });
 
   it('denies a missing body file', () => {
     expect(decidePr(pr, { ...deps, readFile: () => null })?.deny).toMatch(/does not exist/);
