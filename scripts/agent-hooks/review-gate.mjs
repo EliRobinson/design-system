@@ -198,9 +198,7 @@ function readRuns(cwd, branch) {
 function recordRun(cwd, agent, output, transcript) {
   if (!isReviewer(agent)) return;
   const text =
-    isReport(output) || typeof transcript !== 'string'
-      ? null
-      : readFile(isAbsolutePath(transcript) ? transcript : resolve(cwd, transcript));
+    isReport(output) || typeof transcript !== 'string' ? null : readFrom(() => cwd, transcript);
   const report = text === null ? output : handbackReport(text);
   if (!countsAsRun(agent, report)) return;
   const branch = currentBranch(cwd);
@@ -226,6 +224,17 @@ function reviewersNotRun(pr, cwd) {
 }
 
 // ---- Main ----
+
+/**
+ * Reads `path`, resolved from `base()` when it is relative. `base` is called
+ * only then, so a caller with no folder for a relative path can throw there.
+ * A `~` path is passed on as it is: readFile expands it.
+ * @param {() => string} base @param {string} path
+ */
+function readFrom(base, path) {
+  const passOn = isAbsolutePath(path) || /^~(\/|$)/.test(path);
+  return readFile(passOn ? path : resolve(base(), path));
+}
 
 /**
  * Reads `path`, an absolute or `~` path, or null when it is missing.
@@ -259,7 +268,7 @@ function checkPr(pr, cwd, tool) {
   try {
     decision = decidePr(pr, {
       // inDir runs only for a relative path, after decidePr ruled out a null folder.
-      readFile: (path) => readFile(isAbsolutePath(path) ? path : resolve(inDir(), path)),
+      readFile: (path) => readFrom(inDir, path),
       reviewersNotRun: () => (TOOLS[tool].tracksReviewers ? reviewersNotRun(pr, inDir()) : []),
     });
   } catch (error) {

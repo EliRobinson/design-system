@@ -540,10 +540,12 @@ describe('what the parser sees', () => {
   );
 
   // A `;` inside the group does not keep the cd before it out of the job.
-  it('follows a cd into the main checkout inside a group sent to the background', () => {
-    expect(refused(`(cd ${main}; git commit -m x) & wait`, wt)).toBe(true);
-    expect(refused(`{ cd ${main}; git commit -m x; } & wait`, wt)).toBe(true);
-  });
+  it.each(['(cd MAIN; git commit -m x) & wait', '{ cd MAIN; git commit -m x; } & wait'])(
+    'follows a cd into the main checkout inside a group sent to the background: %s',
+    (form) => {
+      expect(refused(form.replaceAll('MAIN', main), wt)).toBe(true);
+    },
+  );
 
   it('counts a worktree made before a coproc on the line', () => {
     const made = newWorktree();
