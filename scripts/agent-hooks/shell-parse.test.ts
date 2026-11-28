@@ -153,12 +153,20 @@ describe('parseCommands', () => {
     },
   );
 
-  it('marks a background job as async, and only the list it ends', () => {
-    const [add, cd, commit] = parseCommands('git worktree add p & cd p && git commit');
-    expect(add?.async).toBe(true);
-    expect([cd?.async, commit?.async]).toEqual([false, false]);
-    const [a, b, c] = parseCommands('a && b & c');
-    expect([a?.async, b?.async, c?.async]).toEqual([true, true, false]);
+  // A `&` sends its whole and-or list to the background; a `;` inside a
+  // group ends a list in the group only.
+  it.each([
+    ['git worktree add p & cd p && git commit', [true, false, false]],
+    ['a && b & c', [true, true, false]],
+    ['(git worktree add p; true) & c', [true, true, false]],
+    ['{ git worktree add p; true; } & c', [true, true, false]],
+    ['a; (b; c) & d', [false, true, true, false]],
+    ['x && (y; z) & w', [true, true, true, false]],
+    ['if a; then b; fi & c', [true, true, false]],
+    ['(a; b & c; d) & e', [true, true, true, true, false]],
+    ['(a; b & c; d); e', [false, true, false, false, false]],
+  ])('marks the commands a background job runs as async: %s', (script, expected) => {
+    expect(parseCommands(script).map(({ async }) => async)).toEqual(expected);
   });
 
   it.each([

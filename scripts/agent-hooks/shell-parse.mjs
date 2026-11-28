@@ -86,28 +86,39 @@ function leadingKeywords(argv) {
 }
 
 /**
+ * How a `coproc` runs its command.
+ * - `compound`: a compound body starts at word `at`, which readLevel opens.
+ * - `simple`: a simple command starts at word `at`.
+ * - `subshell`: a `(` comes right after `coproc [NAME]`, and the group it
+ *   opens is the coprocess.
+ * @typedef {{ form: 'compound' | 'simple', at: number } | { form: 'subshell' }} CoprocForm
+ */
+
+/**
+ * A `coproc` readLevel reads: its form, with `id`, the coprocess's shell,
+ * for the forms whose command comes in the same words.
+ * @typedef {{ form: 'compound' | 'simple', at: number, id: number } | { form: 'subshell' }} Coproc
+ */
+
+/**
  * How a `coproc` at the front of `argv` (past keywords, assignments and
  * wrappers) runs its command, or null when `argv` is not one. bash reads
  * `coproc NAME compound` when the word after NAME opens a compound command,
  * and `coproc command` otherwise; zsh reads only the forms with no NAME.
- * - `compound`: a compound body starts at `at`, which readLevel opens.
- * - `simple`: a simple command starts at `at`.
- * - `subshell`: a `(` comes right after `coproc [NAME]`, and the group it
- *   opens is the coprocess. `at` is past the words.
  * `beforeSubshell`: a `(` comes right after these words.
  * @param {string[]} argv
  * @param {{ beforeSubshell: boolean }} options
- * @returns {{ at: number, form: 'compound' | 'simple' | 'subshell' } | null}
+ * @returns {CoprocForm | null}
  */
 function coprocOf(argv, { beforeSubshell }) {
   if (argv[0] !== 'coproc') return null;
   const name = argv[1] ?? '';
-  if (COMPOUND_OPENERS.has(name)) return { at: 1, form: 'compound' };
+  if (COMPOUND_OPENERS.has(name)) return { form: 'compound', at: 1 };
   if (!KEYWORDS.has(name) && COMPOUND_OPENERS.has(argv[2] ?? ''))
-    return { at: 2, form: 'compound' };
+    return { form: 'compound', at: 2 };
   const rest = argv.at(-1) === GLOB_GROUP_WORD ? argv.slice(1, -1) : argv.slice(1);
-  if (beforeSubshell && rest.length <= 1) return { at: argv.length, form: 'subshell' };
-  return rest.length === 0 ? null : { at: 1, form: 'simple' };
+  if (beforeSubshell && rest.length <= 1) return { form: 'subshell' };
+  return rest.length === 0 ? null : { form: 'simple', at: 1 };
 }
 
 /**
@@ -145,8 +156,22 @@ function readLevel(script, start, closer, scope, ids) {
   /** @type {number[]} The open `(...)` groups and compound bodies. */
   const groups = [];
   // Where the current and-or list starts in `commands`. `a && b & c` sends
-  // all of `a && b` to the background, not only `b`.
+  // all of `a && b` to the background, not only `b`. Each group has its own:
+  // a `;` inside `(a; b) & c` ends a list in the group, and the `&` after it
+  // sends the whole group to the background.
   let listStart = 0;
+  /** @type {number[]} The list start outside each `groups` entry, for when it closes. */
+  const listStarts = [];
+  const openGroup = (/** @type {number} */ id) => {
+    groups.push(id);
+    listStarts.push(listStart);
+  };
+  // Closes the last `count` groups and goes back to the list they were in.
+  const closeGroups = (/** @type {number} */ count) => {
+    groups.splice(-count);
+    const outer = listStarts.splice(-count)[0];
+    if (outer !== undefined) listStart = outer;
+  };
   /** @type {Array<{ delimiter: string, dash: boolean }>} */
   const heredocs = [];
   /** @type {string[]} */
@@ -209,19 +234,15 @@ function readLevel(script, start, closer, scope, ids) {
   // Opens or closes a compound body at the front of the command's words.
   // Returns whether it opened one. A body that reads from a pipe runs, whole,
   // in that pipe stage's subshell, so the stage's scope goes around it. So
-  // does a `coproc`'s compound body, in the coprocess's shell `coprocId`: the
-  // closer that ends the body pops both. `front`: the words past what
-  // `unwrap` drops, where `coproc` reads its command.
-  const trackCompound = (
-    /** @type {string[]} */ front,
-    /** @type {ReturnType<typeof coprocOf>} */ coproc,
-    /** @type {number | null} */ coprocId,
-  ) => {
-    if (COMPOUND_CLOSERS.has(argv[0] ?? '')) groups.splice(-(compoundSizes.pop() ?? 1));
+  // does a `coproc`'s compound body, in the coprocess's shell: the closer that
+  // ends the body pops both. `front`: the words past what `unwrap` drops,
+  // where `coproc` reads its command.
+  const trackCompound = (/** @type {string[]} */ front, /** @type {Coproc | null} */ coproc) => {
+    if (COMPOUND_CLOSERS.has(argv[0] ?? '')) closeGroups(compoundSizes.pop() ?? 1);
     let opened = false;
     const open = (/** @type {number | null} */ subshell) => {
-      if (subshell !== null) groups.push(subshell);
-      groups.push(-newScope());
+      if (subshell !== null) openGroup(subshell);
+      openGroup(-newScope());
       compoundSizes.push(subshell === null ? 1 : 2);
       opened = true;
     };
@@ -230,30 +251,32 @@ function readLevel(script, start, closer, scope, ids) {
     }
     if (coproc?.form !== 'compound') return opened;
     leadingKeywords(front.slice(coproc.at)).forEach((word, i) => {
-      if (i === 0) open(coprocId);
+      if (i === 0) open(coproc.id);
       else if (COMPOUND_OPENERS.has(word)) open(null);
     });
     return opened;
   };
+  // A `coproc`'s form with a new shell for it, when its command comes in the
+  // same words.
+  const withShell = (/** @type {CoprocForm | null} */ form) =>
+    form === null || form.form === 'subshell' ? form : { ...form, id: newAsyncScope() };
   // Adds the command in `words`, past what `unwrap` drops. For a `coproc`,
   // the record of the `coproc` itself and the command it runs both go in the
-  // coprocess's shell `coprocId`, so the hook reads both. A compound body is
-  // in it already: trackCompound opened it. For `coproc [NAME] ( ... )` the
-  // record stays outside, since only the group that follows runs in the
-  // coprocess. A `coproc` inside a simple form (`coproc coproc x`) gets a
-  // shell of its own.
+  // coprocess's shell, so the hook reads both. A compound body is in it
+  // already: trackCompound opened it. For `coproc [NAME] ( ... )` the record
+  // stays outside, since only the group that follows runs in the coprocess.
+  // A `coproc` inside a simple form (`coproc coproc x`) gets a shell of its
+  // own.
   const pushCommand = (
     /** @type {string[]} */ words,
     /** @type {WordMark[]} */ wordMarks,
     /** @type {number[]} */ commandScope,
-    /** @type {ReturnType<typeof coprocOf>} */ coproc,
-    /** @type {number | null} */ coprocId,
+    /** @type {Coproc | null} */ coproc,
   ) => {
     const { argv: command, env } = unwrap(words);
     // `unwrap` drops words only from the front.
     const commandMarks = wordMarks.slice(words.length - command.length);
-    const inCoproc =
-      coproc?.form === 'simple' && coprocId !== null ? [...commandScope, coprocId] : commandScope;
+    const inCoproc = coproc?.form === 'simple' ? [...commandScope, coproc.id] : commandScope;
     // A bare `NAME=value` is kept: it sets a variable in the current shell.
     if (command.length > 0 || env.length > 0) {
       commands.push({
@@ -268,8 +291,7 @@ function readLevel(script, start, closer, scope, ids) {
     if (coproc === null || coproc.form === 'subshell') return;
     const inner = command.slice(coproc.at);
     const nested = coprocOf(unwrap(inner).argv, { beforeSubshell: false });
-    const nestedId = nested?.form === 'simple' ? newAsyncScope() : null;
-    pushCommand(inner, commandMarks.slice(coproc.at), inCoproc, nested, nestedId);
+    pushCommand(inner, commandMarks.slice(coproc.at), inCoproc, withShell(nested));
   };
   // `op` is the operator that ends the command, if any. Each stage of a
   // pipeline runs in a subshell, and so does an and-or list sent to the
@@ -279,16 +301,15 @@ function readLevel(script, start, closer, scope, ids) {
     endWord();
     const depth = here().length;
     const front = unwrap(argv).argv;
-    const coproc = coprocOf(front, { beforeSubshell });
-    const coprocId = coproc === null || coproc.form === 'subshell' ? null : newAsyncScope();
-    const opened = trackCompound(front, coproc, coprocId);
+    const coproc = withShell(coprocOf(front, { beforeSubshell }));
+    const opened = trackCompound(front, coproc);
     const piped = op === '|' || op === '|&';
     const own = (pipedIn && !opened) || piped ? [...here(), newScope()] : here();
     const substitutionsEnd = commands.length;
-    pushCommand(argv, marks, own, coproc, coprocId);
+    pushCommand(argv, marks, own, coproc);
     // A substitution in a coproc's words runs in the coprocess too.
-    if (coprocId !== null)
-      wrapScopes(commands.slice(commandStart, substitutionsEnd), depth, coprocId);
+    if (coproc !== null && coproc.form !== 'subshell')
+      wrapScopes(commands.slice(commandStart, substitutionsEnd), depth, coproc.id);
     if (op === '&') {
       const prefix = here();
       // Only the list in this group goes to the background, not one that a
@@ -357,7 +378,7 @@ function readLevel(script, start, closer, scope, ids) {
       // with it a `coproc`'s subshell, before this `)` closes the `$(`.
       endCommand();
       if (closer === ')' && groups.length === 0) return { commands, end: i + 1 };
-      groups.pop();
+      closeGroups(1);
       i++;
       continue;
     }
@@ -449,9 +470,12 @@ function readLevel(script, start, closer, scope, ids) {
           pushWord(GLOB_GROUP_WORD, { dynamic: true, splits: 'unquoted' });
         }
       }
-      // `coproc ( ... )` and `coproc NAME ( ... )` run the group in a coprocess.
+      // After any `coproc`, the group runs in a coprocess: it is the
+      // coprocess in `coproc ( ... )` and `coproc NAME ( ... )`, inside one in
+      // `coproc { (...); }`, and in `coproc x a(...)`, which zsh may read as a
+      // glob group, it is read as one to be safe.
       const coproc = endCommand(null, { beforeSubshell: true });
-      groups.push(coproc === null ? newScope() : newAsyncScope());
+      openGroup(coproc === null ? newScope() : newAsyncScope());
       i++;
     } else if (ch === '\n') {
       endCommand('\n');
@@ -647,6 +671,17 @@ export function cdWord(argv) {
 }
 
 /**
+ * Whether a path does not depend on the folder a command runs in: it starts
+ * with `/`, or is `~` or starts with `~/`, which the hooks read from the home
+ * folder. A `cd` to a `~` path is still one the parser cannot follow (see
+ * cdTarget): it does not know the home folder.
+ * @param {string} path
+ */
+export function isAbsolutePath(path) {
+  return /^(\/|~(\/|$))/.test(path);
+}
+
+/**
  * The folder `cd <target>` (or `pushd <target>`) moves to from `dir`, or
  * null when a parser cannot tell: no target, `-`, a flag, a leading `~`, or
  * anything built at run time (`$`, backticks). A null `dir` stays null. A
@@ -657,7 +692,7 @@ export function cdWord(argv) {
  */
 export function cdTarget(dir, target) {
   if (dir === null || target === undefined || /^[-~]|[$`]/.test(target)) return null;
-  const folder = target.startsWith('/') ? posix.normalize(target) : posix.join(dir, target);
+  const folder = isAbsolutePath(target) ? posix.normalize(target) : posix.join(dir, target);
   // `join` and `normalize` keep a trailing slash; a folder is the same one without it.
   return folder.replace(/(.)\/$/, '$1');
 }

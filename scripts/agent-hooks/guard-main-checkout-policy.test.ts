@@ -436,6 +436,13 @@ describe('the escape', () => {
 });
 
 describe('what the parser sees', () => {
+  // A worktree that does not exist yet, which a line makes.
+  const newWorktree = () => join(main, '.claude/worktrees/zz-new-wt');
+  const fromBoth = [
+    ['the main checkout', () => main],
+    ['a worktree', () => wt],
+  ] as const;
+
   it('does not read a heredoc body as commands', () => {
     expect(refused("cat > notes.md <<'EOF'\ngit add -A\nEOF")).toBe(false);
   });
@@ -505,28 +512,41 @@ describe('what the parser sees', () => {
     'coproc echo $(git worktree add NEW); git -C NEW commit -m x',
     'coproc foo { bash -c "git worktree add NEW"; }; git -C NEW commit -m x',
   ])('does not count a worktree a coproc makes as made: %s', (form) => {
-    expect(refused(form.replaceAll('NEW', join(main, '.claude/worktrees/zz-new-wt')))).toBe(true);
+    expect(refused(form.replaceAll('NEW', newWorktree()))).toBe(true);
   });
 
   // #473: a background job runs while the line goes on, like a coproc.
-  it.each([
-    ['the main checkout', () => main],
-    ['a worktree', () => wt],
-  ])('does not count a worktree a background job makes as made, from %s', (_, cwd) => {
-    const made = join(main, '.claude/worktrees/zz-new-wt');
-    expect(refused(`git worktree add ${made} & cd ${made} && git commit -m x`, cwd())).toBe(true);
-    expect(refused(`git worktree add ${made} & cd ${made}; git commit -m x`, cwd())).toBe(true);
-    expect(refused(`git worktree add ${made} & git -C ${made} commit -m x`, cwd())).toBe(true);
+  it.each(
+    [
+      'git worktree add NEW & cd NEW && git commit -m x',
+      'git worktree add NEW & cd NEW; git commit -m x',
+      'git worktree add NEW & git -C NEW commit -m x',
+      'git worktree add NEW & wait; cd NEW && git commit -m x',
+      '(git worktree add NEW; true) & git -C NEW commit -m x',
+      '{ git worktree add NEW; true; } & git -C NEW commit -m x',
+    ].flatMap((form) => fromBoth.map(([where, cwd]) => [form, where, cwd] as const)),
+  )('does not count a worktree a background job makes as made: %s, from %s', (form, _, cwd) => {
+    expect(refused(form.replaceAll('NEW', newWorktree()), cwd())).toBe(true);
   });
 
-  it('still counts a worktree that git worktree add makes before && (#473)', () => {
-    const made = join(main, '.claude/worktrees/zz-new-wt');
-    expect(refused(`git worktree add ${made} && cd ${made} && git commit -m x`)).toBe(false);
-    expect(refused(`git worktree add ${made} && cd ${made} && git commit -m x`, wt)).toBe(false);
+  it.each(fromBoth)(
+    'still counts a worktree that git worktree add makes before &&, from %s (#473)',
+    (_, cwd) => {
+      const made = newWorktree();
+      expect(refused(`git worktree add ${made} && cd ${made} && git commit -m x`, cwd())).toBe(
+        false,
+      );
+    },
+  );
+
+  // A `;` inside the group does not keep the cd before it out of the job.
+  it('follows a cd into the main checkout inside a group sent to the background', () => {
+    expect(refused(`(cd ${main}; git commit -m x) & wait`, wt)).toBe(true);
+    expect(refused(`{ cd ${main}; git commit -m x; } & wait`, wt)).toBe(true);
   });
 
   it('counts a worktree made before a coproc on the line', () => {
-    const made = join(main, '.claude/worktrees/zz-new-wt');
+    const made = newWorktree();
     expect(refused(`git worktree add ${made}; coproc foo { git -C ${made} commit -m x; }`)).toBe(
       false,
     );
