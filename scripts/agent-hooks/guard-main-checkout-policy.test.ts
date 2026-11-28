@@ -508,6 +508,23 @@ describe('what the parser sees', () => {
     expect(refused(form.replaceAll('NEW', join(main, '.claude/worktrees/zz-new-wt')))).toBe(true);
   });
 
+  // #473: a background job runs while the line goes on, like a coproc.
+  it.each([
+    ['the main checkout', () => main],
+    ['a worktree', () => wt],
+  ])('does not count a worktree a background job makes as made, from %s', (_, cwd) => {
+    const made = join(main, '.claude/worktrees/zz-new-wt');
+    expect(refused(`git worktree add ${made} & cd ${made} && git commit -m x`, cwd())).toBe(true);
+    expect(refused(`git worktree add ${made} & cd ${made}; git commit -m x`, cwd())).toBe(true);
+    expect(refused(`git worktree add ${made} & git -C ${made} commit -m x`, cwd())).toBe(true);
+  });
+
+  it('still counts a worktree that git worktree add makes before && (#473)', () => {
+    const made = join(main, '.claude/worktrees/zz-new-wt');
+    expect(refused(`git worktree add ${made} && cd ${made} && git commit -m x`)).toBe(false);
+    expect(refused(`git worktree add ${made} && cd ${made} && git commit -m x`, wt)).toBe(false);
+  });
+
   it('counts a worktree made before a coproc on the line', () => {
     const made = join(main, '.claude/worktrees/zz-new-wt');
     expect(refused(`git worktree add ${made}; coproc foo { git -C ${made} commit -m x; }`)).toBe(

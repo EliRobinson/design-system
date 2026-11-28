@@ -140,7 +140,25 @@ describe('parseCommands', () => {
   });
 
   it('reads the body of a coproc NAME for loop', () => {
-    expect(names('coproc foo for a in b; do y; done')).toContain('y');
+    expect(names('coproc foo for a in b; do y; done')).toEqual(['coproc', 'for', 'y']);
+  });
+
+  // A `}`, `done` or `esac` still in the command closes its body before the
+  // `)` after it closes the `$(`, so what follows is back in the outer shell.
+  it.each(['echo $({ y; }); b', 'x=$(for i in a; do :; done); b', 'echo $(coproc foo { y; }); b'])(
+    'ends a body before the ) that closes its substitution: %s',
+    (script) => {
+      const b = parseCommands(script).find(({ argv }) => argv[0] === 'b');
+      expect(b?.scope).toEqual([]);
+    },
+  );
+
+  it('marks a background job as async, and only the list it ends', () => {
+    const [add, cd, commit] = parseCommands('git worktree add p & cd p && git commit');
+    expect(add?.async).toBe(true);
+    expect([cd?.async, commit?.async]).toEqual([false, false]);
+    const [a, b, c] = parseCommands('a && b & c');
+    expect([a?.async, b?.async, c?.async]).toEqual([true, true, false]);
   });
 
   it.each([
@@ -158,7 +176,8 @@ describe('parseCommands', () => {
     expect(cd?.name).toBe('cd');
     expect(cd?.scope).toHaveLength(1);
     expect(cd?.async).toBe(true);
-    expect(raw?.async).toBe(false);
+    // The record of the coproc itself shares the coprocess's shell.
+    expect(raw).toEqual({ name: 'coproc', scope: cd?.scope, async: true });
     expect(after).toEqual({ name: 'b', scope: [], async: false });
   });
 
