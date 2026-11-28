@@ -13,6 +13,7 @@ import {
   ghCommand,
   newParseState,
   parseCommands,
+  placeCommands,
   quoteArgv,
   shellScriptOf,
 } from './shell-parse.mjs';
@@ -698,6 +699,20 @@ describe('parseCommands', () => {
     expect(names("echo 'a <<Z'\nx")).toContain('x');
     expect(names('echo $((1 << y))\nx')).toContain('x');
     expect(names('(( n = 1 << 2 ))\nx')).toContain('x');
+  });
+});
+
+// A coproc in a compound body gets scopes that disagree on what is around
+// its coprocess, so its folder is null: one it cannot tell (#469). The first
+// row needs placeCommands' check of the scope around; in the second the
+// glob qualifier's `cd` leaves the folder unknown as well.
+describe('placeCommands', () => {
+  it.each([
+    ['if coproc x $(true); then git add -A; fi', 'coproc'],
+    ['ls a(e:cd c:) coproc pushd d | x', 'coproc'],
+  ])('cannot tell the folder of a coproc whose scopes disagree: %s', (script, name) => {
+    const coproc = placeCommands(script, '/w').find(({ command }) => command.argv[0] === name);
+    expect(coproc?.folder).toBeNull();
   });
 });
 

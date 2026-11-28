@@ -500,6 +500,8 @@ function readLevel(script, start, closer, scope, state) {
     redirectTarget = false;
     const id = newAsyncScope();
     openGroup(id);
+    // The stand-in comes after the commands before the `<(`, inside the new
+    // group's async shell: before round 1 of #469 it came first, outside it.
     passLimit(id, `${script[from]}(...)`);
     return from + 2;
   };
@@ -901,9 +903,14 @@ export function placeCommands(script, cwd) {
   /** @type {FolderNode} */
   const top = { folder: cwd, outer: null };
   // Each scope's node, by its last id. Scope ids are unique within a parse,
-  // and an id always has the same scopes around it, so a known scope costs
-  // one lookup, however deep it is: walking the scope from the top took time
-  // quadratic in the depth of a nest (#469).
+  // so a known scope costs one lookup, however deep it is: walking the scope
+  // from the top took time quadratic in the depth of a nest (#469). An id
+  // mostly has the same scopes around it, but not always: a coproc inside a
+  // compound body (`{ coproc x $(true); ... }`, `if coproc ...; then`) gets
+  // its coprocess id at a depth taken before the body opens, so its scope
+  // and its substitutions' scopes disagree. nodeOf checks the scope around
+  // the one it finds and gives such a command the folder null on purpose: a
+  // folder it cannot tell, which blocks more.
   /** @type {Map<number, FolderNode>} */
   const nodes = new Map();
   // The node of `scope`. A scope met for the first time starts in the folder
@@ -912,7 +919,10 @@ export function placeCommands(script, cwd) {
   const nodeOf = (/** @type {number[]} */ scope) => {
     let known = scope.length;
     while (known > 0 && !nodes.has(/** @type {number} */ (scope[known - 1]))) known--;
-    let node = known === 0 ? top : /** @type {FolderNode} */ (nodes.get(scope[known - 1] ?? 0));
+    let node =
+      known === 0
+        ? top
+        : /** @type {FolderNode} */ (nodes.get(/** @type {number} */ (scope[known - 1])));
     // Not the scope around it that `scope` names: a folder it cannot tell.
     const outerId = scope[known - 2];
     const outer = outerId === undefined ? top : nodes.get(outerId);

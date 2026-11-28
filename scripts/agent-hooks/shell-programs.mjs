@@ -99,9 +99,10 @@ export function unwrap(argv) {
   for (;;) {
     const first = rest[0];
     if (first === undefined) return { argv: rest, env, programAtRunTime: false };
-    const wrapper = WRAPPERS[posix.basename(first)];
     // A `=` word it cannot read may still name a wrapper (`=/usr/bin/sudo`).
-    const name = first.startsWith('=') ? equalsProgram(first) : null;
+    const wrapper = WRAPPERS[posix.basename(first)];
+    const equalsWord = first.startsWith('=');
+    const name = equalsWord ? equalsProgram(first) : null;
     if (name !== null) {
       rest = [name, ...rest.slice(1)];
     } else if (ASSIGNMENT.test(first)) {
@@ -120,7 +121,7 @@ export function unwrap(argv) {
       }
       rest = rest.slice(wrapper.positional ?? 0);
     } else {
-      return { argv: rest, env, programAtRunTime: first.startsWith('=') };
+      return { argv: rest, env, programAtRunTime: equalsWord };
     }
   }
 }
