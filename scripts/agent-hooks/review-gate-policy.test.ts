@@ -20,13 +20,12 @@ import {
 import {
   CREATE,
   GH,
-  NESTED_GLOB_NAMES,
   filledReview,
   handbackLine,
   handbackResultLine,
-  nestedGlob,
   promptLine,
 } from './review-gate-fixtures';
+import { NESTED_GLOB_NAMES, nestedGlob } from './shell-parse-fixtures';
 
 // This file lives at scripts/agent-hooks/, two levels below the repo root.
 // Reads below are repo-root-relative, not cwd-relative: nx runs this
@@ -90,6 +89,16 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['in a glob qualifier’s e[ ] string', `ls *(e['${CREATE} -F b.md'])`],
     ['in a glob qualifier’s sort e string', `ls *(oe:'${CREATE} -F b.md':)`],
     ['in an e string after a glob group', `ls (a|b)(e:'${CREATE} -F b.md':)`],
+    ['in an e string in a repeat subshell', `repeat 1 (ls *(e:'${CREATE} -F b.md':))`],
+    ['in an e string in a coproc subshell', `coproc (ls *(e:'${CREATE} -F b.md':))`],
+    ['in an e string in a for list', `for f (*(e:'${CREATE} -F b.md':)) :`],
+    ['in an e string in a foreach list', `foreach f (*(e:'${CREATE} -F b.md':)) :; end`],
+    ['in an e string in a select list', `select f (*(e:'${CREATE} -F b.md':)) :`],
+    ['in an e string in a two-name for list', `for f g (*(e:'${CREATE} -F b.md':)) :`],
+    [
+      'in an e string after many cheap glob groups',
+      `ls ${'x(+a)'.repeat(500)} *(e:'${CREATE} -F b.md':)`,
+    ],
   ])('%s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
   });

@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { ADMIN_REASON, REST_MERGE_REASON, findBypass } from './review-gate-bypass.mjs';
-import { GH, NESTED_GLOB_NAMES, nestedGlob } from './review-gate-fixtures';
+import { GH } from './review-gate-fixtures';
+import { NESTED_GLOB_NAMES, nestedGlob } from './shell-parse-fixtures';
 
 // Every command is built from GH so no test file holds a literal gh command.
 // `{gh}` in a case stands for it.

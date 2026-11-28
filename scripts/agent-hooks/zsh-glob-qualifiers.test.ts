@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { globQualifierCode } from './zsh-glob-qualifiers.mjs';
+import { globQualifierCode, readGlobGroupText } from './zsh-glob-qualifiers.mjs';
 
 const none = { scripts: [], programs: [], unreadable: false };
 
@@ -42,5 +42,27 @@ describe('globQualifierCode', () => {
     ['u{root}e:y:', { ...none, scripts: ['y'] }],
   ])('%s', (text, expected) => {
     expect(globQualifierCode(text)).toEqual(expected);
+  });
+});
+
+describe('readGlobGroupText', () => {
+  it.each([
+    ["e:'y a':", { text: 'e:y a:', dynamic: false }],
+    ['e:"y a":', { text: 'e:y a:', dynamic: false }],
+    ['e:y\\ a:', { text: 'e:y a:', dynamic: false }],
+    ["e:'$REPLY':", { text: 'e:$REPLY:', dynamic: false }],
+    ['e:"\\$X":', { text: 'e:$X:', dynamic: false }],
+    ['e:"a\\b":', { text: 'e:a\\b:', dynamic: false }],
+    ['e:"$X":', { text: 'e:$X:', dynamic: true }],
+    ['e:$X:', { text: 'e:$X:', dynamic: true }],
+    ['e:$(y):', { text: 'e:$(y):', dynamic: true }],
+    ['e:`y`:', { text: 'e:`y`:', dynamic: true }],
+    ["e:$'y':", { text: 'e:$y:', dynamic: true }],
+    ['e:{y,z}:', { text: 'e:{y,z}:', dynamic: true }],
+    ["{'d'..f}1", { text: '{d..f}1', dynamic: true }],
+    ["e:'{y,z}':", { text: 'e:{y,z}:', dynamic: false }],
+    ['e{y}', { text: 'e{y}', dynamic: false }],
+  ])('%s', (raw, expected) => {
+    expect(readGlobGroupText(raw)).toEqual(expected);
   });
 });
