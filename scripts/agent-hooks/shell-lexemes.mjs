@@ -5,7 +5,7 @@
 /** After a `$`: a character that starts an expansion. */
 export const EXPANSION_START = /^[\w{@*#?$!-]$/;
 
-/** A character that opens a quote. After an unquoted `$`, `$'...'` and `$"..."`. */
+/** After an unquoted `$`: `$'...'` and `$"..."`, read as quotes. */
 export const QUOTE_START = /^['"]$/;
 
 /** An unquoted brace expansion, `{a,b}` or `{1..3}`; not gh's `{owner}`. */

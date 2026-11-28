@@ -148,6 +148,7 @@ export function globQualifierCode(text) {
  * `dynamic`: an expansion the shell runs first (`$X`, `"$X"`, `$(...)`,
  * backticks, `$'...'`, a brace expansion, quoted parts and all, as in
  * `{'d'..f}`) builds part of it at run time, so it may hold any qualifier.
+ * It reads each character once.
  * @param {string} raw The source between the group's parentheses.
  * @returns {{ text: string, dynamic: boolean }}
  */
@@ -156,6 +157,13 @@ export function readGlobGroupText(raw) {
   let dynamic = false;
   /** @type {"'" | '"' | null} */
   let quote = null;
+  // The next `{` and `}` past the one being read, found once each.
+  let nextOpen = -1;
+  let nextClose = -1;
+  const after = (/** @type {string} */ ch, /** @type {number} */ at) => {
+    const found = raw.indexOf(ch, at);
+    return found === -1 ? Infinity : found;
+  };
   for (let i = 0; i < raw.length; i++) {
     const ch = raw[i] ?? '';
     const next = raw[i + 1] ?? '';
@@ -174,10 +182,15 @@ export function readGlobGroupText(raw) {
     } else {
       const expansion = ch === '$' && (EXPANSION_START.test(next) || next === '(');
       if (ch === '`' || expansion) dynamic = true;
-      // `$'...'` and `$"..."`, outside double quotes.
       if (quote === null && ch === '$' && QUOTE_START.test(next)) dynamic = true;
-      const unquoted = raw.slice(i).replace(/['"]/g, '');
-      if (quote === null && ch === '{' && BRACE_EXPANSION.test(unquoted)) dynamic = true;
+      if (quote === null && ch === '{') {
+        // A brace expansion holds no other brace, so only the last `{`
+        // before a `}` may start one: test the span to that `}`.
+        if (nextOpen <= i) nextOpen = after('{', i + 1);
+        if (nextClose < i) nextClose = after('}', i);
+        const span = nextClose < nextOpen ? raw.slice(i, nextClose + 1) : '';
+        if (BRACE_EXPANSION.test(span.replace(/['"]/g, ''))) dynamic = true;
+      }
       text += ch;
     }
   }
@@ -191,39 +204,31 @@ export function readGlobGroupText(raw) {
  */
 
 /**
- * @param {string} raw The source between the group's parentheses.
- * @returns {GlobCode}
- */
-export function globGroupCode(raw) {
-  const { text, dynamic } = readGlobGroupText(raw);
-  return { text, dynamic, ...globQualifierCode(text) };
-}
-
-/**
  * A closed glob group: its code, and the scope that code runs in.
  * @typedef {{ code: GlobCode, at: number[] }} ClosedGlobGroup
  */
 
 /**
  * Keeps one level's glob groups, from `(` to `)`, and hands each closed one
- * to `read` once. zsh runs an inner group's code only from an `e` string of
- * a group around it, whose `eval` reads the inner group again. So a closed
- * group inside an open glob group is kept, and dropped when the outer group
- * closes with an `e` string to read. If the outer group has none (it is a
- * pattern, a subshell, or a `for` list), or never closes at its `)` (a `}`
- * read as a closer, the end of the level), the kept groups are read anyway.
+ * to `read` once. zsh reads a glob group that holds a `(` as a pattern, so
+ * an inner group's code runs only from an `e` string of a group around it,
+ * which its `eval` reads again, or when the group around it is a list or a
+ * subshell (`for f (...)`, `repeat 1 (...)`), which runs it in the shell
+ * around that group. So a closed group inside an open glob group is kept
+ * until the open one closes or ends; see `close`.
  * @param {string} script
- * @param {number[]} groups The level's open groups, innermost last.
+ * @param {() => number[]} outerIds The level's open groups, innermost last.
  * @param {(group: ClosedGlobGroup) => void} read
+ * @param {(chars: number) => void} count Counts the characters read.
  */
-export function globGroupTracker(script, groups, read) {
-  /** @type {Map<number, { start: number, inner: ClosedGlobGroup[] }>} */
+export function globGroupTracker(script, outerIds, read, count) {
+  /** @type {Map<number, { start: number, standalone: boolean, inner: ClosedGlobGroup[] }>} */
   const open = new Map();
-  let justClosed = false;
   // The innermost open glob group, if any.
   const outer = () => {
-    for (let i = groups.length - 1; i >= 0; i--) {
-      const entry = open.get(groups[i] ?? 0);
+    const ids = outerIds();
+    for (let i = ids.length - 1; i >= 0; i--) {
+      const entry = open.get(ids[i] ?? 0);
       if (entry) return entry;
     }
     return undefined;
@@ -237,32 +242,49 @@ export function globGroupTracker(script, groups, read) {
     }
   };
   return {
-    /** A glob group opens at `start`. @param {number} id @param {number} start */
-    open(id, start) {
-      open.set(id, { start, inner: [] });
+    /** How many glob groups are open. */
+    get depth() {
+      return open.size;
+    },
+    /** @param {number} id */
+    isOpen: (id) => open.has(id),
+    /**
+     * A glob group opens at `start`. `standalone`: its `(` stands alone, so
+     * it may be a list or a subshell.
+     * @param {number} id
+     * @param {number} start
+     * @param {boolean} standalone
+     */
+    open(id, start, standalone) {
+      open.set(id, { start, standalone, inner: [] });
     },
     /**
-     * The group `id`, already out of `groups`, closes at its `)` at `end`.
+     * The open glob group `id`, already out of the level's groups, closes at
+     * its `)` at `end`. Its code runs in `at`.
      * @param {number} id
      * @param {number} end
-     * @param {() => number[]} atOf The scope its code runs in.
+     * @param {number[]} at
      */
-    close(id, end, atOf) {
+    close(id, end, at) {
       const entry = open.get(id);
-      justClosed = entry !== undefined;
       if (!entry) return;
       open.delete(id);
-      const code = globGroupCode(script.slice(entry.start + 1, end));
-      const at = atOf();
-      // With an `e` string, the group is read again by its `eval`, inner
-      // groups and all. zsh reads a glob group that holds a `(` as a pattern,
-      // so its inner groups' code never runs from it; only from a subshell or
-      // a list (`for f (...)`), which has no `e` string and runs the inner
-      // code in the shell around it.
-      if (code.scripts.length === 0) file(entry.inner.map((group) => ({ ...group, at })));
-      file([{ code, at }]);
+      const raw = script.slice(entry.start + 1, end);
+      count(raw.length);
+      const { text, dynamic } = readGlobGroupText(raw);
+      const code = { text, dynamic, ...globQualifierCode(text) };
+      // With an `e` string, its eval reads the inner groups again. Without
+      // one, or in a group that may be a list or a subshell, the inner groups
+      // run in the shell around this group, so they are read here, under its
+      // scope; a standalone group's own `e` strings never run then.
+      const list = entry.standalone && entry.inner.length > 0;
+      if (list || code.scripts.length === 0) {
+        for (const group of entry.inner) group.at = at;
+        file(entry.inner);
+      }
+      file([{ code: list ? { ...code, scripts: [] } : code, at }]);
     },
-    /** The group `id`, already out of `groups`, ends without its `)`. @param {number} id */
+    /** The open glob group `id`, already out of the level's groups, ends without its `)`. @param {number} id */
     drop(id) {
       const entry = open.get(id);
       if (!entry) return;
@@ -273,12 +295,6 @@ export function globGroupTracker(script, groups, read) {
     dropAll() {
       for (const entry of open.values()) for (const group of entry.inner) read(group);
       open.clear();
-    },
-    /** Whether the last character read closed a glob group. Resets it. */
-    takeClosed() {
-      const was = justClosed;
-      justClosed = false;
-      return was;
     },
   };
 }
