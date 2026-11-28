@@ -7,8 +7,10 @@ import {
   ghCommand,
   parseCommands,
   quoteArgv,
+  readGlobGroupText,
   shellScriptOf,
 } from './shell-parse.mjs';
+import { NESTED_GLOB_NAMES, nestedGlob } from './review-gate-fixtures';
 
 const argvs = (script: string) => parseCommands(script).map(({ argv }) => argv);
 const names = (script: string) => argvs(script).map((argv) => argv[0]);
@@ -119,7 +121,7 @@ describe('parseCommands', () => {
   });
 
   // zsh glob qualifiers that run code (#465): an `e` string runs as shell
-  // code, read as an `eval` script.
+  // code, read as an `eval` script. Each case finds `y a` right after it.
   it.each([
     "x *(e:'y a':)",
     'x *(e:"y a":)',
@@ -146,11 +148,14 @@ describe('parseCommands', () => {
     "x *(N)(e:'y a':)",
     "time(e:'y a':)",
     "x *(e:'y a':) && z",
+    "x a(e{x a(e{'y a'})})",
   ])('reads the e string of a glob qualifier as commands: %s', (script) => {
     const commands = parseCommands(script);
     const y = commands.findIndex(({ argv }) => argv[0] === 'y');
-    expect(commands[y]?.argv).toEqual(['y', 'a']);
-    expect(commands[y - 1]?.argv[0]).toBe('eval');
+    expect(commands.slice(y - 1, y + 1).map(({ argv }) => argv)).toEqual([
+      ['eval', 'y a'],
+      ['y', 'a'],
+    ]);
   });
 
   // A `+name` qualifier calls a command the hook cannot see, and an
@@ -184,6 +189,12 @@ describe('parseCommands', () => {
     expect(runTimePrograms(script)).toEqual(expected);
   });
 
+  // What the qualifier reading adds: the commands in the body e strings run in.
+  const fromQualifiers = (script: string) =>
+    parseCommands(script)
+      .filter(({ scope }) => (scope.at(-1) ?? 0) < 0)
+      .map(({ argv }) => argv);
+
   it.each([
     'x *(N)',
     'x *(.om[1])',
@@ -196,22 +207,39 @@ describe('parseCommands', () => {
     "local a=(e:'y':)",
     "A=1 a+=(e:'y':) x",
   ])('reads no code from a glob group whose qualifiers run none: %s', (script) => {
-    const programs = parseCommands(script).map(({ argv }) => argv[0]);
-    expect(programs).not.toContain('eval');
-    expect(runTimePrograms(script)).toEqual([]);
+    expect(fromQualifiers(script)).toEqual([]);
   });
 
   it('runs an e string in a body of the shell that expands the word', () => {
-    const commands = parseCommands("x *(e:'cd a':); b");
-    const cd = commands.find(({ argv }) => argv[0] === 'cd');
-    expect(cd?.scope).toHaveLength(1);
-    expect(cd?.scope[0]).toBeLessThan(0);
-    expect(commands.at(-1)?.scope).toEqual([]);
+    const scopes = parseCommands("x *(e:'cd a':); b").map(({ argv, scope }) => [
+      argv[0],
+      scope.map(Math.sign),
+    ]);
+    expect(scopes).toEqual([
+      ['x', []],
+      ['e:cd a:', [1]],
+      ['eval', [-1]],
+      ['cd', [-1]],
+      ['b', []],
+    ]);
   });
 
   it('runs an e string in a coprocess when the group is one', () => {
     const cd = parseCommands("coproc x a(e:'cd a':)").find(({ argv }) => argv[0] === 'cd');
     expect(cd?.async).toBe(true);
+  });
+
+  // Each nested group is read once, from the e string around it (#465).
+  it.each(NESTED_GLOB_NAMES)('reads a deeply nested glob group quickly: %s', (form) => {
+    const script = nestedGlob(form);
+    const start = performance.now();
+    parseCommands(script);
+    expect(performance.now() - start).toBeLessThan(200);
+  });
+
+  it('counts glob qualifier code past its work limit as built at run time', () => {
+    const script = Array.from({ length: 600 }, () => "x *(e:'y':)").join('; ');
+    expect(runTimePrograms(script).at(-1)).toBe('e:y:');
   });
 
   // bash's `coproc [NAME] command` (#468). zsh reads only the forms with no NAME.
@@ -419,6 +447,27 @@ describe('parseCommands', () => {
     expect(names("echo 'a <<Z'\nx")).toContain('x');
     expect(names('echo $((1 << y))\nx')).toContain('x');
     expect(names('(( n = 1 << 2 ))\nx')).toContain('x');
+  });
+});
+
+describe('readGlobGroupText', () => {
+  it.each([
+    ["e:'y a':", { text: 'e:y a:', dynamic: false }],
+    ['e:"y a":', { text: 'e:y a:', dynamic: false }],
+    ['e:y\\ a:', { text: 'e:y a:', dynamic: false }],
+    ["e:'$REPLY':", { text: 'e:$REPLY:', dynamic: false }],
+    ['e:"\\$X":', { text: 'e:$X:', dynamic: false }],
+    ['e:"a\\b":', { text: 'e:a\\b:', dynamic: false }],
+    ['e:"$X":', { text: 'e:$X:', dynamic: true }],
+    ['e:$X:', { text: 'e:$X:', dynamic: true }],
+    ['e:$(y):', { text: 'e:$(y):', dynamic: true }],
+    ['e:`y`:', { text: 'e:`y`:', dynamic: true }],
+    ["e:$'y':", { text: 'e:$y:', dynamic: true }],
+    ['e:{y,z}:', { text: 'e:{y,z}:', dynamic: true }],
+    ["e:'{y,z}':", { text: 'e:{y,z}:', dynamic: false }],
+    ['e{y}', { text: 'e{y}', dynamic: false }],
+  ])('%s', (raw, expected) => {
+    expect(readGlobGroupText(raw)).toEqual(expected);
   });
 });
 

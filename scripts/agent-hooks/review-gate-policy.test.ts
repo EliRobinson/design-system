@@ -20,9 +20,11 @@ import {
 import {
   CREATE,
   GH,
+  NESTED_GLOB_NAMES,
   filledReview,
   handbackLine,
   handbackResultLine,
+  nestedGlob,
   promptLine,
 } from './review-gate-fixtures';
 
@@ -249,8 +251,17 @@ describe('findPrCommands: reads pr create flags', () => {
     expect(dir(`ls && cd sub && ${CREATE} -F b.md`)).toBe('sub');
     // A cd inside a compound body may or may not have run.
     expect(dir(`{ cd sub; }; ${CREATE} -F b.md`)).toBeNull();
-    // So does a glob qualifier's e string, which runs once per file matched.
+  });
+
+  // zsh runs a glob qualifier's e string once per file matched, so a cd in
+  // it may or may not run (#465).
+  it('cannot tell the folder after a cd in a glob qualifier’s e string', () => {
     expect(dir(`ls *(e:'cd sub':); ${CREATE} -F b.md`)).toBeNull();
+  });
+
+  // Deeply nested glob groups do not stop the parser (#465).
+  it.each(NESTED_GLOB_NAMES)('finds a PR open before a deeply nested glob group: %s', (form) => {
+    expect(kinds(`${CREATE} -F b.md; ${nestedGlob(form)}`)).toEqual(['pr-create']);
   });
 
   it('reads every cd form the guard reads, the same way', () => {

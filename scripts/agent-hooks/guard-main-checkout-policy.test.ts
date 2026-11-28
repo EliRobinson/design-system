@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { OVERRIDE, guardDecision, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
+import { NESTED_GLOB_NAMES, nestedGlob } from './review-gate-fixtures';
 
 // On-disk fixtures, shaped the way git lays them out:
 //   main/          a main checkout (`.git` is a directory)
@@ -481,6 +482,10 @@ describe('what the parser sees', () => {
 
   it('counts a cd in an e string as a folder it cannot follow', () => {
     expect(refused("ls *(e:'cd ../../..':); git add -A", wt)).toBe(true);
+  });
+
+  it.each(NESTED_GLOB_NAMES)('refuses a commit before a deeply nested glob group: %s', (form) => {
+    expect(refused(`git commit -m x; ${nestedGlob(form)}`)).toBe(true);
   });
 
   it.each([
