@@ -186,10 +186,30 @@ export function unfilledReviewLabels(markdown) {
 // ---- Reviewer runs ----
 
 /**
+ * Whether a path the hook reads does not depend on the folder a command runs
+ * in. A `~` path counts as relative: the hook reads it from the home folder,
+ * which a `cd` cannot change, but the parser does not expand it.
+ * @param {string} path
+ */
+export function isAbsolutePath(path) {
+  return path.startsWith('/');
+}
+
+/**
+ * The folder a PR command runs in: its `dir`, null when the parser cannot
+ * tell, and the hook's own (`.`) when the command has none, as an MCP call.
+ * @param {PrCommand} pr
+ * @returns {string | null}
+ */
+function dirOf(pr) {
+  const dir = 'dir' in pr ? pr.dir : undefined;
+  return dir === undefined ? '.' : dir;
+}
+
+/**
  * The refs to check reviewer runs against: the PR's head branch (without an
  * `owner:` prefix), the base refs to try in order, and the directory to run
- * git in: the hook's own (`.`) when the command has none, as an MCP call, and
- * null when the parser cannot tell which folder the command runs in.
+ * git in (see dirOf).
  * @param {PrCommand} pr
  * @returns {{ head?: string, baseRefs: string[], dir: string | null }}
  */
@@ -197,13 +217,13 @@ export function branchRefsOf(pr) {
   if (pr.kind === 'api-create' || pr.kind === 'graphql-files') {
     return {
       baseRefs: [],
-      dir: pr.kind === 'graphql-files' ? (pr.dir === undefined ? '.' : pr.dir) : '.',
+      dir: dirOf(pr),
     };
   }
   return {
     head: pr.head?.replace(/^[^:]+:/, ''),
     baseRefs: [`origin/${pr.base ?? 'HEAD'}`, 'origin/main'],
-    dir: pr.kind === 'pr-create' && pr.dir !== undefined ? pr.dir : '.',
+    dir: dirOf(pr),
   };
 }
 
@@ -335,11 +355,20 @@ export function decidePr(pr, { readFile, reviewersNotRun }) {
   if (pr.kind === 'api-create') {
     return { deny: 'Open PRs with `gh pr create --body-file`, not `gh api`.' };
   }
-  const relative = (/** @type {string} */ path) => !path.startsWith('/');
-  const unknownDir =
-    'The hook cannot tell which directory a `cd` moved to. Pass an absolute path, or drop the `cd`.';
+  // The parser gives a null folder after a `cd` it cannot follow, such as
+  // `cd "$DIR"` or a `cd` inside `{ ... }`.
+  const unknownFolder = (/** @type {string} */ command, /** @type {string} */ fix) =>
+    `The hook cannot tell which folder this \`${command}\` runs in: a \`cd\` before it is one the hook cannot follow. ${fix}`;
   if (pr.kind === 'graphql-files') {
-    if (pr.dir === null && pr.files.some(relative)) return { deny: unknownDir };
+    const relative = pr.files.find((file) => !isAbsolutePath(file));
+    if (pr.dir === null && relative !== undefined) {
+      return {
+        deny: unknownFolder(
+          'gh api graphql',
+          `So it cannot read the query file \`${relative}\`. Pass an absolute path, or write the \`cd\` out.`,
+        ),
+      };
+    }
     const creates = pr.files.some((file) => readFile(file)?.includes('createPullRequest'));
     return creates
       ? {
@@ -355,7 +384,10 @@ export function decidePr(pr, { readFile, reviewersNotRun }) {
     // The body file and the reviewer runs are both read from the PR's folder
     // (#472), so an absolute body path is not enough.
     return {
-      deny: "The hook cannot tell which folder this `gh pr create` runs in, so it cannot check the reviewer runs. Write the `cd` out with a path the hook can read (`cd <path> && gh pr create ...`), or run `gh pr create` from the PR's worktree.",
+      deny: unknownFolder(
+        'gh pr create',
+        "So it cannot check the reviewer runs or read the body file. Write the `cd` out with a path the hook can read (`cd <path> && gh pr create ...`), or run `gh pr create` from the PR's worktree.",
+      ),
     };
   } else if (pr.fill || pr.web) {
     return {

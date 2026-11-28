@@ -550,6 +550,12 @@ describe('decidePr', () => {
     web: false,
   } as const;
   const deps = { readFile: () => filledReview(), reviewersNotRun: () => [] };
+  // The first PR command in a script, and the decision on it.
+  const decideScript = (script: string) => {
+    const [command] = findPrCommands(script);
+    if (command === undefined) throw new Error(`no PR command in ${script}`);
+    return { command, decision: decidePr(command, deps) };
+  };
 
   it('allows a filled body file with every reviewer run', () => {
     expect(decidePr(pr, deps)).toBeNull();
@@ -602,10 +608,16 @@ describe('decidePr', () => {
       `cd ../wtA && (cd /tmp); ${CREATE} --body-file b.md`,
       '../wtA',
     ],
+    // A `case` body ends before the `)` that closes its substitution.
+    [
+      'a cd in a case in a substitution before it',
+      `x=$(case a in a) cd /tmp;; esac); ${CREATE} --body-file b.md`,
+      '.',
+    ],
   ])('lets a pr create through with %s', (_, script, folder) => {
-    const [command] = findPrCommands(script);
+    const { command, decision } = decideScript(script);
     expect(command).toMatchObject({ dir: folder });
-    expect(decidePr(command as Parameters<typeof decidePr>[0], deps)).toBeNull();
+    expect(decision).toBeNull();
   });
 
   it.each([
@@ -614,11 +626,9 @@ describe('decidePr', () => {
     `{ coproc foo { true; }; cd /tmp; }; cd /abs && ${CREATE} --body-file b.md`,
     `cd "$DIR" && ${CREATE} --body-file /abs/b.md`,
   ])('denies a pr create whose folder it cannot tell: %s', (script) => {
-    const [command] = findPrCommands(script);
+    const { command, decision } = decideScript(script);
     expect(command).toMatchObject({ dir: null });
-    expect(decidePr(command as Parameters<typeof decidePr>[0], deps)?.deny).toMatch(
-      /cannot tell which folder/,
-    );
+    expect(decision?.deny).toMatch(/cannot tell which folder/);
   });
 
   it('denies a relative graphql file after a cd it cannot follow', () => {

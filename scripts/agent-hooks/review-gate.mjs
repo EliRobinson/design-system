@@ -10,12 +10,13 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { isAbsolute, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import {
   REVIEWERS,
   TOOLS,
   branchRefsOf,
+  isAbsolutePath,
   countsAsRun,
   decidePr,
   decideReviewerStart,
@@ -225,10 +226,19 @@ function reviewersNotRun(pr, cwd) {
 
 // ---- Main ----
 
-/** @param {string} path @param {string} dir */
+/**
+ * Reads `path` from `dir`, or null when it is missing. A null `dir` is a
+ * folder the parser could not tell: decidePr refuses before it reads a
+ * relative path there, so reading one throws rather than guess (#472).
+ * @param {string} path @param {string | null} dir
+ */
 function readFile(path, dir) {
+  const full = path.replace(/^~(?=\/|$)/, homedir());
+  if (dir === null && !isAbsolutePath(full)) {
+    throw new Error(`no folder is known to read ${path} from`);
+  }
   try {
-    return readFileSync(resolve(dir, path.replace(/^~(?=\/|$)/, homedir())), 'utf8');
+    return readFileSync(dir === null ? full : resolve(dir, full), 'utf8');
   } catch {
     return null;
   }
@@ -252,7 +262,7 @@ function checkPr(pr, cwd, tool) {
   let decision;
   try {
     decision = decidePr(pr, {
-      readFile: (path) => readFile(path, isAbsolute(path) ? '/' : inDir()),
+      readFile: (path) => readFile(path, dir),
       reviewersNotRun: () => (TOOLS[tool].tracksReviewers ? reviewersNotRun(pr, inDir()) : []),
     });
   } catch (error) {
