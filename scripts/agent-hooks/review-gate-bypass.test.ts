@@ -206,6 +206,29 @@ describe('findBypass: refuses merge words it cannot read', () => {
     expect(reason(script)).toContain(says);
   });
 
+  // zsh glob qualifiers run their e strings as shell code (#465).
+  it.each([
+    ['ls *(e:"{gh} pr merge 5 $F":)', UNREAD],
+    ["ls *(e:'{gh} pr merge 5 $F':)", UNREAD],
+    ["ls *(e['{gh} pr merge 5 $F'])", UNREAD],
+    ["ls *(.oe:'{gh} pr merge 5 $F':)", UNREAD],
+    ["ls (a|b)(e:'{gh} pr $A 5':)", UNREAD_COMMAND],
+    ["ls *(e:'{gh} pr merge 5 --admin':)", ADMIN_REASON],
+    ['ls *(e:{gh}\\ pr\\ merge\\ 5\\ --admin:)', ADMIN_REASON],
+  ])('reads a glob qualifier’s e string as commands: %s', (script, says) => {
+    expect(reason(script)).toContain(says);
+  });
+
+  // A `+name` qualifier, or one an expansion builds, is a command built at
+  // run time, so the whole script is checked.
+  it.each([
+    'ls *(+fn) && echo "{gh} pr merge 5 --admin"',
+    'ls *($Q) && echo "{gh} pr merge 5 --admin"',
+    'ls *(e:"$X":) && echo "{gh} pr merge 5 --admin"',
+  ])('checks the whole script after a glob qualifier it cannot read: %s', (script) => {
+    expect(reason(script)).toBe(`${ADMIN_REASON} Run gh directly, not through another program.`);
+  });
+
   it.each([
     ['{gh} pr merge 5 --body $B', true],
     ['{gh} pr merge 5 --body "$@"', false],
@@ -412,6 +435,8 @@ describe('findBypass: lets plain merges, reads and text through', () => {
     "{gh} pr merge 5 '--admi(n)'",
     '{gh} pr merge 5 "--admi[n]"',
     '{gh} pr merge 5 --squash -t \\(fix\\)',
+    'ls *(.om[1]) && {gh} pr merge 5 --squash',
+    "ls *(e:'[[ -d $REPLY ]]':) && {gh} pr merge 5 --squash",
     'echo {gh} pr merge 5 --admin',
     "git commit -m 'refuse {gh} pr merge --admin'",
     "{gh} issue create --title '{gh} pr merge --admin is refused' --body x",

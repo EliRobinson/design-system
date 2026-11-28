@@ -469,6 +469,20 @@ describe('what the parser sees', () => {
     expect(refused(command)).toBe(true);
   });
 
+  // zsh runs a glob qualifier's e string as shell code (#465).
+  it.each([
+    "ls *(e:'git add -A':)",
+    'ls *(e:"git stash":)',
+    "ls *(e['git reset --hard'])",
+    "ls (a|b)(e:'git add -A':)",
+  ])('reads the e string of a glob qualifier: %s', (command) => {
+    expect(refused(command)).toBe(true);
+  });
+
+  it('counts a cd in an e string as a folder it cannot follow', () => {
+    expect(refused("ls *(e:'cd ../../..':); git add -A", wt)).toBe(true);
+  });
+
   it.each([
     'coproc foo { git add -A; }',
     'coproc foo ( git add -A )',

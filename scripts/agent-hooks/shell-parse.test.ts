@@ -118,6 +118,102 @@ describe('parseCommands', () => {
     expect(names(script).filter((name) => name !== undefined)).toEqual(expected);
   });
 
+  // zsh glob qualifiers that run code (#465): an `e` string runs as shell
+  // code, read as an `eval` script.
+  it.each([
+    "x *(e:'y a':)",
+    'x *(e:"y a":)',
+    "x *(e['y a'])",
+    "x *(e{'y a'})",
+    "x *(eX'y a'X)",
+    "x *(e':y a':)",
+    'x *(e:y\\ a:)',
+    "x *(.e:'y a':)",
+    "x *(oe:'y a':)",
+    "x *(Ne:'y a':)",
+    "x *(a-1e:'y a':)",
+    "x *(f-100e:'y a':)",
+    "x *(u0e:'y a':)",
+    "x *(P:p:e:'y a':)",
+    "x *([1]e:'y a':)",
+    "x *(e:'w':e:'y a':)",
+    "x *(e:'y a'::h)",
+    "x f1(e:'y a':)",
+    'x "f"(e:\'y a\':)',
+    "x **(e:'y a':)",
+    "x (e:'y a':)",
+    "x (a|b)(e:'y a':)",
+    "x *(N)(e:'y a':)",
+    "time(e:'y a':)",
+    "x *(e:'y a':) && z",
+  ])('reads the e string of a glob qualifier as commands: %s', (script) => {
+    const commands = parseCommands(script);
+    const y = commands.findIndex(({ argv }) => argv[0] === 'y');
+    expect(commands[y]?.argv).toEqual(['y', 'a']);
+    expect(commands[y - 1]?.argv[0]).toBe('eval');
+  });
+
+  // A `+name` qualifier calls a command the hook cannot see, and an
+  // expansion may build any qualifier, so each counts as built at run time.
+  // The group's own words are read as a subshell too; these are the ones
+  // read from its qualifiers, in the body the e strings run in.
+  const runTimePrograms = (script: string) =>
+    parseCommands(script)
+      .filter(({ scope, marks }) => (scope.at(-1) ?? 0) < 0 && marks[0]?.dynamic)
+      .map(({ argv }) => argv[0]);
+
+  it.each([
+    ['x *(+fn)', ['fn']],
+    ['x *(o+fn)', ['fn']],
+    ['x *(om+fn)', ['fn']],
+    ['x *(+fn:t)', ['fn']],
+    ['x *(+fn+gn)', ['fn', 'gn']],
+    ["x *(+'fn')", ['fn']],
+    ['x *($X)', ['$X']],
+    ['x *(e:"$X":)', ['$X', 'e:$X:']],
+    ['x *(e:$X:)', ['$X', 'e:$X:']],
+    // The e string `y` runs, and so does the substitution in it first.
+    ['x *(e:`y`:)', ['`y`', 'e:`y`:']],
+    ["x *(e:$'y':)", ['$y', 'e:$y:']],
+    ['x *(e:{y,z}:)', ['{y,z}', 'e:{y,z}:']],
+    ['x *(e:y)', ['e:y']],
+    ['x *(e)', ['e']],
+    // zsh nests some brackets and not others, so both readings are kept.
+    ['x *(e[y[a])', ['y[a]', 'e[y[a]']],
+  ])('reads a glob qualifier it cannot follow as built at run time: %s', (script, expected) => {
+    expect(runTimePrograms(script)).toEqual(expected);
+  });
+
+  it.each([
+    'x *(N)',
+    'x *(.om[1])',
+    'x *(:e)',
+    'x *(u:root:)',
+    'x *(f:u+r:)',
+    'x *(Lk+0)',
+    'x --admi(n|x)',
+    'a=(e:y:)',
+    "local a=(e:'y':)",
+    "A=1 a+=(e:'y':) x",
+  ])('reads no code from a glob group whose qualifiers run none: %s', (script) => {
+    const programs = parseCommands(script).map(({ argv }) => argv[0]);
+    expect(programs).not.toContain('eval');
+    expect(runTimePrograms(script)).toEqual([]);
+  });
+
+  it('runs an e string in a body of the shell that expands the word', () => {
+    const commands = parseCommands("x *(e:'cd a':); b");
+    const cd = commands.find(({ argv }) => argv[0] === 'cd');
+    expect(cd?.scope).toHaveLength(1);
+    expect(cd?.scope[0]).toBeLessThan(0);
+    expect(commands.at(-1)?.scope).toEqual([]);
+  });
+
+  it('runs an e string in a coprocess when the group is one', () => {
+    const cd = parseCommands("coproc x a(e:'cd a':)").find(({ argv }) => argv[0] === 'cd');
+    expect(cd?.async).toBe(true);
+  });
+
   // bash's `coproc [NAME] command` (#468). zsh reads only the forms with no NAME.
   it.each([
     ['coproc foo { y; }; z', ['coproc', 'y', 'z']],

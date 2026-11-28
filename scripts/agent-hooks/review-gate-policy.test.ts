@@ -84,6 +84,10 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['in a ( glued to an argument', `x a(${CREATE} -F b.md)`],
     ['in a ( standing alone as an argument', `x (${CREATE} -F b.md)`],
     ['in a case pattern with a leading (', `case x in (a) ${CREATE} -F b.md;; esac`],
+    ['in a glob qualifier’s e string', `ls *(e:"${CREATE} -t x -b y":)`],
+    ['in a glob qualifier’s e[ ] string', `ls *(e['${CREATE} -F b.md'])`],
+    ['in a glob qualifier’s sort e string', `ls *(oe:'${CREATE} -F b.md':)`],
+    ['in an e string after a glob group', `ls (a|b)(e:'${CREATE} -F b.md':)`],
   ])('%s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
   });
@@ -245,6 +249,8 @@ describe('findPrCommands: reads pr create flags', () => {
     expect(dir(`ls && cd sub && ${CREATE} -F b.md`)).toBe('sub');
     // A cd inside a compound body may or may not have run.
     expect(dir(`{ cd sub; }; ${CREATE} -F b.md`)).toBeNull();
+    // So does a glob qualifier's e string, which runs once per file matched.
+    expect(dir(`ls *(e:'cd sub':); ${CREATE} -F b.md`)).toBeNull();
   });
 
   it('reads every cd form the guard reads, the same way', () => {

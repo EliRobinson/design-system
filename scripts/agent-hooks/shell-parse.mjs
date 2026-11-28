@@ -73,6 +73,190 @@ const QUOTE_START = /^['"]$/;
 const GLOB_GROUP_WORD = '(...)';
 // An unquoted brace expansion, `{a,b}` or `{1..3}`; not gh's `{owner}`.
 const BRACE_EXPANSION = /^\{[^{}\s'"]*(,|\.\.)[^{}\s'"]*\}/;
+// The word before a `(` that makes it an array, as in `a=(1 2)` or `a+=(1)`.
+const ARRAY_ASSIGNMENT = /^[A-Za-z_]\w*(\[[^\]]*\])?\+?=$/;
+// Commands whose `NAME=(...)` words are array assignments in zsh.
+const ARRAY_DECLARERS = new Set([
+  'local',
+  'typeset',
+  'declare',
+  'export',
+  'readonly',
+  'integer',
+  'float',
+  'private',
+]);
+
+// ---- zsh glob qualifiers ----
+//
+// zsh reads a `(...)` at the end of a glob word as a list of qualifiers.
+// Two of them run code: `e` followed by a delimited string (`e:...:`,
+// `e[...]`, `e{...}`), which zsh runs as shell code, and `+name`, which calls
+// the command `name`. `o` and `O` take either as a sort key (`oe:...:`,
+// `o+name`). The shell expands the group before it reads the qualifiers, so
+// `*($X)` may hold either.
+
+// The qualifiers that take no argument.
+const PLAIN_QUALIFIERS = new Set('/.@=p*rwxAIERWXsStUGMTNDnF^-,');
+// The argument after a qualifier that takes a number, or null for one that
+// takes a delimited string (`P`) or either (`u`, `g`, `f`).
+/** @type {Record<string, RegExp | null>} */
+const ARGUMENT_QUALIFIERS = {
+  a: /^[Mwhms]?[-+]?\d+/,
+  m: /^[Mwhms]?[-+]?\d+/,
+  c: /^[Mwhms]?[-+]?\d+/,
+  L: /^[kKmMpPgGtT]?[-+]?\d+/,
+  l: /^[-+]?\d+/,
+  d: /^\d+/,
+  Y: /^\d+/,
+  u: /^\d+/,
+  g: /^\d+/,
+  f: /^[=+-]?[0-7?]+/,
+  P: null,
+};
+// The closing delimiter of a qualifier string that a bracket opens.
+/** @type {Record<string, string>} */
+const CLOSING_DELIMITERS = { '[': ']', '{': '}', '<': '>', '(': ')' };
+
+/**
+ * Where the delimited string that starts at `text[at]` ends, read two ways,
+ * since zsh nests some brackets and not others: up to the first closing
+ * delimiter (`flat`), and up to the one that matches the opening (`nested`).
+ * -1 when there is none.
+ * @param {string} text
+ * @param {number} at
+ * @returns {{ flat: number, nested: number }}
+ */
+function delimitedEnd(text, at) {
+  const open = text[at] ?? '';
+  const close = CLOSING_DELIMITERS[open];
+  if (close === undefined) {
+    const end = text.indexOf(open, at + 1);
+    return { flat: end, nested: end };
+  }
+  let nested = -1;
+  for (let depth = 0, i = at + 1; i < text.length; i++) {
+    if (text[i] === open) depth++;
+    else if (text[i] === close && depth-- === 0) {
+      nested = i;
+      break;
+    }
+  }
+  return { flat: text.indexOf(close, at + 1), nested };
+}
+
+/**
+ * The code a zsh glob qualifier list runs.
+ * - `scripts`: the `e` strings, which zsh runs as shell code. When the parser
+ *   cannot tell where one ends, it keeps each reading.
+ * - `unread`: code it cannot read: each `+name` it calls, and the whole list
+ *   when the list has an `e` or `+` the parser cannot follow.
+ * @param {string} text The list, with its quotes removed, as zsh reads it.
+ * @returns {{ scripts: string[], unread: string[] }}
+ */
+export function globQualifierCode(text) {
+  /** @type {string[]} */
+  const scripts = [];
+  /** @type {string[]} */
+  const unread = [];
+  const fail = () => {
+    if (/[e+]/.test(text)) unread.push(text);
+    return { scripts, unread };
+  };
+  // `(#q...)` is the inline form extendedglob allows.
+  let i = text.startsWith('#q') ? 2 : 0;
+  while (i < text.length) {
+    const ch = text[i] ?? '';
+    // Modifiers (`:h`, `:s/a/b/`) end the list and run no code.
+    if (ch === ':') break;
+    if (ch === 'e') {
+      if (text[i + 1] === undefined) return fail();
+      const { flat, nested } = delimitedEnd(text, i + 1);
+      if (flat !== -1 && flat === nested) {
+        scripts.push(text.slice(i + 2, flat));
+        i = flat + 1;
+        continue;
+      }
+      for (const end of new Set([flat, nested])) {
+        scripts.push(text.slice(i + 2, end === -1 ? text.length : end));
+      }
+      return fail();
+    }
+    if (ch === '+') {
+      const name = /^\w+/.exec(text.slice(i + 1))?.[0];
+      if (name === undefined) return fail();
+      unread.push(name);
+      i += 1 + name.length;
+    } else if (ch === 'o' || ch === 'O') {
+      // A sort key: one letter, or an `e` string or `+name` read next.
+      i += /[e+]/.test(text[i + 1] ?? '') ? 1 : 2;
+    } else if (ch === '[') {
+      const end = text.indexOf(']', i + 1);
+      if (end === -1) return fail();
+      i = end + 1;
+    } else if (ch === '%') {
+      // `%`, `%b` and `%c`: device files.
+      i += /[bc]/.test(text[i + 1] ?? '') ? 2 : 1;
+    } else if (PLAIN_QUALIFIERS.has(ch)) {
+      i++;
+    } else if (ch in ARGUMENT_QUALIFIERS) {
+      const number = ARGUMENT_QUALIFIERS[ch]?.exec(text.slice(i + 1))?.[0];
+      if (number !== undefined) {
+        i += 1 + number.length;
+        continue;
+      }
+      if (ch !== 'u' && ch !== 'g' && ch !== 'f' && ch !== 'P') return fail();
+      const { flat, nested } = delimitedEnd(text, i + 1);
+      if (flat === -1 || flat !== nested) return fail();
+      i = flat + 1;
+    } else {
+      return fail();
+    }
+  }
+  return { scripts, unread };
+}
+
+/**
+ * The text of a glob group as zsh reads its qualifiers: its quotes removed.
+ * `dynamic`: an expansion the shell runs first (`$X`, `"$X"`, `$(...)`,
+ * backticks, `$'...'`, a brace expansion) builds part of it at run time, so
+ * it may hold any qualifier.
+ * @param {string} raw The source between the group's parentheses.
+ * @returns {{ text: string, dynamic: boolean }}
+ */
+export function cookGlobGroup(raw) {
+  let text = '';
+  let dynamic = false;
+  /** @type {"'" | '"' | null} */
+  let quote = null;
+  let braceOpen = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i] ?? '';
+    const next = raw[i + 1] ?? '';
+    if (quote === "'") {
+      if (ch === "'") quote = null;
+      else text += ch;
+    } else if (ch === '\\') {
+      // In double quotes a backslash escapes only these; it stays before others.
+      if (quote === '"' && !/[$`"\\\n]/.test(next)) text += ch;
+      if (next !== '\n') text += next;
+      i++;
+    } else if (quote === null && (ch === "'" || ch === '"')) {
+      quote = ch;
+    } else if (quote === '"' && ch === '"') {
+      quote = null;
+    } else {
+      if (ch === '`' || (ch === '$' && /^[\w{@*#?$!(-]$/.test(next))) dynamic = true;
+      // `$'...'` and `$"..."`, outside double quotes.
+      if (quote === null && ch === '$' && (next === "'" || next === '"')) dynamic = true;
+      if (quote === null && ch === '{') braceOpen = true;
+      if (quote === null && braceOpen && (ch === ',' || (ch === '.' && next === '.')))
+        dynamic = true;
+      text += ch;
+    }
+  }
+  return { text, dynamic };
+}
 
 /**
  * The words at the front of a command that the shell reads as keywords
@@ -204,6 +388,11 @@ function readLevel(script, start, closer, scope, ids) {
   // Whether the word being read has an unquoted `[`, which a later `]` makes
   // a filename pattern (see WordMark).
   let bracketOpen = false;
+  /** @type {Map<number, number>} Each open glob group's id, with where its `(` is. */
+  const globGroups = new Map();
+  // Where the `)` that last closed a glob group is. A `(` right after it opens
+  // another, as in zsh's `(a|b)(e:...:)`.
+  let globClosedAt = -1;
 
   // Adds text to the word being read. Side effect: a `]` in it after an
   // unquoted `[` marks the word a filename pattern (see WordMark).
@@ -349,6 +538,40 @@ function readLevel(script, start, closer, scope, ids) {
     append(script.slice(from - (close === '`' ? 1 : 2), level.end));
     return level.end;
   };
+  // Adds the code a glob group's qualifiers run, once its `)` has closed it
+  // (see globQualifierCode). zsh runs it in the shell that expands the word,
+  // for each file the pattern matches, so it may not run at all: it goes in
+  // a compound body there, and a `cd` in it leaves the folder unknown. In a
+  // coprocess's group it runs in the coprocess. An `e` string is read as an
+  // `eval` script; code the parser cannot read is a command built at run time.
+  const pushGlobCode = (/** @type {string} */ raw, /** @type {number} */ id) => {
+    const { text, dynamic } = cookGlobGroup(raw);
+    const { scripts, unread } = globQualifierCode(text);
+    if (dynamic && !unread.includes(text)) unread.push(text);
+    const at = [...here(), ...(ids.async.has(id) ? [id] : []), -newScope()];
+    const plain = { dynamic: false, splits: /** @type {const} */ (false) };
+    const runTime = { dynamic: true, splits: /** @type {const} */ ('unquoted') };
+    for (const script of scripts) {
+      commands.push({
+        argv: ['eval', script],
+        env: [],
+        scope: at,
+        top: false,
+        async: false,
+        marks: [plain, plain],
+      });
+    }
+    for (const program of unread) {
+      commands.push({
+        argv: [program],
+        env: [],
+        scope: at,
+        top: false,
+        async: false,
+        marks: [runTime],
+      });
+    }
+  };
   // Skips `((...))` or `$((...))`, whose `<<` is a shift, not a heredoc.
   const skipArithmetic = (/** @type {number} */ from, /** @type {number} */ open) => {
     let depth = 0;
@@ -394,7 +617,14 @@ function readLevel(script, start, closer, scope, ids) {
       // with it a `coproc`'s subshell, before this `)` closes the `$(`.
       endCommand();
       if (closer === ')' && groups.length === 0) return { commands, end: i + 1 };
+      const closing = groups.at(-1) ?? 0;
+      const globStart = globGroups.get(closing);
       closeGroups(1);
+      if (globStart !== undefined) {
+        globGroups.delete(closing);
+        pushGlobCode(script.slice(globStart + 1, i), closing);
+        globClosedAt = i;
+      }
       i++;
       continue;
     }
@@ -479,11 +709,23 @@ function readLevel(script, start, closer, scope, ids) {
       // So may a `(` that stands alone past where a command starts, a word of
       // its own in zsh (`gh pr merge 5 (--admin|x)`); it is kept as a `(...)`
       // word. Read both: mark the word, then read the group as a subshell, so
-      // no command in it is missed. `f()` is a function name.
+      // no command in it is missed. `f()` is a function name. Either may also
+      // hold zsh glob qualifiers that run code, read when the group closes;
+      // so may a `(` right after a glob group's `)`. `a=(...)` in an
+      // assignment's place is an array.
+      let glob = false;
       if (next !== ')') {
-        if (word !== null) expands('unquoted');
-        else if (!redirectTarget && leadingKeywords(argv).length < argv.length) {
+        if (word !== null) {
+          expands('unquoted');
+          const array =
+            ARRAY_ASSIGNMENT.test(word) &&
+            (argv.every((each) => ASSIGNMENT.test(each)) || ARRAY_DECLARERS.has(argv[0] ?? ''));
+          glob = !array;
+        } else if (!redirectTarget && leadingKeywords(argv).length < argv.length) {
           pushWord(GLOB_GROUP_WORD, { dynamic: true, splits: 'unquoted' });
+          glob = true;
+        } else {
+          glob = i > 0 && globClosedAt === i - 1;
         }
       }
       // After any `coproc`, the group runs in a coprocess: it is the
@@ -491,7 +733,9 @@ function readLevel(script, start, closer, scope, ids) {
       // `coproc { (...); }`, and in `coproc x a(...)`, which zsh may read as a
       // glob group, it is read as one to be safe.
       const coproc = endCommand(null, { beforeSubshell: true });
-      openGroup(coproc === null ? newScope() : newAsyncScope());
+      const id = coproc === null ? newScope() : newAsyncScope();
+      openGroup(id);
+      if (glob) globGroups.set(id, i);
       i++;
     } else if (ch === '\n') {
       endCommand('\n');
