@@ -58,3 +58,9 @@ export const nestedEGroups = (n: number) => `ls ${'a(e:git status;$('.repeat(n)}
 /** `n` glob groups nested in each other, each with an `e` string and a `$(...)` in it. */
 export const nestedSubstitutionGlobs = (n: number) =>
   `ls ${'a(e:true:$('.repeat(n)}x${'))'.repeat(n)}`;
+
+/** `cat` and `n` process substitutions nested in each other, with `y` in the innermost (#469). */
+export const nestedProcessSubstitutions = (n: number) => `cat ${'<('.repeat(n)}y${')'.repeat(n)}`;
+
+/** `cat` and `n` process substitutions in a row, each running `y` (#469). */
+export const processSubstitutionRow = (n: number) => `cat ${'<(y) '.repeat(n)}`;
