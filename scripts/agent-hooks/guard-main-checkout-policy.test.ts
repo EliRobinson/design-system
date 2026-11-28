@@ -4,6 +4,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { OVERRIDE, guardDecision, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
+import {
+  NESTED_GLOB_NAMES,
+  TIME_BUDGET_MS,
+  msToRun,
+  nestedEGroups,
+  nestedGlob,
+  nestedSubstitutionGlobs,
+} from './shell-parse-fixtures';
 
 // On-disk fixtures, shaped the way git lays them out:
 //   main/          a main checkout (`.git` is a directory)
@@ -467,6 +475,35 @@ describe('what the parser sees', () => {
     'coproc foo(git add -A)',
   ])('reads commands in a ( glued to a word: %s', (command) => {
     expect(refused(command)).toBe(true);
+  });
+
+  // zsh runs a glob qualifier's e string as shell code (#465).
+  it.each([
+    "ls *(e:'git add -A':)",
+    'ls *(e:"git stash":)',
+    "ls *(e['git reset --hard'])",
+    "ls (a|b)(e:'git add -A':)",
+  ])('reads the e string of a glob qualifier: %s', (command) => {
+    expect(refused(command)).toBe(true);
+  });
+
+  it.each(["ls *(e:'cd ../../..':); git add -A", "for f (*(e:'cd ../../..':)) git commit -m x"])(
+    'counts a cd in an e string as a folder it cannot follow: %s',
+    (command) => {
+      expect(refused(command, wt)).toBe(true);
+    },
+  );
+
+  it.each(NESTED_GLOB_NAMES)('refuses a commit before a deeply nested glob group: %s', (form) => {
+    expect(refused(`git commit -m x; ${nestedGlob(form)}`)).toBe(true);
+  });
+
+  // Main took seconds on this shape: placing each command was quadratic.
+  it.each([
+    ['with a $(...)', nestedSubstitutionGlobs(1000)],
+    ['running git', nestedEGroups(400)],
+  ])('decides on nested glob groups %s in a time budget', (_, command) => {
+    expect(msToRun(() => decide(command))).toBeLessThan(TIME_BUDGET_MS);
   });
 
   it.each([

@@ -1,7 +1,5 @@
 // @vitest-environment node
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   REVIEWERS,
@@ -25,16 +23,19 @@ import {
   handbackResultLine,
   promptLine,
 } from './review-gate-fixtures';
-
-// This file lives at scripts/agent-hooks/, two levels below the repo root.
-// Reads below are repo-root-relative, not cwd-relative: nx runs this
-// project's `test` target with cwd `scripts/`, and vitest's own root is the
-// directory holding this config, so a plain relative path would resolve
-// against the wrong directory.
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const atRoot = (path: string) => join(repoRoot, path);
+import {
+  NESTED_GLOB_NAMES,
+  TIME_BUDGET_MS,
+  atRoot,
+  msToRun,
+  nestedEGroups,
+  nestedGlob,
+  nestedSubstitutionGlobs,
+} from './shell-parse-fixtures';
 
 const kinds = (script: string) => findPrCommands(script).map((pr) => pr.kind);
+// A glob qualifier group whose e string opens a PR (#465).
+const E_CREATE = `(e:'${CREATE} -F b.md':)`;
 const first = (script: string) => findPrCommands(script)[0];
 const labels = REVIEWERS.map(({ label }) => label);
 const agents = REVIEWERS.map(({ agent }) => agent);
@@ -84,6 +85,26 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['in a ( glued to an argument', `x a(${CREATE} -F b.md)`],
     ['in a ( standing alone as an argument', `x (${CREATE} -F b.md)`],
     ['in a case pattern with a leading (', `case x in (a) ${CREATE} -F b.md;; esac`],
+    ['in a glob qualifier’s e string', `ls *(e:"${CREATE} -t x -b y":)`],
+    ['in a glob qualifier’s e[ ] string', `ls *(e['${CREATE} -F b.md'])`],
+    ['in a glob qualifier’s sort e string', `ls *(oe:'${CREATE} -F b.md':)`],
+    ['in an e string after a glob group', `ls (a|b)${E_CREATE}`],
+    ['in an e string in a repeat subshell', `repeat 1 (ls *${E_CREATE})`],
+    ['in an e string in a coproc subshell', `coproc (ls *${E_CREATE})`],
+    ['in an e string in a for list', `for f (*${E_CREATE}) :`],
+    ['in an e string in a foreach list', `foreach f (*${E_CREATE}) :; end`],
+    ['in an e string in a select list', `select f (*${E_CREATE}) :`],
+    ['in an e string in a two-name for list', `for f g (*${E_CREATE}) :`],
+    // A list or subshell whose first word reads as an e string still runs
+    // the glob group in it.
+    ['after an e-like word in a for list', `for f (e:true: *${E_CREATE}) echo`],
+    ['after an e glob in a for list', `for f (e*.txt x/*${E_CREATE}) echo`],
+    ['after an e-like word in a foreach list', `foreach f (e:true: *${E_CREATE}) echo; end`],
+    ['after an e-like word in a select list', `select f (e:true: *${E_CREATE}) echo`],
+    ['after an e-like command in a repeat subshell', `repeat 1 (e:true:; ls *${E_CREATE})`],
+    ['after an e-like command in a coproc subshell', `coproc (e:true:; ls *${E_CREATE})`],
+    ['in a glob group at a word start in a for list', `for f ( (a)${E_CREATE} ) echo`],
+    ['after many cheap glob groups', `ls ${'x(+a)'.repeat(500)} *${E_CREATE}`],
   ])('%s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
   });
@@ -245,6 +266,25 @@ describe('findPrCommands: reads pr create flags', () => {
     expect(dir(`ls && cd sub && ${CREATE} -F b.md`)).toBe('sub');
     // A cd inside a compound body may or may not have run.
     expect(dir(`{ cd sub; }; ${CREATE} -F b.md`)).toBeNull();
+  });
+
+  // zsh runs a glob qualifier's e string once per file matched, so a cd in
+  // it may or may not run (#465).
+  it('cannot tell the folder after a cd in a glob qualifier’s e string', () => {
+    expect(dir(`ls *(e:'cd sub':); ${CREATE} -F b.md`)).toBeNull();
+  });
+
+  // Deeply nested glob groups do not stop the parser (#465).
+  it.each(NESTED_GLOB_NAMES)('finds a PR open before a deeply nested glob group: %s', (form) => {
+    expect(kinds(`${CREATE} -F b.md; ${nestedGlob(form)}`)).toEqual(['pr-create']);
+  });
+
+  // Main took seconds on this shape: placing each command was quadratic.
+  it.each([
+    ['with a $(...)', nestedSubstitutionGlobs(1000)],
+    ['running git', nestedEGroups(400)],
+  ])('finds PR commands in nested glob groups %s in a time budget', (_, script) => {
+    expect(msToRun(() => findPrCommands(script))).toBeLessThan(TIME_BUDGET_MS);
   });
 
   it('reads every cd form the guard reads, the same way', () => {

@@ -7,6 +7,9 @@
 
 import { posix } from 'node:path';
 
+import { BRACE_EXPANSION, EXPANSION_START, QUOTE_START } from './shell-lexemes.mjs';
+import { globGroupTracker } from './zsh-glob-qualifiers.mjs';
+
 /**
  * A simple command.
  * - `env` holds the `NAME=value` assignments dropped from its front, as in
@@ -24,7 +27,8 @@ import { posix } from 'node:path';
  *   may not exist yet when the next command runs. It is derived from `scope`.
  * - `marks` has one entry per `argv` word: whether the shell builds it at run
  *   time, and whether it may split into more words.
- * @typedef {{ argv: string[], env: string[], scope: number[], top: boolean, async: boolean, marks: WordMark[] }} Command
+ * - `origin` is `'glob'` for the `eval` of a zsh glob qualifier's `e` string.
+ * @typedef {{ argv: string[], env: string[], scope: number[], top: boolean, async: boolean, marks: WordMark[], origin?: 'glob' }} Command
  */
 
 /**
@@ -64,15 +68,69 @@ export function wordsOf(command) {
 
 // After a `$` inside double quotes: the expansions that still split.
 const SPLITS_IN_QUOTES = /^\$(@|\{[=(]|\{[^}]*\[[@*]\]|\w+\[[@*]\])/;
-// After a `$`: the characters that start an expansion.
-const EXPANSION_START = /^[\w{@*#?$!-]$/;
-// After an unquoted `$`: `$'...'` and `$"..."`, read as quotes.
-const QUOTE_START = /^['"]$/;
 // The word kept for a `(` that stands alone past where a command starts,
 // which zsh may read as a glob group (see WordMark).
-const GLOB_GROUP_WORD = '(...)';
-// An unquoted brace expansion, `{a,b}` or `{1..3}`; not gh's `{owner}`.
-const BRACE_EXPANSION = /^\{[^{}\s'"]*(,|\.\.)[^{}\s'"]*\}/;
+export const GLOB_GROUP_WORD = '(...)';
+// The mark of a word the shell does not build at run time.
+const PLAIN_MARK = /** @type {WordMark} */ (Object.freeze({ dynamic: false, splits: false }));
+// The mark of a word built at run time that may split, such as `$X`.
+const RUN_TIME_MARK = /** @type {WordMark} */ (
+  Object.freeze({ dynamic: true, splits: 'unquoted' })
+);
+// How deep nested `eval`, `bash -c` and glob qualifiers' `e` strings are
+// read, all together.
+export const MAX_EVAL_DEPTH = 5;
+// How many commands all the `e` strings one parse reads may add, nested ones
+// counted again at each level (#465). Past it, or past MAX_EVAL_DEPTH, an `e`
+// string counts as a command built at run time.
+export const GLOB_WORK_LIMIT = 10000;
+// How many glob groups may be open inside each other in one level. A group
+// past it counts as a command built at run time, so reading the groups' text
+// stays linear in the script's length.
+export const GLOB_NESTING_LIMIT = 32;
+
+/**
+ * Adds each command of `list` to `target`. A loop, not `push(...list)`: a
+ * spread of a long list overflows the stack.
+ * @param {Command[]} target
+ * @param {Command[]} list
+ */
+function pushAll(target, list) {
+  for (const command of list) target.push(command);
+}
+
+/**
+ * Whether a `(` glued to `word` opens an array, as in `a=(1 2)`: in an
+ * assignment's place, or after a command that declares one (`local a=(1)`).
+ * @param {string} word
+ * @param {string[]} argv The words before it.
+ */
+function isArrayAssignment(word, argv) {
+  return (
+    ARRAY_ASSIGNMENT.test(word) &&
+    (argv.every((each) => ASSIGNMENT.test(each)) || ARRAY_DECLARERS.has(argv[0] ?? ''))
+  );
+}
+
+/**
+ * Whether a `(` may open a zsh glob group, whose qualifiers may run code: one
+ * glued to a word that is not an array assignment, one that stands alone
+ * past where a command starts, or one right after a glob group's `)`, as in
+ * `(a|b)(e:...:)`, or one at a word's start in a list. `f()` is a function name.
+ * @param {{ next: string | undefined, word: string | null, argv: string[], standalone: boolean, afterGlobGroup: boolean, inList: boolean }} at
+ */
+function opensGlobGroup({ next, word, argv, standalone, afterGlobGroup, inList }) {
+  if (next === ')') return false;
+  if (word !== null) return !isArrayAssignment(word, argv);
+  return standalone || afterGlobGroup || inList;
+}
+
+/**
+ * A command built at run time, one word long.
+ * @param {string} word
+ * @param {number[]} scope
+ */
+const runTimeCommand = (word, scope) => makeCommand([word], scope, [RUN_TIME_MARK]);
 
 /**
  * The words at the front of a command that the shell reads as keywords
@@ -138,10 +196,27 @@ function coprocOf(argv, { beforeSubshell }) {
 }
 
 /**
- * Hands out scope ids, unique within one parse, and keeps the ids of the
- * shells the line does not wait for: coprocesses and background jobs.
- * @typedef {{ last: number, async: Set<number> }} ScopeIds
+ * What one parse keeps across its levels. `last` hands out scope ids, unique
+ * within the parse; `async` keeps the ids of the shells the line does not
+ * wait for: coprocesses and background jobs. `globWork` counts the commands
+ * read from glob qualifiers' `e` strings.
+ * @typedef {{ last: number, async: Set<number>, globWork: number }} ParseState
  */
+
+/** A new parse's state. @returns {ParseState} */
+export const newParseState = () => ({ last: 0, async: new Set(), globWork: 0 });
+
+/**
+ * A command at `scope`, before parseCommands sets `top` and `async`.
+ * @param {string[]} argv
+ * @param {number[]} scope
+ * @param {WordMark[]} marks
+ * @param {string[]} [env]
+ * @returns {Command}
+ */
+function makeCommand(argv, scope, marks, env = []) {
+  return { argv, env, scope, top: false, async: false, marks };
+}
 
 // Words that open and close a compound command's body.
 const COMPOUND_OPENERS = new Set(['{', 'if', 'while', 'until', 'for', 'select', 'case']);
@@ -162,11 +237,11 @@ const HEREDOC = /^<<(-?)[ \t]*(?:'([^']*)'|"([^"]*)"|([^\s;&|()<>]+))/;
  * @param {number} start
  * @param {')' | '`' | null} closer
  * @param {number[]} scope The shells this level runs in.
- * @param {ScopeIds} ids
+ * @param {ParseState} state
  * @returns {{ commands: Command[], end: number }}
  */
-function readLevel(script, start, closer, scope, ids) {
-  const newScope = () => ++ids.last;
+function readLevel(script, start, closer, scope, state) {
+  const newScope = () => ++state.last;
   /** @type {Command[]} */
   const commands = [];
   /** @type {number[]} The open `(...)` groups and compound bodies. */
@@ -184,9 +259,10 @@ function readLevel(script, start, closer, scope, ids) {
   };
   // Closes the last `count` groups and goes back to the list they were in.
   const closeGroups = (/** @type {number} */ count) => {
-    groups.splice(-count);
+    const closed = groups.splice(-count);
     const outer = listStarts.splice(-count)[0];
     if (outer !== undefined) listStart = outer;
+    return closed;
   };
   /** @type {Array<{ delimiter: string, dash: boolean }>} */
   const heredocs = [];
@@ -197,13 +273,55 @@ function readLevel(script, start, closer, scope, ids) {
   /** @type {string | null} */
   let word = null;
   /** @type {WordMark} The word being read. */
-  let mark = /** @type {WordMark} */ ({ dynamic: false, splits: false });
+  let mark = PLAIN_MARK;
   let redirectTarget = false;
   // Whether the command being read takes its stdin from a pipe.
   let pipedIn = false;
   // Whether the word being read has an unquoted `[`, which a later `]` makes
   // a filename pattern (see WordMark).
   let bracketOpen = false;
+  // Adds the code a closed glob group's qualifiers run (see
+  // globGroupTracker). zsh runs it in the shell that expands the word, for
+  // each file the pattern matches, so it may not run at all: it goes in a
+  // compound body there (`at`), and a `cd` in it leaves the folder unknown.
+  // An `e` string is read as an `eval` script; code the parser cannot read is
+  // a command built at run time, in the scope where that code runs.
+  const glob = globGroupTracker(script, groups, ({ code, at }) => {
+    for (const each of code.scripts) {
+      commands.push({
+        ...makeCommand(['eval', each], at, [PLAIN_MARK, PLAIN_MARK]),
+        origin: 'glob',
+      });
+    }
+    for (const each of code.programs) commands.push(runTimeCommand(each, at));
+    if (code.unreadable || code.dynamic) commands.push(runTimeCommand(GLOB_GROUP_WORD, at));
+  });
+  // Where the `)` that last closed a glob group is. A `(` right after it
+  // opens another, as in zsh's `(a|b)(e:...:)`.
+  let globClosedAt = -Infinity;
+  // The group that went past GLOB_NESTING_LIMIT, while it is open.
+  /** @type {number | null} */
+  let pastNestingLimit = null;
+  // Group `id` is out of the level's groups. If it is a glob group, it closes
+  // at its `)` at `end`, or ends without one when `end` is undefined.
+  // Returns whether it was a glob group.
+  const closeGroupId = (/** @type {number} */ id, /** @type {number=} */ end = undefined) => {
+    if (id === pastNestingLimit) pastNestingLimit = null;
+    if (!glob.isOpen(id)) return false;
+    if (end === undefined) {
+      glob.drop(id);
+    } else {
+      // A coprocess's group runs its glob code in the coprocess.
+      const inGroup = state.async.has(id) ? [id] : [];
+      glob.close(id, end, [...here(), ...inGroup, -newScope()]);
+    }
+    return true;
+  };
+  // Ends the level at `end`: the glob groups still open end without their `)`.
+  const finish = (/** @type {number} */ end) => {
+    glob.dropAll();
+    return { commands, end };
+  };
 
   // Adds text to the word being read. Side effect: a `]` in it after an
   // unquoted `[` marks the word a filename pattern (see WordMark).
@@ -224,7 +342,7 @@ function readLevel(script, start, closer, scope, ids) {
     if (redirectTarget) redirectTarget = false;
     else pushWord(word, mark);
     word = null;
-    mark = { dynamic: false, splits: false };
+    mark = PLAIN_MARK;
     bracketOpen = false;
   };
   const here = () => [...scope, ...groups];
@@ -233,10 +351,10 @@ function readLevel(script, start, closer, scope, ids) {
   // Where the substitutions read in the current command's words start in
   // `commands`.
   let commandStart = 0;
-  // A shell id the line does not wait for, kept in `ids.async`.
+  // A shell id the line does not wait for, kept in `state.async`.
   const newAsyncScope = () => {
     const id = newScope();
-    ids.async.add(id);
+    state.async.add(id);
     return id;
   };
   // Puts `id` into the scope of each command, at depth `at`.
@@ -254,7 +372,9 @@ function readLevel(script, start, closer, scope, ids) {
   // ends the body pops both. `front`: the words past what `unwrap` drops,
   // where `coproc` reads its command.
   const trackCompound = (/** @type {string[]} */ front, /** @type {Coproc | null} */ coproc) => {
-    if (COMPOUND_CLOSERS.has(argv[0] ?? '')) closeGroups(compoundSizes.pop() ?? 1);
+    if (COMPOUND_CLOSERS.has(argv[0] ?? '')) {
+      for (const id of closeGroups(compoundSizes.pop() ?? 1)) closeGroupId(id);
+    }
     let opened = false;
     const open = (/** @type {number | null} */ subshell) => {
       if (subshell !== null) openGroup(subshell);
@@ -295,14 +415,7 @@ function readLevel(script, start, closer, scope, ids) {
     const inCoproc = coproc?.form === 'simple' ? [...commandScope, coproc.id] : commandScope;
     // A bare `NAME=value` is kept: it sets a variable in the current shell.
     if (command.length > 0 || env.length > 0) {
-      commands.push({
-        argv: command,
-        env,
-        scope: inCoproc,
-        top: false,
-        async: false,
-        marks: commandMarks,
-      });
+      commands.push(makeCommand(command, inCoproc, commandMarks, env));
     }
     if (!hasShell(coproc)) return;
     const inner = command.slice(coproc.at);
@@ -344,8 +457,8 @@ function readLevel(script, start, closer, scope, ids) {
   };
   // Reads a nested script and keeps its source text in the current word.
   const readNested = (/** @type {number} */ from, /** @type {')' | '`'} */ close) => {
-    const level = readLevel(script, from, close, [...here(), newScope()], ids);
-    commands.push(...level.commands);
+    const level = readLevel(script, from, close, [...here(), newScope()], state);
+    pushAll(commands, level.commands);
     append(script.slice(from - (close === '`' ? 1 : 2), level.end));
     return level.end;
   };
@@ -387,14 +500,15 @@ function readLevel(script, start, closer, scope, ids) {
 
     if (closer === '`' && ch === '`') {
       endCommand();
-      return { commands, end: i + 1 };
+      return finish(i + 1);
     }
     if (ch === ')') {
       // End the command first: a `}` or `done` in it closes its body, and
       // with it a `coproc`'s subshell, before this `)` closes the `$(`.
       endCommand();
-      if (closer === ')' && groups.length === 0) return { commands, end: i + 1 };
-      closeGroups(1);
+      if (closer === ')' && groups.length === 0) return finish(i + 1);
+      const [closing = 0] = closeGroups(1);
+      if (closeGroupId(closing, i)) globClosedAt = i;
       i++;
       continue;
     }
@@ -479,19 +593,34 @@ function readLevel(script, start, closer, scope, ids) {
       // So may a `(` that stands alone past where a command starts, a word of
       // its own in zsh (`gh pr merge 5 (--admin|x)`); it is kept as a `(...)`
       // word. Read both: mark the word, then read the group as a subshell, so
-      // no command in it is missed. `f()` is a function name.
+      // no command in it is missed. `f()` is a function name. Either may also
+      // hold zsh glob qualifiers that run code, read when the group closes;
+      // so may a `(` right after a glob group's `)`. `a=(...)` in an
+      // assignment's place is an array.
+      const standalone =
+        word === null && !redirectTarget && leadingKeywords(argv).length < argv.length;
+      const afterGlobGroup = globClosedAt === i - 1;
+      // A `(` at a word's start in a list (`for f ( (a)(e:...:) )`).
+      const inList = word === null && glob.isStandalone(groups.at(-1));
+      const opensGlob = opensGlobGroup({ next, word, argv, standalone, afterGlobGroup, inList });
       if (next !== ')') {
         if (word !== null) expands('unquoted');
-        else if (!redirectTarget && leadingKeywords(argv).length < argv.length) {
-          pushWord(GLOB_GROUP_WORD, { dynamic: true, splits: 'unquoted' });
-        }
+        else if (standalone) pushWord(GLOB_GROUP_WORD, RUN_TIME_MARK);
       }
       // After any `coproc`, the group runs in a coprocess: it is the
       // coprocess in `coproc ( ... )` and `coproc NAME ( ... )`, inside one in
       // `coproc { (...); }`, and in `coproc x a(...)`, which zsh may read as a
       // glob group, it is read as one to be safe.
       const coproc = endCommand(null, { beforeSubshell: true });
-      openGroup(coproc === null ? newScope() : newAsyncScope());
+      const id = coproc === null ? newScope() : newAsyncScope();
+      openGroup(id);
+      if (opensGlob && glob.depth >= GLOB_NESTING_LIMIT) {
+        // One command built at run time stands for every group in this nest.
+        if (pastNestingLimit === null) commands.push(runTimeCommand(GLOB_GROUP_WORD, here()));
+        pastNestingLimit ??= id;
+      } else if (opensGlob) {
+        glob.open(id, i, standalone);
+      }
       i++;
     } else if (ch === '\n') {
       endCommand('\n');
@@ -515,7 +644,7 @@ function readLevel(script, start, closer, scope, ids) {
     }
   }
   endCommand();
-  return { commands, end: script.length };
+  return finish(script.length);
 }
 
 const KEYWORDS = new Set([
@@ -572,6 +701,19 @@ const WRAPPERS = {
 };
 export const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh']);
 const ASSIGNMENT = /^[A-Za-z_]\w*=/;
+// The word before a `(` that makes it an array, as in `a=(1 2)` or `a+=(1)`.
+const ARRAY_ASSIGNMENT = /^[A-Za-z_]\w*(\[[^\]]*\])?\+?=$/;
+// Commands whose `NAME=(...)` words are array assignments in zsh.
+const ARRAY_DECLARERS = new Set([
+  'local',
+  'typeset',
+  'declare',
+  'export',
+  'readonly',
+  'integer',
+  'float',
+  'private',
+]);
 
 /**
  * Drops env assignments, shell keywords, `function <name>`, and wrapper
@@ -636,26 +778,35 @@ export function quoteArgv(argv) {
  * @param {string} script
  * @param {number} [depth]
  * @param {number[]} [scope]
- * @param {ScopeIds} [ids]
+ * @param {ParseState} [state]
  * @returns {Command[]}
  */
-export function parseCommands(script, depth = 0, scope = [], ids = { last: 0, async: new Set() }) {
-  if (depth > 5) return [];
+export function parseCommands(script, depth = 0, scope = [], state = newParseState()) {
+  if (depth > MAX_EVAL_DEPTH) return [];
   /** @type {Command[]} */
   const all = [];
-  for (const command of readLevel(script, 0, null, scope, ids).commands) {
+  for (const command of readLevel(script, 0, null, scope, state).commands) {
     all.push(command);
     const { argv } = command;
     const shellScript = shellScriptOf(argv);
     if (shellScript !== null) {
-      all.push(...parseCommands(shellScript, depth + 1, [...command.scope, ++ids.last], ids));
+      pushAll(all, parseCommands(shellScript, depth + 1, [...command.scope, ++state.last], state));
     } else if (argv[0] === 'eval') {
-      all.push(...parseCommands(argv.slice(1).join(' '), depth + 1, command.scope, ids));
+      // A glob qualifier's `e` string past the depth or the work it may take
+      // is a command built at run time.
+      const fromGlob = command.origin === 'glob';
+      const capped = fromGlob && (depth >= MAX_EVAL_DEPTH || state.globWork >= GLOB_WORK_LIMIT);
+      const text = argv.slice(1).join(' ');
+      const inner = capped
+        ? [runTimeCommand(text, command.scope)]
+        : parseCommands(text, depth + 1, command.scope, state);
+      if (fromGlob) state.globWork += inner.length;
+      pushAll(all, inner);
     }
   }
   for (const command of all) {
     command.top = command.scope.length === 0;
-    command.async = command.scope.some((id) => ids.async.has(id));
+    command.async = command.scope.some((id) => state.async.has(id));
   }
   return all;
 }
@@ -756,20 +907,18 @@ export function ghCommand(argv, textOf = String) {
 const keyOf = (scope) => scope.join('/');
 
 /**
- * Whether `outer` is `inner` or a shell around it.
- * @param {number[]} outer
- * @param {number[]} inner
- */
-const encloses = (outer, inner) =>
-  outer.length <= inner.length && outer.every((id, i) => inner[i] === id);
-
-/**
  * A command that is not a `cd`, with the folder it runs in.
  * - `folder` is null when a parser cannot tell.
- * - `before` holds each command that ran earlier in its own shell or a shell
- *   around it. Its own substitutions, and the other stages of its pipeline,
- *   are not in it: they cannot move its shell.
- * @typedef {{ command: Command, folder: string | null, before: Command[] }} Placed
+ * - `beforeOf()` lists each command that ran earlier in its own shell or a
+ *   shell around it, in the order they ran. Its own substitutions, and the
+ *   other stages of its pipeline, are not in it: they cannot move its shell.
+ *   It works the list out on each call.
+ * @typedef {{ command: Command, folder: string | null, beforeOf: () => Command[] }} Placed
+ */
+
+/**
+ * A tree of shells. `commands` holds the indexes in `earlier` of the commands run in each.
+ * @typedef {{ shells: Map<number, ShellNode>, commands: number[] }} ShellNode
  */
 
 /**
@@ -807,9 +956,36 @@ export function placeCommands(script, cwd) {
   const placed = [];
   /** @type {Command[]} */
   const earlier = [];
+  // Each command's index in `earlier`, filed under its shell. A command's
+  // list is worked out only when asked for, from the shells on its path:
+  // working it out for every command took time quadratic in their count.
+  /** @type {ShellNode} */
+  const root = { shells: new Map(), commands: [] };
+  const pathTo = (/** @type {number[]} */ shell) => {
+    const path = [root];
+    for (const id of shell) {
+      const at = /** @type {ShellNode} */ (path.at(-1));
+      let next = at.shells.get(id);
+      if (!next) at.shells.set(id, (next = { shells: new Map(), commands: [] }));
+      path.push(next);
+    }
+    return path;
+  };
+  const before = (/** @type {ShellNode[]} */ path, /** @type {number} */ index) => {
+    /** @type {number[]} */
+    const found = [];
+    for (const node of path) {
+      for (const each of node.commands) {
+        if (each >= index) break;
+        found.push(each);
+      }
+    }
+    return found.sort((a, b) => a - b).map((each) => /** @type {Command} */ (earlier[each]));
+  };
   for (const command of parseCommands(script)) {
-    const shell = shellOf(command.scope);
-    const before = earlier.filter((each) => encloses(shellOf(each.scope), shell));
+    const index = earlier.length;
+    const path = pathTo(shellOf(command.scope));
+    path.at(-1)?.commands.push(index);
     earlier.push(command);
     const folder = folderIn(command.scope);
     const program = command.argv[0];
@@ -817,7 +993,7 @@ export function placeCommands(script, cwd) {
       move(command.scope, program === 'popd' ? null : cdTarget(folder, cdWord(command.argv)));
       continue;
     }
-    placed.push({ command, folder, before });
+    placed.push({ command, folder, beforeOf: () => before(path, index) });
   }
   return placed;
 }

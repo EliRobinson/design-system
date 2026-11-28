@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ADMIN_REASON, REST_MERGE_REASON, findBypass } from './review-gate-bypass.mjs';
 import { GH } from './review-gate-fixtures';
+import { NESTED_GLOB_NAMES, nestedGlob } from './shell-parse-fixtures';
 
 // Every command is built from GH so no test file holds a literal gh command.
 // `{gh}` in a case stands for it.
@@ -56,8 +57,18 @@ describe('findBypass: refuses --admin in every form', () => {
     'pnpm exec {gh} pr merge 5 --admin',
     'script -q /dev/null {gh} pr merge 5 --admin',
     "git -c alias.x='!{gh} pr merge 5 --admin' x",
+    // A zsh glob qualifier the hook cannot read is a program built at run
+    // time, so the whole script is checked (#465).
+    'ls *(+fn) && echo "{gh} pr merge 5 --admin"',
+    'ls *($Q) && echo "{gh} pr merge 5 --admin"',
+    'ls *(e:"$X":) && echo "{gh} pr merge 5 --admin"',
   ])('through another program: %s', (script) => {
     expect(reason(script)).toBe(`${ADMIN_REASON} Run gh directly, not through another program.`);
+  });
+
+  // Deeply nested glob groups do not stop the parser (#465).
+  it.each(NESTED_GLOB_NAMES)('before a deeply nested glob group: %s', (form) => {
+    expect(reason(`{gh} pr merge 5 --admin; ${nestedGlob(form)}`)).toBe(ADMIN_REASON);
   });
 
   it.each([ADMIN_REASON, REST_MERGE_REASON])('tells the agent to stop and ask Eli: %s', (text) => {
@@ -203,6 +214,19 @@ describe('findBypass: refuses merge words it cannot read', () => {
     ['{gh} api "$E" repos/o/r/pulls/5/merge', UNREAD],
     ['{gh} api repos/o/r/pulls/$N', UNREAD],
   ])('%s', (script, says) => {
+    expect(reason(script)).toContain(says);
+  });
+
+  // zsh glob qualifiers run their e strings as shell code (#465).
+  it.each([
+    ['ls *(e:"{gh} pr merge 5 $F":)', UNREAD],
+    ["ls *(e:'{gh} pr merge 5 $F':)", UNREAD],
+    ["ls *(e['{gh} pr merge 5 $F'])", UNREAD],
+    ["ls *(.oe:'{gh} pr merge 5 $F':)", UNREAD],
+    ["ls (a|b)(e:'{gh} pr $A 5':)", UNREAD_COMMAND],
+    ["ls *(e:'{gh} pr merge 5 --admin':)", ADMIN_REASON],
+    ['ls *(e:{gh}\\ pr\\ merge\\ 5\\ --admin:)', ADMIN_REASON],
+  ])('reads a glob qualifier’s e string as commands: %s', (script, says) => {
     expect(reason(script)).toContain(says);
   });
 
@@ -412,6 +436,8 @@ describe('findBypass: lets plain merges, reads and text through', () => {
     "{gh} pr merge 5 '--admi(n)'",
     '{gh} pr merge 5 "--admi[n]"',
     '{gh} pr merge 5 --squash -t \\(fix\\)',
+    'ls *(.om[1]) && {gh} pr merge 5 --squash',
+    "ls *(e:'[[ -d $REPLY ]]':) && {gh} pr merge 5 --squash",
     'echo {gh} pr merge 5 --admin',
     "git commit -m 'refuse {gh} pr merge --admin'",
     "{gh} issue create --title '{gh} pr merge --admin is refused' --body x",
