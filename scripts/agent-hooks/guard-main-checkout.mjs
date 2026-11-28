@@ -15,8 +15,8 @@
 // would lock every session out of the shell, with no way to run the fix.
 // Blocking none would let a write through to the one folder this hook exists
 // to guard (#479). So the policy is loaded with import() inside the try, and
-// this file imports only modules with no parser. Stdin that is not JSON
-// holds no call to read, so it is allowed.
+// this file imports only modules with no parser. Stdin that cannot be read,
+// or is not JSON, holds no call to check, so it is allowed.
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 
 import { mainCheckoutOf } from './checkouts.mjs';
 import { withoutGitRepoEnv } from './git-env.mjs';
-import { hookFailed, mayWriteMainCheckout } from './hook-failure.mjs';
+import { hookFailed, mayWriteMainCheckout, messageOf } from './hook-failure.mjs';
 
 // The repo this file sits in: the main checkout, or a worktree of it.
 const OWN_CHECKOUT = fileURLToPath(new URL('../..', import.meta.url));
@@ -63,8 +63,16 @@ function ownMainCheckout() {
   }
 }
 
-/** @param {unknown} error */
-const messageOf = (error) => (error instanceof Error ? error.message : String(error));
+/**
+ * Allows the call, and names the crash on stderr so it is not mistaken for a
+ * clean allow.
+ * @param {unknown} error
+ */
+function allowAfterCrash(error) {
+  process.stderr.write(
+    `guard-main-checkout: hook crashed, allowing the call: ${messageOf(error)}\n`,
+  );
+}
 
 /**
  * @param {unknown} error
@@ -78,28 +86,23 @@ function onCrash(error, crashInput, mainRoot) {
   } catch {
     // The fallback itself failed, so nothing is known: block.
   }
-  if (block) {
-    process.stderr.write(
-      `guard-main-checkout: ${hookFailed(error)} Run it from your worktree, or split the call.\n`,
-    );
-    process.exitCode = 2;
-  } else {
-    process.stderr.write(
-      `guard-main-checkout: hook crashed, allowing the call: ${messageOf(error)}\n`,
-    );
+  if (!block) {
+    allowAfterCrash(error);
+    return;
   }
+  process.stderr.write(`guard-main-checkout: ${hookFailed(error)} Run it from your worktree.\n`);
+  process.exitCode = 2;
 }
 
 async function main() {
-  const raw = readFileSync(0, 'utf8');
-  if (raw.trim() === '') return;
   let event;
   try {
+    const raw = readFileSync(0, 'utf8');
+    if (raw.trim() === '') return;
     event = JSON.parse(raw);
   } catch (error) {
-    process.stderr.write(
-      `guard-main-checkout: hook crashed, allowing the call: ${messageOf(error)}\n`,
-    );
+    // Stdin that cannot be read, or is not JSON, holds no call to check.
+    allowAfterCrash(error);
     return;
   }
   const command = event?.tool_input?.command;

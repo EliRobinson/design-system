@@ -6,7 +6,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { CRASH_ON_LOAD, CRASH_ON_PARSE } from './crash-fixture/node-args';
-import { OVERRIDE, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
+import { mainCheckoutOf } from './checkouts.mjs';
+import { OVERRIDE } from './guard-main-checkout-policy.mjs';
+import { hookFailed } from './hook-failure.mjs';
 
 // End-to-end: runs the hook script the way Claude Code does. The hook guards
 // the main checkout of the repo it sits in, so these tests point `cwd` at that
@@ -89,17 +91,18 @@ describe('guard-main-checkout hook', () => {
   });
 });
 
-const BLOCKED = (what: string) =>
-  new RegExp(
-    `^guard-main-checkout: The hook failed \\(injected ${what}\\), so this call is blocked\\. File an issue in this repo \\(label area:ci\\) .*never secrets or tokens\\. A simpler command may run\\. Run it from your worktree, or split the call\\.$`,
-  );
+// What the guard prints when it blocks or allows after `injected <what>`.
+const blocked = (what: string) =>
+  `guard-main-checkout: ${hookFailed(new Error(`injected ${what}`))} Run it from your worktree.\n`;
+const allowed = (what: string) =>
+  `guard-main-checkout: hook crashed, allowing the call: injected ${what}\n`;
 
 describe.each([
   ['its parser throws', CRASH_ON_PARSE, 'parser failure in guardDecision'],
   [
     'its rules throw while they load',
     CRASH_ON_LOAD,
-    'load failure in guard-main-checkout-policy\\.mjs',
+    'load failure in guard-main-checkout-policy.mjs',
   ],
 ])('guard-main-checkout hook, when %s', (_when, nodeArgs, what) => {
   const crash = (command: string, cwd: string) => run(bash(command, cwd), {}, nodeArgs);
@@ -112,7 +115,7 @@ describe.each([
   ])('blocks %s with exit 2', (_name, command, cwd) => {
     const { code, stderr } = crash(command, cwd as string);
     expect(code).toBe(2);
-    expect(stderr.trim()).toMatch(BLOCKED(what));
+    expect(stderr).toBe(blocked(what));
   });
 
   it.each(['ls -la', 'git status && git log'])(
@@ -120,9 +123,7 @@ describe.each([
     (command) => {
       const { code, stderr } = crash(command, elsewhere);
       expect(code).toBe(0);
-      expect(stderr.trim()).toMatch(
-        new RegExp(`^guard-main-checkout: hook crashed, allowing the call: injected ${what}$`),
-      );
+      expect(stderr).toBe(allowed(what));
     },
   );
 });

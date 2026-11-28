@@ -32,10 +32,11 @@ function jsonDeny(output) {
   process.exit(0);
 }
 
-// How each tool is told a call is denied. Its keys are the tools the rules
-// know (TOOLS in review-gate-policy.mjs); review-gate-run.mjs throws on any
-// other.
-/** @type {Record<string, (message: string) => never>} */
+/** @typedef {keyof typeof import('./review-gate-policy.mjs').TOOLS} ToolName */
+
+// How each tool is told a call is denied, for each tool the rules know. The
+// type import above loads nothing at run time.
+/** @type {Record<ToolName, (message: string) => never>} */
 const DENY = {
   claude: exitDeny,
   codex: exitDeny,
@@ -54,7 +55,9 @@ async function main() {
     );
     process.exit(1);
   }
-  const deny = DENY[tool];
+  const denyTool = DENY[/** @type {ToolName} */ (tool)];
+  /** @param {string} message @returns {never} */
+  const deny = (message) => denyTool(`Blocked by the review gate. ${message}`);
 
   let event;
   try {
@@ -77,7 +80,7 @@ async function main() {
     const { checkCall } = await import('./review-gate-run.mjs');
     checkCall(tool, event, cwd, deny);
   } catch (error) {
-    deny(`Blocked by the review gate. ${hookFailed(error)}`);
+    deny(hookFailed(error));
   }
 }
 

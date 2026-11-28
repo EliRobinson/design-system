@@ -1,9 +1,9 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { OVERRIDE, guardDecision, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
+import { type Checkouts, makeCheckouts, removeCheckouts } from './checkout-fixtures';
+import { MUTATING_GIT_VERB_NAMES } from './git-write-verbs.mjs';
+import { OVERRIDE, VERB_TESTS, guardDecision } from './guard-main-checkout-policy.mjs';
 import {
   NESTED_GLOB_NAMES,
   TIME_BUDGET_MS,
@@ -18,48 +18,62 @@ import {
 } from './shell-parse-fixtures';
 import { NESTED_READ_LIMIT } from './shell-parse.mjs';
 
-// On-disk fixtures, shaped the way git lays them out:
-//   main/          a main checkout (`.git` is a directory)
-//   main/.claude/worktrees/wt/   a linked worktree (`.git` is a file)
-//   other/         another project's main checkout
+// On-disk fixtures: see checkout-fixtures.ts.
+let fixture: Checkouts;
 let root: string;
 let main: string;
 let wt: string;
 let other: string;
 
 beforeAll(() => {
-  root = realpathSync(mkdtempSync(join(tmpdir(), 'guard-main-')));
-  main = join(root, 'main');
-  wt = join(main, '.claude/worktrees/wt');
-  other = join(root, 'other');
-  mkdirSync(join(main, '.git/worktrees/wt'), { recursive: true });
-  mkdirSync(join(main, 'packages/react'), { recursive: true });
-  mkdirSync(wt, { recursive: true });
-  writeFileSync(join(wt, '.git'), `gitdir: ${join(main, '.git/worktrees/wt')}\n`);
-  mkdirSync(join(other, '.git'), { recursive: true });
-  symlinkSync(join(main, 'packages'), join(wt, 'shared'));
+  fixture = makeCheckouts('guard-main-');
+  ({ root, main, wt, other } = fixture);
 });
 
-afterAll(() => rmSync(root, { recursive: true, force: true }));
+afterAll(() => removeCheckouts(fixture));
 
 const decide = (command: string, cwd = main) => guardDecision({ command, cwd }, main);
 const refused = (command: string, cwd?: string) => decide(command, cwd).blocked;
 
-describe('mainCheckoutOf', () => {
-  it('finds the main checkout from itself, a subfolder, and a linked worktree', () => {
-    expect(mainCheckoutOf(main)).toBe(main);
-    expect(mainCheckoutOf(join(main, 'packages/react'))).toBe(main);
-    expect(mainCheckoutOf(wt)).toBe(main);
+describe('MUTATING_GIT_VERB_NAMES', () => {
+  it('holds the verbs the guard can refuse', () => {
+    expect(MUTATING_GIT_VERB_NAMES).toEqual([
+      'add',
+      'am',
+      'checkout',
+      'cherry-pick',
+      'clean',
+      'commit',
+      'merge',
+      'mv',
+      'pull',
+      'rebase',
+      'reset',
+      'restore',
+      'revert',
+      'rm',
+      'switch',
+      'read-tree',
+      'checkout-index',
+      'update-index',
+      'stash',
+      'bisect',
+      'sparse-checkout',
+      'submodule',
+      'apply',
+      'worktree',
+    ]);
   });
 
-  it('is null outside any checkout', () => {
-    expect(mainCheckoutOf('/')).toBeNull();
+  it.each(Object.keys(VERB_TESTS))('has a test only for a listed verb: %s', (verb) => {
+    expect(MUTATING_GIT_VERB_NAMES).toContain(verb);
   });
 });
 
 describe('guardDecision in the main checkout', () => {
   it.each([
     'git commit -m x',
+    'git am x.patch',
     'git checkout -- file.ts',
     'git checkout main',
     'git switch -c x',

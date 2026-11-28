@@ -18,8 +18,8 @@
 import { existsSync } from 'node:fs';
 import { posix } from 'node:path';
 
-import { checkoutOf, inMainCheckout, mainCheckoutOf } from './checkouts.mjs';
-import { MUTATING_GIT_VERB_NAMES } from './hook-failure.mjs';
+import { checkoutOf, inMainCheckout } from './checkouts.mjs';
+import { MUTATING_GIT_VERB_NAMES } from './git-write-verbs.mjs';
 import {
   afterFlags,
   cdTarget,
@@ -28,8 +28,6 @@ import {
   parseCommands,
   placeCommands,
 } from './shell-parse.mjs';
-
-export { mainCheckoutOf };
 
 /** The one escape: `ALLOW_MAIN_CHECKOUT_WRITE=1 git ...`, on that command. */
 export const OVERRIDE = 'ALLOW_MAIN_CHECKOUT_WRITE';
@@ -82,8 +80,12 @@ const unlessFlag =
   (rest) =>
     !rest.some((word) => flags.includes(word));
 
-/** @type {Record<string, (rest: string[]) => boolean>} */
-const VERB_TESTS = {
+/**
+ * The test for each verb in {@link MUTATING_GIT_VERB_NAMES} that changes the
+ * tree only on some calls.
+ * @type {Record<string, (rest: string[]) => boolean>}
+ */
+export const VERB_TESTS = {
   stash: exceptSubcommands('list', 'show'),
   bisect: exceptSubcommands('log', 'visualize', 'view'),
   'sparse-checkout': exceptSubcommands('list'),

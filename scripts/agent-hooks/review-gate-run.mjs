@@ -8,7 +8,6 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-import { hookFailed } from './hook-failure.mjs';
 import {
   REVIEWERS,
   TOOLS,
@@ -34,7 +33,8 @@ import { isAbsolutePath, quoteArgv, shellScriptOf } from './shell-parse.mjs';
  * @typedef {PrCall
  *   | { kind: 'agent-start', input: Record<string, unknown> }
  *   | { kind: 'other' }} Call
- * @typedef {(message: string) => never} Deny
+ * @typedef {(message: string) => never} Deny Denies the call with `message`,
+ *   which the entry puts after its refusal prefix.
  */
 
 // ---- Tool calls ----
@@ -175,7 +175,7 @@ function reviewersNotRun(pr, cwd) {
   });
 }
 
-// ---- Main ----
+// ---- Files ----
 
 /**
  * Reads `path`, resolved from `base()` when it is relative. `base` is called
@@ -200,10 +200,7 @@ function readFile(path) {
   }
 }
 
-/** @param {Deny} deny @param {string} message @returns {never} */
-function block(deny, message) {
-  return deny(`Blocked by the review gate. ${message}`);
-}
+// ---- Checks ----
 
 /** @param {PrCommand} pr @param {string} cwd @param {ToolName} tool @param {Deny} deny */
 function checkPr(pr, cwd, tool, deny) {
@@ -216,17 +213,13 @@ function checkPr(pr, cwd, tool, deny) {
     if (dir === null) throw new Error('no folder is known for this PR command');
     return dir;
   };
-  let decision;
-  try {
-    decision = decidePr(pr, {
-      // inDir runs only for a relative path, after decidePr ruled out a null folder.
-      readFile: (path) => readFrom(inDir, path),
-      reviewersNotRun: () => (TOOLS[tool].tracksReviewers ? reviewersNotRun(pr, inDir()) : []),
-    });
-  } catch (error) {
-    decision = { deny: hookFailed(error) };
-  }
-  if (decision) block(deny, decision.deny);
+  // A throw here reaches the entry, which blocks the call.
+  const decision = decidePr(pr, {
+    // inDir runs only for a relative path, after decidePr ruled out a null folder.
+    readFile: (path) => readFrom(inDir, path),
+    reviewersNotRun: () => (TOOLS[tool].tracksReviewers ? reviewersNotRun(pr, inDir()) : []),
+  });
+  if (decision) deny(decision.deny);
 }
 
 /**
@@ -250,14 +243,14 @@ export function checkCall(tool, event, cwd, deny) {
   const call = TO_CALL[name](event);
   if (call.kind === 'agent-start') {
     const decision = decideReviewerStart(call.input);
-    if (decision) block(deny, decision.deny);
+    if (decision) deny(decision.deny);
   } else if (call.kind === 'shell' || call.kind === 'mcp') {
     if (call.kind === 'shell') {
       // A merge that bypasses branch protection, or a gh word or endpoint the
       // hook cannot read that may hide a PR open or merge, is refused
       // whatever the PR body says.
       const bypass = findBypass(call.command);
-      if (bypass) block(deny, bypass);
+      if (bypass) deny(bypass);
     }
     for (const pr of prCommandsOf(call)) checkPr(pr, cwd, name, deny);
   }

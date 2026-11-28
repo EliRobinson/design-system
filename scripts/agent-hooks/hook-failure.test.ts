@@ -1,47 +1,39 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { MUTATING_GIT_VERBS } from './guard-main-checkout-policy.mjs';
-import { MUTATING_GIT_VERB_NAMES, hookFailed, mayWriteMainCheckout } from './hook-failure.mjs';
+import { type Checkouts, makeCheckouts, removeCheckouts } from './checkout-fixtures';
+import { hookFailed, mayWriteMainCheckout, messageOf } from './hook-failure.mjs';
 
-// On-disk fixtures, shaped the way git lays them out, under a fake home:
-//   home/main/                         a main checkout (`.git` is a directory)
-//   home/main/.claude/worktrees/wt/    a linked worktree (`.git` is a file)
-//   home/other/                        another project's main checkout
+// On-disk fixtures: see checkout-fixtures.ts. Its root stands in for the home
+// folder, so `~/main` is the main checkout.
+let fixture: Checkouts;
 let home: string;
 let main: string;
 let wt: string;
 let other: string;
 
 beforeAll(() => {
-  home = realpathSync(mkdtempSync(join(tmpdir(), 'hook-failure-')));
-  main = join(home, 'main');
-  wt = join(main, '.claude/worktrees/wt');
-  other = join(home, 'other');
-  mkdirSync(join(main, '.git/worktrees/wt'), { recursive: true });
-  mkdirSync(join(main, 'packages'), { recursive: true });
-  mkdirSync(wt, { recursive: true });
-  writeFileSync(join(wt, '.git'), `gitdir: ${join(main, '.git/worktrees/wt')}\n`);
-  mkdirSync(join(other, '.git'), { recursive: true });
+  fixture = makeCheckouts('hook-failure-');
+  ({ root: home, main, wt, other } = fixture);
 });
 
-afterAll(() => rmSync(home, { recursive: true, force: true }));
+afterAll(() => removeCheckouts(fixture));
 
-describe('hookFailed', () => {
+describe('messageOf', () => {
   it.each([
-    ['an Error', new Error('boom'), 'boom'],
-    ['a thrown string', 'boom', 'boom'],
-  ])('names the message of %s, and how to report it', (_name, error, why) => {
-    expect(hookFailed(error)).toBe(
-      `The hook failed (${why}), so this call is blocked. File an issue in this repo (label area:ci) with the shape of the command, never secrets or tokens. A simpler command may run.`,
-    );
+    ['an Error', new Error('boom')],
+    ['a thrown string', 'boom'],
+  ])('reads the message of %s', (_name, error) => {
+    expect(messageOf(error)).toBe('boom');
   });
 });
 
-it('lists the same verbs the guard refuses', () => {
-  expect([...MUTATING_GIT_VERBS.keys()]).toEqual(MUTATING_GIT_VERB_NAMES);
+describe('hookFailed', () => {
+  it('names the message, and how to report it', () => {
+    expect(hookFailed(new Error('boom'))).toBe(
+      'The hook failed (boom), so this call is blocked. File an issue in this repo (label area:ci) with the shape of the command, never secrets or tokens. A simpler command may run.',
+    );
+  });
 });
 
 // What the guard reads from the raw text when its rules throw.
