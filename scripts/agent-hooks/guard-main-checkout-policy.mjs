@@ -438,7 +438,8 @@ function mayPointGit({ argv }) {
  * @param {import('./shell-parse.mjs').Placed} placed
  * @returns {Placement}
  */
-function placementOf({ folder, before }) {
+function placementOf({ folder, beforeOf }) {
+  const before = beforeOf();
   return {
     folder,
     // A bare `NAME=value` cannot move the folder.
@@ -501,7 +502,7 @@ function refusedIn(line, cwd, mainRoot, aliasOf, depth, added) {
     const call = gitCallOf(command.argv, command.env);
     if (call === null) continue;
     const resolved = resolveAliases(call, aliasOf);
-    // Only for a git call: working it out for every command is quadratic.
+    // Only for a git call: see placeCommands.
     const folders = foldersOf(resolved.git, placementOf(item));
     if (resolved.kind === 'shell') {
       // A shell alias runs from the top of the checkout git was in.

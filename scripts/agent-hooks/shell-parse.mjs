@@ -285,9 +285,7 @@ function readLevel(script, start, closer, scope, state) {
   // each file the pattern matches, so it may not run at all: it goes in a
   // compound body there (`at`), and a `cd` in it leaves the folder unknown.
   // An `e` string is read as an `eval` script; code the parser cannot read is
-  // a command built at run time. One such command per level is enough: any
-  // one makes the bypass check read the whole script, and none is git or gh.
-  let markedRunTime = false;
+  // a command built at run time, in the scope where that code runs.
   const glob = globGroupTracker(script, groups, ({ code, at }) => {
     for (const each of code.scripts) {
       commands.push({
@@ -296,10 +294,7 @@ function readLevel(script, start, closer, scope, state) {
       });
     }
     for (const each of code.programs) commands.push(runTimeCommand(each, at));
-    if ((code.unreadable || code.dynamic) && !markedRunTime) {
-      commands.push(runTimeCommand(GLOB_GROUP_WORD, at));
-      markedRunTime = true;
-    }
+    if (code.unreadable || code.dynamic) commands.push(runTimeCommand(GLOB_GROUP_WORD, at));
   });
   // Where the `)` that last closed a glob group is. A `(` right after it
   // opens another, as in zsh's `(a|b)(e:...:)`.
@@ -307,6 +302,21 @@ function readLevel(script, start, closer, scope, state) {
   // The group that went past GLOB_NESTING_LIMIT, while it is open.
   /** @type {number | null} */
   let pastNestingLimit = null;
+  // Group `id` is out of the level's groups. If it is a glob group, it closes
+  // at its `)` at `end`, or ends without one when `end` is undefined.
+  // Returns whether it was a glob group.
+  const closeGroupId = (/** @type {number} */ id, /** @type {number | undefined} */ end) => {
+    if (id === pastNestingLimit) pastNestingLimit = null;
+    if (!glob.isOpen(id)) return false;
+    if (end === undefined) {
+      glob.drop(id);
+    } else {
+      // A coprocess's group runs its glob code in the coprocess.
+      const inGroup = state.async.has(id) ? [id] : [];
+      glob.close(id, end, [...here(), ...inGroup, -newScope()]);
+    }
+    return true;
+  };
   // Ends the level at `end`: the glob groups still open end without their `)`.
   const finish = (/** @type {number} */ end) => {
     glob.dropAll();
@@ -363,10 +373,7 @@ function readLevel(script, start, closer, scope, state) {
   // where `coproc` reads its command.
   const trackCompound = (/** @type {string[]} */ front, /** @type {Coproc | null} */ coproc) => {
     if (COMPOUND_CLOSERS.has(argv[0] ?? '')) {
-      for (const id of closeGroups(compoundSizes.pop() ?? 1)) {
-        glob.drop(id);
-        if (id === pastNestingLimit) pastNestingLimit = null;
-      }
+      for (const id of closeGroups(compoundSizes.pop() ?? 1)) closeGroupId(id, undefined);
     }
     let opened = false;
     const open = (/** @type {number | null} */ subshell) => {
@@ -501,13 +508,7 @@ function readLevel(script, start, closer, scope, state) {
       endCommand();
       if (closer === ')' && groups.length === 0) return finish(i + 1);
       const [closing = 0] = closeGroups(1);
-      if (closing === pastNestingLimit) pastNestingLimit = null;
-      if (glob.isOpen(closing)) {
-        // A coprocess's group runs its glob code in the coprocess.
-        const inGroup = state.async.has(closing) ? [closing] : [];
-        glob.close(closing, i, [...here(), ...inGroup, -newScope()]);
-        globClosedAt = i;
-      }
+      if (closeGroupId(closing, i)) globClosedAt = i;
       i++;
       continue;
     }
@@ -600,7 +601,7 @@ function readLevel(script, start, closer, scope, state) {
         word === null && !redirectTarget && leadingKeywords(argv).length < argv.length;
       const afterGlobGroup = globClosedAt === i - 1;
       // A `(` at a word's start in a list (`for f ( (a)(e:...:) )`).
-      const inList = word === null && glob.isList(groups.at(-1) ?? 0);
+      const inList = word === null && glob.isStandalone(groups.at(-1));
       const opensGlob = opensGlobGroup({ next, word, argv, standalone, afterGlobGroup, inList });
       if (next !== ')') {
         if (word !== null) expands('unquoted');
@@ -906,20 +907,18 @@ export function ghCommand(argv, textOf = String) {
 const keyOf = (scope) => scope.join('/');
 
 /**
- * Whether `outer` is `inner` or a shell around it.
- * @param {number[]} outer
- * @param {number[]} inner
- */
-const encloses = (outer, inner) =>
-  outer.length <= inner.length && outer.every((id, i) => inner[i] === id);
-
-/**
  * A command that is not a `cd`, with the folder it runs in.
  * - `folder` is null when a parser cannot tell.
- * - `before` holds each command that ran earlier in its own shell or a shell
- *   around it. Its own substitutions, and the other stages of its pipeline,
- *   are not in it: they cannot move its shell.
- * @typedef {{ command: Command, folder: string | null, before: Command[] }} Placed
+ * - `beforeOf()` lists each command that ran earlier in its own shell or a
+ *   shell around it, in the order they ran. Its own substitutions, and the
+ *   other stages of its pipeline, are not in it: they cannot move its shell.
+ *   It works the list out on each call.
+ * @typedef {{ command: Command, folder: string | null, beforeOf: () => Command[] }} Placed
+ */
+
+/**
+ * The commands of a script by the shell they run in, as a tree of shells.
+ * @typedef {{ shells: Map<number, ShellNode>, commands: number[] }} ShellNode
  */
 
 /**
@@ -957,14 +956,36 @@ export function placeCommands(script, cwd) {
   const placed = [];
   /** @type {Command[]} */
   const earlier = [];
-  // `before` is worked out only when it is read. Only git commands read it,
-  // and working it out for every command took time quadratic in their count.
-  const beforeOf = (/** @type {number} */ index) => {
-    const shell = shellOf(earlier[index]?.scope ?? []);
-    return earlier.slice(0, index).filter((each) => encloses(shellOf(each.scope), shell));
+  // Each command's index in `earlier`, filed under its shell. A command's
+  // list is worked out only when asked for, from the shells on its path:
+  // working it out for every command took time quadratic in their count.
+  /** @type {ShellNode} */
+  const root = { shells: new Map(), commands: [] };
+  const pathTo = (/** @type {number[]} */ shell) => {
+    const path = [root];
+    for (const id of shell) {
+      const at = /** @type {ShellNode} */ (path.at(-1));
+      let next = at.shells.get(id);
+      if (!next) at.shells.set(id, (next = { shells: new Map(), commands: [] }));
+      path.push(next);
+    }
+    return path;
+  };
+  const before = (/** @type {ShellNode[]} */ path, /** @type {number} */ index) => {
+    /** @type {number[]} */
+    const found = [];
+    for (const node of path) {
+      for (const each of node.commands) {
+        if (each >= index) break;
+        found.push(each);
+      }
+    }
+    return found.sort((a, b) => a - b).map((each) => /** @type {Command} */ (earlier[each]));
   };
   for (const command of parseCommands(script)) {
     const index = earlier.length;
+    const path = pathTo(shellOf(command.scope));
+    path.at(-1)?.commands.push(index);
     earlier.push(command);
     const folder = folderIn(command.scope);
     const program = command.argv[0];
@@ -972,13 +993,7 @@ export function placeCommands(script, cwd) {
       move(command.scope, program === 'popd' ? null : cdTarget(folder, cdWord(command.argv)));
       continue;
     }
-    placed.push({
-      command,
-      folder,
-      get before() {
-        return beforeOf(index);
-      },
-    });
+    placed.push({ command, folder, beforeOf: () => before(path, index) });
   }
   return placed;
 }

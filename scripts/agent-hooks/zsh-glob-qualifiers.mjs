@@ -180,9 +180,9 @@ export function readGlobGroupText(raw) {
     }
     const ch = raw[i] ?? '';
     const next = raw[i + 1] ?? '';
+    // The run above copies the rest: only a `'` ends up here in single quotes.
     if (quote === "'") {
-      if (ch === "'") quote = null;
-      else text += ch;
+      quote = null;
     } else if (ch === '\\') {
       // In double quotes a backslash escapes only these; it stays before others.
       if (quote === '"' && !/[$`"\\\n]/.test(next)) text += ch;
@@ -259,8 +259,8 @@ export function globGroupTracker(script, groups, read) {
     },
     /** @param {number} id */
     isOpen: (id) => open.has(id),
-    /** Whether `id` is an open glob group that may be a list. @param {number} id */
-    isList: (id) => open.get(id)?.standalone === true,
+    /** Whether `id` is an open standalone glob group. @param {number | undefined} id */
+    isStandalone: (id) => id !== undefined && open.get(id)?.standalone === true,
     /**
      * A glob group opens at `start`. `standalone`: its `(` stands alone, so
      * it may be a list or a subshell.
@@ -279,6 +279,8 @@ export function globGroupTracker(script, groups, read) {
      * @param {number[]} at
      */
     close(id, end, at) {
+      // The parser asks isOpen first, so no input reaches this throw. It
+      // would let the hook allow the call (#479).
       const entry = open.get(id);
       if (!entry) throw new Error(`glob group ${id} is not open`);
       open.delete(id);
@@ -290,7 +292,7 @@ export function globGroupTracker(script, groups, read) {
       // or a subshell, whose own `e` strings never run then.
       const mayRunInner = entry.standalone && entry.inner.length > 0;
       const ownScripts = mayRunInner ? [] : code.scripts;
-      const runsInner = mayRunInner || ownScripts.length === 0;
+      const runsInner = mayRunInner || code.scripts.length === 0;
       if (runsInner) {
         for (const group of entry.inner) group.at = at;
         file(entry.inner);
@@ -299,8 +301,9 @@ export function globGroupTracker(script, groups, read) {
     },
     /** The open glob group `id`, already out of the level's groups, ends without its `)`. @param {number} id */
     drop(id) {
+      // As in `close`, the parser asks isOpen first.
       const entry = open.get(id);
-      if (!entry) return;
+      if (!entry) throw new Error(`glob group ${id} is not open`);
       open.delete(id);
       file(entry.inner);
     },
