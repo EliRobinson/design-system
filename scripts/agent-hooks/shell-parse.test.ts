@@ -107,17 +107,120 @@ describe('parseCommands', () => {
     ['if !(y); then z; fi', ['y', 'z']],
     ['time(y) && z', ['y', 'z']],
     ['true && time(y)', ['true', 'y']],
-    ['coproc(y) && z', ['coproc', 'y', 'z']],
     ['select(y); z', ['select', 'y', 'z']],
     ['echo $(f( ) { y; }; f) z', ['f', 'y', 'f', 'echo']],
     ['echo $(x a( ) y) z', ['x', 'y', 'echo']],
     ['time -p(y) && z', ['y', 'z']],
     ['! time -p(y)', ['y']],
     ['echo $(time -p(y))', ['y', 'echo']],
-    ['coproc foo(y)', ['coproc', 'y']],
     ['x --admi(n|y) z', ['x', 'n', 'y', 'z']],
   ])('reads the commands in a ( glued to a word, as a subshell: %s', (script, expected) => {
     expect(names(script).filter((name) => name !== undefined)).toEqual(expected);
+  });
+
+  // bash's `coproc [NAME] command` (#468). zsh reads only the forms with no NAME.
+  it.each([
+    ['coproc foo { y; }; z', ['coproc', 'y', 'z']],
+    ['coproc foo { y; w; }', ['coproc', 'y', 'w']],
+    ['coproc foo ( y ); z', ['coproc', 'y', 'z']],
+    ['coproc foo(y)', ['coproc', 'y']],
+    ['coproc { y; }; z', ['coproc', 'y', 'z']],
+    ['coproc ( y ); z', ['coproc', 'y', 'z']],
+    ['coproc(y) && z', ['coproc', 'y', 'z']],
+    ['coproc foo while x; do y; done', ['coproc', 'x', 'y']],
+    ['coproc foo if x; then y; fi', ['coproc', 'x', 'y']],
+    ['coproc y a', ['coproc', 'y']],
+    ['coproc env A=1 y a', ['coproc', 'y']],
+    ['coproc bash -c "y"', ['coproc', 'bash', 'y']],
+    ['x && coproc foo { y; }', ['x', 'coproc', 'y']],
+    ['if x; then coproc foo { y; }; fi; z', ['x', 'coproc', 'y', 'z']],
+    ['echo $(coproc foo { y; })', ['coproc', 'y', 'echo']],
+  ])('reads the command a coproc runs: %s', (script, expected) => {
+    expect(names(script)).toEqual(expected);
+  });
+
+  it('reads the body of a coproc NAME for loop', () => {
+    expect(names('coproc foo for a in b; do y; done')).toEqual(['coproc', 'for', 'y']);
+  });
+
+  // A `}`, `done` or `esac` still in the command closes its body before the
+  // `)` after it closes the `$(`, so what follows is back in the outer shell.
+  it.each(['echo $({ y; }); b', 'x=$(for i in a; do :; done); b', 'echo $(coproc foo { y; }); b'])(
+    'ends a body before the ) that closes its substitution: %s',
+    (script) => {
+      const b = parseCommands(script).find(({ argv }) => argv[0] === 'b');
+      expect(b?.scope).toEqual([]);
+    },
+  );
+
+  // A `&` sends its whole and-or list to the background; a `;` inside a
+  // group ends a list in the group only.
+  it.each([
+    ['git worktree add p & cd p && git commit', [true, false, false]],
+    ['a && b & c', [true, true, false]],
+    ['(git worktree add p; true) & c', [true, true, false]],
+    ['{ git worktree add p; true; } & c', [true, true, false]],
+    ['a; (b; c) & d', [false, true, true, false]],
+    ['x && (y; z) & w', [true, true, true, false]],
+    ['if a; then b; fi & c', [true, true, false]],
+    ['(a; b & c; d) & e', [true, true, true, true, false]],
+    ['(a; b & c; d); e', [false, true, false, false, false]],
+  ])('marks the commands a background job runs as async: %s', (script, expected) => {
+    expect(parseCommands(script).map(({ async }) => async)).toEqual(expected);
+  });
+
+  it.each([
+    ['coproc foo { y a; }', ['y', 'a']],
+    ['coproc y a', ['y', 'a']],
+  ])('reads a coproc’s words past its NAME and keyword: %s', (script, expected) => {
+    expect(argvs(script).at(-1)).toEqual(expected);
+  });
+
+  const placed = (script: string) =>
+    parseCommands(script).map(({ argv, scope, async }) => ({ name: argv[0], scope, async }));
+
+  it('runs a coproc’s simple command in a coprocess shell of its own', () => {
+    const [raw, cd, after] = placed('coproc cd a; b');
+    expect(cd?.name).toBe('cd');
+    expect(cd?.scope).toHaveLength(1);
+    expect(cd?.async).toBe(true);
+    // The record of the coproc itself shares the coprocess's shell.
+    expect(raw).toEqual({ name: 'coproc', scope: cd?.scope, async: true });
+    expect(after).toEqual({ name: 'b', scope: [], async: false });
+  });
+
+  it.each([
+    'coproc foo { y; w; }; z',
+    'coproc { y; w; }; z',
+    'coproc foo while y; do w; done; z',
+    'coproc foo ( y; w ); z',
+    'time coproc foo { y; w; }; z',
+    'x && coproc foo { y; w; }; z',
+  ])('runs every command of a coproc’s body in the coprocess shell: %s', (script) => {
+    const commands = placed(script);
+    const y = commands.find(({ name }) => name === 'y');
+    const w = commands.find(({ name }) => name === 'w');
+    const z = commands.find(({ name }) => name === 'z');
+    expect(y?.scope[0]).toBeGreaterThan(0);
+    expect(w?.scope).toEqual(y?.scope);
+    expect([y?.async, w?.async]).toEqual([true, true]);
+    expect(z).toEqual({ name: 'z', scope: [], async: false });
+  });
+
+  it('closes a coproc’s body at its own closer, not the group around it', () => {
+    const commands = placed('(coproc foo { y; }; cd a); b');
+    const y = commands.find(({ name }) => name === 'y');
+    const cd = commands.find(({ name }) => name === 'cd');
+    expect(cd?.scope).toHaveLength(1);
+    expect(cd?.async).toBe(false);
+    expect(y?.scope.slice(0, 1)).toEqual(cd?.scope);
+    expect(commands.at(-1)).toEqual({ name: 'b', scope: [], async: false });
+  });
+
+  it('marks commands in a substitution or a nested shell inside a coproc as async', () => {
+    const commands = placed('coproc foo { echo $(y) && bash -c "w"; }');
+    const inner = commands.filter(({ name }) => name === 'y' || name === 'w');
+    expect(inner.map(({ async }) => async)).toEqual([true, true]);
   });
 
   it('keeps one mark per word past dropped env assignments and wrappers', () => {

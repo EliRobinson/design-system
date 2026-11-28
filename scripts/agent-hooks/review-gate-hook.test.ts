@@ -184,6 +184,13 @@ describe('Claude Code', () => {
     expect(run('claude', bash(`cd sub && ${CREATE} -F ../body.md`)).code).toBe(0);
   });
 
+  it('refuses a PR whose folder it cannot tell, even with an absolute body path (#472)', () => {
+    finishAllReviewers();
+    const result = run('claude', bash(`{ cd /tmp; }; ${CREATE} -F ${join(repo, 'body.md')}`));
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/cannot tell which folder/);
+  });
+
   it('follows a leading cd to an absolute path', () => {
     finishAllReviewers();
     expect(run('claude', bash(`cd ${repo} && ${CREATE} -F body.md`)).code).toBe(0);
@@ -224,6 +231,21 @@ describe('Claude Code', () => {
       cwd: repo,
     });
     expect(review.code).toBe(0);
+  });
+
+  it('reads an absolute graphql file after a cd it cannot follow, with no folder', () => {
+    const file = join(repo, 'abs.graphql');
+    writeFileSync(file, 'mutation { createPullRequest(input: {}) { clientMutationId } }');
+    const result = run('claude', bash(`cd "$X" && ${GH} api graphql -F query=@${file}`));
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/not a GraphQL mutation/);
+  });
+
+  // The shell leaves `~` after `=@` alone, so gh reads `<folder>/~/q.graphql`.
+  it('refuses a ~ graphql file after a cd it cannot follow', () => {
+    const result = run('claude', bash(`cd "$X"; ${GH} api graphql -F query=@~/q.graphql`));
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/cannot tell which folder/);
   });
 
   it('reads graphql query files', () => {

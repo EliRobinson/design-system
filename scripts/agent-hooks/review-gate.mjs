@@ -27,7 +27,7 @@ import {
   reviewersWithoutRun,
 } from './review-gate-policy.mjs';
 import { findBypass } from './review-gate-bypass.mjs';
-import { quoteArgv, shellScriptOf } from './shell-parse.mjs';
+import { isAbsolutePath, quoteArgv, shellScriptOf } from './shell-parse.mjs';
 
 /** @typedef {import('./review-gate-policy.mjs').PrCall} PrCall */
 /** @typedef {import('./review-gate-policy.mjs').PrCommand} PrCommand */
@@ -198,7 +198,7 @@ function readRuns(cwd, branch) {
 function recordRun(cwd, agent, output, transcript) {
   if (!isReviewer(agent)) return;
   const text =
-    isReport(output) || typeof transcript !== 'string' ? null : readFile(transcript, cwd);
+    isReport(output) || typeof transcript !== 'string' ? null : readFrom(() => cwd, transcript);
   const report = text === null ? output : handbackReport(text);
   if (!countsAsRun(agent, report)) return;
   const branch = currentBranch(cwd);
@@ -225,10 +225,24 @@ function reviewersNotRun(pr, cwd) {
 
 // ---- Main ----
 
-/** @param {string} path @param {string} dir */
-function readFile(path, dir) {
+/**
+ * Reads `path`, resolved from `base()` when it is relative. `base` is called
+ * only then, so a caller with no folder for a relative path can throw there.
+ * A `~` path is passed on as it is: readFile expands it.
+ * @param {() => string} base @param {string} path
+ */
+function readFrom(base, path) {
+  const passOn = isAbsolutePath(path) || /^~(\/|$)/.test(path);
+  return readFile(passOn ? path : resolve(base(), path));
+}
+
+/**
+ * Reads `path`, an absolute or `~` path, or null when it is missing.
+ * @param {string} path
+ */
+function readFile(path) {
   try {
-    return readFileSync(resolve(dir, path.replace(/^~(?=\/|$)/, homedir())), 'utf8');
+    return readFileSync(path.replace(/^~(?=\/|$)/, homedir()), 'utf8');
   } catch {
     return null;
   }
@@ -241,12 +255,21 @@ function block(adapter, message) {
 
 /** @param {PrCommand} pr @param {string} cwd @param {ToolName} tool */
 function checkPr(pr, cwd, tool) {
-  const dir = resolve(cwd, branchRefsOf(pr).dir ?? '.');
+  const refs = branchRefsOf(pr);
+  const dir = refs.dir === null ? null : resolve(cwd, refs.dir);
+  // The folder to read a relative path and the reviewer runs from. decidePr
+  // refuses before it needs one the parser could not tell; never fall back
+  // to the hook's own (#472).
+  const inDir = () => {
+    if (dir === null) throw new Error('no folder is known for this PR command');
+    return dir;
+  };
   let decision;
   try {
     decision = decidePr(pr, {
-      readFile: (path) => readFile(path, dir),
-      reviewersNotRun: () => (TOOLS[tool].tracksReviewers ? reviewersNotRun(pr, dir) : []),
+      // inDir runs only for a relative path, after decidePr ruled out a null folder.
+      readFile: (path) => readFrom(inDir, path),
+      reviewersNotRun: () => (TOOLS[tool].tracksReviewers ? reviewersNotRun(pr, inDir()) : []),
     });
   } catch (error) {
     decision = {

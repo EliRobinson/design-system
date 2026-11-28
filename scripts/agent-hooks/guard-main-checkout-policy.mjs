@@ -18,7 +18,14 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, posix, resolve, sep } from 'node:path';
 
-import { afterFlags, cdTarget, ghCommand, parseCommands, placeCommands } from './shell-parse.mjs';
+import {
+  afterFlags,
+  cdTarget,
+  ghCommand,
+  isAbsolutePath,
+  parseCommands,
+  placeCommands,
+} from './shell-parse.mjs';
 
 /** The one escape: `ALLOW_MAIN_CHECKOUT_WRITE=1 git ...`, on that command. */
 export const OVERRIDE = 'ALLOW_MAIN_CHECKOUT_WRITE';
@@ -362,10 +369,10 @@ function foldersOf(git, { folder, first, gitPointed, envMayPointGit }) {
   if (git.chdirs.length === 0) return [folder];
   // An absolute `-C` does not depend on the folder before it.
   const target = git.chdirs.reduce(
-    (dir, path) => cdTarget(path.startsWith('/') ? '/' : dir, path),
+    (dir, path) => cdTarget(isAbsolutePath(path) ? '/' : dir, path),
     folder,
   );
-  const absolute = git.chdirs[0]?.startsWith('/') === true;
+  const absolute = isAbsolutePath(git.chdirs[0] ?? '');
   return first || (absolute && !envMayPointGit) ? [target] : [folder, target];
 }
 
@@ -510,6 +517,9 @@ function refusedIn(line, cwd, mainRoot, aliasOf, depth, added) {
     const { git } = resolved;
     const path = worktreeAddPath(git);
     if (path !== null) {
+      // A coprocess or a background job (`&`) runs while the line goes on,
+      // so its worktree may not exist yet when the next command runs (#473).
+      if (command.async) continue;
       for (const at of folders) {
         // A path that exists already is not a new worktree.
         const made = cdTarget(at, path);

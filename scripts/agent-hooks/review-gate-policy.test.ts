@@ -75,6 +75,12 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['in a time -p( subshell in a substitution', `echo $(time -p(${CREATE} -F b.md))`],
     ['in a case pattern glued to in(', `case x in(x) ${CREATE} -F b.md;; esac`],
     ['in a coproc name( subshell', `coproc foo(${CREATE} -F b.md)`],
+    ['in a coproc NAME { } group', `coproc foo { ${CREATE} -F b.md; }`],
+    ['in a coproc NAME ( ) subshell', `coproc foo ( ${CREATE} -F b.md )`],
+    ['in a coproc { } group', `coproc { ${CREATE} -F b.md; }`],
+    ['in a coproc NAME while loop', `coproc foo while true; do ${CREATE} -F b.md; done`],
+    ['as a coproc simple command', `coproc ${CREATE} -F b.md`],
+    ['as a coproc simple command after &&', `true && coproc ${CREATE} -F b.md`],
     ['in a ( glued to an argument', `x a(${CREATE} -F b.md)`],
     ['in a ( standing alone as an argument', `x (${CREATE} -F b.md)`],
     ['in a case pattern with a leading (', `case x in (a) ${CREATE} -F b.md;; esac`],
@@ -217,6 +223,16 @@ describe('findPrCommands: reads pr create flags', () => {
     expect(dir(`ls | cat; cd sub && ${CREATE} -F x.md`)).toBe('sub');
   });
 
+  it.each([
+    [`cd ../wtA && coproc { cd /tmp; }; ${CREATE} --body-file b.md`, '../wtA'],
+    [`cd ../wtA && coproc foo { cd /tmp; }; ${CREATE} --body-file b.md`, '../wtA'],
+    [`cd ../wtA && coproc cd /tmp; ${CREATE} --body-file b.md`, '../wtA'],
+    [`cd ../wtA && coproc foo { ${CREATE} --body-file b.md; }`, '../wtA'],
+    [`coproc { cd sub; ${CREATE} --body-file b.md; }`, 'sub'],
+  ])('keeps a cd inside a coproc to the coprocess: %s', (script, expected) => {
+    expect(dir(script)).toBe(expected);
+  });
+
   it('does not follow a cd in a subshell, a substitution, a pipe, or a background job', () => {
     expect(dir(`(cd sub && ls); ${CREATE} -F b.md`)).toBe('.');
     expect(dir(`echo $(${CREATE} -F b.md); cd sub`)).toBe('.');
@@ -285,6 +301,12 @@ describe('branchRefsOf', () => {
       baseRefs: ['origin/dev', 'origin/main'],
       dir: 'sub',
     });
+  });
+
+  it('keeps an unknown folder unknown, not the working directory', () => {
+    expect(branchRefsOf({ kind: 'pr-create', fill: false, web: false, dir: null }).dir).toBeNull();
+    const files = { kind: 'graphql-files' as const, files: [], dir: null };
+    expect(branchRefsOf(files).dir).toBeNull();
   });
 
   it('falls back to origin/HEAD and the working directory', () => {
@@ -528,6 +550,12 @@ describe('decidePr', () => {
     web: false,
   } as const;
   const deps = { readFile: () => filledReview(), reviewersNotRun: () => [] };
+  // The first PR command in a script, and the decision on it.
+  const decideScript = (script: string, using = deps) => {
+    const command = first(script);
+    if (command === undefined) throw new Error(`no PR command in ${script}`);
+    return { command, decision: decidePr(command, using) };
+  };
 
   it('allows a filled body file with every reviewer run', () => {
     expect(decidePr(pr, deps)).toBeNull();
@@ -563,15 +591,77 @@ describe('decidePr', () => {
     expect(decidePr(command, deps)).not.toBeNull();
   });
 
-  it('denies a relative path after a cd it cannot follow', () => {
-    expect(decidePr({ ...pr, dir: null }, deps)?.deny).toMatch(/absolute path/);
-    expect(decidePr({ ...pr, dir: null, bodyFile: '/abs/b.md' }, deps)).toBeNull();
+  // #472: the reviewer runs are read from the PR's folder too, so an absolute
+  // body path is not enough.
+  it.each([
+    ['a relative body path', { ...pr, dir: null }],
+    ['an absolute body path', { ...pr, dir: null, bodyFile: '/abs/b.md' }],
+  ])('denies a pr create in a folder it cannot tell, with %s', (_, command) => {
+    expect(decidePr(command, deps)?.deny).toMatch(/cannot tell which folder/);
+  });
+
+  it.each([
+    ['no cd', `${CREATE} --body-file b.md`, '.'],
+    ['a cd it follows', `cd ../wtA && ${CREATE} --body-file b.md`, '../wtA'],
+    [
+      'a cd in a subshell before it',
+      `cd ../wtA && (cd /tmp); ${CREATE} --body-file b.md`,
+      '../wtA',
+    ],
+    // A `case` body ends before the `)` that closes its substitution.
+    [
+      'a cd in a case in a substitution before it',
+      `x=$(case a in a) cd /tmp;; esac); ${CREATE} --body-file b.md`,
+      '.',
+    ],
+    // A `;` inside the group does not keep its cd out of the background job.
+    [
+      'a cd in a group sent to the background',
+      `(cd /other; ${CREATE} --body-file b.md) & wait`,
+      '/other',
+    ],
+  ])('lets a pr create through with %s', (_, script, folder) => {
+    const { command, decision } = decideScript(script);
+    expect(command).toMatchObject({ dir: folder });
+    expect(decision).toBeNull();
+  });
+
+  it.each([
+    `cd ../wtA && { cd /tmp; }; ${CREATE} --body-file b.md`,
+    `cd ../wtA && { cd /tmp; }; ${CREATE} --body-file /abs/b.md`,
+    `{ coproc foo { true; }; cd /tmp; }; cd /abs && ${CREATE} --body-file b.md`,
+    `cd "$DIR" && ${CREATE} --body-file /abs/b.md`,
+  ])('denies a pr create whose folder it cannot tell: %s', (script) => {
+    const { command, decision } = decideScript(script);
+    expect(command).toMatchObject({ dir: null });
+    expect(decision?.deny).toMatch(/cannot tell which folder/);
+  });
+
+  it('denies a relative graphql file after a cd it cannot follow', () => {
     const files = {
       kind: 'graphql-files' as const,
       files: ['m.graphql'],
       dir: null,
     };
     expect(decidePr(files, deps)?.deny).toMatch(/absolute path/);
+  });
+
+  // The shell does not expand `~` after `=@` or in quotes, so gh reads a `~`
+  // file from the folder the command runs in, which the hook cannot tell.
+  it.each([
+    [`${GH} api graphql -F query=@/abs/q.graphql`, /GraphQL mutation/, ['/abs/q.graphql']],
+    [`${GH} api graphql -F query=@~/q.graphql`, /cannot tell which folder/, []],
+    [`${GH} api graphql --input "~/q.json"`, /cannot tell which folder/, []],
+    [`${GH} api graphql -F query=@~`, /cannot tell which folder/, []],
+  ])('after a cd it cannot follow, decides %s', (call, expected, reads) => {
+    const read: string[] = [];
+    const readFile = (path: string) => {
+      read.push(path);
+      return 'mutation { createPullRequest }';
+    };
+    const { decision } = decideScript(`cd "$X" && ${call}`, { ...deps, readFile });
+    expect(decision?.deny).toMatch(expected);
+    expect(read).toEqual(reads);
   });
 
   it('denies a missing body file', () => {
