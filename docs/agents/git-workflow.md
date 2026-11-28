@@ -36,10 +36,10 @@ The main checkout is the folder whose `.git` is a folder. Every worktree's `.git
 ### How it finds the folder
 
 - It starts from the folder the call runs in, with symlinks resolved.
-- It follows `cd` and `pushd` in the shell they run in. A `cd` in a subshell, a pipeline, a background job, `$(...)` or `bash -c` moves only that shell. `eval` runs in the current shell.
+- It follows `cd` and `pushd` in the shell they run in. A `cd` in a subshell, a pipeline, a background job, a `coproc`, `$(...)` or `bash -c` moves only that shell. `eval` runs in the current shell.
 - A `cd` inside `{ ... }`, a function, or an `if`, `while` or `for` body leaves the folder after it unknown. Bash may or may not run that body in the current shell.
 - A `cd` it cannot evaluate counts as the main checkout. That is `cd $DIR`, `cd "$(...)"`, `cd ~/...`, `cd -`, a bare `cd`, and any `popd`. The flags `-P`, `-L`, `-e` and `-@` are skipped.
-- A folder that a `git worktree add` earlier on the line makes counts as a worktree.
+- A folder that a `git worktree add` earlier on the line makes counts as a worktree. One made in a background job (`git worktree add P & ...`) or a `coproc` does not: the line goes on without waiting for it, so `P` may not exist yet. Use `&&`.
 - `git -C <path>` moves git. A relative `-C` can name another folder only on the first command on the line. After another command, it only adds a folder to check.
 - An absolute `-C` can name another folder anywhere on the line. The refusal tells agents to chain `git -C <worktree>` commands, so this rule lets that advice work.
 - An absolute `-C` is not trusted after a command that may point git elsewhere in a way the guard cannot read: `source`, `.`, `set -a`, or an `export` whose variable name is built at run time.
