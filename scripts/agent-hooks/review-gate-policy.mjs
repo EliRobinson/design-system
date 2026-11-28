@@ -51,7 +51,10 @@ export function isMcpCreatePr(name) {
  * A call that opens a PR. `dir` is the folder the command runs in, from
  * `placeCommands`, relative to the hook's working directory (`.` when no `cd`
  * moved it), or null when it cannot tell, such as after `cd "$DIR"`.
- * @typedef {{ kind: 'pr-create', bodyFile?: string, fill: boolean, web: boolean, head?: string, base?: string, dir?: string | null }
+ * `bodyFileAtRunTime` is true when the shell builds the body file's path at
+ * run time (`"$F"`, `<(...)`, a glob), so the file the hook would read may
+ * not be the one gh reads.
+ * @typedef {{ kind: 'pr-create', bodyFile?: string, bodyFileAtRunTime: boolean, fill: boolean, web: boolean, head?: string, base?: string, dir?: string | null }
  *   | { kind: 'mcp-create', body: string, head?: string, base?: string }
  *   | { kind: 'api-create' }
  *   | { kind: 'graphql-files', files: string[], dir?: string | null }} PrCommand
@@ -86,9 +89,11 @@ function classifyPrCreate(args, dir) {
   // refused when they may be set. One call per flag: see `readGhFlags`.
   if (help || has('--dry-run')) return null;
   const last = (/** @type {string[]} */ ...aliases) => values(...aliases).at(-1)?.text;
+  const bodyFile = values('-F', '--body-file').at(-1);
   return {
     kind: 'pr-create',
-    bodyFile: last('-F', '--body-file'),
+    bodyFile: bodyFile?.text,
+    bodyFileAtRunTime: Boolean(bodyFile?.dynamic),
     fill: maybe('-f', '--fill') || maybe('--fill-first') || maybe('--fill-verbose'),
     web: maybe('-w', '--web'),
     head: last('-H', '--head'),
@@ -385,6 +390,10 @@ export function decidePr(pr, { readFile, reviewersNotRun }) {
   } else if (pr.fill || pr.web) {
     return {
       deny: 'The hook cannot read a body from `--fill` or `--web`. Use `--body-file`.',
+    };
+  } else if (pr.bodyFileAtRunTime) {
+    return {
+      deny: `The hook cannot read a body file whose path the shell builds at run time (\`${pr.bodyFile}\`), so it cannot check its Review section. Write the path out in full, not as a glob.`,
     };
   } else if (!pr.bodyFile || pr.bodyFile === '-') {
     return {

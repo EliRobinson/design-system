@@ -10,8 +10,13 @@ import {
   msToRun,
   nestedEGroups,
   nestedGlob,
+  nestedCdProcessSubstitutions,
+  nestedCdSubshells,
+  nestedProcessSubstitutions,
   nestedSubstitutionGlobs,
+  processSubstitutionRow,
 } from './shell-parse-fixtures';
+import { NESTED_READ_LIMIT } from './shell-parse.mjs';
 
 // On-disk fixtures, shaped the way git lays them out:
 //   main/          a main checkout (`.git` is a directory)
@@ -477,6 +482,46 @@ describe('what the parser sees', () => {
     expect(refused(command)).toBe(true);
   });
 
+  // Process substitutions and zsh's `=git` (#469).
+  it.each([
+    'cat <(git add -A)',
+    'tee >(git stash) >/dev/null',
+    'cat < <(git add -A)',
+    'cat <(x <(git add -A))',
+    'echo >>(git add -A)',
+    nestedProcessSubstitutions(NESTED_READ_LIMIT + 8, 'git add -A'),
+    '=git add -A',
+    'sudo =git add -A',
+  ])('reads commands in a process substitution or as =git: %s', (command) => {
+    expect(refused(command)).toBe(true);
+  });
+
+  it.each(['diff <(sort a) <(sort b)', 'cat <(git status)'])(
+    'lets a process substitution that changes nothing through: %s',
+    (command) => {
+      expect(refused(command)).toBe(false);
+    },
+  );
+
+  // A process substitution runs in a subshell of its own, and `=cd` runs
+  // `/usr/bin/cd` in a process of its own: neither moves what comes after.
+  it.each([
+    'cat <(cd .claude/worktrees/wt); git add -A',
+    'cat > >(cd .claude/worktrees/wt); git add -A',
+    '=cd .claude/worktrees/wt; git add -A',
+  ])('keeps a cd there from moving later commands: %s', (command) => {
+    expect(refused(command)).toBe(true);
+  });
+
+  it.each([
+    ['nested 4000 deep', nestedProcessSubstitutions(4000)],
+    ['4000 in a row', processSubstitutionRow(4000)],
+    ['nested 2000 deep, each with a cd', nestedCdProcessSubstitutions(2000)],
+    ['in subshells nested 2000 deep, each with a cd', nestedCdSubshells(2000)],
+  ])('decides on process substitutions %s in a time budget', (_, command) => {
+    expect(msToRun(() => decide(command))).toBeLessThan(TIME_BUDGET_MS);
+  });
+
   // zsh runs a glob qualifier's e string as shell code (#465).
   it.each([
     "ls *(e:'git add -A':)",
@@ -549,6 +594,14 @@ describe('what the parser sees', () => {
     'coproc echo $(git worktree add NEW); git -C NEW commit -m x',
     'coproc foo { bash -c "git worktree add NEW"; }; git -C NEW commit -m x',
   ])('does not count a worktree a coproc makes as made: %s', (form) => {
+    expect(refused(form.replaceAll('NEW', newWorktree()))).toBe(true);
+  });
+
+  // A process substitution runs while the line goes on, like a coproc (#469).
+  it.each([
+    'cat <(git worktree add NEW); cd NEW && git commit -m x',
+    'tee >(git worktree add NEW); git -C NEW commit -m x',
+  ])('does not count a worktree a process substitution makes as made: %s', (form) => {
     expect(refused(form.replaceAll('NEW', newWorktree()))).toBe(true);
   });
 

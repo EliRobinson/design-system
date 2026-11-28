@@ -30,8 +30,12 @@ import {
   msToRun,
   nestedEGroups,
   nestedGlob,
+  nestedCdProcessSubstitutions,
+  nestedProcessSubstitutions,
   nestedSubstitutionGlobs,
+  processSubstitutionRow,
 } from './shell-parse-fixtures';
+import { NESTED_READ_LIMIT } from './shell-parse.mjs';
 
 const kinds = (script: string) => findPrCommands(script).map((pr) => pr.kind);
 // A glob qualifier group whose e string opens a PR (#465).
@@ -105,6 +109,19 @@ describe('findPrCommands: detects PR-opening commands', () => {
     ['after an e-like command in a coproc subshell', `coproc (e:true:; ls *${E_CREATE})`],
     ['in a glob group at a word start in a for list', `for f ( (a)${E_CREATE} ) echo`],
     ['after many cheap glob groups', `ls ${'x(+a)'.repeat(500)} *${E_CREATE}`],
+    // Process substitutions and zsh's `=gh` (#469).
+    ['in a <( process substitution', `cat <(${CREATE} -F b.md)`],
+    ['in a >( process substitution', `tee >(${CREATE} -F b.md) >/dev/null`],
+    ['in a process substitution after <', `cat < <(${CREATE} -F b.md)`],
+    ['in a nested process substitution', `cat <(x <(${CREATE} -F b.md))`],
+    ['in a zsh >>( process substitution', `echo >>(${CREATE} -F b.md)`],
+    [
+      'in a process substitution past the nesting limit',
+      nestedProcessSubstitutions(NESTED_READ_LIMIT + 8, `${CREATE} -F b.md`),
+    ],
+    ['as zsh =gh', `=${CREATE} -F b.md`],
+    ['as zsh =gh after sudo', `sudo =${CREATE} -F b.md`],
+    ['as zsh =gh after =sudo', `=sudo =${CREATE} -F b.md`],
   ])('%s', (_, script) => {
     expect(kinds(script)).toEqual(['pr-create']);
   });
@@ -287,6 +304,14 @@ describe('findPrCommands: reads pr create flags', () => {
     expect(msToRun(() => findPrCommands(script))).toBeLessThan(TIME_BUDGET_MS);
   });
 
+  it.each([
+    ['nested 4000 deep', nestedProcessSubstitutions(4000)],
+    ['4000 in a row', processSubstitutionRow(4000)],
+    ['nested 2000 deep, each with a cd', nestedCdProcessSubstitutions(2000)],
+  ])('finds PR commands in process substitutions %s in a time budget', (_, script) => {
+    expect(msToRun(() => findPrCommands(script))).toBeLessThan(TIME_BUDGET_MS);
+  });
+
   it('reads every cd form the guard reads, the same way', () => {
     expect(dir(`cd sub && ${CREATE} -F b.md`)).toBe('sub');
     expect(dir(`cd "my dir" && ${CREATE} -F b.md`)).toBe('my dir');
@@ -330,6 +355,7 @@ describe('branchRefsOf', () => {
     expect(
       branchRefsOf({
         kind: 'pr-create',
+        bodyFileAtRunTime: false,
         fill: false,
         web: false,
         head: 'me:feat',
@@ -344,7 +370,15 @@ describe('branchRefsOf', () => {
   });
 
   it('keeps an unknown folder unknown, not the working directory', () => {
-    expect(branchRefsOf({ kind: 'pr-create', fill: false, web: false, dir: null }).dir).toBeNull();
+    expect(
+      branchRefsOf({
+        kind: 'pr-create',
+        bodyFileAtRunTime: false,
+        fill: false,
+        web: false,
+        dir: null,
+      }).dir,
+    ).toBeNull();
     const files = { kind: 'graphql-files' as const, files: [], dir: null };
     expect(branchRefsOf(files).dir).toBeNull();
   });
@@ -586,6 +620,7 @@ describe('decidePr', () => {
   const pr = {
     kind: 'pr-create',
     bodyFile: 'b.md',
+    bodyFileAtRunTime: false,
     fill: false,
     web: false,
   } as const;
@@ -702,6 +737,16 @@ describe('decidePr', () => {
     const { decision } = decideScript(`cd "$X" && ${call}`, { ...deps, readFile });
     expect(decision?.deny).toMatch(expected);
     expect(read).toEqual(reads);
+  });
+
+  // gh reads the pipe or the expanded path, not the file the hook would read (#469).
+  it.each([
+    `${CREATE} --body-file <(cat b.md)`,
+    `${CREATE} -F "$F"`,
+    `${CREATE} --body-file=$(echo b.md)`,
+    `${CREATE} --body-file b*.md`,
+  ])('denies a body file whose path is built at run time: %s', (script) => {
+    expect(decideScript(script).decision?.deny).toMatch(/builds at run time/);
   });
 
   it('denies a missing body file', () => {

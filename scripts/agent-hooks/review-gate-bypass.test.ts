@@ -40,6 +40,16 @@ describe('findBypass: refuses --admin in every form', () => {
     'echo "$({gh} pr merge 5 --admin)"',
     '{gh} pr merge 5 --admin --help=false',
     '{gh} pr merge 5 --admin -h=false',
+    // Process substitutions and zsh's `=gh` (#469).
+    'cat <({gh} pr merge 5 --admin)',
+    'tee >({gh} pr merge 5 --admin)',
+    'cat < <({gh} pr merge 5 --admin)',
+    'cat <(x <({gh} pr merge 5 --admin))',
+    '{gh} pr merge 5 <(true) --admin',
+    '={gh} pr merge 5 --admin',
+    'sudo ={gh} pr merge 5 --admin',
+    '=x/{gh} pr merge 5 --admin',
+    '=/usr/bin/sudo {gh} pr merge 5 --admin',
   ])('%s', (script) => {
     expect(reason(script)).toBe(ADMIN_REASON);
   });
@@ -62,6 +72,8 @@ describe('findBypass: refuses --admin in every form', () => {
     'ls *(+fn) && echo "{gh} pr merge 5 --admin"',
     'ls *($Q) && echo "{gh} pr merge 5 --admin"',
     'ls *(e:"$X":) && echo "{gh} pr merge 5 --admin"',
+    // A zsh `=` word the hook cannot read is a program built at run time (#469).
+    "=cd a && echo '{gh} pr merge 5 --admin'",
   ])('through another program: %s', (script) => {
     expect(reason(script)).toBe(`${ADMIN_REASON} Run gh directly, not through another program.`);
   });
@@ -213,6 +225,8 @@ describe('findBypass: refuses merge words it cannot read', () => {
     ['{gh} api repos/o/r/pulls/5/merge --header=$H', UNREAD],
     ['{gh} api "$E" repos/o/r/pulls/5/merge', UNREAD],
     ['{gh} api repos/o/r/pulls/$N', UNREAD],
+    ['cat <({gh} pr merge 5 --admi[n])', UNREAD],
+    ['={gh} pr merge 5 --admi[n]', UNREAD],
   ])('%s', (script, says) => {
     expect(reason(script)).toContain(says);
   });
@@ -445,6 +459,11 @@ describe('findBypass: lets plain merges, reads and text through', () => {
     'python3 -c "print(1)"',
     'bash script.sh',
     '"$PNPM" test',
+    'diff <(sort a) <(sort b)',
+    'cat <({gh} pr view 5)',
+    '{gh} pr merge 5 --rebase --body-file <(echo x)',
+    '{gh} pr merge 5 --rebase > >(tee log)',
+    '={gh} pr merge 5 --rebase',
   ])('%s', (script) => {
     expect(reason(script)).toBeNull();
   });

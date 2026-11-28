@@ -6,12 +6,14 @@ import {
   GLOB_NESTING_LIMIT,
   GLOB_WORK_LIMIT,
   MAX_EVAL_DEPTH,
+  NESTED_READ_LIMIT,
   afterFlags,
   cdTarget,
   cdWord,
   ghCommand,
   newParseState,
   parseCommands,
+  placeCommands,
   quoteArgv,
   shellScriptOf,
 } from './shell-parse.mjs';
@@ -22,6 +24,8 @@ import {
   msToRun,
   nestedGlobOf,
   nestedPlainGroups,
+  nestedProcessSubstitutions,
+  processSubstitutionRow,
   unclosedGlobChain,
 } from './shell-parse-fixtures';
 
@@ -85,6 +89,8 @@ describe('parseCommands', () => {
     ['unquoted', 'x --admi[" "n] --admi[n\\ ] [a"]" [\'a b\']'],
     ['plain', 'x \'--admi(n)\' "--admi[n]" \\(a\\) a\\(b\\)'],
     ['dynamic', 'x "$a" "${b}" "$(c)" "`d`" $\'e\' $"f" "$*"'],
+    // A process substitution is the path of a pipe: one word (#469).
+    ['dynamic', 'x <(y) >(y) a<(y) 2>(y) <(y a)b'],
     ['always', 'x "$@" "${a[@]}" "$a[*]" "${=a}" "${(f)a}" $a"$@"'],
   ])('marks every word in a %s case: %s', (kind, script) => {
     const marks = marksAfterX(script) ?? [];
@@ -132,6 +138,137 @@ describe('parseCommands', () => {
   ])('reads the commands in a ( glued to a word, as a subshell: %s', (script, expected) => {
     expect(names(script).filter((name) => name !== undefined)).toEqual(expected);
   });
+
+  const placed = (script: string) =>
+    parseCommands(script).map(({ argv, scope, async }) => ({ name: argv[0], scope, async }));
+
+  // A process substitution is a word whose commands run first, as with
+  // `$(...)`; its first word is not a redirect target (#469).
+  it.each([
+    [
+      'cat <(y a)',
+      [
+        ['y', 'a'],
+        ['cat', '<(y a)'],
+      ],
+    ],
+    [
+      'tee >(y a)',
+      [
+        ['y', 'a'],
+        ['tee', '>(y a)'],
+      ],
+    ],
+    [
+      'diff <(y a) <(y b)',
+      [
+        ['y', 'a'],
+        ['y', 'b'],
+        ['diff', '<(y a)', '<(y b)'],
+      ],
+    ],
+    ['cat < <(y a)', [['y', 'a'], ['cat']]],
+    [
+      'x > >(y a) b',
+      [
+        ['y', 'a'],
+        ['x', 'b'],
+      ],
+    ],
+    [
+      'x a<(y a)',
+      [
+        ['y', 'a'],
+        ['x', 'a<(y a)'],
+      ],
+    ],
+    [
+      'x 2>(y a)',
+      [
+        ['y', 'a'],
+        ['x', '2>(y a)'],
+      ],
+    ],
+    // zsh reads `>>(...)` as `>` and `>(...)`, and `<<(...)` as `<` and `<(...)`.
+    ['x >>(y a)', [['y', 'a'], ['x']]],
+    ['x 2>>(y a)', [['y', 'a'], ['x']]],
+    ['x <<(y a)', [['y', 'a'], ['x']]],
+    [
+      'x <(w <(y a))',
+      [
+        ['y', 'a'],
+        ['w', '<(y a)'],
+        ['x', '<(w <(y a))'],
+      ],
+    ],
+    [
+      'echo "$(x <(y a))"',
+      [
+        ['y', 'a'],
+        ['x', '<(y a)'],
+        ['echo', '$(x <(y a))'],
+      ],
+    ],
+    ['x <(y a; z) b', [['y', 'a'], ['z'], ['x', '<(y a; z)', 'b']]],
+  ])('reads a process substitution as commands: %s', (script, expected) => {
+    expect(argvs(script)).toEqual(expected);
+  });
+
+  it.each(['x <(y)', 'x >(y)', 'x < <(y)', 'x >>(y)', 'x <<(y)'])(
+    'runs a process substitution in a shell the line does not wait for: %s',
+    (script) => {
+      expect(placed(script).map(({ name, scope, async }) => [name, scope.length, async])).toEqual([
+        ['y', 1, true],
+        ['x', 0, false],
+      ]);
+    },
+  );
+
+  it('reads a process substitution past the nesting limit in its level', () => {
+    const commands = parseCommands(nestedProcessSubstitutions(NESTED_READ_LIMIT + 5));
+    expect(commands.filter(({ argv }) => argv[0] === 'y' || argv[0] === '<(...)')).toEqual([
+      expect.objectContaining({ argv: ['<(...)'], marks: [{ dynamic: true, splits: 'unquoted' }] }),
+      expect.objectContaining({ argv: ['y'], async: true }),
+    ]);
+  });
+
+  it.each([
+    ['nested 1000 deep', nestedProcessSubstitutions(1000)],
+    ['nested 4000 deep', nestedProcessSubstitutions(4000)],
+    ['4000 in a row', processSubstitutionRow(4000)],
+  ])('parses process substitutions %s in a time budget', (_, script) => {
+    expect(msToRun(() => parseCommands(script))).toBeLessThan(TIME_BUDGET_MS);
+  });
+
+  // zsh's `=name` runs the program `name` from the PATH (#469).
+  it.each([
+    ['=y a', ['y', 'a']],
+    ['sudo =y a', ['y', 'a']],
+    ['=sudo -u me y a', ['y', 'a']],
+    ['A=1 =env y a', ['y', 'a']],
+    // A `=` word it cannot read still counts as a wrapper by its name.
+    ['=/usr/bin/sudo y a', ['y', 'a']],
+  ])('reads a leading =name as the program name: %s', (script, expected) => {
+    expect(argvs(script)).toEqual([expected]);
+  });
+
+  // zsh's `=(...)` is a word built at run time, the path of a file holding
+  // the output of the commands in it, which are read.
+  it('reads =(...) as a word built at run time and its commands', () => {
+    expect(parseCommands('=(y a)').map(({ argv, marks }) => [argv, marks[0]?.dynamic])).toEqual([
+      [['='], true],
+      [['y', 'a'], false],
+    ]);
+  });
+
+  // `=cd` runs `/usr/bin/cd` in a process of its own, which moves no folder.
+  it.each(['=', '= y', '=a/y', '=/usr/bin/y', '==y', '=A=1 y', '=cd a', '=pushd a', '=popd'])(
+    'marks a leading = word it cannot read as built at run time: %s',
+    (script) => {
+      const [command] = parseCommands(script);
+      expect([command?.argv[0], command?.marks[0]?.dynamic]).toEqual([script.split(' ')[0], true]);
+    },
+  );
 
   // zsh glob qualifiers that run code (#465): an `e` string runs as shell
   // code, read as an `eval` script. Each case finds `y a` right after it.
@@ -352,6 +489,7 @@ describe('parseCommands', () => {
       `past ${GLOB_WORK_LIMIT.toLocaleString('en-US')} commands in all the \`e\` strings one call reads`,
     ],
     [`a glob group nested more than ${GLOB_NESTING_LIMIT} deep in another`],
+    [`past ${NESTED_READ_LIMIT} levels of \`$(...)\`, backticks and process substitutions`],
     [
       `past the ${GLOB_WORK_LIMIT.toLocaleString('en-US')}-command or ${GLOB_NESTING_LIMIT}-deep limits above`,
     ],
@@ -416,9 +554,6 @@ describe('parseCommands', () => {
   ])('reads a coproc’s words past its NAME and keyword: %s', (script, expected) => {
     expect(argvs(script).at(-1)).toEqual(expected);
   });
-
-  const placed = (script: string) =>
-    parseCommands(script).map(({ argv, scope, async }) => ({ name: argv[0], scope, async }));
 
   it('runs a coproc’s simple command in a coprocess shell of its own', () => {
     const [raw, cd, after] = placed('coproc cd a; b');
@@ -564,6 +699,20 @@ describe('parseCommands', () => {
     expect(names("echo 'a <<Z'\nx")).toContain('x');
     expect(names('echo $((1 << y))\nx')).toContain('x');
     expect(names('(( n = 1 << 2 ))\nx')).toContain('x');
+  });
+});
+
+// A coproc in a compound body gets scopes that disagree on what is around
+// its coprocess, so its folder is null: one it cannot tell (#469). The first
+// row needs placeCommands' check of the scope around; in the second the
+// glob qualifier's `cd` leaves the folder unknown as well.
+describe('placeCommands', () => {
+  it.each([
+    ['if coproc x $(true); then git add -A; fi', 'coproc'],
+    ['ls a(e:cd c:) coproc pushd d | x', 'coproc'],
+  ])('cannot tell the folder of a coproc whose scopes disagree: %s', (script, name) => {
+    const coproc = placeCommands(script, '/w').find(({ command }) => command.argv[0] === name);
+    expect(coproc?.folder).toBeNull();
   });
 });
 
