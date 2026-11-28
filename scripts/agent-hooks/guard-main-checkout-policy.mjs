@@ -551,3 +551,36 @@ export function guardDecision({ command, cwd }, mainRoot, aliasOf = () => null) 
     ? { blocked: false }
     : { blocked: true, reason: refusalFor(refused, mainRoot) };
 }
+
+const WORD_EDGE = String.raw`(?<![\w.-])`;
+const WORD_END = String.raw`(?![\w.-])`;
+const GIT_WORD = new RegExp(`${WORD_EDGE}git${WORD_END}`);
+const GH_WORD = new RegExp(`${WORD_EDGE}gh${WORD_END}`);
+const CHECKOUT_WORD = new RegExp(`${WORD_EDGE}checkout${WORD_END}`);
+const WRITE_VERB_WORD = new RegExp(
+  `${WORD_EDGE}(?:${[...MUTATING_GIT_VERBS.keys()].join('|')})${WORD_END}`,
+);
+// A path in raw text runs up to the first character a shell would split on.
+const PATH_TAIL = String.raw`[^\s'"\x60;&|()<>]*`;
+
+/**
+ * Whether a Bash call may write in the main checkout, read from the raw text
+ * alone, with no shell parser. The hook asks this only when its parser threw.
+ * It errs towards yes: the call runs in the main checkout (`cwd`, when it is
+ * known), or the text names a folder in it, or holds `git` with a verb from
+ * {@link MUTATING_GIT_VERBS}, or `gh` with `checkout`.
+ * @param {string} text
+ * @param {string | null} cwd Null when the hook could not read the call.
+ * @param {string | null} mainRoot
+ */
+export function mayWriteMainCheckout(text, cwd, mainRoot) {
+  if (cwd !== null && inMainCheckout(cwd, mainRoot, [])) return true;
+  if (mainRoot !== null) {
+    const escaped = mainRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    for (const [path] of text.matchAll(new RegExp(`${escaped}${PATH_TAIL}`, 'g'))) {
+      if (inMainCheckout(path, mainRoot, [])) return true;
+    }
+  }
+  if (GIT_WORD.test(text) && WRITE_VERB_WORD.test(text)) return true;
+  return GH_WORD.test(text) && CHECKOUT_WORD.test(text);
+}

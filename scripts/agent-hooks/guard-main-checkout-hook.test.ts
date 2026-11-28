@@ -13,14 +13,16 @@ import { OVERRIDE, mainCheckoutOf } from './guard-main-checkout-policy.mjs';
 // The rules themselves are covered in guard-main-checkout-policy.test.ts.
 
 const HOOK = fileURLToPath(new URL('./guard-main-checkout.mjs', import.meta.url));
+// Loads the hook with a guardDecision that throws. See crash-fixture/.
+const CRASH = ['--import', fileURLToPath(new URL('./crash-fixture/register.mjs', import.meta.url))];
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
 const MAIN = mainCheckoutOf(REPO);
 const elsewhere = realpathSync(mkdtempSync(join(tmpdir(), 'guard-hook-')));
 
 afterAll(() => rmSync(elsewhere, { recursive: true, force: true }));
 
-function run(stdin: unknown, env: Record<string, string> = {}) {
-  const result = spawnSync('node', [HOOK], {
+function run(stdin: unknown, env: Record<string, string> = {}, nodeArgs: string[] = []) {
+  const result = spawnSync('node', [...nodeArgs, HOOK], {
     input: typeof stdin === 'string' ? stdin : JSON.stringify(stdin),
     encoding: 'utf8',
     env: { ...process.env, ...env },
@@ -75,11 +77,39 @@ describe('guard-main-checkout hook', () => {
     expect(run('')).toEqual({ code: 0, stderr: '' });
   });
 
-  it('fails open on its own crash, and says so on stderr', () => {
+  it('allows stdin that is not JSON, and says it crashed', () => {
     const { code, stderr } = run('{not json');
     expect(code).toBe(0);
     expect(stderr).toContain('guard-main-checkout: hook crashed, allowing the call');
   });
+});
+
+describe('guard-main-checkout hook, when its parser throws', () => {
+  const crash = (command: string, cwd: string) => run(bash(command, cwd), {}, CRASH);
+
+  it.each([
+    ['a read in the main checkout', 'ls -la', MAIN],
+    ['a call that names a folder in the main checkout', `ls ${MAIN}/packages`, elsewhere],
+    ['a git write word', 'cd ~/Code/x && git add -A', elsewhere],
+    ['gh pr checkout', 'gh pr checkout 5', elsewhere],
+  ])('blocks %s with exit 2', (_name, command, cwd) => {
+    const { code, stderr } = crash(command, cwd as string);
+    expect(code).toBe(2);
+    expect(stderr).toMatch(
+      /^guard-main-checkout: the hook failed \(Error: injected parser failure in guardDecision\), so this call is blocked: .*File an issue .*never secrets/,
+    );
+  });
+
+  it.each(['ls -la', 'git status && git log'])(
+    'allows `%s` outside the main checkout, and says it crashed',
+    (command) => {
+      const { code, stderr } = crash(command, elsewhere);
+      expect(code).toBe(0);
+      expect(stderr).toMatch(
+        /^guard-main-checkout: hook crashed, allowing the call: Error: injected parser failure/,
+      );
+    },
+  );
 });
 
 describe('.claude/settings.json', () => {
